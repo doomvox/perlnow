@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.11 2004/01/31 09:32:00 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.12 2004/01/31 13:12:10 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -236,7 +236,7 @@ either the module root or the module location.")
 and warnings in another window.  Afterwards, you can skip to
 the location of the next problem with \\[next-error] \n This
 command is like \\[cperl-check-syntax] with one less prompt
-(also, it does not require mode-compile.el)"
+\(also, it does not require mode-compile.el\)"
   (interactive)
   (save-buffer)
   (setq compile-command (format "perl -cw \'%s\'" (buffer-file-name)))
@@ -257,12 +257,17 @@ command is like \\[cperl-check-syntax] with one less prompt
 ;;;----------------------------------------------------------
 (defun perlnow-script-using-this-module (filename)
   "Quickly jump into writing a perl script that uses the module 
-in the currently open buffer"
+in the currently open buffer.  If the module is not in perl's 
+search path \(@INC\), then an appropriate \"use lib\" statement 
+will be added. "
   (interactive 
-  (perlnow-prompt-user-for-file-to-create 
-   "Name for the new perl script? " perlnow-script-location))
-  (let ( (module-filename (buffer-file-name))
-         (package-name (perlnow-get-module-name)) ) 
+    (perlnow-prompt-user-for-file-to-create 
+      "Name for the new perl script? " perlnow-script-location))
+  (let* ( (module-filename (buffer-file-name))
+          (module-location (file-name-directory module-filename))
+          (package-name (perlnow-get-module-name)) 
+          (module-root (perlnow-get-module-root package-name module-location))
+          ) 
     (unless package-name 
       (error "%s" "This file doesn't look like a perl module (no leading package line)."))
 
@@ -279,34 +284,26 @@ in the currently open buffer"
 ;;         ;;; create new script file buffer using template
 ;; END DELETIA
 
-  (perlnow-new-file-using-template filename perlnow-perl-script-template)
+    (perlnow-new-file-using-template filename perlnow-perl-script-template)
 ;;; insert the lib path tweaks to ensure the module can be found by the script
-  (let ((relative-path
-         (file-relative-name module-filename (file-name-directory filename))
-         ))
-    (insert "use FindBin qw\($Bin\);\n")
-    (insert "use lib \(\"$Bin/")
-    (insert relative-path)
-    (insert "\");\n"))
-        ;;; insert the "use Some::Module;" line
-  (insert (format "use %s;" package-name)) ;;; and maybe a qw() list? 
-  (insert "\n")))
+    (unless (module-root-in-INC-p module-root)
+        (let ((relative-path
+               (file-relative-name module-filename (file-name-directory filename))
+               ))
+          (insert "use FindBin qw\($Bin\);\n")
+          (insert "use lib \(\"$Bin/")
+          (insert relative-path)
+          (insert "\");\n")))
+  ; insert the "use Some::Module;" line
+    (insert (format "use %s;" package-name)) ;;; and maybe a qw() list? 
+    (insert "\n")))
 
 ;;; TODO: Question: is there something intelligent that could be done 
 ;;; with EXPORT_OK to provide a menu of options here? 
 ;;; Option to qw() *all* of them (maybe except for :all) and let user delete 
 ;;; what they don't want.
 
-;;; TODO
-;;; Maybe someday: check first PERL5LIB and don't add FindBin jazz if module 
-;;; is already findable.  Easy enough: (getenv "PERL5LIB") Search through result 
-;;; for matching module-root 
-;;; But it has to be the module-root dude, this ain't good enough: (file-name-directory module-name).
-
 ;;; TODO: Option to insert the SYNOPSIS section in commented out form
-
-;;;==========================================================
-;;; functions to allow creation of new *modules* not scripts
 
 ;;; TODO:  would like to accept slash separated form of the name
 ;;;        as well as double colon notation.
@@ -314,8 +311,10 @@ in the currently open buffer"
 ;;;       Autocompletion on the part of the module name that corresponds to 
 ;;;       a directory would be cool... 
 
-;;; Note: before you look into this stuff too much, see what h2xs does 
-;;; *for* you.
+;;; TODO alternate form (or extension of this?) That creates 
+;;;      a script using a currently active documentation buffer. 
+;;;      (man format?  perldoc.el?)
+
 
 ;;;----------------------------------------------------------
 (defun perlnow-module (module-root module-name) 
@@ -560,7 +559,7 @@ executable script by looking for the hash-bang line at the top."
 ; END DELETIA
 
 
-;;;----------------------------------------------------------
+,;;;----------------------------------------------------------
 (defun perlnow-script-p ()
   "Try to determine if the buffer looks like a perl script by looking 
 for the hash-bang line at the top.  Note: this is probably not a reliable
@@ -843,6 +842,33 @@ This can work on a read-only buffer."
 
   )))
 
+;;;----------------------------------------------------------
+(defun module-root-in-INC-p (&optional module-root)
+  "Determine if the module-root \(i.e. the beginning of the package name space 
+for a given module\) has been included in perls INC search path already \(and 
+hence not in need of a \"use lib\"\). If not given a module-root, it 
+defaults to using the module root of the current file buffer."
+;;; Just checking getenv("PERL5LIB") would be close, but 
+;;; using @INC as reported by perl seems more solid, so that's 
+;;; what we do here:
+  (unless module-root
+    (setq module-root 
+          (perlnow-get-module-root 
+           (perlnow-get-module-name)
+           (file-name-directory (buffer-file-name)))))
+
+    (let* (
+      (perl-inc (shell-command-to-string "perl -e 'foreach (@INC) {print \"$_|||\"}'" ))
+      (inc-path-list (split-string perl-inc "|||"))
+      return )
+      (setq return 
+            (catch 'UP
+              (dolist (path inc-path-list)
+                (if (string= path module-root)
+                    (throw 'UP t)))))
+      return))
+
+
 ;;;==========================================================
 ;;; Experimental code can go below here     BOOKMARK (note: trying reg-*)
 
@@ -888,29 +914,15 @@ default-directory. Returns a two element list, location and module-name."
 ;;;  change this.
 
 ;;;----------------------------------------------------------
-(defun module-root-in-INC-p (&optional module-root)
-  "Determine if the module-root \(i.e. the beginning of the package name space 
-for a given module\) has been included in perls INC search path already \(and 
-hence not in need of a \"use lib\"\). "
-;;; just getenv("PERL5LIB") would be close, but checking the @INC 
-;;; inside perl seems more solid. 
-;;; NEEDS TESTING 
-  (unless module-root
-    (setq module-root 
-          (perlnow-get-module-root 
-           (perlnow-get-module-name
-            (file-name-directory (buffer-file-name))))))
 
-    (let* (
-      (perl-inc (shell-command-to-string "perl -e 'foreach (@INC) {print \"$_|||\"}'" ))
-      (inc-path-list (split-string perl-inc "|||"))
-      return )
-      (setq return 
-            (catch 'UP
-              (dolist (path inc-path-list)
-                (if (string= path module-root)
-                    (throw 'UP t)))))
-      return))
+;; ;;; DELETE
+;; (defun doom-testes ()
+;;   "both"
+;;   (interactive)
+;;   (if (module-root-in-INC-p)
+;;       (message "Yep")
+;;     (message "Nope")))
+;; ;;; END DELETIA
 
 
 ;;;===========================================================================
