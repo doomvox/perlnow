@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.58 2004/02/11 21:37:48 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.59 2004/02/12 00:21:02 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -472,24 +472,6 @@ again with a slightly different message.  Returns a two
 element list, location and module-name."
   (interactive "DThat exists already! Location for new h2xs structure? \nsName of new module \(e.g. New::Module\)? ")
   (list where what))
-
-;;;==========================================================
-;;; Older code 
-;;;==========================================================
-
-;;; TODO 
-;;; Maybe: include the old perlutil-* routines. 
-;;; Detect if template.el is installed, and if not, 
-;;; fall back on using these (instant gratification principle... 
-;;; try and do something useful, even if the installation isn't 
-;;; quite right... but notify somehow that there's a problem to 
-;;; be fixed). 
-
-;;;----------------------------------------------------------
-;;;   (defun perlutil-perlnow ()
-;;;----------------------------------------------------------
-;;;   (defun perlutil-perlify-this-buffer ()
-
 
 
 
@@ -1345,6 +1327,25 @@ Perl package example: given \"/home/doom/lib/Taxed::Reb\" should return
                (t
                 (message "match failed") )) 
          (list directory fragment) ))
+
+;;;==========================================================
+;;; Older code 
+;;;==========================================================
+
+;;; TODO 
+;;; Maybe: include the old perlutil-* routines. 
+;;; Detect if template.el is installed, and if not, 
+;;; fall back on using these (instant gratification principle... 
+;;; try and do something useful, even if the installation isn't 
+;;; quite right... but notify somehow that there's a problem to 
+;;; be fixed). 
+
+;;;----------------------------------------------------------
+;;;   (defun perlutil-perlnow ()
+;;;----------------------------------------------------------
+;;;   (defun perlutil-perlify-this-buffer ()
+
+
 
 
 ;;;==========================================================
