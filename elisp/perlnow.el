@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.72 2004/02/13 01:35:04 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.73 2004/02/13 06:14:36 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -359,7 +359,7 @@ really done\\) then this function will see the first package name."
     "Name for the new perl script? " perlnow-script-location))
   (let* ( (module-filename (buffer-file-name))
           (module-location (file-name-directory module-filename))
-          (package-name (perlnow-get-module-name)) 
+          (package-name (perlnow-get-module-name-from-module-buffer)) 
           (module-root (perlnow-get-module-root package-name module-location))
           ) 
     (unless package-name 
@@ -380,21 +380,74 @@ really done\\) then this function will see the first package name."
     (insert (format "use %s;" package-name)) ;;; and maybe a qw() list? 
     (insert "\n")))
    
-;;; TODO 
-;;; Want to be able to create a script from a currently active documentation buffer
-;;; (presume it's "man format" for now).  An alternate form of the above, 
-;;; or an extension of it?
-;;;
-;;; See notes on perlnow-get-module-name. Fix that to get package name from man page? 
 
-;;; *But* this is only part of the story:
-;;; Need actual installed location of module to do
-;;; FindBin/use lib trick.  (buffer-file-name) wouldn't do it.
+;;;----------------------------------------------------------
+(defun perlnow-script-general (script-file-name)
+  "General purpose command to quickly jump into coding a perl script. 
+Looks at the current buffer and tries to guess what \"use\" lines
+you might want to start coding with. If it's a perl module, or a man page 
+documenting a perl module, it will give you a \"use\" line to include 
+that module.  If the module is not in perl's @INC array, it will also 
+insert the appropriate \"FindBin/use lib\" lines so that the script can 
+find the module. If none of that applies, you just get the usual 
+perl script buffer.\n
+If this works well, it obviates \[perlnow-script] and 
+\[perlnow-script-using-this-module].  If it doesn't they're still there."
+  (interactive
+   (perlnow-prompt-user-for-file-to-create 
+    "Name for the new perl script? " perlnow-script-location))
+  (let ( module-filename module-location package-name ) 
+    (cond 
+     ((setq package-name perlnow-get-module-name)
+      (setq perlnow-perl-module-name package-name) ; global used to pass value into template
+      (cond
+          ((setq module-filename (perlnow-module-found-in-INC package-name))
+            (perlnow-new-file-using-template script-file-name perlnow-perl-script-template)
+             ; insert the "use Some::Module;" line
+            (insert (format "use %s;\n" package-name)) ;;; and maybe a qw() list? 
+           )
+          ((perlnow-module-p)
+            (setq module-filename (buffer-file-name))
+            (perlnow-new-file-using-template script-file-name perlnow-perl-script-template)
+            (setq module-location (file-name-directory module-filename))
+            ; insert "use lib" line to ensure the module can be found by the script
+            (let ((relative-path
+                (file-relative-name module-filename (file-name-directory script-file-name))))
+               (insert
+                (concat "use FindBin qw\($Bin\);\n"
+                        "use lib \(\"$Bin/"
+                        relative-path
+                        "\");\n"))
+             ; insert the "use Some::Module;" line
+             (insert (format "use %s;\n" package-name)) ;;; and maybe a qw() list? 
+          ))
+          (t
+           (perlnow-script script-file-name)
+           ))))))
 
-;;; Just check to see if the module is in @INC, if so, no use lib is needed... 
-;;; Otherwise, would have to do a system wide find/grep, I suppose... 
-;;; *ask first*.
-   
+;;;----------------------------------------------------------
+(defun perlnow-module-found-in-INC (module-name) 
+  "Given a perl module name \(double-colon separated form\) 
+return the first module file location found in perl's @INC 
+array, or nil if it is not found."
+;;; TODO That "|||" shit is cheesy.  Use "\t" or something, huh?
+;  (interactive "sGimme:") ; DEBUG only DELETE
+  (let* (  full return
+           (module-file-tail 
+            (concat (replace-regexp-in-string "::" "/" module-name) ".pm"))
+           (perl-inc 
+            (shell-command-to-string "perl -e 'foreach (@INC) {print \"$_|||\"}'" ))
+           (inc-path-list (split-string perl-inc "|||"))
+           )
+    (setq return
+     (catch 'TANTRUM
+       (dolist (inc-path inc-path-list)
+         (setq full (concat (perlnow-fixdir inc-path) module-file-tail))
+         (if (file-exists-p full)
+             (throw 'TANTRUM full)))))
+;    (message "Ret: %s" return) ; DEBUG only DELETE
+    return))
+
    
 ;;;----------------------------------------------------------
 (defun perlnow-module-two-questions (module-root module-name) 
@@ -478,15 +531,13 @@ If perlnow-run-string is nil, perlnow-set-run-string is called automatically."
   (interactive)
   (unless perlnow-run-string
     (perlnow-set-run-string))
-  (message "running with perlnow-run-string: %s" perlnow-run-string) ; debugging only  DELETE
+;  (message "running with perlnow-run-string: %s" perlnow-run-string) ; debugging only  DELETE
   (compile perlnow-run-string))
 
 ;;;----------------------------------------------------------
 (defun perlnow-h2xs (h2xs-location module-name) 
   "Quickly jump into development of a new perl module"
   (interactive 
-; Note: A typical h2xs run string:
-;   h2xs -AX -n Net::Acme -b 5.6.0
 ; Because default-directory is the default location for (interactive "D"),
 ; I'm doing the interactive call in stages: this way can change 
 ; default-directory momentarily, then restore it. Uses the dynamic scoping 
@@ -499,13 +550,14 @@ If perlnow-run-string is nil, perlnow-set-run-string is called automatically."
 
   ;Bring the *perlnow-h2xs* display window to the fore (bottom window of the frame)
   (delete-other-windows) 
-  (split-window-vertically -12)       ; Expected size of output from h2xs is 6 lines
-  (other-window 1)                    ; with some re-centering, could trim this "-12".
+  (split-window-vertically -14) ; Number of lines of *.t to display
+  (other-window 1)             
   (switch-to-buffer display-buffer) 
 
   (perlnow-blank-out-display-buffer display-buffer)
   (other-window 1)
 
+   ; A typical h2xs run string:  h2xs -AX -n Net::Acme -b 5.6.0
   (call-process "h2xs"
                 nil
                 display-buffer      ; must be buffer object?
@@ -574,8 +626,6 @@ again with a slightly different message.  Returns a two
 element list, location and module-name."
   (interactive "DThat exists already! Location for new h2xs structure? \nsName of new module \(e.g. New::Module\)? ")
   (list where what))
-
-
 
 
 ;;;==========================================================
@@ -675,10 +725,9 @@ package line near the top."
     (looking-at package-line-pat) )))
 
 ;;;----------------------------------------------------------
-(defun perlnow-get-module-name () 
+(defun perlnow-get-module-name-from-module-buffer () 
   "Return the module name from the package line \(in perl's 
 double colon separated form\), or nil if there is none"
-;  (interactive) ; DEBUG only, DELETE
   (save-excursion 
   (let ((package-line-pat "^[ \t]*package[ \t]*\\(.*\\)[ \t;]") ;; captures "Module::Name"
         (comment-line-pat "^[ \t]*$\\|^[ \t]*#")
@@ -688,23 +737,85 @@ double colon separated form\), or nil if there is none"
     (if (looking-at package-line-pat) 
         (setq return (match-string 1))
       (setq return nil))
-    return
-;   (message "Ret: %s" return)  ; DEBUG only, DELETE
-   )))
+    return)))
 
-;;; TODO
-;;; FEATURE:
-;;; want to improve perlnow-script-using-this-module
-;;; so that it can work from a perldoc/man buffer as well as a code buffer.
-;;; Adding capability to "perlnow-get-module-name" would do it: 
-;;; if there's no package line, start looking elsewhere for 
-;;; the module name.  
-;;; (a) Check the buffer name.  Does it lead with "*Man"?
-;;;    (1) if so, try looking for the first words after NAME, which end at the next space?
-;;;      This         "NAME[ \t\n]*\([^ \t]*\)[ \t]"
-;;;      would load   (match-string 1)  
-;;;    (2) optionally, see if that Name is also present in the buffer name.
-;;;    (3) a double-colon in the candidate name would clinch it, but is not required.
+;;;----------------------------------------------------------
+(defun perlnow-get-module-name () 
+  "Return the module name  \(in perl's double colon separated form\)
+from either a module buffer or a Man page showing the perldoc for it, 
+or nil if none is found"
+;  (interactive) ; DEBUG only, DELETE
+  (let (return)
+    (cond 
+     ((setq return (perlnow-get-module-name-from-module-buffer))
+       )
+     ((setq return (perlnow-get-module-name-from-man))
+       )
+     (t
+      (setq return nil)
+      ))
+    (message "Returned module name=> %s" return)  ; DEBUG only, DELETE
+    return))
+
+;;;----------------------------------------------------------
+(defun perlnow-get-module-name-from-man ()
+  "Return the module name from a man page buffer displaying the perldoc.
+If not a man page buffer, returns nil.  It tries several methods of 
+scraping the module name from the man page buffer, and returns 
+it's best guess."
+;  (interactive)                         ; DEBUG only DELETE
+  (save-excursion
+    (let ( return buffer-name-string candidate-list 
+           candidate-1 candidate-2 candidate-3 )
+      (cond  
+       ( (setq buffer-name-string (buffer-name))
+         (if (string-match "\\*Man \\(.*\\)\\*$" (buffer-name))
+             (progn
+               (setq candidate-1 (match-string 1 buffer-name-string))
+               (setq candidate-list (cons candidate-1 candidate-list))))
+
+         (goto-char (point-min))
+         (if (re-search-forward "NAME[ \t\n]*\\([^ \t]*\\)[ \t]" nil t)
+             (progn
+               (setq candidate-2 (match-string 1))
+               (setq candidate-list (cons candidate-2 candidate-list))))
+
+         (goto-char (point-min))
+         (if (re-search-forward "SYNOPSIS[ \t\n]*use \\(.*\\)[ ;]" nil t)
+             (progn
+               (setq candidate-3 (match-string 1))
+               (setq candidate-list (cons candidate-2 candidate-list))))
+
+         (setq return 
+               (perlnow-vote-on-candidates candidate-list))
+;         (message "module name: %s" return) ; DEBUG only DELETE
+         )
+       (t 
+        (setq return nil))))))
+
+;;;----------------------------------------------------------
+(defun perlnow-vote-on-candidates (candidate-list)
+  "Pick most commonly occuring string from a list of strings"
+  (let (score-alist)
+    (dolist (candidate candidate-list)
+      (let ((score 0))
+        (dolist (compare candidate-list)
+          (if (string= candidate compare)
+              (setq score (+ 1 score)))
+          )
+        (setq score-alist (cons (cons candidate score) score-alist))))
+    ; Now find max value in score-alist, return key.
+    (let ( string score high_scorer
+          (largest 0))
+    (dolist (connie score-alist)
+      (setq string (car connie))
+      (setq score (cdr connie))
+       (if (> score largest)
+           (progn 
+             (setq largest score)
+             (setq high_scorer string))
+             ))
+    high_scorer)))
 
 ;;;----------------------------------------------------------
 (defun perlnow-one-up (dir)
@@ -713,17 +824,15 @@ double colon separated form\), or nil if there is none"
 ;;;   (string-match "\\(^.*/\\)[^/]*$" (perlnow-fixdir dir))
 ;;;   (setq one-up (match-string 1 dir))
 
-;  (interactive "Dgimme a dir: ") ; DEBUG only DELETE
   (setq dir (perlnow-fixdir dir))
   (let ((return
-         (concat "/" ; TODO - might be good to have a func to prepend slash only if not already there 
+         (concat "/" ; TODO - write func to prepend slash only if not already there?
                  (mapconcat 'identity 
                             (butlast 
                              (split-string dir "/") 
                              1) 
                             "/"))))
     (setq return (perlnow-fixdir return))
-;    (message "ret: %s" return) ; DEBUG only DELETE
     return))
 
 ;;;----------------------------------------------------------
@@ -747,7 +856,6 @@ expand to an absolute path using the given dot_means as
 the value for \".\"."
 ;;; Note, this is limited to *leading* dot expressions, 
 ;;; Can't handle weirder stuff like: "/home/doom/tmp/../bin"
-;  (interactive "sGivenpath: \nsDot expansion: "); DEBUG only DELETE
   (let ((two-dot-pat "^\\.\\.")  
         (one-dot-pat "^\\.")   ; must check two-dot-pat first or this could match there 
         newpath  )
@@ -758,14 +866,12 @@ the value for \".\"."
    (setq newpath
          (replace-regexp-in-string one-dot-pat dot_means newpath))
    (setq newpath (perlnow-fixdir newpath))
-;   (message "newpath: %s" newpath) ; DEBUG only DELETE
    newpath))
 
 ;;;----------------------------------------------------------
 (defun perlnow-lowest-level-directory-name (dir)
   "Return the lowest level directory name from a given path, 
 e.g. Given: \"/usr/lib/perl/\" Returns: \"perl\" "
-;;;  (interactive "Dgimme a place: ") ; DEBUG only DELETE
   (let* ( (levels (split-string dir "/"))
           (return (nth (- (length levels) 1) levels)) )
     return))
@@ -790,19 +896,20 @@ Note: Relying on the exact precedence of this search should be avoided
 ;;; A web page for now.
 ;;; TODO:
 ;;; o  Will also at some point want a "perlnow-edit-test-file-for-this-module".
-;;; Maybe this code should be revamped (sigh), prefer code that returns test file name?
+;;; Maybe this code should be revamped (sigh): need code that returns test file name?
 ;;; o  Still another want would be "perlnow-create-test-file-for-module" which would need 
 ;;; to read policy from somewhere, to know where to put it and what to call it. 
 ;;; My pick for policy: if inside of an h2xs structure, put in the appropriate "t", 
 ;;; otherwise create a local t for it, but use the full hyphenized module name as 
-;;; base-name (to make it easy to move around). 
-;;; How to specify policy?  A dot form like ./t, plus a definition of dot 
-;;; e.g. module-file-location, plus a name style, like hyphenized.  3 pieces of info.
+;;; base-name (to make it easy to move around without confusion). 
+;;; How to specify policy?  Three pieces of info: 
+;;;   1 - A dot form, e.g. "./t"
+;;;   2 - a definition of dot e.g. module-file-location
+;;;   3 - name style, e.g. hyphenized
 
-;  (interactive) ;;; DEBUG only DELETE
   (unless (perlnow-module-p) 
     (error "This buffer does not look like a perl module (no \"package\" line)."))
-  (let* ( (module-name (perlnow-get-module-name))
+  (let* ( (module-name (perlnow-get-module-name-from-module-buffer))
           (module-file-location 
             (file-name-directory (buffer-file-name)))
           (module-root 
@@ -812,31 +919,27 @@ Note: Relying on the exact precedence of this search should be avoided
           (module-file-basename 
             (file-name-sans-extension (file-name-nondirectory (buffer-file-name))))
 
-;;           (test-file-check-list '( (concat (hyphenized-module-name) ".t")
-;;                                    (concat (module-file-basename) ".t")
-;;                                   ; ("1.t") ;;; current thought: just let h2xs Makefile handle this
-;;                                    ))
-
-          ;;; TODO - Consider exposing a proto of this list (somehow) to users,
+          ;;; TODO - Consider exposing a prototype of this list (somehow) to users,
           ;;;        via a defvar or something
           ; This is a listing of possible names for the test file:
           (test-file-check-list (list (concat hyphenized-module-name ".t")
                                       (concat module-file-basename ".t")
                                       )) ; note, h2xs test files need not be included in this list.
 
-          staging-area             ; The location of an h2xs-style dev structure 
+          staging-area      ; The location of an h2xs-style dev structure 
           staging-area-candidate staging-area-candidate-name 
-          test-search-list  ; A listing of possible absolute locations
-                            ;to look for the test file, built up from relative locations in perlnow-test-path
+          test-search-list  ; A listing of possible absolute locations to look for the test file, 
+                            ; built up from relative locations in perlnow-test-path
           testloc testfile  
-          water fish        ; going fishing
+          fish water        ; going fishing
           return            ; the returned run string 
           ) 
 
     (setq return 
           (catch 'COLD
             (setq staging-area-candidate (perlnow-one-up module-root))
-            (setq staging-area-candidate-name (perlnow-lowest-level-directory-name staging-area-candidate))
+            (setq staging-area-candidate-name 
+                  (perlnow-lowest-level-directory-name staging-area-candidate))
             (cond
              ((string= staging-area-candidate-name hyphenized-module-name)
               (setq staging-area staging-area-candidate) 
@@ -882,7 +985,7 @@ determine the module-root, i.e. the place where the package namespace begins"
 ;;  /home/doom/perldev/Punk/Skunk/New/              => number of levels:  7
 ;;                                New::Module       => double-colon-count: 1
 ;;  /home/doom/perldev/Punk/Skunk/                  The desired module-root
-;  (interactive "sPackage Name: \nsModule Location: ") ;;; DEBUG only DELETE
+;;
   (let (double-colon-count  ; count of '::' separators
         file-levels-list    ; list of directories in the path
         module-root)        ; 
@@ -928,7 +1031,7 @@ h2xs-location were \"/usr/local/perldev\" and the module were
           "/lib/"
           (mapconcat 'identity (split-string module-name "::") "/")
           ".pm")))
-    (message "h2xs module file is %s"  module-filename) ; DELETE ?
+;    (message "h2xs module file is %s"  module-filename) ; DELETE ?
     module-filename))
 
 ;;;----------------------------------------------------------
@@ -955,7 +1058,7 @@ module  were \"New::Module\", it should return:
            (t 
            (error "Can't find h2xs test file or test location")
            ))
-    (message "h2xs test file is %s"  module-filename)  ; DELETE ?
+;    (message "h2xs test file is %s"  module-filename)  ; DELETE ?
     module-filename))
 
 ;;;----------------------------------------------------------
@@ -995,11 +1098,12 @@ hence not in need of a \"use lib\"\). If not given a module-root, it
 defaults to using the module root of the current file buffer."
 ;;; Just checking getenv("PERL5LIB") would be close, but 
 ;;; using @INC as reported by perl seems more solid, so that's 
-;;; what we do here:
+;;; what we do here.
+;;; TODO That "|||" shit is cheesy.  Use "\t" or something, huh?
   (unless module-root
     (setq module-root 
           (perlnow-get-module-root 
-           (perlnow-get-module-name)
+           (perlnow-get-module-name-from-module-buffer)
            (file-name-directory (buffer-file-name)))))
 
     (let* (
@@ -1347,9 +1451,6 @@ the values associated with them in the alist are sequential numbers"
   ))
 
 
-
-
-
 ;;;----------------------------------------------------------
 (defun perlnow-split-perlish-module-name-with-path-to-module-root-and-name (string)
   "Input string is expected to be a hybrid file system
@@ -1357,7 +1458,6 @@ path using slashes for the module root name space, and
 double colons for the package name space inside of that. \n
 This input is split into two pieces, the module-root 
 and module-name, which are returned in a list."
-;  (interactive "stest string: ") ; DEBUG only DELETE
   (let* ( (pattern 
             (concat 
              "^\\(.*\\)"       ; ^(.*)    - stuff at start becomes the mod root
@@ -1368,7 +1468,6 @@ and module-name, which are returned in a list."
            module-root 
            module-name
           )
-      (message "debug - pattern: %s" pattern) ; DEBUG only DELETE
          (cond ((string-match pattern string)
                 (setq module-root (match-string 1 string))
                 (setq module-name (match-string 2 string)) ) ; note: does not include any .pm
@@ -1413,7 +1512,6 @@ Simple example: given \"/home/doom/lib/Stri\" should return
  \"/home/doom/lib/\" and \"Stri\"\n
 Perl package example: given \"/home/doom/lib/Taxed::Reb\" should return 
  \"/home/doom/lib/Taxed::\" and \"Reb\"\n"
-  (interactive "stest string: ") ; DEBUG only DELETE
   (let* ( (pattern "^\\(.*\\(/\\|::\\)\\)\\([^/:]*$\\)" )
            directory fragment
           )
@@ -1440,6 +1538,8 @@ Perl package example: given \"/home/doom/lib/Taxed::Reb\" should return
 ;;;   (defun perlutil-perlnow ()
 ;;;----------------------------------------------------------
 ;;;   (defun perlutil-perlify-this-buffer ()
+
+
 
 
 
