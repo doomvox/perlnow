@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.20 2004/02/05 20:50:30 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.21 2004/02/06 19:27:53 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -949,7 +949,7 @@ Returns a two element list, location and module-name."
   (interactive 
    (let* ((initial default-directory)
           (require-match nil) ; REQUIRE-MATCH set to nil to allow creation
-          (first-prompt "New module to create \(e.g. /tmp/dev/New::Mod\): ") 
+          (first-prompt "XXXXX New module to create \(e.g. /tmp/dev/New::Mod\): ") ; XXXXX is for DEBUG only 
           (current-prompt first-prompt)
           (later-prompt "That module exists already. New module to create: ") 
           string ; pick better name.  Jargon for path and modname?
@@ -957,14 +957,15 @@ Returns a two element list, location and module-name."
            
      (while 
          (progn 
+
            (setq string (completing-read 
                          current-prompt
                          'perlnow-completing-read-path-and-module-name
                          'perlnow-interesting-file-name-in-cons-cell-p
                          require-match 
-                         initial))  
+                         initial))
 
-           (message "string: %s" string) ;; DEBUG only DELETE
+           (message "XXXXX string: %s" string) ;; DEBUG only DELETE
 
            (setq module-root-and-name-list
                  (perlnow-split-module-file-name-to-module-root-and-name string)) ; note: drops any .pm
@@ -992,35 +993,24 @@ double colons for the package name space inside of that. \n
 terminology for it.\)\n
 This input is split into two pieces, the module-root 
 and module-name, which are returned in a list."
-;; NEEDS TESTING
   (interactive "stest string: ") ; DEBUG only DELETE
   (let* ( (pattern 
             (concat 
-             "^\\(.*\\)"       ; whatever is at the beginning becomes the mod root
-             "/"               ; the *last* slash, because: 
-             "\\([^/]*\\)"     ; mod name: everything that is not a slash --
-             "\\(\\.pm\\)*$"   ; up to the end (or an optional .pm extension)
+             "^\\(.*\\)"       ; ^(.*)    - stuff at start becomes the mod root
+             "/"               ; /        - the right-most slash, because: 
+             "\\([^/]*\\)"     ; ([^/]*)  - mod name: everything that is not a slash up to  --
+             "\\(\\.pm\\)*$"   ; (\.pm)*$ - the end (or an optional .pm extension)
              ))
            module-root 
            module-name
           )
-    (message "debug - pattern: %s") ; DEBUG only DELETE
+      (message "debug - pattern: %s" pattern) ; DEBUG only DELETE
          (cond ((string-match pattern string)
                 (setq module-root (match-string 1 string))
                 (setq module-name (match-string 2 string)) ) ; note: does not include any .pm
                (t
                 (message "match failed: could not separate into module root and name.") )) 
          (list module-root module-name) ))
-
-;;; pattern for first slash before the first ::? Ah, no. 
-;;; sometimes there won't be any.  So this is simpler:
-;;;  (.*)/([^/]*)(\.pm)*$   
-;;; The module-name is the part before the end with no slashes in it.
-;;; The module-root is the stuff before that.  The .pm, if any ends 
-;;; up in the third place...
-;;; Build this in pieces, then use 
-;;;  Use regexp-quote
-;;; on it? 
 
 
 ;;;----------------------------------------------------------
@@ -1149,7 +1139,6 @@ will be assumed and need not be entered \(though it may be\).
                                               ; list of bare filenames
          (munged-path (replace-regexp-in-string "::" "/" path) )  
             ; unix file system separator "/" swapped in for perl package separators "::" 
-         (i 1)        ; counter used in building alist below with numeric "value"
          match-list   ; list of files sans path 
          match-alist  ; alist of files with paths, value a sequential number (zat matter?)
          full-file    ; full-file, filename including path, used to build the alist above
@@ -1160,16 +1149,12 @@ will be assumed and need not be entered \(though it may be\).
    ; Do a regexp search of the fragment against items in the file-list
    (dolist (file file-list)
      (if (string-match fragment-pat file)
-         (progn
-           (setq full-file (concat path file)) ;; an absolutely necessary and simple but non-obvious step
-           (setq match-alist (cons (cons full-file i) match-alist)) 
-           (setq i (+ i 1))
-           )))
-   ;;;   (message "Found %d matches" (- i 1) ) ; DEBUG
-
-   ; Reverse the order of the match-alist
-   (setq match-alist (reverse match-alist))  ;; *might* not be needed. 
-
+         (let (i length(file-list))        ; counter used in building alist below with numeric "value"
+           (progn
+             (setq full-file (concat path file)) ;; an absolutely necessary and simple but non-obvious step
+             (setq match-alist (cons (cons full-file i) match-alist)) 
+             (setq i (- i 1))
+             ))))
    ; Filter that through the "predicate", *if* supplied.
    (unless (eq predicate-function-symbol nil) ; gotta be a better way. Try just: (unless predicate-function-symbol
        (setq file-list (grep-list predicate-function-symbol match-alist)))
@@ -1177,7 +1162,11 @@ will be assumed and need not be entered \(though it may be\).
    ; Return the list of things that match if desired, if not just one of them
    (cond 
     (all-completions-flag 
-      match-alist)
+     (with-output-to-temp-buffer "*Completions*"
+       (display-completion-list
+        (all-completions (buffer-string) match-alist)))
+     )
+;      match-alist)
     ((not all-completions-flag)
       (perlnow-longest-string-from-alist match-alist))
 ;   ((eq all-completions-flag lambda)   
