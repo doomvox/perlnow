@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.44 2004/02/10 19:52:31 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.45 2004/02/10 19:57:43 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -929,36 +929,21 @@ defaults to using the module root of the current file buffer."
 ;;; a flag that controls word-at-a-time or level-at-a-time. 
 ;;; then tabby and spacey become simple wrappers.
 
-;;; TODO 
-;;; (a) Ideally perhaps it should report [No completion] or something.  
-;;; (b) Which means that " [blah]" stuff should be detected and ignored 
-;;;     in the input here.  ((Part b is DONE))
-;;; (low priority)
-;;; Actually, I gave this a try, and I don't see how to get it to work. 
-;;; You need the bracketed comment to be inaccessible to the user, 
-;;; it should go away the moment you start typing.  Redefine every key 
-;;; to a special self-insert wrapper?  Look for hooks on self-insert to 
-;;; blank it out before adding a new character?  This is too much trouble 
-;;; for a *very* minor addition of functionality.  Drop it.
-
   (interactive)
   (let* ( ; empty declarations:
          candidate-alist suggested-completion
-         field-start field-end
+         field-start 
          two-pieces-list perlish-path fragment fragment-pat file-system-path
          lastchar return result
-         comment-to-user
           ; assignments setq's in all but name:
          (raw_string (buffer-string))
          (end-of-prompt-pat ": ")
-         (start-of-comment-pat "  \\[") ; Though I bet this is already defined (dynamic scoping is weird).
          (pm-extension-pat "\\.pm$")
          )
 
          (string-match end-of-prompt-pat raw_string)
          (setq field-start (match-end 0)) ; also used later to blank minibuffer
-         (setq field-end (string-match start-of-comment-pat raw_string))
-         (setq minibuffer-string (substring raw_string field-start field-end))
+         (setq minibuffer-string (substring raw_string field-start))
 
          ; No single trailing colons allowed: silently double them up
          (if (string-match "[^:]:$" minibuffer-string)
@@ -982,8 +967,7 @@ defaults to using the module root of the current file buffer."
            (setq separator "/"))
 
          (cond ((eq returned nil)
-                (setq suggested-completion fragment)
-                (setq comment-to-user "  [no completions]") )
+                (setq suggested-completion fragment))
                ((eq returned t) ; precise match that is not a *.pm file is a directory, add separator
                  (if (string-match pm-extension-pat fragment)
                     (setq suggested-completion (substring fragment 0 (match-beginning 0) ))
@@ -999,8 +983,6 @@ defaults to using the module root of the current file buffer."
 
          (if (string= result minibuffer-string) ; if there's no change from the input value, go into help
              (perlnow-read-minibuffer-completion-help))
-
-         (setq result (concat result comment-to-user))
 
          (delete-region (+ 1 field-start) (point-max)) ; blank minibuffer 
          (insert result) 
@@ -1179,7 +1161,7 @@ associated with them are sequential numbers"
 (defun readem ()
   "and weep, most likely"
   (interactive)
-  (let ((start-of-comment-pat "  \\[") ; Maybe this should be global, but WTF.
+  (let (
         (init   nil) ; 
         (keymap perlnow-read-minibuffer-map) ; Can feed it a keymap!  
         (read   nil) ; 
@@ -1191,11 +1173,6 @@ associated with them are sequential numbers"
   (setq result
         (read-from-minibuffer "Give it to me: " 
                               init keymap read hist def iim))
-
-  ; strip any trailing comments in brackets 
-  ; (do I have to do *everything* around here?)
-  (setq result 
-        (substring result 0 (string-match start-of-comment-pat result)))
 
   (message "result: %s" result)
    ))
