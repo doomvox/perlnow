@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.201 2004/04/27 02:10:03 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.202 2004/04/27 23:48:20 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -116,6 +116,7 @@ change the alt-run-string used by perlnow-alt-run.
 A list of the important functions that require template.el:
 \\[perlnow-script]
 \\[perlnow-module]
+\\[perlnow-object-module]
 \\[perlnow-module-two-questions]
 
 Many useful functions here don't need template.el.
@@ -152,19 +153,19 @@ Add something like the following to your ~/.emacs file:
    \(require 'template\)
    \(template-initialize\)
    \(require 'perlnow\)
-   \(global-set-key \"\\C-c's\" 'perlnow-script\)
-   \(global-set-key \"\\C-c'm\" 'perlnow-module\)
-   \(global-set-key \"\\C-c'o\" 'perlnow-object-module\)
-   \(global-set-key \"\\C-c'h\" 'perlnow-h2xs\)
-   \(global-set-key \"\\C-c'c\" 'perlnow-run-check\)
-   \(global-set-key \"\\C-c'r\" 'perlnow-run\)
-   \(global-set-key \"\\C-c'a\" 'perlnow-alt-run\)
-   \(global-set-key \"\\C-c'd\" 'perlnow-perldb\)
-   \(global-set-key \"\\C-c'R\" 'perlnow-set-run-string\)
-   \(global-set-key \"\\C-c'A\" 'perlnow-set-alt-run-string\)
-   \(global-set-key \"\\C-c't\" 'perlnow-edit-test-file\)
-   \(global-set-key \"\\C-c'b\" 'perlnow-back-to-code\)
-   \(global-set-key \"\\C-c'~\" 'perlnow-perlify-this-buffer-simple\)
+   \(global-set-key \"\\C-c/s\" 'perlnow-script\)
+   \(global-set-key \"\\C-c/m\" 'perlnow-module\)
+   \(global-set-key \"\\C-c/o\" 'perlnow-object-module\)
+   \(global-set-key \"\\C-c/h\" 'perlnow-h2xs\)
+   \(global-set-key \"\\C-c/c\" 'perlnow-run-check\)
+   \(global-set-key \"\\C-c/r\" 'perlnow-run\)
+   \(global-set-key \"\\C-c/a\" 'perlnow-alt-run\)
+   \(global-set-key \"\\C-c/d\" 'perlnow-perldb\)
+   \(global-set-key \"\\C-c/R\" 'perlnow-set-run-string\)
+   \(global-set-key \"\\C-c/A\" 'perlnow-set-alt-run-string\)
+   \(global-set-key \"\\C-c/t\" 'perlnow-edit-test-file\)
+   \(global-set-key \"\\C-c/b\" 'perlnow-back-to-code\)
+   \(global-set-key \"\\C-c/~\" 'perlnow-perlify-this-buffer-simple\)
 
   \(setq `perlnow-script-location'
       \(substitute-in-file-name \"$HOME/bin\"\)\)
@@ -175,18 +176,18 @@ Add something like the following to your ~/.emacs file:
 
 Some suggestions on key assignments:
 
-Here I'm using the odd prefix \"control-c apostrophe\",
+Here I'm using the odd prefix \"control-c slash\",
 simply because while the perlnow.el package is not a
 minor-mode, it has some aspects in common with them \(and
 maybe it's on it's way to becoming one\).  The C-c
-<punctuation> bindings are the only places a minor mode is
-supposed to mess with the keymap. The apostrophe is my pick
-because it's unshifted \(on most keyboards\) and on the
-opposite side from the \"c\".
+<punctuation> bindings are the only places in the keymap 
+allocated for minor modes. The slash was choosen
+because it's unshifted and on the opposite side from the 
+\"c\" \(on most keyboards\) .
 
 You, on the other hand, are free to do whatever you want in
 your .emacs, and I would suggest assigning the commands you
-like to function keys.  Some examples from my .emacs:
+like to function keys.  Some possibilities:
 
   \(global-set-key [f4] 'perlnow-script\)
 
@@ -203,22 +204,21 @@ On the other hand, I'm pretty sure that some unix-isms have
 crept into this code: for example, if your file-system
 expects a \"\\\" as a separator between levels, this package
 may have some problems.  I'm amenable to suggestions for
-ways to make future versions of this more portable.")
+ways to make future versions more portable.")
 
 (defvar perlnow-documentation-terminology t
   "Definitions of some terms used here:
 
-Note: This documentation \(and some of the code\), makes the
-simplifying assumption that a perl package is a perl module
-is a single file, \(with extension *.pm\).  Even though
-technically multiple packages can occur in a single file,
-that is typically rarely done in practice.
+Note: I make the simplifying assumption that a perl package
+is a perl module is a single file, \(with extension *.pm\).
+Even though technically multiple packages can occur in a
+single file, that is not done often in practice.
 
 Why is there such a mess of terminology below?
 Because there's a file system name space and a module name space:
 
    /usr/lib/perl/Modular/Stuff.pm
-   /usr/lib/perl/Modular::Stuff
+   /usr/lib/perl/ Modular::Stuff
 
 This makes the answers to simple questions ambiguous:
 What is the module called? Stuff.pm or Modular::Stuff?
@@ -246,7 +246,7 @@ such \"inc spots\" \(alternate term: \"module root\" or
 
 STAGING AREA: the directory created by the h2xs command
 for module development, a hyphenized-form of the module name
-e.g. Modular-Stuff.  Every staging area contains a module root
+e.g. Modular-Stuff. Staging areas often contain a module root
 \(or \"inc spot\") called \"lib\".
 
 H2XS LOCATION: the place where you put your staging areas
@@ -397,10 +397,18 @@ The next subject, developing perl modules:
 is similar to script development:
   `perlnow-documentation-tutorial-1-script-development'
 
-The command you'll probably want to use is \\[perlnow-module],
-which will ask you for the name and location of the module you
-want to create in a single prompt, asking for an answer in a
-hybrid form like:
+You have your choice of three ways of beginning work 
+on a new module:
+
+For proceedural modules:       \\[perlnow-module]
+For object-oriented modules:   \\[perlnow-object-module]
+For h2xs (cpan) modules:       \\[perlnow-h2xs]
+
+The first two are very similar, they just use a different
+template (the OOP version is simpler, there being no need
+for use Exporter there).  Both ask you for the name and
+location of the module you want to create in a single
+prompt, asking for an answer in a hybrid form like:
 
   /home/hacker/perldev/lib/New::Module
 
@@ -423,7 +431,7 @@ intervening directories it needs, after first prompting to make sure
 it's okay \(note, I'm a little dubious of that prompt: it may
 disappear in future versions\).
 
-Now, I have worked long and hard on getting this single-prompt
+Now I have worked long and hard on getting this single-prompt
 method of entering this information, and I'm very proud of
 it, and I think it's wonderfully elegant, so the way
 these things go the odds are good that you will hate it.
@@ -439,24 +447,20 @@ command for doing syntax checks is that it works on module
 code just as well as on scripts: you don't need to have a
 method of running the module to clean up the syntactical bugs.
 
-If you do a \\[perlnow-run] it will \(a\) perform an elaborate
-search to try and find a test file for the module then \(b\) ask
-you for the name of a script to run that uses the module.  Unless
-you're some kind of sick and twisted extreme programming freak,
-the odds are pretty good you won't have either, yet.  In which
-case, you would then hit the \\[perlnow-script] command,
-which would get you started on writing a script that uses the
-module.
-
-\(But by the way, if you *are* a test-first-code-later fanatic,
-take a look at `perlnow-documentation-test-file-strategies'\)
-
-Anyway, \\[perlnow-script] will create a file with a script
-template inserted that already has a simple
-\"use <module name>\" line filled in.  If the module is not
-in your @INC search path, it will also add the necessary
-\"FindBin/use lib\" magic to make sure that the script will
-be able to find the module.
+If you do a \\[perlnow-run] it will \(a\) perform an
+elaborate search to try and find a test file for the module
+then \(b\) ask you for the name of a script to run that uses
+the module.  Unless you're some kind of sick and twisted
+extreme programming freak, the odds are pretty good you
+won't have either, yet.  So before doing that
+\\[perlnow-run], you have your choice of \\[perlnow-script]
+or if you *are* a test-first-code-later fanatic,
+\\[perlnow-edit-test-file].  Both will get you started on
+writing a script that uses the module.  Both of them 
+will create files with a \"use <module name>\" line filled in.  
+If the module is not in your @INC search path, it will also
+add the necessary \"FindBin/use lib\" magic to make sure
+that the script will be able to find the module.
 
 If you skip back to the original module buffer, and do a \\[perlnow-run],
 you'll notice that the script you just created has become the default
@@ -602,8 +606,8 @@ use \\[perlnow-run] to run a small test that just exercises
 whatever feature is currently under development.
 It's often useful to have a simple, fast-running test
 that you use frequently, and a more through battery
-of tests which can take a few minutes to run because
-you don't use it as often.
+of tests on which you can allow a run time of several 
+minutes because you don't use it as often.
 
 Note that if you need to switch between more than two
 run strings, there's always the minibuffer \"history\"
@@ -614,13 +618,13 @@ typically find bound to Alt-p and Alt-n.")
 
 (defvar perlnow-documentation-test-file-strategies t
   "As mentioned in a few other places, the \\[perlnow-run]
-and \\[set-perlnow-run-string] commands do try to find
-test files for modules, even if they don't happen to be
-inside of an h2xs structure.  There's a relatively elaborate
-search path for this.  Here's a quick description of what it
-looks for before giving up and prompting the user
- \(but please, avoid relying on the precedence of this
-search as currently implemented: it may change\):
+and \\[set-perlnow-run-string] commands try to find
+appropriate test files for perl code buffers.  
+There's a relatively elaborate search path for this.  Here's
+a quick description of what it looks for before giving up
+and prompting the user \(but please, avoid relying on the
+precedence of this search as currently implemented: it may
+change\):
 
 First of all, test files all end with the \".t\" extension
 \(just as with h2xs test files\).  There are two possibilities
@@ -660,10 +664,12 @@ If you don't like that you can use any of these schemes:
   ~/perldev/lib/Modular/t/Silliness.t
   ~/perldev/lib/Modular-Silliness.t
   ~/perldev/lib/Modular/Silliness.t
+  ~/perldev/t/Modular-Silliness.t
 
 The ones you probably don't want to use are these:
   ~/perldev/lib/t/Silliness.t
   ~/perldev/lib/Silliness.t
+  ~/perldev/t/Silliness.t
 
 \(There's too much potential for name collisions, if you use
 the short \"basename\" form high up in the tree. Modular::Silliness
@@ -673,10 +679,11 @@ Note that perlnow \(at least currently\) does not care if you're
 consistent about this choice, but for your own sanity you should
 probably pick a standard way of doing it and stick to it.
 
-An obvious next step for future developments in perlnow is to implement
-a set of \"create test file\" commands, which will require that the user
-define a policy that dictates where test files should go.  See \"test
-policy\" in `perlnow-documentation-terminology'.")
+However, there is now (as of version 0.3) a \\[perlnow-edit-test-file] 
+command that will create a new test file if one does not already exist.  
+The user defineable \"test policy\" dictates where these new
+test files will go.  See \"test policy\" in
+`perlnow-documentation-terminology'.")
 
 (defvar perlnow-documentation-unashamed-deviancy t
   "There are a number of areas where I'm aware of deviating from
@@ -1073,7 +1080,7 @@ module root or the module location.")
 May be specified using a \"dot form\", relative to
 `perlnow-test-policy-dot-definition'.  E.g. \"./t\",
 \"../t\", \"~/my_test_files\" etc.
-Used by \\[perlnow-edit-test-file]].  See:
+Used by \\[perlnow-edit-test-file].  See:
 `perlnow-documentation-test-file-strategies'.")
 
 (defcustom perlnow-test-policy-dot-definition  "fileloc"
@@ -1478,13 +1485,12 @@ double-colon separated package name form\)."
 
   (setq h2xs-staging-area (perlnow-staging-area h2xs-location package-name))
 
-;;  (perlnow-process-Makefile.PL h2xs-location package-name)  ;;; DELETE
   (perlnow-run-perl-makefile-pl-if-needed h2xs-staging-area)
 
   (setq h2xs-module-file (perlnow-full-path-to-h2xs-module h2xs-location package-name))
   (find-file h2xs-module-file)
   (search-forward "# Preloaded methods go here.")
-  (forward-line 1)   ;alternate: (next-line 1)
+  (forward-line 1)   
 
   ; Also  open the *.t file 
   (setq h2xs-test-file (perlnow-full-path-to-h2xs-test-file h2xs-staging-area))
