@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.12 2004/01/31 13:12:10 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.13 2004/01/31 21:29:44 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -157,8 +157,8 @@
 
 (defvar perlnow-perl-module-name nil
   "Used internally to pass the a module name in the perl
-double-colon separated form to the template.el module
-template ")
+double-colon separated form to the template.el template for 
+perl modules. ")
 ;;; TODO - Look for a way to do this without a global variable
 
 ;;;----------------------------------------------------------
@@ -271,21 +271,9 @@ will be added. "
     (unless package-name 
       (error "%s" "This file doesn't look like a perl module (no leading package line)."))
 
-;; DELETE
-;;   ; read the package name out of the current module file buffer:
-;;   (save-excursion 
-;;     (let ((comment-line-pat "^[ \t]*$\\|^[ \t]*#") 
-;;           (package-line-pat "^[ \t]*package \\(.*\\)[ \t]*;"))
-;;       (goto-char (point-min))
-;;       (while (looking-at comment-line-pat) (forward-line 1))
-;;       (if (looking-at package-line-pat)
-;;           (setq package-name (match-string 1))
-;;         (error "%s" "No leading package line: This file doesn't look like a perl module"))))
-;;         ;;; create new script file buffer using template
-;; END DELETIA
-
     (perlnow-new-file-using-template filename perlnow-perl-script-template)
-;;; insert the lib path tweaks to ensure the module can be found by the script
+
+    ; insert the use lib tweak to ensure the module can be found by the script
     (unless (module-root-in-INC-p module-root)
         (let ((relative-path
                (file-relative-name module-filename (file-name-directory filename))
@@ -294,22 +282,9 @@ will be added. "
           (insert "use lib \(\"$Bin/")
           (insert relative-path)
           (insert "\");\n")))
-  ; insert the "use Some::Module;" line
+    ; insert the "use Some::Module;" line
     (insert (format "use %s;" package-name)) ;;; and maybe a qw() list? 
     (insert "\n")))
-
-;;; TODO: Question: is there something intelligent that could be done 
-;;; with EXPORT_OK to provide a menu of options here? 
-;;; Option to qw() *all* of them (maybe except for :all) and let user delete 
-;;; what they don't want.
-
-;;; TODO: Option to insert the SYNOPSIS section in commented out form
-
-;;; TODO:  would like to accept slash separated form of the name
-;;;        as well as double colon notation.
-;;;       (Appending *.pm should be allowed, but not required)
-;;;       Autocompletion on the part of the module name that corresponds to 
-;;;       a directory would be cool... 
 
 ;;; TODO alternate form (or extension of this?) That creates 
 ;;;      a script using a currently active documentation buffer. 
@@ -345,7 +320,6 @@ and if so, asks for another name ((TODO-check that)).  The location defaults to 
           (read-from-minibuffer "That module name is already in use. Please choose another: " what))
     (setq filename (perlnow-full-path-to-module where what)))
   (list where what)))
-
 
 ;;;----------------------------------------------------------
 (defun perlnow-set-run-string ()
@@ -559,7 +533,7 @@ executable script by looking for the hash-bang line at the top."
 ; END DELETIA
 
 
-,;;;----------------------------------------------------------
+;;;----------------------------------------------------------
 (defun perlnow-script-p ()
   "Try to determine if the buffer looks like a perl script by looking 
 for the hash-bang line at the top.  Note: this is probably not a reliable
@@ -871,6 +845,43 @@ defaults to using the module root of the current file buffer."
 
 ;;;==========================================================
 ;;; Experimental code can go below here     BOOKMARK (note: trying reg-*)
+
+
+;;; Working on a variant of this:
+;;; (defun perlnow-prompt-for-module-to-create (where what) 
+;;; Goal:
+;;; TODO:  would like to accept slash separated form of the name
+;;;       as well as double colon notation.
+;;;       (Appending *.pm should be allowed, but not required)
+;;;       Autocompletion on the part of the module name that corresponds to 
+;;;       a directory would be cool... 
+
+(defun perlnow-prompt-for-module-to-create-single-question (where what) 
+  "Ask for the path and module name all in one shot, allows use 
+of / or :: as separator.  Autocompletion uses perl's @INC, then 
+looks to the file system for the levels of the package namespace. 
+A \".pm\" can be appended, but is not needed.  If the module exists 
+already, this will ask for another name. The location defaults to the current 
+`default-directory'.  Returns a two element list, location and module-name."
+
+;;; BOOKMARK
+;;; Now what?  Got to roll my own, now special interactive code will do this.
+
+;;; Consider loading a lisp structure with @INC once early on, so I won't need 
+;;; to do that over and over... 
+
+  (interactive "DLocation for new module?  \nsName of new module \(e.g. New::Module\)? ")
+  (let* ((filename (perlnow-full-path-to-module where what))
+         (dirname (convert-standard-filename (file-name-directory filename))))
+  (while (file-exists-p filename)
+    (setq what 
+          (read-from-minibuffer "That module name is already in use. Please choose another: " what))
+    (setq filename (perlnow-full-path-to-module where what)))
+  (list where what)))
+
+
+
+)
 
    
 ;;;----------------------------------------------------------
