@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.27 2004/02/06 22:14:46 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.28 2004/02/06 22:23:49 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1162,30 +1162,9 @@ will be assumed and need not be entered \(though it may be\).
 ;     )
     )))
 
-;; DELETE 
-;; todo (trying now) 
-
-;; Note that this works: 
-;;    perlnow-interesting-file-name-in-cons-cell-p
-;; because the filtering has been moved later and is 
-;; applied to match-alist.
-
-;; It would seem cleaner to use this earlier, 
-;;    perlnow-interesting-file-name-p
-;; and apply it to file-list (before the alist is built). 
-
-;; Possibly: Do it that way, but *embed* the filter name, 
-;; don't pass it in.  Leave in place the later filter on alist, 
-;; for the sake of compatibility with the emacs way of doing 
-;; things (someone might want to apply a second filter later?)
-;; END DELETIA
-
 ;; Another TODO item: 
 ;; Don't just silently use that extension filter in "interesting", 
 ;; break-it out, let the user define what's not interesting. 
-
-
-
 
 
 ;;;----------------------------------------------------------
