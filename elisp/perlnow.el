@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.136 2004/02/20 20:27:18 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.137 2004/02/20 21:32:36 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -2590,7 +2590,7 @@ functions preceeding the internally used ones.")
                 (t 
                  (setq doc-string 
                        (documentation-property symbol 'variable-documentation))))
-          (setq doc-string (perlnow-html-ampersand-substitutions doc-string))
+          (setq doc-string (perlnow-html-ampersand-subs doc-string))
           ; <PRE> if some lines have leading whitespace, else just <P>:
           (cond ((string-match "\n[ \t][ \t]+" doc-string)
                  (insert (concat "<PRE>" doc-string "</PRE></P>\n\n")))
@@ -2618,7 +2618,7 @@ This version tries to preserve links in the documentation as html links."
                        (documentation-property symbol 'variable-documentation t))))
 
           ; Do this early (before adding any html double quotes)
-          (setq doc-string (perlnow-html-ampersand-substitutions doc-string-raw))
+          (setq doc-string (perlnow-html-ampersand-subs doc-string-raw))
 
           ; Blank lines => <BR><BR> (That *don't* follow a tag)
           (setq doc-string 
@@ -2709,6 +2709,7 @@ wrappers."
   (dolist (symbol-name list)
     (let* ( doc-string 
             doc-string-raw
+            (symbol-value-as-variable nil)
           (symbol (intern-soft symbol-name)))
           (cond ((eq symbol nil)
                  (message "warning: bad symbol-name %s" symbol-name))
@@ -2717,22 +2718,25 @@ wrappers."
                         (documentation symbol t)))
                 (t 
                  (setq doc-string-raw
-                       (documentation-property symbol 'variable-documentation t))))
+                       (documentation-property symbol 'variable-documentation t))
+                 (setq symbol-value-as-variable 
+                       (perlnow-html-ampersand-subs (pp-to-string (eval symbol))))
+                 ))
 
           ; Do this early (before adding any html double quotes)
-          (setq doc-string (perlnow-html-ampersand-substitutions doc-string-raw))
+          (setq doc-string (perlnow-html-ampersand-subs doc-string-raw))
 
           ; Put named anchors on every entry for refs to link to
           (insert (format "<A NAME=\"%s\"></A>\n" symbol-name))
 
-;;; skip this, italics on the headings look stupid:
-;;           ; Using bold face to indicate a function, italics for variables
-;;           (cond ((functionp symbol)
-;;                  (insert (concat "<P><B>" symbol-name "</B>" ":<BR>\n")))
-;;                 (t
-;;                  (insert (concat "<P><I>" symbol-name "</I>" ":<BR>\n"))))
+          (insert (concat "<P><H3>" symbol-name ":" ))
 
-          (insert (concat "<P><H3>" symbol-name ":" "</h3>" "\n"))
+          (if (not (functionp symbol))
+;;;              (insert (concat "       " "<I>" symbol-value-as-variable "</I>")))
+              (insert (concat "&nbsp;&nbsp;&nbsp;" symbol-value-as-variable )))
+
+          (insert (concat "</h3>" "\n"))
+
 
            ; turn `(.*)' into <I><A HREF="#\1">\1</A></I>  note: dot don't match line breaks (good: safer)
            (setq doc-string 
@@ -2763,7 +2767,7 @@ wrappers."
 
 
 ;;;----------------------------------------------------------
-(defun perlnow-html-ampersand-substitutions (string)
+(defun perlnow-html-ampersand-subs (string)
   "Do common html ampersand code substitutions to use this string safely in html."
   (setq string (replace-regexp-in-string "&"   "&amp;"  string))
   (setq string (replace-regexp-in-string "\""  "&quot;" string))
@@ -2824,7 +2828,7 @@ wrappers."
            symbol-list
            symbol-name)
 
-      (message "The def-star-pat: %s" def-star-pat) ; DEBUG only DELETE
+;;;      (message "The def-star-pat: %s" def-star-pat) ; DEBUG only DELETE
       
       (set-buffer work-buffer)
       (insert-file-contents codefile nil nil nil t)
@@ -2848,38 +2852,5 @@ wrappers."
 ;;; *repeated* in the list multiple times.  E.g. perlnow-version 5 times, 
 ;;; perlnow-documentation 5 times, perlnow-documentation-installation
 ;;; something like 75 times (!), and so on.  
-
-
-;;;----------------------------------------------------------
-(defun blofp ()
-  "Return t if on the bottom line of the file, nil otherwise."
-  (save-excursion
-    (end-of-line)
-    (not (char-after))))
-
-;;;----------------------------------------------------------
-
-;;                       "("        ;some paren
-;;                       "\\("      ;begin capture to \2 
-;;                       "[^)]*?"   ;  the argument list (not a closing paren)
-;;                       "\\)"      ;end capture to \2
-;;                       ")"        ;
-
-
-
-;   For example, here we make an invisible buffer for temporary use, and
-;make sure to kill it before finishing:
-;
-;     (save-excursion
-;       (let ((buffer (get-buffer-create " *temp*")))
-;         (set-buffer buffer)
-;         (unwind-protect
-;             BODY
-;           (kill-buffer buffer))))
-
-
-
-
-
 
 ;;;==========================================================
