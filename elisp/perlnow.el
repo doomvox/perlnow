@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.192 2004/04/26 21:23:44 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.193 2004/04/26 22:14:51 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -2564,28 +2564,6 @@ Will warn if there appear to be redundant possible testfiles."
           ))
   (setq perlnow-script-run-string run-line)))
 
-;;; TODO
-;;; Having some *what if there's no Makefile yet?* conundrums again.
-;;; Here's the deal:
-;;; (1) if you create it with perlnow-h2xs, that runs "perl Makefile.PL"
-;;; (2) If you *haven't* used the perlnow command, maybe you should also be responsible
-;;; for manually running "perl Makefile.PL" yourself also.
-;;; (3) The code to run a module does check and will do a Makefile.PL step if need be.
-;;; (4) This particular code is solely to run scripts, and the "make test" biz here
-;;;     comes up only if you do the odd thing of using perlnow-run inside a *.t file.
-;;; (5) I could add another check, and stick in a "perl Makefile.PL" step in front
-;;;     of the make test in that case, but I dislike just leaving it there (potentially
-;;;     could keep getting run when there's no need).
-;;; (6) Further, I don't *really* like the idea of checking for it's presence and
-;;;     deleting it later, (e.g in the perlnow-run command), though this may be an
-;;;     irrational revulsion to minor fugliness. Note:
-;;;     The code is actually there already (and I think it was tested) I've just
-;;;     commented it out.
-;;; So, if I ever over come this revulsion, maybe I'll dork out this function
-;;; (or the perlnow-run function or even perlnow-find-h2xs-staging-area ((Yeah, working on that))) to cover
-;;; this minor case.
-;;; Note to brain: stop thinking about this now.  Really, it's okay.
-
 ;;;----------------------------------------------------------
 (defun perlnow-find-h2xs-staging-area ()
   "Determines if the current file buffer is located in an h2xs tree.
@@ -2629,7 +2607,8 @@ with a \"lib\" and/or \"t\" *and* a \"Makefile.PL\"."
                           (throw 'ICE dir)))))
               (setq dir (perlnow-one-up dir)))
             (setq return nil))) ; ran the gauntlet without success, so return nil
-    (perlnow-run-perl-makefile-pl-if-needed dir) ;;; <===
+    (if return 
+        (perlnow-run-perl-makefile-pl-if-needed dir)) ;;; <===
     return))
 
 ;;;----------------------------------------------------------
