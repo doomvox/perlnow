@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.65 2004/02/12 02:47:57 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.66 2004/02/12 07:21:39 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -66,11 +66,15 @@
 ;;   (setq perlnow-module-root (substitute-in-file-name "$HOME/lib"))
 ;; 
 
-;;TODO 
-;;; document Simplifying assumptions:
-;;;   like package = module = one *.pm file
-
 ;;; Definitions of some terms used: 
+
+;;; First of all, through out this documentation (and for some
+;;; of the code), the simplifying assumption has been made
+;;; that a perl package is a perl module is a single file,
+;;; (with extension *.pm).  This works becuase even though
+;;; technically multiple packages can occur in a single
+;;; file, that is not the standard practice.  
+
 ;;; TODO - expand this
 ;;; module-file-name - the file system's name for the module file, e.g. /usr/lib/perl/Double/Colon.pm
 ;;; module-file-basename - name of the module file itself, sans extension: in the above example, "Colon"
@@ -94,6 +98,9 @@
 ;;;                 something like ModuleName.t or possibly Staging-Area.t. (For a script, scriptname.t?)
 ;;; test-location - place where the test script(s) are for a given module/script(?)
 ;;; test-path     - search path to look for test files. Note, can include relative locations, e.g. "../t"
+
+
+
 
 ;;; Code:
 
@@ -163,6 +170,9 @@
 double-colon separated form to the template.el template for 
 perl modules. ")
 
+(defvar perlnow-module-name-history nil
+"Records the minibuffer history for perl modules accessed by this package.")
+
 ;;;----------------------------------------------------------
 ;;; Add feature PERL_MODULE_NAME for the perlnow-module function 
 ;;; (an "expansion" used in a template.el template like so: 
@@ -227,9 +237,6 @@ directory via \".\" or  \"..\", though rather than the actual
 \"current\" location, they will be interpreted as relative to 
 either the module root or the module location.")
 
-(defvar perlnow-module-name-history nil
-"Records the minibuffer history for perl modules accessed by this package.")
-
 
 ;;;==========================================================
 ;;; User Commands
@@ -263,7 +270,9 @@ less prompt \(also, it does not require mode-compile.el\)"
   "Quickly jump into writing a perl script that uses the module 
 in the currently open buffer.  If the module is not in perl's 
 search path \(@INC\), then an appropriate \"use lib\" statement 
-will be added. "
+will be added. \n
+Note: if multiple packages exist in the file \\(and that's never 
+really done\\) then this function will see the first package name."
   (interactive 
    (perlnow-prompt-user-for-file-to-create 
     "Name for the new perl script? " perlnow-script-location))
@@ -901,20 +910,32 @@ defaults to using the module root of the current file buffer."
 ;;;    perlnow-prompt-for-new-module-in-one-step
 ;;; to read in perlmodule path and names in one step
 ;;; (A variant of perlnow-prompt-for-module-to-create.)
-;;; Uses a custom programmed completion scheme.  Note: 
-;;; instead of completing-read, using read-from-minibuffer 
-;;; directly.
+;;;
+;;; Note: instead of completing-read this uses read-from-minibuffer 
+;;; directly, with a customized keymap to change it's behavior.
 ;;;==========================================================
 
+;;;----------------------------------------------------------
+ (defvar perlnow-read-minibuffer-map
+   (let ((map (make-sparse-keymap)))
+     (define-key map "?"       'perlnow-read-minibuffer-completion-help)
+     (define-key map " "       'perlnow-read-minibuffer-complete-word)
+     (define-key map [tab]     'perlnow-read-minibuffer-complete)
+     (define-key map "\C-g"    'abort-recursive-edit)
+     (define-key map [return]  'exit-minibuffer)
+     (define-key map [newline] 'exit-minibuffer)
+     (define-key map [down]    'next-history-element)
+     (define-key map [up]      'previous-history-element)
+     (define-key map "\M-n"    'next-history-element)
+     (define-key map "\M-p"    'previous-history-element)
+     map)
+   "Keymap for reading a perl module name via the minibuffer")
+;;; TODO
+;;; Look at minibuffer-local-map for hints on how to set up menu-bar: 
+;;;     (define-key map [next] 'next-history-element)
+;;;     (define-key map [prior] 'previous-history-element)
 
 
-;;; BOOKMARK
-
-; TODO 
-; This Experimental variation of \[perlnow-module], should 
-; be re-named once it's finished.  The two question form might 
-; be retained, perhaps mildly deprecated, so it'll need to be 
-; renamed as well.
 (defun perlnow-module (module-root module-name) 
   "Quickly jump into development of a new perl module 
 When used interactively, gets path and module-name with a single 
@@ -947,21 +968,21 @@ though this may be edited at run time."
 
   (interactive 
    (let ((initial perlnow-module-root)
-         (keymap perlnow-read-minibuffer-map)  ; Note: the keymap is key. Mutates read-from-minibuffer.
-         (history 'perlnow-module-name-history)   ; TODO - History can not stay "nil"
+         (keymap perlnow-read-minibuffer-map)   ; Note: the keymap is key. Totally transforms read-from-minibuffer.
+         (history 'perlnow-module-name-history) 
          result filename return
          )
 
      (setq result
            (read-from-minibuffer 
-            "New module to create \\(e.g. /tmp/dev/New::Mod\\): " 
+            "New module to create \(e.g. /tmp/dev/New::Mod\): " 
                                  initial keymap nil history nil nil))
      (setq filename (concat (replace-regexp-in-string "::" "/" result) ".pm"))
 
      (while (file-exists-p filename)
        (setq result
              (read-from-minibuffer 
-              "This name is in use, choose another \\(e.g. /tmp/dev/New::Mod\\): " 
+              "This name is in use, choose another \(e.g. /tmp/dev/New::Mod\): " 
                                  result keymap nil history nil nil))
        (setq filename (concat (replace-regexp-in-string "::" "/" result) ".pm")))
 
@@ -976,17 +997,17 @@ though this may be edited at run time."
 
 ;;;----------------------------------------------------------
 ;;; Define the keymap used for module completion
-(setq perlnow-read-minibuffer-map '(keymap
-  ; "?"
-  (63 . perlnow-read-minibuffer-completion-help)
-  ; space 
-  (32 . perlnow-read-minibuffer-complete-word)
-  ; tab
-  (9 . perlnow-read-minibuffer-complete)
-  (10 . exit-minibuffer)
-  (13 . exit-minibuffer)
-  (7 . abort-recursive-edit)
-  ))
+;; (setq perlnow-read-minibuffer-map '(keymap
+;;   ; "?"
+;;   (63 . perlnow-read-minibuffer-completion-help)
+;;   ; space 
+;;   (32 . perlnow-read-minibuffer-complete-word)
+;;   ; tab
+;;   (9 . perlnow-read-minibuffer-complete)
+;;   (10 . exit-minibuffer)
+;;   (13 . exit-minibuffer)
+;;   (7 . abort-recursive-edit)
+;;   ))
 
 ;;;----------------------------------------------------------
 (defun perlnow-read-minibuffer-complete ()
@@ -1330,21 +1351,21 @@ Perl package example: given \"/home/doom/lib/Taxed::Reb\" should return
 ;;;==========================================================
 
 ;;;----------------------------------------------------------
-(defun quote-regexp-stupid-backwhacks (string) 
-  "Takes an ordinary regexp string like (\tset|\techo) and 
-turns into into a string like \"\\(\tset\\|\techo\\)\", which is 
-suitable for tranformation into an emacs regexp, namely 
-\"\(\tset\|\techo\)\".  Note this leaves an escape like 
- \"\t\" alone (it becomes a literal tab internally)."
-;;; TODO  NOT FINISHED
-;;; There are other things like \w and \W that also need the 
-;;; double escape.
-  (let ((specious-char-class "[(|)]"))
-        ) 
-  ;;; want to match for all values of specious-char-class, 
-  ;;; capturing and replacing with "\\c" where "c" is whatever 
-  ;;; value was just matched.  
-))
+;; (defun quote-regexp-stupid-backwhacks (string) 
+;;   "Takes an ordinary regexp string like (\tset|\techo) and 
+;; turns into into a string like \"\\(\tset\\|\techo\\)\", which is 
+;; suitable for tranformation into an emacs regexp, namely 
+;; \"\(\tset\|\techo\)\".  Note this leaves an escape like 
+;;  \"\t\" alone (it becomes a literal tab internally)."
+;; ;;; TODO  NOT FINISHED
+;; ;;; There are other things like \w and \W that also need the 
+;; ;;; double escape.
+;;   (let ((specious-char-class "[(|)]"))
+;;         ) 
+;;   ;;; want to match for all values of specious-char-class, 
+;;   ;;; capturing and replacing with "\\c" where "c" is whatever 
+;;   ;;; value was just matched.  
+;; ))
 
 
 ;;;===========================================================================
