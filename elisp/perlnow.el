@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.163 2004/02/28 23:49:05 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.164 2004/02/29 03:04:40 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -195,7 +195,7 @@ is a single file, \(with extension *.pm\).  Even though
 technically multiple packages can occur in a single file,
 that is almost never done in practice.
 
-Why is there such a mess of terminology here?
+Why is there such a mess of terminology below?
 Because there's a file system name space and a module name space:
 
    /usr/lib/perl/Modular/Stuff.pm
@@ -303,13 +303,13 @@ you've defined for it.  You can, of course, choose a
 different place to put a script at creation time, and you'll
 notice that the default is available as a starting point to
 edit into some new location, plus you've also got access to
-the minibuffer history as well to get other starting places.
+the minibuffer history to get other starting places.
 
 \(By the way: you do know about the minibuffer history,
 don't you?  I didn't until recently.  During a minibuffer
 read, you can step back and forth through the history of
 things you've entered using: \\[previous-history-element]
-and \\[next-history-element]]. Typically these are bound to 
+and \\[next-history-element]. Typically these are bound to 
 Alt-p and Alt-n.\)
 
 But every time you use \\[perlnow-script] it's going to try
