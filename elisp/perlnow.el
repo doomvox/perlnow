@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.186 2004/04/23 20:08:12 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.187 2004/04/26 14:58:35 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -727,7 +727,7 @@ the \"customize\" facility, because I don't know anything
 about them.  I never use them.  I'm a \(menu-bar-mode -1\) kind-of guy.
 Not to mention: \(scroll-bar-mode -1\) and \(tool-bar-mode -1\).")
 
-(defun perlnow-documentation-to-mode-or-not-to-mode t
+(defvar perlnow-documentation-to-mode-or-not-to-mode t
   "Should perlnow.el become a minor mode?
 
 This is an issue I keep noodling around: perlnow.el
@@ -1188,7 +1188,7 @@ to a different file."
 This sets the global variable `perlnow-run-string' that \\[perlnow-run]
 will use to run the code in future in the current buffer.
 Frequently, the user will prefer to use \\[perlnow-run] and let it
-run this indirectly command if need be; however using this command
+run this command indirectly if need be; however using this command
 directly is necessary to change the run command string later.  \n
 From within a program, it's probably best to set some variables
 directly, see `perlnow-script-run-string' and `perlnow-module-run-string'.\n
@@ -1216,6 +1216,13 @@ assumes it's a perl script."
      ; tell perlnow-run how to do it
      (setq perlnow-run-string perlnow-module-run-string))
    (t  ;;  assume it's a script since it's not a module.
+;;; TODO - would be better to do a script-p, set a runstring based on that, 
+;;; and then have a fall through section that tries to verify if it's some 
+;;; sort of test script ("use Test"?), and otherwise either fail with warning, 
+;;; or prompt the user ask them what they think they're doing. 
+;;; Ah, another way out: run a perl -c on the buffer, and if it fails, 
+;;; tell the user it ain't passing perl check (is it even perl code?).
+
      ; set-up intelligent default run string
      (unless perlnow-script-run-string
        (progn
@@ -1231,32 +1238,26 @@ assumes it's a perl script."
      (setq perlnow-run-string perlnow-script-run-string))))
 
 ;;;----------------------------------------------------------
-;;; NOTE: currently perlnow-set-alt-run-string is a
-;;; copy and paste of perlnow-set-run-string
-;;; with the word "run" changed to "alt-run".
-;;; However, it uses the same old functions:
-;;;    perlnow-guess-script-run-string
-;;;    perlnow-guess-module-run-string
-;;; There's no practical difference bettween the heuristics
-;;; to guess a "alt-run" string and a "run" string.
-
 (defun perlnow-set-alt-run-string ()
   "Prompt the user for a new alternative run string for the current buffer.
 This sets the global variable `perlnow-alt-run-string' that \\[perlnow-alt-run]
 will use to run the code in future in the current buffer.
 Frequently, the user will prefer to use \\[perlnow-alt-run] and let it
-run this indirectly command if need be; however using this command
+run this command indirectly if need be; however using this command
 directly is necessary to change the alt-run command string later.  \n
 From within a program, it's probably best to set some variables
 directly, see `perlnow-script-alt-run-string' and `perlnow-module-alt-run-string'.\n
-
 This function uses \\\[perlnow-module-code-p] to see if the code looks like a
 module (i.e. does it have a package line), otherwise it
-assumes it's a perl script."
-;; And if it's not perl at all, that's your problem: the obvious
-;; tests for perl code, like looking for the hash-bang,
-;; aren't reliable (perl scripts need not have a hash-bang
-;; line: e.g. *.t files, perl on windows...).
+assumes it's a perl script.  The heuristics for setting a default 
+\"alt\"-run string are identical to those used for setting the 
+`perlnow-run-string'."
+;;; perlnow-set-alt-run-string was originally a 
+;;; copy and paste of perlnow-set-run-string
+;;; with the word "run" changed to "alt-run".
+;;; However, it uses the same old functions:
+;;;    perlnow-guess-script-run-string
+;;;    perlnow-guess-module-run-string
   (interactive)
    (cond
    ((perlnow-module-code-p)
@@ -1399,25 +1400,42 @@ double-colon separated package name form\)."
 ; default-directory momentarily, then restore it. Uses the dynamic scoping
 ; of elisp's "let" (which is more like perl's "local" than perl's "my").
   (let ((default-directory perlnow-h2xs-location))
-     (call-interactively 'perlnow-prompt-for-h2xs)))
+        (call-interactively 'perlnow-prompt-for-h2xs)))
 
   (unless (file-exists-p h2xs-location)
     (make-directory h2xs-location t))
 
   (let* ( (default-directory h2xs-location)
-          (display-buffer (get-buffer-create "*perlnow-h2xs*")) )
+          (display-buffer (get-buffer-create "*perlnow-h2xs*")) ;;; DEBUG maybe, effect default-directory?
+          (h2xs-module-file "")
+          (h2xs-test-file   "")
+          )
 
   ;Bring the *perlnow-h2xs* display window to the fore (bottom window of the frame)
-  (delete-other-windows)
-  (split-window-vertically -14) ; Number of lines of *.t to display
-  (other-window 1)
-  (switch-to-buffer display-buffer)
+  (perlnow-show-buffer-other-window display-buffer -14 t) ;;;; DEBUG could this change default-directory?
+;;; DELETE FOLLOWING
+;;; Using above fun call, instead of: 
+;;   (delete-other-windows)
+;;   (split-window-vertically -14) ; Number of lines of *.t to display
+;;   (other-window 1)
+;;   (switch-to-buffer display-buffer)
+;;; END DELETIA
 
-  (perlnow-blank-out-display-buffer display-buffer)
-  (other-window 1)
+  (perlnow-blank-out-display-buffer display-buffer t)  ;;;; DEBUG could *this* change default-directory? 
 
-   ; A typical h2xs run string:  h2xs -AX -n Net::Acme -b 5.6.0
-  (call-process "h2xs"
+;;; DELETE FOLLOWING
+;;; Can skip this line, now that I'm using the "switchback" option above.
+;;;   (other-window 1)
+;;; END DELETIA
+
+;;; TODO FIXME NOW
+;;; I must not be changing the default directory or something
+;;; This is getting run in an old place
+;;; So force it?
+
+  (let ((default-directory h2xs-location)) ; DEBUGGING trying again.... 
+     ; A typical h2xs run string:  h2xs -AX -n Net::Acme -b 5.6.0
+    (call-process "h2xs"
                 nil
                 display-buffer      ; must be buffer object?
                 nil
@@ -1425,20 +1443,29 @@ double-colon separated package name form\)."
                 (concat "-n" package-name)
                 (concat "-b"
                         (perlnow-perlversion-old-to-new perlnow-minimum-perl-version)))
+    (perlnow-process-Makefile.PL h2xs-location package-name)
+    )
 
-  (perlnow-process-Makefile.PL h2xs-location package-name)
-
-  (find-file
-   (perlnow-full-path-to-h2xs-module h2xs-location package-name))
+  (setq h2xs-module-file (perlnow-full-path-to-h2xs-module h2xs-location package-name))
+  (find-file h2xs-module-file)
   (search-forward "# Preloaded methods go here.")
   (forward-line 1)   ;alternate: (next-line 1)
 
-  ; Also open the *.t file (note, this presumes the modern naming style)
-  ; would break for older *.t style names, e.g. 1.t. TODO  Generalize?
-  (other-window 1)
-  (find-file
-   (perlnow-full-path-to-h2xs-test-file h2xs-location package-name))
+  ; Also  open the *.t file 
+  (setq h2xs-test-file (perlnow-full-path-to-h2xs-test-file h2xs-location package-name))
+  (message "h2xs-test-file: %s" h2xs-test-file) ;;; DEBUG
+  (setq perlnow-associated-code h2xs-test-file) ; bufloc, used by "C-c'b"
+  (perlnow-open-file-other-window 
+    h2xs-test-file 
+    -14)  ; same number of lines as above.  No template, No switchback.
+;;; DELETE FOLLOWING
+;;; Trying the above funcall rather than (though this is barely an improvement):
+;;   (other-window 1)
+;;   (find-file
+;;    (perlnow-full-path-to-h2xs-test-file h2xs-location package-name))
+;;; END DELETIA
   (search-forward "BEGIN { plan tests => 1")
+  (setq perlnow-associated-code h2xs-module-file) ; bufloc, used by "C-c'b"
   (other-window 1)
   ))
 
@@ -1685,6 +1712,20 @@ Experimental feature.  Functionality may change."
 
 
 ;;;----------------------------------------------------------
+;;;TODO 
+;;; The following functions:
+;;;    perlnow-open-file-other-window
+;;;    perlnow-show-buffer-other-window
+;;; exist as centralized locations for my current crude window management methods,
+;;; so that they can be improved at a later date.  Currently when I want 
+;;; to show a new window alongside the existing current window, I close 
+;;; all others and just display the two of them.  Would be better to use 
+;;; smarter handling that would leave others open if there's enough room.
+;;; 
+;;; TODO refactor -
+;;;    look for occurances of delete-other-windows, replace with these functions
+;;; if possible. 
+;;;----------------------------------------------------------
 (defun perlnow-open-file-other-window (file &optional numblines template switchback)
   "Utility to open file in another window, leaving current visible.
 Options: NUMBLINES, negative integer controlling the number of lines 
@@ -1693,18 +1734,16 @@ be used in creating a new file buffer.  If SWITCHBACK is true, the cursor
 is left in the original window, not the new one."
 ;;; TODO - 
 ;;; Inelegant interface: *requires* NUMBLINES if you want to feed it a TEMPLATE
-;;; Also: requires a negative number for NUMBLINES, etc.
+;;; Also: you typically want to feed a negative number for NUMBLINES, what does it mean exactly?
 
-;;; TODO refactor -
-;;;    look for occurances of delete-other-windows, replace with this function
+;;; TODO - numblines should default to half window height ("<===")
+;; Height of the current frame:
+;;   (screen-height)
+;; Integer division by 2? 
 
-;;; TODO - Find better window management methods, avoid throwing away all but 
-;;;        the two windows. 
-;;;        (Reason this function exists is to make it possible to research 
-;;;        and deploy this fix later)
 
   (unless numblines
-    (setq numblines -20))
+    (setq numblines -20)) ;;; <===
   (delete-other-windows)
   (split-window-vertically numblines) ; Number of lines to display
   (other-window 1)
@@ -1723,6 +1762,29 @@ is left in the original window, not the new one."
     (if switchback 
         (other-window 1))
     ))
+
+
+;;;----------------------------------------------------------
+(defun perlnow-show-buffer-other-window (buffer &optional numblines switchback)
+  "Utility to open BUFFER in another window, leaving current visible.
+Options: NUMBLINES, negative integer controlling the number of lines 
+in the new window, defaults to -20; TEMPLATE a template.el template to 
+be used in creating a new file buffer.  If SWITCHBACK is true, the cursor 
+is left in the original window, not the new one."
+;;; TODO check if true:
+;;; Argument BUFFER can be a string or a buffer object.
+
+  (unless numblines
+    (setq numblines -20))  ;;; TODO - default to half window height
+
+  (delete-other-windows)
+  (split-window-vertically numblines) ; Number of lines to display
+  (other-window 1)
+  (switch-to-buffer buffer)
+
+  (if switchback 
+      (other-window 1))
+    )
 
 ;;;----------------------------------------------------------
 (defun perlnow-do-script (filename)
@@ -2182,12 +2244,12 @@ schemes for your test files: `perlnow-documentation-test-file-strategies'."
           (pm-basename
             (file-name-sans-extension (file-name-nondirectory (buffer-file-name))))
 
-          ;;; TODO - Consider exposing a this list to users in some form,
-          ;;;        via a defvar or something
+
           ; This is a listing of possible names for the test file:
           (test-file-check-list (list (concat hyphenized-package-name ".t")
                                       (concat pm-basename ".t")
                                       ))
+          ;;; TODO - Consider exposing a this list to users in some form.
 
           staging-area      ; The location of an h2xs-style dev structure
           staging-area-candidate staging-area-candidate-name
@@ -2201,54 +2263,76 @@ schemes for your test files: `perlnow-documentation-test-file-strategies'."
 ;;; It's possible that the following could be refactored using:
 ;;;    perlnow-find-h2xs-staging-area
 ;;; which finds the staging-area by looking for Makefile.PL
+;;; Trying it.  See "<===" replace with:
+;;; (if (setq staging-area perlnow-find-h2xs-staging-area)
+;;; But once that's run, there should now be no need to check for Makefile 
+;;; or Makefile.PL. 
 
-    (setq return
-          ; identify the staging-area
-          (catch 'COLD
-            (setq staging-area-candidate (perlnow-one-up inc-spot))
-            (setq staging-area-candidate-name
-                  (perlnow-lowest-level-directory-name staging-area-candidate))
-            (cond
-             ((string= staging-area-candidate-name hyphenized-package-name)
-              (setq staging-area (perlnow-fixdir staging-area-candidate))
-              (cond
-               ((file-regular-p (concat staging-area "Makefile"))
-                (setq water (concat "cd " staging-area "; make test"))
-                (throw 'COLD water))
-               ((file-regular-p (concat staging-area "Makefile.PL"))
-                (setq water (concat "cd " staging-area "; perl Makefile.PL; make test"))
-                (throw 'COLD water)
-                ))))
+
+; h2xs case first, 
+    (cond ( (setq staging-area (perlnow-find-h2xs-staging-area)) 
+            (setq return (concat "cd " staging-area "; make test"))
+            )
+;;; DELETE FOLLOWING
+;;; Now replaced by above "cond" clause
+;;     (setq return
+;;           ; identify the staging-area
+;;           (catch 'COLD
+;;             (setq staging-area-candidate (perlnow-one-up inc-spot))
+;;             (setq staging-area-candidate-name
+;;                   (perlnow-lowest-level-directory-name staging-area-candidate))
+;;             (cond
+;;              ((string= staging-area-candidate-name hyphenized-package-name)
+;;               (setq staging-area (perlnow-fixdir staging-area-candidate))  ;;; <===
+;;               (cond
+;;                ((file-regular-p (concat staging-area "Makefile"))
+;;                 (setq water (concat "cd " staging-area "; make test"))
+;;                 (throw 'COLD water))
+;;                ((file-regular-p (concat staging-area "Makefile.PL"))
+;;                 (setq water (concat "cd " staging-area "; perl Makefile.PL; make test"))
+;;                 (throw 'COLD water)
+;;                 ))))
+;;; END DELETIA
 
 ;;; TODO
-;;; And it's possible that the rest of this could be refactored using
-;;; the following function perlnow-get-test-file-name.
-;;;
-             ; do munging of dots, deal with different possible meanings of "here"
-            (dolist (testloc-dotform perlnow-test-path)
-              (setq testloc
-                    (perlnow-expand-dots-relative-to module-file-location testloc-dotform))
-              (if (file-directory-p testloc)
-                  (setq test-search-list (cons testloc test-search-list)))
-              (setq testloc
-                    (perlnow-expand-dots-relative-to inc-spot testloc-dotform))
-              (if (file-directory-p testloc)
-                  (setq test-search-list (cons testloc test-search-list))))
+;;; refactor this part using the following function perlnow-get-test-file-name. 
 
-            ; tracking down the *.t file (if any)
-            (dolist (real-place test-search-list)
-              (dolist (possible-name test-file-check-list)
-                (setq testfile
-                      (concat
-                       (perlnow-fixdir real-place) ;; I bet this fixdir is redundant
-                       possible-name))
-                (if (file-regular-p testfile)
-                    (progn
-;                      (setq fish (format "perl %s" testfile))
-                      (setq fish
-;                            (format "perl -MExtUtils::Command::MM -e \"test_harness(1, '%s')\"" testfile))
-                            (format "perl '%s'" testfile))
-                      (throw 'COLD fish)))))))
+          (t ; non-h2xs module
+           (setq testfile (perlnow-get-test-file-name))
+           (setq return (format "perl '%s'" testfile))
+
+;;; DELETE FOLOWING
+;;; using above two lines instead of the following block
+;;; Note, this old code just uses the first test file it finds, 
+;;; without complaining about duplicates. 
+;;              ; do munging of dots, deal with different possible meanings of "here"
+;;             (dolist (testloc-dotform perlnow-test-path)
+;;               (setq testloc
+;;                     (perlnow-expand-dots-relative-to module-file-location testloc-dotform))
+;;               (if (file-directory-p testloc)
+;;                   (setq test-search-list (cons testloc test-search-list)))
+;;               (setq testloc
+;;                     (perlnow-expand-dots-relative-to inc-spot testloc-dotform))
+;;               (if (file-directory-p testloc)
+;;                   (setq test-search-list (cons testloc test-search-list))))
+
+;;             (setq return
+;;                   (catch 'COLD
+;;                     ; tracking down the *.t file (if any)
+;;                     (dolist (real-place test-search-list)
+;;                       (dolist (possible-name test-file-check-list)
+;;                         (setq testfile
+;;                               (concat
+;;                                (perlnow-fixdir real-place) ;; I bet this fixdir is redundant
+;;                                possible-name))
+;;                         (if (file-regular-p testfile)
+;;                             (progn
+;;                               (setq fish
+;; ;                            (format "perl -MExtUtils::Command::MM -e \"test_harness(1, '%s')\"" testfile))
+;;                                     (format "perl '%s'" testfile))
+;;                               (throw 'COLD fish)))))))
+;;; END DELETIA 
+            ))
     return))
 
 ;;;==========================================================
@@ -2296,8 +2380,8 @@ is defined by three pieces of information:
 the TESTLOC \(see `perlnow-test-policy-test-location'\)
 the DOTDEF \(see `perlnow-test-policy-dot-definition' \)
 and the NAMESTYLE \(see `perlnow-test-policy-naming-style'\)."
-;;; Mutated from: perlnow-guess-module-run-string
-;;; (may be able to refactor that later using these new routines).
+;;; Mutated from: the old perlnow-guess-module-run-string
+;;; refactoring the source to use this now -- Fri Apr 23 20:10:55 2004
 
 ;;; Note: perlnow-edit-test-file docs explains a lot of what
 ;;; has to happen here. I quote:
@@ -2347,7 +2431,7 @@ and the NAMESTYLE \(see `perlnow-test-policy-naming-style'\)."
      ;If nothing found though, return name to be created.
      (cond ((file-exists-p test-file-from-policy)
              (setq test-file test-file-from-policy) ) ; Note, if test-policy finds test-file, will *not* look for redundant test files.
-           ((setq test-file (perlnow-search-through-test-path)) ) ; warns if redundant matches exist, but returns first.  nil if none.
+           ((setq test-file (perlnow-search-through-test-path)) ) ; warns if redundant matches exist, but returns the first.  nil if none.
            (t
               (setq test-file test-file-from-policy))
            )
@@ -2572,28 +2656,29 @@ Will warn if there appear to be redundant possible testfiles."
 ;;;     The code is actually there already (and I think it was tested) I've just
 ;;;     commented it out.
 ;;; So, if I ever over come this revulsion, maybe I'll dork out this function
-;;; (or the perlnow-run function or even perlnow-find-h2xs-staging-area) to cover
+;;; (or the perlnow-run function or even perlnow-find-h2xs-staging-area ((Yeah, working on that))) to cover
 ;;; this minor case.
 ;;; Note to brain: stop thinking about this now.  Really, it's okay.
 
 ;;;----------------------------------------------------------
 (defun perlnow-find-h2xs-staging-area ()
-  "Determines if the current file buffer located in an h2xs tree.
+  "Determines if the current file buffer is located in an h2xs tree.
 Should return the path to the current h2xs staging area, or nil
 if it's not found.  The staging area is located by searching upwards
-from the present location for a place with a \"lib\" and/or \"t\"
-*and* a \"Makefile.PL\"."
+from the location of the buffer's associated file for a place 
+with a \"lib\" and/or \"t\" *and* a \"Makefile.PL\"."
 ;; Two cases I definitely want to cover:
 ;;   ~/perldev/Horror-Grossout/lib/Horror/Grossout.pm
 ;;   ~/perldev/Horror-Grossout/t/Horror-Grossout.t
 ;;
-;; Simple, relatively general method:
+;; This uses a simple method:
 ;; Crawl up from file location, until "t" and/or "lib" is found.
 ;; Is there a Makefile.PL next to them?
 
 ;;; TODO -
 ;;; This could be enhanced to optionally check if there's a Makefile
-;;; with the Makefile.PL.  What to do with that result?
+;;; with the Makefile.PL.  What to do with that result? ((How about, 
+;;; just create it? See new "<===" below  -- Fri Apr 23 19:42:07 2004))
 
   (let* ((filename (buffer-file-name))
           ; some directory-files arguments:
@@ -2617,9 +2702,25 @@ from the present location for a place with a \"lib\" and/or \"t\"
                       (if (string= file "Makefile.PL") ; we found it!
                           (throw 'ICE dir)))))
               (setq dir (perlnow-one-up dir)))
-            (setq return nil))) ; run the gauntlet without success, then return nil
+            (setq return nil))) ; ran the gauntlet without success, so return nil
+    (perlnow-run-perl-makefile-pl-if-needed dir) ;;; <===
     return))
 
+;;;----------------------------------------------------------
+(defun perlnow-run-perl-makefile-pl-if-needed (h2xs-staging-area)
+  "Given a H2XS-STAGING-AREA in an h2xs tree, runs \"perl Makefile.PL\" if needed.
+Which is to say it checks for the existance of a Makefile there
+and if it isn't, it runs the \"perl Makefile.PL\" command to try 
+and generate it."
+  (let ((run-command ""))
+        (cond ( (not (file-regular-p (concat h2xs-staging-area "Makefile")))
+                (setq run-command (concat "cd " h2xs-staging-area "; perl Makefile.PL;"))
+                (compile run-command))
+                )))
+;;; TODO - 
+;;; something similar is done with 
+;;;   perlnow-process-Makefile.PL (h2xs-location package-name)
+;;; any advantages?  Bring the two together.
 
 ;;;----------------------------------------------------------
 (defun perlnow-hashbang ()
@@ -2705,15 +2806,15 @@ Uses H2XS-LOCATION and PACKAGE-NAME to find the current staging-area
 and do a \"perl Makefile.PL\" there, to create a Makefile."
   (let ( (default-directory
            (perlnow-staging-area h2xs-location package-name))
-           (display-buffer (get-buffer-create "*perlnow-h2xs-build*")) )
-  (perlnow-blank-out-display-buffer display-buffer)
+         (display-buffer (get-buffer-create "*perlnow-h2xs-build*")) )
+    (perlnow-blank-out-display-buffer display-buffer)
 
-  (call-process "perl"
-                nil
-                display-buffer
-                nil
-                "Makefile.PL"
-                )))
+    (call-process "perl"
+                  nil
+                  display-buffer
+                  nil
+                  "Makefile.PL"
+                  )))
 
 
 ;;;----------------------------------------------------------
@@ -2737,6 +2838,8 @@ were \"New::Module\", this should return:
 E.g. if the H2XS-LOCATION were \"/usr/local/perldev\" and the
 PACKAGE-NAME  were \"New::Module\", it should return:
 \"/usr/local/perldev/New-Module/t/New-Module.t\""
+  ;;; TODO - generalize to work with older test file naming style.
+  ;;; Currently, this presumes the modern naming style, won't find older names, e.g. 1.t. 
   (let* ( return
          (module-test-location
           (concat
@@ -2758,7 +2861,7 @@ PACKAGE-NAME  were \"New::Module\", it should return:
     pm-file))
 
 ;;;----------------------------------------------------------
-(defun perlnow-blank-out-display-buffer (buffer)
+(defun perlnow-blank-out-display-buffer (buffer &optional switchback)
   "Clear out a temporary display BUFFER.
 Erase the contents of a buffer, though only if it matches
 the convention for temporary display buffers, i.e. it has
@@ -2776,6 +2879,7 @@ a buffer object.  This can work on a read-only buffer."
   (if (not (string= "*" (substring (buffer-name buffer) 0 1)))
       (error "Will not blank out a buffer that does not begin with \"*\""))
 
+  ; clear buffer if it exists, create it otherwise
   (if (buffer-live-p buffer)
       (progn
         (set-buffer buffer)
@@ -2785,8 +2889,10 @@ a buffer object.  This can work on a read-only buffer."
         (delete-region (mark) (point))
         (setq buffer-read-only original-read-only-status) ; make it read-only if we found it that way
         )
-    (get-buffer-create buffer)
-  )))
+    (get-buffer-create buffer))
+
+  (if switchback
+   (set-buffer buffer))))
 
 ;;;----------------------------------------------------------
 (defun perlnow-inc-spot-in-INC-p (&optional inc-spot)
@@ -3178,6 +3284,7 @@ Perl package example: given \"/home/doom/lib/Taxed::Reb\" should return
 ;;; from perlnow symbols as a first step toward converting
 ;;; it to another form such as html.
 ;;;
+;;; TODO
 ;;; But consider spinning off a general package, that extracts
 ;;; help strings and converts it into (a) html (b) texinfo (c) xml
 
@@ -3225,7 +3332,6 @@ template.el expansion")
 ;;          (concat
 ;;           (perlnow-fixdir "$HOME/.templates/")
 ;;           "TEMPLATE.html.tpl"))
-
          )
     (setq perlnow-help-docs-title "Documentation from perldoc.el")
 
@@ -3238,8 +3344,6 @@ template.el expansion")
 ;    (save-buffer)
 ;;; Maybe kill the buffer?
     ))
-
-
 
 ;;;----------------------------------------------------------
 (defun perlnow-insert-docstrings-from-elisp ()
