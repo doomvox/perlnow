@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.166 2004/02/29 03:43:22 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.167 2004/03/17 18:53:28 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1893,7 +1893,7 @@ schemes for your test files: `perlnow-tutorial-test-file-strategies'."
                     (progn 
 ;                      (setq fish (format "perl %s" testfile))
                       (setq fish
-                            (format "perl \"-MExtUtils::Command::MM\" -e \"test_harness(1, %s)\"" testfile))
+                            (format "perl \"-MExtUtils::Command::MM\" -e \"test_harness(1, '%s')\"" testfile))
                       (throw 'COLD fish)))))))
     return))
 
