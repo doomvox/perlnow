@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.153 2004/02/23 09:15:43 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.154 2004/02/24 04:11:14 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -2653,9 +2653,9 @@ Internally used by perlnow-dump-docstrings-as-html-exp."
   (let (
         ; define constants
         (var-ref-pat "[`]\\(.*?\\)'") ; that's `(.*?)'
-        (open-link "<I><A HREF=\"#")
+        (open-link "<A HREF=\"#")
         (mid-link  (concat "\"" ">"))
-        (close-link "</A></I>")
+        (close-link "</A>")
         ; initialize
         (start-search 0)
         ; declare
