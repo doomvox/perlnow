@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.191 2004/04/26 21:05:47 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.192 2004/04/26 21:23:44 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1418,7 +1418,7 @@ double-colon separated package name form\)."
     (setq display-buffer (get-buffer-create "*perlnow-h2xs*")) 
 
   ;Bring the *perlnow-h2xs* display window to the fore (bottom window of the frame)
-  (perlnow-show-buffer-other-window display-buffer (- window-size) t)
+  (perlnow-show-buffer-other-window display-buffer window-size t)
 
   (perlnow-blank-out-display-buffer display-buffer t)
 
@@ -1711,9 +1711,6 @@ Experimental feature.  Functionality may change."
 ;;; smarter handling that would leave others open if there's enough room.
 ;;; Question: could both both functions be fused together?  
 
-;;; TODO refactor -
-;;;    look for occurances of delete-other-windows, replace with these functions
-;;; if possible. 
 ;;;----------------------------------------------------------
 (defun perlnow-open-file-other-window (file &optional numblines template switchback)
   "Utility to open file in another window, leaving current
@@ -1804,15 +1801,22 @@ Currently always returns t, but future versions may return nil for failure."
     ; Make the script we're creating the the default
     ; runstring for this module before we leave it.
     (setq perlnow-module-run-string (format "perl %s" script-name))
-
     (perlnow-sub-name-to-kill-ring)
 
-    ; force a two window display, existing module and new script
-    (delete-other-windows)
-    (split-window-vertically)
-    (other-window 1)
+    ; module currently displayed, now want to open script, display in paralel
+      (perlnow-open-file-other-window 
+         script-name
+         nil
+         perlnow-perl-script-template)
 
-    (perlnow-create-with-template script-name perlnow-perl-script-template)
+;;; DELETE
+;;     ; force a two window display, existing module and new script
+;;     (delete-other-windows)
+;;     (split-window-vertically)
+;;     (other-window 1)
+
+;;     (perlnow-create-with-template script-name perlnow-perl-script-template)
+;;; END DELETIA
 
     (unless (eq inc-spot nil) ; without inc-spot, don't mess with FindBin/lib
       (perlnow-endow-script-with-access-to inc-spot)
