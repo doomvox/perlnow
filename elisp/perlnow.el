@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.134 2004/02/20 19:09:10 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.135 2004/02/20 19:19:25 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -2787,21 +2787,35 @@ wrappers."
 ;;;----------------------------------------------------------
 (defun perlnow-symbol-list-from-elisp-file ()
   "Read in the text of this elisp file, extract all def* docstrings."
+;;;Note: the pattern below should be pretty robust about identifing 
+;;;symbol definitions that might have interesting function definitions, 
+;;;however, elsip being elisp, I suspect that oddball constructs like 
+;;;defuns inside of other defuns are actually allowed, and there's some 
+;;;potential confusion in cases like that, which I'm trying to resolve 
+;;;with this tweak to the pattern:
+;;;                    "[ ]?[ ]?"             ; allow teeny bit of leading whitespace
+;;;The point is that a *real* "(defun" is expected to be hard right, 
+;;;If the formatting is a little funny, it might be slightly indented, 
+;;;but any more than that is really suspect, and we try and ignore it. 
+;;;Alternate approach would be to un-pin it from the front, and try 
+;;;and grab *all* defuns...
   (save-excursion
     (let* ((codefile "/home/doom/End/Cave/Perlnow/bin/perlnow.el")
            (work-buffer (generate-new-buffer "*perlnow-work*"))
            (def-pat  (concat 
-                      "^"        ;start of line
-;;;                      "[ \t]*"   ;optional leading white space
-                      "[ ]?[ ]?"  ; allow teeny bit of leading whitespace
-                      "(def"     ;start of some function named def* 
-                      "\\(?:un\\|var\\|custom\\|const\\)" ;end of allowed def*s
-;;;                   "[^ \t]*?" ;end of the def* name: (un|var|custom|const)
-                      "[ \t]+"   ;at least a little white space
-                      "\\("      ;begin capture to \1
-                      "[^ \t]*?" ;  symbol name: stuff that's not ws
-                      "\\)"      ;end capture to \1
-                      "\\(?:[ \t]+\\|$\\)"   ;a little white space or EOL
+;;;                      "^"                    ;start of line
+;;;                      "[ ]?[ ]?"             ; allow teeny bit of leading whitespace
+                      "^[^;]*?"              ; No comment chars allowed in front
+                      "(def"                 ;start of a func name that defines: (def*
+                      "\\(?:un\\|"           ; defUN
+                           "var\\|"          ; defVAR
+                           "custom\\|"       ; defCUSTOM
+                           "const\\)"        ; defCONST
+                      "[ \t]+"               ;at least a little white space
+                      "\\("                  ;begin capture to \1
+                      "[^ \t]*?"             ;SYMBOL-NAME (any stuff that's not ws)
+                      "\\)"                  ;end capture to \1
+                      "\\(?:[ \t]+\\|$\\)"   ;a little white space *or* the EOL
                       )  ;;; I *could* keep going and read in the docstring in ""
                          ;;; but then... why would I do all this in elisp? 
              )
