@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.174 2004/03/27 20:30:44 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.175 2004/04/13 19:49:53 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1314,7 +1314,7 @@ It does three things:
    (interactive)  
     ; insert the hash bang line at the top of the file:
     (goto-char (point-min))
-    (insert perlnow-simple-bang-line) 
+    (insert perlnow-simple-hash-bang-line) 
     (insert "\n")
     (insert "# ")
     ; now, insert a simple header, of the form: 
