@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.104 2004/02/18 01:57:29 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.105 2004/02/18 02:45:38 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -277,11 +277,13 @@ on how you might use them for different purposes:
 
 This will ask you for the name of the script you want to
 write, then kick you into a file buffer with a code template
-set-up already.  If you don't like the template, change it 
-\(it should be in your ~/.templates directory\).
-For example, you might prefer to have \"use strict;\" appear
-commented out but ready to be enabled when you know the
-script is going to be longer than a dozen lines\).
+set-up already.  
+
+If you don't like the template, change it \(it should be in
+your ~/.templates directory\).  For example, you might
+prefer to have \"use strict;\" appear commented out but
+ready to be enabled when you know the script is going to be
+longer than a dozen lines.
 
 Currently perlnow--script tends to want to put all of your
 new scripts in one place, the `perlnow-script-location' that
@@ -344,7 +346,7 @@ jump to where you need to be.
 
 By the way, you might notice I've said nothing about
 stopping to do a \"chmod u+x\" to make the script
-executable.  That's because perlnow does this for you.
+executable.  That's because \\[perlnow-script] does this for you.
 Admittedly, this feature is less impressive than it used to
 be in these emacs 21 days, when you can just put this in
 your .emacs:
@@ -1391,28 +1393,28 @@ it's best guess."
 ;  (interactive)                         ; DEBUG only DELETE
   (save-excursion
     (let ( return buffer-name-string candidate-list 
-           candidate-1 candidate-2 candidate-3 )
+           candidate-1 candidate-2 candidate-3 
+           (buffer-name-string (buffer-name))
+           )
       (cond  
-       ( (setq buffer-name-string (buffer-name))
-         (if (string-match "\\*Man \\(.*\\)\\*$" (buffer-name))
-             (progn
-               (setq candidate-1 (match-string 1 buffer-name-string))
-               (setq candidate-list (cons candidate-1 candidate-list))))
+       ((string-match "\\*Man \\(.*\\)\\*$" (buffer-name))
+          (setq candidate-1 (match-string 1 buffer-name-string))
+          (setq candidate-list (cons candidate-1 candidate-list))
 
-         (goto-char (point-min))
-         (if (re-search-forward "NAME[ \t\n]*\\([^ \t]*\\)[ \t]" nil t)
-             (progn
-               (setq candidate-2 (match-string 1))
-               (setq candidate-list (cons candidate-2 candidate-list))))
+          (goto-char (point-min))
+          (if (re-search-forward "NAME[ \t\n]*\\([^ \t]*\\)[ \t]" nil t)
+              (progn
+                (setq candidate-2 (match-string 1))
+                (setq candidate-list (cons candidate-2 candidate-list))))
 
-         (goto-char (point-min))
-         (if (re-search-forward "SYNOPSIS[ \t\n]*use \\(.*\\)[ ;]" nil t)
-             (progn
-               (setq candidate-3 (match-string 1))
-               (setq candidate-list (cons candidate-2 candidate-list))))
+          (goto-char (point-min))
+          (if (re-search-forward "SYNOPSIS[ \t\n]*use \\(.*\\)[ ;]" nil t)
+              (progn
+                (setq candidate-3 (match-string 1))
+                (setq candidate-list (cons candidate-2 candidate-list))))
 
-         (setq return 
-               (perlnow-vote-on-candidates candidate-list))
+          (setq return 
+                (perlnow-vote-on-candidates candidate-list))
 ;         (message "module name: %s" return) ; DEBUG only DELETE
          )
        (t 
