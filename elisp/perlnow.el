@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.42 2004/02/10 08:40:08 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.43 2004/02/10 08:50:32 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -934,16 +934,6 @@ defaults to using the module root of the current file buffer."
 ;;; which means that " [blah]" stuff should be detected and ignored 
 ;;; in the input here.  (low priority)
 
-;;; TODO 
-;;; Consider restricting matches to directories and *.pm names?
-;;; Sounds very good, but would need to roll your own directory list code (I think)
-;;; Perhaps combine with a roll-your-own "try-completions"? 
-
-;;; TODO 
-;;; Possibly help should not display ".pm" on module names.  Or possibly not.
-;;; Still not fixed, and this is not real elegant, I must say.
-
-
   (interactive)
   (let* ( ; empty declarations:
          file-system-path-pat new-stuff-starts new-stuff result
@@ -1061,7 +1051,7 @@ defaults to using the module root of the current file buffer."
          (file-system-path (replace-regexp-in-string "::" "/" perlish-path) )  
             ; unix file system separator "/" swapped in for perl package separators "::" 
          (match-alist (perlnow-list-directory-as-alist file-system-path fragment-pat))
-         (file-list (mapcar '(lambda(pair) (car pair)) match-alist))
+;;;         (file-list (mapcar '(lambda(pair) (car pair)) match-alist))
            ;;; could try file-list in place of the all-completions call. (stringp: NG?)
         )
 
@@ -1077,6 +1067,21 @@ an alist of the file names that match the given pattern, *and*
 which also pass the \[perlnow-interesting-file-name-p]
 test. These are simple file names not including the path, and
 the values associated with them are sequential numbers"
+;;; Want to mutate this into a perlnow-list-directories-and-modules-as-alist
+;;; Do *two* directory-files, one matching only "\\.pm$" pattern, 
+;;; Another that gets filtered through file-directory-p, then 
+;;; glue the two lists together (append?)
+;;; For extra credit, strip the .pm on the files. 
+
+;;; TODO 
+;;; Consider restricting matches to directories and *.pm names?
+;;; Sounds very good, but would need to roll your own directory list code (I think)
+;;; Perhaps combine with a roll-your-own "try-completions"? 
+
+;;; TODO 
+;;; Possibly help should not display ".pm" on module names.  Or possibly not.
+;;; Still not fixed, and this is not real elegant, I must say.
+
    (let* ( 
           match-alist
           ; directory-files directory &optional full-name match-regexp nosort
