@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.135 2004/02/20 19:19:25 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.136 2004/02/20 20:27:18 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -2787,42 +2787,44 @@ wrappers."
 ;;;----------------------------------------------------------
 (defun perlnow-symbol-list-from-elisp-file ()
   "Read in the text of this elisp file, extract all def* docstrings."
-;;;Note: the pattern below should be pretty robust about identifing 
-;;;symbol definitions that might have interesting function definitions, 
-;;;however, elsip being elisp, I suspect that oddball constructs like 
-;;;defuns inside of other defuns are actually allowed, and there's some 
-;;;potential confusion in cases like that, which I'm trying to resolve 
-;;;with this tweak to the pattern:
-;;;                    "[ ]?[ ]?"             ; allow teeny bit of leading whitespace
-;;;The point is that a *real* "(defun" is expected to be hard right, 
-;;;If the formatting is a little funny, it might be slightly indented, 
-;;;but any more than that is really suspect, and we try and ignore it. 
-;;;Alternate approach would be to un-pin it from the front, and try 
-;;;and grab *all* defuns...
+;;; Defining two patterns here, def-star-pat and def-star-pat-exp.
+;;; The first is in use, because it actually works.
   (save-excursion
     (let* ((codefile "/home/doom/End/Cave/Perlnow/bin/perlnow.el")
            (work-buffer (generate-new-buffer "*perlnow-work*"))
-           (def-pat  (concat 
-;;;                      "^"                    ;start of line
-;;;                      "[ ]?[ ]?"             ; allow teeny bit of leading whitespace
-                      "^[^;]*?"              ; No comment chars allowed in front
-                      "(def"                 ;start of a func name that defines: (def*
-                      "\\(?:un\\|"           ; defUN
-                           "var\\|"          ; defVAR
-                           "custom\\|"       ; defCUSTOM
-                           "const\\)"        ; defCONST
-                      "[ \t]+"               ;at least a little white space
-                      "\\("                  ;begin capture to \1
-                      "[^ \t]*?"             ;SYMBOL-NAME (any stuff that's not ws)
-                      "\\)"                  ;end capture to \1
-                      "\\(?:[ \t]+\\|$\\)"   ;a little white space *or* the EOL
-                      )  ;;; I *could* keep going and read in the docstring in ""
-                         ;;; but then... why would I do all this in elisp? 
-             )
+           (def-star-pat  
+             (concat 
+                      "^"        ;start of line
+;;;                      "[ \t]*"   ;optional leading white space
+                      "[ ]?[ ]?"  ; allow teeny bit of leading whitespace
+                      "(def"     ;start of some function named def* 
+                      "\\(?:un\\|var\\|custom\\|const\\)" ;end of allowed def*s
+                      "[ \t]+"   ;at least a little white space
+                      "\\("      ;begin capture to \1
+                      "[^ \t]*?" ;  symbol name: stuff that's not ws
+                      "\\)"      ;end capture to \1
+                      "\\(?:[ \t]+\\|$\\)"   ;a little white space or EOL
+                      ))
+                 ;;; I *could* keep going and read in the docstring in ""
+                 ;;; but then... why would I do all this in elisp? 
+           (def-star-pat-exp
+             (concat 
+              "^[^;]*?"              ; No comment chars allowed in front
+              "(def"                 ;start of a func name that defines: (def*
+              "\\(?:un\\|"           ; defUN
+                   "var\\|"          ; defVAR
+                   "custom\\|"       ; defCUSTOM
+                   "const\\)"        ; defCONST
+              "[ \t]+"               ;at least a little white space
+              "\\("                  ;begin capture to \1
+              "[^ \t]*?"             ;SYMBOL-NAME (any stuff that's not ws)
+              "\\)"                  ;end capture to \1
+              "\\(?:[ \t]+\\|$\\)"   ;a little white space *or* the EOL
+              ))
            symbol-list
            symbol-name)
 
-      (message "The def-pat: %s" def-pat) ; DEBUG only DELETE
+      (message "The def-star-pat: %s" def-star-pat) ; DEBUG only DELETE
       
       (set-buffer work-buffer)
       (insert-file-contents codefile nil nil nil t)
@@ -2830,7 +2832,7 @@ wrappers."
       (unwind-protect 
           (while (char-after)
             (forward-line 0) ; beg-of-line
-            (if (looking-at def-pat) 
+            (if (looking-at def-star-pat) 
                 (if (setq symbol-name (match-string 1))
                     (setq symbol-list (cons symbol-name symbol-list))))
             (forward-line 1)
@@ -2839,6 +2841,13 @@ wrappers."
         (kill-buffer work-buffer))
       (setq symbol-list (reverse symbol-list)))
     ))
+;;; def-star-pat-exp is a pattern that I *thought* 
+;;; would work better in some obscure cases, but essentially 
+;;; do the same thing.  Instead, I get a mysterious bug with it 
+;;; (that I have seen with other pattern attempts), the symbols get 
+;;; *repeated* in the list multiple times.  E.g. perlnow-version 5 times, 
+;;; perlnow-documentation 5 times, perlnow-documentation-installation
+;;; something like 75 times (!), and so on.  
 
 
 ;;;----------------------------------------------------------
