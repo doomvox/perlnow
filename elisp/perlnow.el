@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.29 2004/02/06 22:31:17 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.30 2004/02/06 23:36:56 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -281,14 +281,20 @@ will be added. "
     (insert (format "use %s;" package-name)) ;;; and maybe a qw() list? 
     (insert "\n")))
    
-   ;;; TODO alternate form (or extension of this?) That creates 
-   ;;;      a script from a currently active documentation buffer. 
-   ;;;      (man format?  perldoc.el?)
-   ;;; See notes on perlnow-get-module-name. Fix that to get 
-   ;;; package name from man page? 
-   ;;; *But* this is only part of the story.  Need actual installed location 
-   ;;; of module to do FindBin/use lib trick.  (buffer-file-name) 
-   ;;; wouldn't do it.  Punt for now.
+;;; TODO 
+;;; Want to be able to create a script from a currently active documentation buffer
+;;; (presume it's "man format" for now).  And alternate form of the above, 
+;;; or an extension of it?
+;;;
+;;; See notes on perlnow-get-module-name. Fix that to get package name from man page? 
+
+;;; *But* this is only part of the story:
+;;; Need actual installed location of module to do
+;;; FindBin/use lib trick.  (buffer-file-name) wouldn't do it.
+
+;;; Just check to see if the module is in @INC, if so, no use lib is needed... 
+;;; Otherwise, would have to do a system wide find/grep, I suppose... 
+;;; *ask first*.
    
    
 ;;;----------------------------------------------------------
@@ -412,7 +418,7 @@ If perlnow-run-string is nil, perlnow-set-run-string is called automatically."
   (find-file 
    (perlnow-full-path-to-h2xs-module h2xs-location module-name))
  ; (delete-other-windows) 
-;;; TODO: find-file the *.t also, leave that open also.
+;;; TODO: find-file the *.t also, leave that open that in a buffer too
   ))
 ;;; Note: my feeling is that asking two questions for the creation of an 
 ;;; h2xs structure is okay.  It helps differentiate it from perlnow-module, 
@@ -567,15 +573,6 @@ executable script by looking for the hash-bang line at the top."
     (looking-at hash-bang-line-pat) 
     )))
 
-; DELETE
-(defun doom-testes ()
-  "debug"
-  (interactive) 
-  (if (perlnow-nix-script-p)
-      (message "bang that hash")))
-; END DELETIA
-
-
 ;;;----------------------------------------------------------
 (defun perlnow-script-p ()
   "Try to determine if the buffer looks like a perl script by looking 
@@ -620,9 +617,13 @@ double colon separated form\), or nil if there is none"
 ;;; Theory about how to improve perlnow-script-using-this-module.
 ;;; Adding capability to "perlnow-get-module-name" would do it: 
 ;;; if there's no package line, start looking elsewhere for 
-;;; the module name.  First words after NAME ending at the next space?
-;;; (That would work for a *Man buffer).
-;;; This should load (match-string 1): "NAME[ \t\n]*\([^ \t]*\)[ \t]"
+;;; the module name.  
+;;; (a) Check the buffer name.  Does it lead with "*Man"?
+;;;    (1) if so, try looking for the first words after NAME, which end at the next space?
+;;;      This         "NAME[ \t\n]*\([^ \t]*\)[ \t]"
+;;;      would load   (match-string 1)  
+;;;    (2) optionally, see if that Name is also present in the buffer name.
+
 
 ;;;----------------------------------------------------------
 (defun perlnow-one-up (dir)
@@ -843,12 +844,6 @@ h2xs-location were \"/usr/local/perldev\" and the module were
 name begins with an asterix.  Create it if it doesn't exist.
 Returns the buffer object.  Argument can be a string or a buffer. 
 This can work on a read-only buffer."
-;;; TODO - this looks like it should be rewritten to use cond
-; DELETE
-; just for debuggery:
-;   (interactive "Bgimme a buffy: ")                     
-;   (interactive "stype in a buffer name carefully: ") 
-; END DELETIA
 
   (let ((original-buff (buffer-name))
         original-read-only-status)
