@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.17 2004/02/04 09:54:16 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.18 2004/02/05 08:29:18 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -712,17 +712,23 @@ Note: Relying on the exact precedence of this search should be avoided
     (error "This buffer does not look like a perl module (no \"package\" line)."))
   (let* ( (module-name (perlnow-get-module-name))
           (module-file-location 
-           (file-name-directory (buffer-file-name)))
+            (file-name-directory (buffer-file-name)))
           (module-root 
-           (perlnow-get-module-root module-name module-file-location ))
+            (perlnow-get-module-root module-name module-file-location ))
           (hyphenized-module-name 
-           (mapconcat 'identity (split-string module-name "::") "-"))
+            (mapconcat 'identity (split-string module-name "::") "-"))
           (module-file-basename 
-           (file-name-sans-extension (file-name-nondirectory (buffer-file-name))))
-          (test-file-check-list '( (concat (hyphenized-module-name) ".t")
-                                   (concat (module-file-basename) ".t")
-                                  ; ("1.t") ;;; current thought: just let h2xs Makefile handle this
-                                   ))
+            (file-name-sans-extension (file-name-nondirectory (buffer-file-name))))
+
+;;           (test-file-check-list '( (concat (hyphenized-module-name) ".t")
+;;                                    (concat (module-file-basename) ".t")
+;;                                   ; ("1.t") ;;; current thought: just let h2xs Makefile handle this
+;;                                    ))
+
+          (test-file-check-list (list (concat hyphenized-module-name ".t")
+                                      (concat module-file-basename ".t")
+                                      ))
+
           staging-area
           maybe-staging-area
           maybe-staging-area-name
@@ -768,7 +774,7 @@ Note: Relying on the exact precedence of this search should be avoided
                       (concat 
                        (perlnow-fixdir real-place) ;; I bet this fixdir is redundant
                        possible-name))
-                (if (file-regular-p fish)
+                (if (file-regular-p testfile)
                     (progn 
                       (setq fish (concat "perl " testfile))
                       (throw 'COLD fish)))))))
