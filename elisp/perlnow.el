@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.164 2004/02/29 03:04:40 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.165 2004/02/29 03:26:10 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -385,69 +385,74 @@ is similar to script development:
   `perlnow-documentation-tutorial-1-script-development'
 
 The command you'll probably want to use is \\[perlnow-module], 
-which will prompt you for a module location \(really, a \"module root\" 
-location, or \"inc spot\", see `perlnow-documentation-terminology')
-with a default of `perlnow-module-location' which should be set in 
-your .emacs as indicated in `perlnow-documentation-installation' and 
-can also be modified on the fly with \\[set-variable].  
+which will ask you for the name and location of the module you 
+want to create in a single prompt, asking for an answer in a 
+hybrid form like: 
 
-Also, \\[perlnow-module] will ask for the name of the module, expecting 
-it to be in perl's double-colon separated package name notation 
-\(e.g. Double::Colon-ized\).  Interestingly enough, it gets the 
-answer to both questions in a single mini-buffer prompt, letting you 
-enter the answer in a hybrid form of file system path followed by 
-module name.  Tab and space completion more or less works while 
-you're navigating the previously existing part of the path.  When 
-you hit enter, it will create whatever intervening directories 
-it needs, after first prompting to make sure it's okay \(note, 
-I'm a little dubious of that prompt, and I may get rid of it in 
-the future\).  
+  /home/hacker/perldev/lib/New::Module
+
+Here the module location \(really, a \"module root\" 
+location, or \"inc spot\", see `perlnow-documentation-terminology')
+is entered in the usual file-system form \(in this example, 
+it is \"/home/hacker/perldev/lib/\"\) and the module name 
+is given using perl's double-colon separated package name notation 
+\(in this example, \"New::Module\"\).
+
+The default for the module location is given by the variable 
+`perlnow-module-location' which should be set in 
+your .emacs as indicated in `perlnow-documentation-installation'.
+It can also be modified on the fly with \\[set-variable].  
+
+Tab and space completion works while navigating the previously
+existing part of the path \(including the part inside the package
+name space\).  When you hit enter, it will create whatever
+intervening directories it needs, after first prompting to make sure
+it's okay \(note, I'm a little dubious of that prompt: it may 
+disappear in future versions\).
 
 Now, I have worked long and hard on getting this single-prompt
 method of entering this information, and I'm very proud of
 it, and I think it's wonderfully elegant, so the way
 these things go the odds are good that you will hate it.
 
-If so, you can use the older form of this command, which I've left 
-in the code as \\[perlnow-module-two-questions].  It gets the 
-same information, but does it by asking a separate question for 
-where and what.  Auto-completion works on the \"where\" question, 
-but not at all for the module name.
+If so, you can use the older form of this command,
+\\[perlnow-module-two-questions].  It gets the same information,
+but does it by asking a separate question for where and what.
+Auto-completion works on the \"where\" question, but not at all
+for the module name.
 
 Note that one of the advantages of the \\[perlnow-run-check]
 command for doing syntax checks is that it works on module
 code just as well as on scripts: you don't need to have a
-method of running the code to start getting syntax bugs out
-of it.
+method of running the module to work on the syntactical bugs.
 
 If you do a \\[perlnow-run] it will \(a\) perform an elaborate 
 search to try and find a test file for the module then \(b\) ask 
 you for the name of a script to run that uses the module.  Unless 
 you're some kind of sick and twisted extreme programming freak, 
 the odds are pretty good you won't have either, yet.  In which 
-case, you may want to use this command:
-
-   \\[perlnow-script-using-this-module]
+case, you would then hit the \\[perlnow-script] command, 
+which would get you started on writing a script that uses the 
+module. 
 
 \(But by the way, if you *are* a test-first-code-later fanatic,
-take a look at see `perlnow-tutorial-test-file-strategies'\)
+take a look see `perlnow-tutorial-test-file-strategies'\)
 
-Anyway, \\[perlnow-script-using-this-module] will get you
-started writing a script that has a \"use <module name>\"
-line inserted already.  If the module is not in your @INC
-search path, it will also add the necessary \"FindBin/use
-lib\" magic to make sure that the script will be able to
-find the module.
+Anyway, \\[perlnow-script] will create a file with a script
+template inserted that already has a simple \"use <module
+name>\" line filled in.  If the module is not in your @INC
+search path, it will also add the necessary \"FindBin/use lib\"
+magic to make sure that the script will be able to find the
+module.
 
 If you skip back to the original module buffer, and do a \\[perlnow-run], 
 you'll notice that the script you just created has become the default 
 for the way the code in the module gets run. 
 
-Another little gimmick hidden away here, is that
-\\[perlnow-script-using-this-module] tries to snag the the
-name of whatever perl \"sub\" the cursor happens to be near,
-and pushes it on the kill-ring.  You can do a \\[yank] if
-you've got some use for it.
+Another little gimmick hidden away here, is that you should find
+that the name of whatever perl \"sub\" the cursor happened to
+have been near has been pushed on to the kill-ring.  You can do
+a \\[yank] if you've got some use for it.
 
 But remember in order for that sub to be accessible, you
 might need to do some chores like add the sub name to the
