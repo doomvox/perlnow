@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.54 2004/02/11 07:55:06 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.55 2004/02/11 09:29:25 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -960,7 +960,7 @@ or single word completion will be used. "
          candidate-alist suggested-completion
          field-start 
          two-pieces-list perlish-path fragment fragment-pat file-system-path
-         lastchar returned new-portion new-portion-first-word result
+         lastchar returned new-portion new-portion-first-word result new-mini
          word-separator
           ; assignments, setq's in all but name:
          (raw_string (buffer-string))
@@ -995,7 +995,7 @@ or single word completion will be used. "
          (setq candidate-alist (perlnow-list-directories-and-modules-as-alist file-system-path fragment-pat))
          (setq returned (try-completion fragment candidate-alist))
 
-         ;;; returned has to be conditioned immediately to turn logical responses into strings 
+         ; must convert logical values of "returned" into appropriate strings 
          (cond ((eq returned nil)  
                 (setq suggested-completion fragment))
                ((eq returned t) ; precise match that is not a *.pm file is a directory, add separator
@@ -1029,7 +1029,11 @@ or single word completion will be used. "
                (if (string= new-portion-first-word "")
                    (setq new-portion word-separator)
                  (setq new-portion new-portion-first-word))))
-         (insert new-portion)
+
+         (setq new-mini (concat perlish-path fragment new-portion))
+
+         (delete-region (+ 1 field-start) (point-max))
+         (insert new-mini)
          ))
 
 ;;; BOOKMARK
@@ -1067,14 +1071,29 @@ be bound to the \"?\" key during the minibuffer read."
 ;;;         (file-list (mapcar '(lambda(pair) (car pair)) match-alist))
            ;;; could try file-list in place of the all-completions call. (yields stringp: NG?)
         )
+   (setq match-alist (perlnow-remove-pm-extensions-from-alist match-alist))
    (with-output-to-temp-buffer "*Completions*"
      (display-completion-list
       (all-completions fragment match-alist)
       ))
    ))
 
+(defun perlnow-remove-pm-extensions-from-alist (alist)
+  "Go through an alist of file names and values, removing the 
+pm extension from the end of any file names in which it appears."
+;Note that this actually throws away the value and generates a new 
+;one. Not expected to matter."
 
-;perlnow-list-directories-and-modules-as-alist
+  (let (name new-alist (i (length alist)) )
+    (dolist (pair alist)
+      (setq name (car pair))
+      (setq name (replace-regexp-in-string "\\.pm$" "" name))
+      (setq new-alist (cons (cons name i) new-alist))
+      (setq i (- i 1))
+      )
+   (setq new-alist (reverse new-alist))
+   ))
+
 (defun perlnow-list-directories-and-modules-as-alist (file-system-path pattern)
   "Gets a directory listing from the given path, and returns
 an alist of the file and directory names that match certain criteria. 
@@ -1086,6 +1105,7 @@ These are simple file names that do not include the path,
 and the values associated with them in the returned alist 
 are sequential integers."
 ;;; And for extra credit it also strips the .pm on the file names
+;;; Nope: I can't do that, it messes up "workhorse" as written. 
 ;;; TODO
 ;;; Completion has trouble understanding when it's done, now: 
 ;;; wants to append "/" or ":" after the Blah[.pm] name.
@@ -1100,7 +1120,7 @@ are sequential integers."
           (directory-nosort nil)
           (file-list 
             (directory-files file-system-path directory-full-name pattern directory-nosort))
-          base-name
+;          base-name
           (i 1)  ; counter to build alist with numeric value
           )
      (dolist (file file-list)
@@ -1108,9 +1128,11 @@ are sequential integers."
            (cond ((file-directory-p (concat file-system-path file))
                    (setq match-alist (cons (cons file i) match-alist))
                    (setq i (+ i 1)))
-                 ((string-match "^\\(.*\\)\\.pm$" file)
-                   (setq base-name (match-string 1 file))
-                   (setq match-alist (cons (cons base-name i) match-alist))
+                 ((string-match "\\.pm$" file)
+;                 (string-match "^\\(.*\\)\\.pm$" file)
+;                   (setq base-name (match-string 1 file))
+;                   (setq match-alist (cons (cons base-name i) match-alist))
+                   (setq match-alist (cons (cons file i) match-alist))
                    (setq i (+ i 1))))))
   ; Reverse the order of the match-alist to get values counting up starting from 1
   (setq match-alist (reverse match-alist))  ;; maybe this isn't needed, but cargo cult programming is fun
