@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.193 2004/04/26 22:14:51 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.194 2004/04/26 22:21:39 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1448,12 +1448,14 @@ double-colon separated package name form\)."
   ; Also  open the *.t file 
   (setq h2xs-test-file (perlnow-full-path-to-h2xs-test-file h2xs-staging-area))1
 
+
   (setq perlnow-associated-code h2xs-test-file) ; bufloc, used by "C-c'b"
   (perlnow-open-file-other-window 
       h2xs-test-file 
       window-size)  ; same number of lines as above.  Note: leaving args template and switchback nil.
   (search-forward "BEGIN { plan tests => 1")
   (setq perlnow-associated-code h2xs-module-file) ; bufloc, used by "C-c'b"
+
   (other-window 1)
   ))
 
@@ -2579,11 +2581,6 @@ with a \"lib\" and/or \"t\" *and* a \"Makefile.PL\"."
 ;; Crawl up from file location, until "t" and/or "lib" is found.
 ;; Is there a Makefile.PL next to them?
 
-;;; TODO -
-;;; This could be enhanced to optionally check if there's a Makefile
-;;; with the Makefile.PL.  What to do with that result? ((How about, 
-;;; just create it? See new "<===" below  -- Fri Apr 23 19:42:07 2004))
-
   (let* ((filename (buffer-file-name))
           ; some directory-files arguments:
           (full-names nil)
@@ -2607,8 +2604,8 @@ with a \"lib\" and/or \"t\" *and* a \"Makefile.PL\"."
                           (throw 'ICE dir)))))
               (setq dir (perlnow-one-up dir)))
             (setq return nil))) ; ran the gauntlet without success, so return nil
-    (if return 
-        (perlnow-run-perl-makefile-pl-if-needed dir)) ;;; <===
+    (if return ; skip if nothing found (and dir is "/"). 
+        (perlnow-run-perl-makefile-pl-if-needed dir))
     return))
 
 ;;;----------------------------------------------------------
@@ -2617,11 +2614,14 @@ with a \"lib\" and/or \"t\" *and* a \"Makefile.PL\"."
 Which is to say it checks for the existance of a Makefile there
 and if it isn't, it runs the \"perl Makefile.PL\" command to try 
 and generate it."
+;;; Note, this *presumes* that you're inside an h2xs-staging-area, it does not check.
   (let ((run-command ""))
         (cond ( (not (file-regular-p (concat h2xs-staging-area "Makefile")))
                 (setq run-command (concat "cd " h2xs-staging-area "; perl Makefile.PL;"))
                 (compile run-command))
                 )))
+
+
 ;;; TODO - 
 ;;; something similar is done with 
 ;;;   perlnow-process-Makefile.PL (h2xs-location package-name)
