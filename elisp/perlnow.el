@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.47 2004/02/10 20:27:06 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.48 2004/02/10 21:40:17 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -959,16 +959,22 @@ or single word completion will be used. "
 ;;; Take the suggested-completion, subtract off 
 ;;; the existing "fragment", then peel off "^\w*"
 ;;; (however emacs likes you to do that).  And discard the rest. 
+
 ;;; Note: with the old fragment subtracted you can skip the
 ;;; final blank/concat...  and just do an insert of the new
 ;;; portion.
+
+;;; TODO 
+;;; I'm hardcoding "/" as the "file system" separator 
+;;; which means that this code will need to be fixed to get it 
+;;; to work on a non unix-like system.
 
 ;;;  (interactive)
   (let* ( ; empty declarations:
          candidate-alist suggested-completion
          field-start 
          two-pieces-list perlish-path fragment fragment-pat file-system-path
-         lastchar return result
+         lastchar returned new-portion new-portion-first-word result
           ; assignments setq's in all but name:
          (raw_string (buffer-string))
          (end-of-prompt-pat ": ")
@@ -988,17 +994,17 @@ or single word completion will be used. "
            (perlnow-split-module-path-to-dir-and-tail minibuffer-string))
          (setq perlish-path     (car two-pieces-list))
          (setq fragment (cadr two-pieces-list))
-         (setq fragment-pat (concat "^" fragment)) ; for getting possible filename completions
-                                                   ; out of a list of bare filenames (no path)
-         (setq file-system-path (replace-regexp-in-string "::" "/" perlish-path) )  
-            ; unix file system separator "/" swapped in for perl package separators "::" 
-         
+         (setq fragment-pat (concat "^" fragment))                                                    
+         (cond ((string-match "::" perlish-path) ; Inside the perl package namespace yet?
+                (setq file-system-path (replace-regexp-in-string "::" "/" perlish-path))  
+                   ; swap in file system separator "/"  for perl package separators "::" 
+                (setq separator "::"))
+               (t
+                (setq separator "/")
+                (setq file-system-path perlish-path)))
+
          (setq candidate-alist (perlnow-list-directory-as-alist file-system-path fragment-pat))
          (setq returned (try-completion fragment candidate-alist))
-
-         (if (string-match "::" perlish-path) ; Are we inside the perl package namespace yet?
-             (setq separator "::")
-           (setq separator "/"))
 
          (cond ((eq returned nil)
                 (setq suggested-completion fragment))
@@ -1008,56 +1014,68 @@ or single word completion will be used. "
                   (setq suggested-completion (concat fragment separator)))) 
                (t
                  (setq suggested-completion returned)))
-         
+        
          ; Prevents .pm extensions from appearing in the minibuffer
          (if (string-match pm-extension-pat suggested-completion) ; Yeah, checking *again*. Inelegant, but WTH
              (setq suggested-completion (substring suggested-completion 0 (match-beginning 0) )))
 
+         ; if there's no change from the input value, go into help
          (setq result (concat perlish-path suggested-completion))
-
-         (if (string= result minibuffer-string) ; if there's no change from the input value, go into help
+         (if (string= result minibuffer-string) 
              (perlnow-read-minibuffer-completion-help))
 
-         (delete-region (+ 1 field-start) (point-max)) ; blank minibuffer 
-         (insert result) 
+         ;;; peel off fragment from suggested-completion to get the new-portion
+         (string-match fragment-pat suggested-completion)
+         (setq new-portion (substring suggested-completion (match-end 0)))
+         (if restrict-to-word-completion 
+             (progn ;;; peel off word from the new-portion of suggested-completion))
+               (string-match "^\w*" new-portion)
+               (setq new-portion
+                     (substring new-portion 0 (match-end 0)))))
+
+;;;      (delete-region (+ 1 field-start) (point-max)) ; blank minibuffer 
+;;;      (insert result) 
+         (insert new-portion)
          ))
 
-(defun perlnow-read-minibuffer-complete-word ()
-  "spacey"
-;;; a little buggy... every so often it gets confused and deletes 
-;;; all or part of the string... but this is remarkably close.
-;;; 
-;;; at the moment this is a clone of an old version of "tabby" above.
-;;; supposed to do something similar, but only complete up 
-;;; to the next "word".  
-  (interactive)
-  (let* ( 
-         (raw_string (buffer-string))
-         (pat ": ")
-         (field-start (+ (string-match pat raw_string) (length pat)))
-         (string (substring raw_string field-start))
-         ; Treat input string as a directory plus fragment
-         (two-pieces-list
-           (perlnow-split-module-path-to-dir-and-tail string))
-         (perlish-path     (car two-pieces-list))
-         (fragment (cadr two-pieces-list))
-         (fragment-pat (concat "^" fragment)) ; for getting possible filename completions
-                                              ; out of a list of bare filenames (no path)
-         (file-system-path (replace-regexp-in-string "::" "/" perlish-path) )  
-            ; unix file system separator "/" swapped in for perl package separators "::" 
-         (match-alist (perlnow-list-directory-as-alist file-system-path fragment-pat))
-         (file-list (mapcar '(lambda(pair) (car pair)) match-alist))
-           ;;; could try file-list in place of the all-completions call. (stringp: NG?)
-         (result (try-completion fragment match-alist))
-        )
-    (if (string= result fragment) ; if the same as last time, then go into help
-        (perlnow-read-minibuffer-completion-help))
+;; ;;; DELETE 
+;; (defun perlnow-read-minibuffer-complete-word ()
+;;   "spacey"
+;; ;;; a little buggy... every so often it gets confused and deletes 
+;; ;;; all or part of the string... but this is remarkably close.
+;; ;;; 
+;; ;;; at the moment this is a clone of an old version of "tabby" above.
+;; ;;; supposed to do something similar, but only complete up 
+;; ;;; to the next "word".  
+;;   (interactive)
+;;   (let* ( 
+;;          (raw_string (buffer-string))
+;;          (pat ": ")
+;;          (field-start (+ (string-match pat raw_string) (length pat)))
+;;          (string (substring raw_string field-start))
+;;          ; Treat input string as a directory plus fragment
+;;          (two-pieces-list
+;;            (perlnow-split-module-path-to-dir-and-tail string))
+;;          (perlish-path     (car two-pieces-list))
+;;          (fragment (cadr two-pieces-list))
+;;          (fragment-pat (concat "^" fragment)) ; for getting possible filename completions
+;;                                               ; out of a list of bare filenames (no path)
+;;          (file-system-path (replace-regexp-in-string "::" "/" perlish-path) )  
+;;             ; unix file system separator "/" swapped in for perl package separators "::" 
+;;          (match-alist (perlnow-list-directory-as-alist file-system-path fragment-pat))
+;;          (file-list (mapcar '(lambda(pair) (car pair)) match-alist))
+;;            ;;; could try file-list in place of the all-completions call. (stringp: NG?)
+;;          (result (try-completion fragment match-alist))
+;;         )
+;;     (if (string= result fragment) ; if the same as last time, then go into help
+;;         (perlnow-read-minibuffer-completion-help))
 
-    (delete-region (+ 1 field-start) (point-max))
-    (insert (concat perlish-path result))
-  ))
-  (message "perlnow-read-minibuffer-complete: %s" string)
-)
+;;     (delete-region (+ 1 field-start) (point-max))
+;;     (insert (concat perlish-path result))
+;;   ))
+;;   (message "perlnow-read-minibuffer-complete: %s" string)
+;; )
+;; END DELETIA
 
 
 (defun perlnow-read-minibuffer-completion-help ()
