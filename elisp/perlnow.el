@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.67 2004/02/12 07:59:37 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.68 2004/02/12 18:35:20 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -133,12 +133,12 @@
 ;;; "eval" doesn't work here....
 
 ;; (defun perlnow-define-global-keys (mode-map-name)
-;;   "Several key assignments made to the global key map."
-;;   (define-key (eval mode-map-name) "\C-=s" 'perlnow-script)
-;;   (define-key (eval mode-map-name) "\C-=m" 'perlnow-module)
-;;   (define-key (eval mode-map-name) "\C-=h" 'perlnow-h2xs)
-;;   (define-key (eval mode-map-name) "\C-=b" 'perlutil-perlify-this-buffer)
-;; )
+;;    "Several key assignments made to the global key map."
+;;    (define-key (eval mode-map-name) "\C-=s" 'perlnow-script)
+;;    (define-key (eval mode-map-name) "\C-=m" 'perlnow-module)
+;;    (define-key (eval mode-map-name) "\C-=h" 'perlnow-h2xs)
+;;    (define-key (eval mode-map-name) "\C-=b" 'perlutil-perlify-this-buffer)
+;;  )
 
 ;; (defun perlnow-define-perl-mode-keys (mode-map-name)
 ;;   "Key assignments made to the perl-mode and cperl-mode key maps."
@@ -169,11 +169,11 @@
   "Pattern of user-group-all permission settings used when making a script executable")
 
 (defvar perlnow-perl-script-template 
-  (substitute-in-file-name "$HOME/.templates/TEMPLATE.perl.tpl")
+  (substitute-in-file-name "$HOME/.templates/TEMPLATE.perlnow-pl.tpl")
 "The template.el template new perl scripts will be created with" )
 
 (defvar perlnow-perl-module-template 
-  (substitute-in-file-name "$HOME/.templates/TEMPLATE.pm.tpl")
+  (substitute-in-file-name "$HOME/.templates/TEMPLATE.perlnow-pm.tpl")
 "The template.el template new perl modules will be created with" )
 
 (defvar perlnow-perl-module-name nil
