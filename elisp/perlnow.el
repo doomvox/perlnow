@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.200 2004/04/27 02:00:36 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.201 2004/04/27 02:10:03 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1438,20 +1438,20 @@ The location for the new module defaults to the global
 Asks two questions, prompting for the H2XS-LOCATION  \(the place where
 h2xs will create the \"staging area\"\) and the PACKAGE-NAME \(in perl's
 double-colon separated package name form\)."
-  (interactive
 ; Because default-directory is the default location for (interactive "D"),
 ; I'm doing the interactive call in stages: this way can change
 ; default-directory momentarily, then restore it. Uses the dynamic scoping
 ; of elisp's "let" (which is more like perl's "local" than perl's "my").
+  (interactive
+    (let ((default-directory perlnow-h2xs-location))
+      (call-interactively 'perlnow-prompt-for-h2xs)))
 
-  (let ((default-directory perlnow-h2xs-location))
-        (call-interactively 'perlnow-prompt-for-h2xs)))
+  (setq h2xs-location (perlnow-fixdir h2xs-location))  ;; just playing safe
 
   (unless (file-exists-p h2xs-location)
     (make-directory h2xs-location t))
 
-  (let* ( (default-directory h2xs-location)
-           display-buffer ; buffer object
+  (let* ( display-buffer ; buffer object
           (h2xs-module-file "")
           (h2xs-test-file   "")
           (h2xs-staging-area "")
@@ -1460,28 +1460,26 @@ double-colon separated package name form\)."
 
     (setq display-buffer (get-buffer-create "*perlnow-h2xs*")) 
 
-  ;Bring the *perlnow-h2xs* display window to the fore (bottom window of the frame)
-  (perlnow-show-buffer-other-window display-buffer window-size t)
+   ;Bring the *perlnow-h2xs* display window to the fore (bottom window of the frame)
+   (perlnow-show-buffer-other-window display-buffer window-size t)
 
-  (perlnow-blank-out-display-buffer display-buffer t)
+   (perlnow-blank-out-display-buffer display-buffer t)
 
-  (let ((default-directory h2xs-location)) 
+   (let ((default-directory h2xs-location)) 
      ; A typical h2xs run string:  h2xs -AX -n Net::Acme -b 5.6.0
-    (call-process "h2xs"
+     (call-process "h2xs"
                 nil
                 display-buffer      ; must be buffer object?
                 nil
                 "-AX"
                 (concat "-n" package-name)
                 (concat "-b"
-                        (perlnow-perlversion-old-to-new perlnow-minimum-perl-version)))
-    )
+                        (perlnow-perlversion-old-to-new perlnow-minimum-perl-version))))
 
   (setq h2xs-staging-area (perlnow-staging-area h2xs-location package-name))
 
-  (perlnow-process-Makefile.PL h2xs-location package-name)
-
-;;  (perlnow-run-perl-makefile-pl-if-needed h2xs-staging-area)
+;;  (perlnow-process-Makefile.PL h2xs-location package-name)  ;;; DELETE
+  (perlnow-run-perl-makefile-pl-if-needed h2xs-staging-area)
 
   (setq h2xs-module-file (perlnow-full-path-to-h2xs-module h2xs-location package-name))
   (find-file h2xs-module-file)
@@ -2776,37 +2774,6 @@ were \"New::Module\", this should return:
           (mapconcat 'identity (split-string package-name "::") perlnow-slash)
           ".pm")))
     pm-file))
-
-;;;----------------------------------------------------------
-;;; 
-;;; DELETE FOLOWING
-(defun perlnow-full-path-to-h2xs-test-file-older (h2xs-location package-name)
-  "Get the full path to a the test file for a module created by h2xs.
-E.g. if the H2XS-LOCATION were \"/usr/local/perldev\" and the
-PACKAGE-NAME  were \"New::Module\", it should return:
-\"/usr/local/perldev/New-Module/t/New-Module.t\" 
-This is an older, deprecated version, not currently in use.
-Probably won't work as well for older versions of h2xs."
-  (let* ( return
-         (module-test-location
-          (concat
-           (file-name-as-directory h2xs-location)
-           (mapconcat 'identity (split-string package-name "::") "-")
-           "/t/"))
-         (test-file
-          (concat
-           module-test-location
-           (mapconcat 'identity (split-string package-name "::") "-")
-           ".t")))
-    (cond ((file-exists-p test-file)
-           (setq return test-file))
-          ((file-directory-p module-test-location)
-           (setq return module-test-location))
-           (t
-           (error "Can't find h2xs test file or test location")
-           ))
-    test-file))
-;;; END DELETIA
 
 ;;;----------------------------------------------------------
 (defun perlnow-full-path-to-h2xs-test-file (h2xs-staging-area)
