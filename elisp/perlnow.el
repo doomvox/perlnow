@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.31 2004/02/06 23:50:00 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.32 2004/02/07 02:42:28 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -953,13 +953,13 @@ Returns a two element list, location and module-name."
      (while 
          (progn 
 
-           (setq string (completing-read 
-                         current-prompt
-                         'perlnow-completing-read-path-and-module-name
-;;;                         'perlnow-interesting-file-name-in-cons-cell-p
-                         nil
-                         require-match 
-                         initial))
+           (setq string 
+                 (completing-read 
+                  current-prompt
+                  'perlnow-completing-read-path-and-module-name
+                  nil ;  Used to do this:  'perlnow-interesting-file-name-in-cons-cell-p
+                  require-match 
+                  initial))
 
            (message "XXXXX string: %s" string) ;; DEBUG only DELETE
 
@@ -978,6 +978,81 @@ Returns a two element list, location and module-name."
            (not (file-exists-p module-file-name))))
      module-root-and-name-list )))
 
+;;;----------------------------------------------------------
+(defun perlnow-completing-read-path-and-module-name (minibuffer-string predicate-function-symbol all-completions-flag)
+  "Programmed Completion Experiments.  Working towards:
+Read in the path and module name for a perl module, allowing use of the 
+perl double-colon separated package name for the module.  The \".pm\" extension 
+will be assumed and need not be entered \(though it may be\).
+  minibuffer-string - string to be completed, expected to be the current contents of the minibuffer 
+  predicate-function-symbol - symbol containing name of a filter to screen out unwanted choices
+  all-completions-flag might be nil t or lambda. Status: nil works, t needs testing & lambda is unsupported"
+;;; You might think you could simplify this code a little with file-name-all-completions, 
+;;; but I don't like the way it behaves.  It tends to append slashes to the string 
+;;; being completed, and I want to allow for "::" instead of "/". 
+  (let* (
+         ; Treat input string as a directory plus fragment
+         (two-pieces-list
+           (perlnow-split-perl-module-path-to-dir-and-tail minibuffer-string))
+         (path     (car two-pieces-list))
+         (fragment (cadr two-pieces-list))
+         (fragment-pat (concat "^" fragment)) ; for getting possible filename completions
+                                              ; out of a list of bare filenames (no path)
+         (munged-path (replace-regexp-in-string "::" "/" path) )  
+            ; unix file system separator "/" swapped in for perl package separators "::" 
+         match-list   ; list of files sans path 
+         match-alist  ; alist of files with paths, value a sequential number (zat matter?)
+         full-file    ; full-file, filename including path, used to build the alist above
+         )
+
+   ; Get a directory listing
+   (setq file-list (directory-files munged-path))
+   ; Do a regexp search of the fragment against items in the file-list
+   (let ((i 1))  ; counter used to build alist with numeric value
+     (dolist (file file-list)
+       (if (and 
+            (string-match fragment-pat file) 
+            (perlnow-interesting-file-name-p file))
+
+           (progn
+             (setq full-file (concat path file)) ;; an absolutely necessary and simple but non-obvious step
+             (setq match-alist (cons (cons full-file i) match-alist)) 
+             (setq i (+ i 1))
+             ))))
+
+   ; Reverse the order of the match-alist
+   (setq match-alist (reverse match-alist))  ;; *might* not be needed. 
+
+   ; Maybe I gotta do this? 
+   (setq minibuffer-completion-table match-alist)
+
+   ; Filter that through the "predicate", *if* supplied (note, will leave gaps in the value numbers...)
+   (unless (eq predicate-function-symbol nil) ; gotta be a better way. Try just: (unless predicate-function-symbol
+       (setq match-alist (grep-list predicate-function-symbol match-alist)))
+
+   ; Return the list of things that match if desired, if not just one of them
+   (cond 
+    (all-completions-flag 
+     (with-output-to-temp-buffer "*Completions*"
+       (display-completion-list
+        (all-completions (buffer-string) match-alist)))
+     )
+;      match-alist)
+    ((not all-completions-flag)
+;;;      (perlnow-longest-string-from-alist match-alist)  ; if you want the longest matching string as default
+     (try-completion fragment match-alist)
+      )
+    ((eq all-completions-flag lambda)   
+;   ;;; handle lambda case how? If one match t?
+      (message "I've been lambda-ciszed") ; DEBUG only DELETE
+        t ;;; stub.  If you say lambda, I say t.
+    
+       )
+    )))
+
+;; Another TODO item: 
+;; Don't just silently use that extension filter in "interesting", 
+;; break-it out, let the user define what's not interesting. 
 
 ;;;----------------------------------------------------------
 ;;; TODO this needs a better name
@@ -1091,80 +1166,6 @@ Perl package example: given \"/home/doom/lib/Taxed::Reb\" should return
                 (message "match failed") )) 
          (list directory fragment) ))
 
-
-;;;----------------------------------------------------------
-(defun perlnow-completing-read-path-and-module-name (minibuffer-string predicate-function-symbol all-completions-flag)
-  "Programmed Completion Experiments.  Working towards:
-Read in the path and module name for a perl module, allowing use of the 
-perl double-colon separated package name for the module.  The \".pm\" extension 
-will be assumed and need not be entered \(though it may be\).
-  minibuffer-string - string to be completed, expected to be the current contents of the minibuffer 
-  predicate-function-symbol - symbol containing name of a filter to screen out unwanted choices
-  all-completions-flag might be nil t or lambda. Status: nil works, t needs testing & lambda is unsupported"
-;;; You might think you could simplify this code a little with file-name-all-completions, 
-;;; but I don't like the way it behaves.  It tends to append slashes to the string 
-;;; being completed, and I want to allow for "::" instead of "/". 
-  (let* (
-         ; Treat input string as a directory plus fragment
-         (two-pieces-list
-           (perlnow-split-perl-module-path-to-dir-and-tail minibuffer-string))
-         (path     (car two-pieces-list))
-         (fragment (cadr two-pieces-list))
-         (fragment-pat (concat "^" fragment)) ; for getting possible filename completions
-                                              ; out of a list of bare filenames (no path)
-         (munged-path (replace-regexp-in-string "::" "/" path) )  
-            ; unix file system separator "/" swapped in for perl package separators "::" 
-         match-list   ; list of files sans path 
-         match-alist  ; alist of files with paths, value a sequential number (zat matter?)
-         full-file    ; full-file, filename including path, used to build the alist above
-         )
-
-   ; Get a directory listing
-   (setq file-list (directory-files munged-path))
-   ; Do a regexp search of the fragment against items in the file-list
-   (let ((i 1))  ; counter used to build alist with numeric value
-     (dolist (file file-list)
-       (if (and 
-            (string-match fragment-pat file) 
-            (perlnow-interesting-file-name-p file))
-
-           (progn
-             (setq full-file (concat path file)) ;; an absolutely necessary and simple but non-obvious step
-             (setq match-alist (cons (cons full-file i) match-alist)) 
-             (setq i (+ i 1))
-             ))))
-
-   ; Reverse the order of the match-alist
-   (setq match-alist (reverse match-alist))  ;; *might* not be needed. 
-
-   ; Maybe I gotta do this? 
-   (setq minibuffer-completion-table match-alist)
-
-   ; Filter that through the "predicate", *if* supplied (note, will leave gaps in the value numbers...)
-   (unless (eq predicate-function-symbol nil) ; gotta be a better way. Try just: (unless predicate-function-symbol
-       (setq match-alist (grep-list predicate-function-symbol match-alist)))
-
-   ; Return the list of things that match if desired, if not just one of them
-   (cond 
-    (all-completions-flag 
-     (with-output-to-temp-buffer "*Completions*"
-       (display-completion-list
-        (all-completions (buffer-string) match-alist)))
-     )
-;      match-alist)
-    ((not all-completions-flag)
-;;;      (perlnow-longest-string-from-alist match-alist)  ; if you want the longest matching string as default
-     (try-completion fragment match-alist)
-     )
-
-;   ((eq all-completions-flag lambda)   
-;   ;;; handle lambda case how? If one match t?
-;     )
-    )))
-
-;; Another TODO item: 
-;; Don't just silently use that extension filter in "interesting", 
-;; break-it out, let the user define what's not interesting. 
 
 
 ;;;----------------------------------------------------------
