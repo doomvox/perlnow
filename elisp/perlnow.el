@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.100 2004/02/18 00:26:14 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.101 2004/02/18 00:33:35 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -2420,6 +2420,8 @@ STATUS: NOT FINISHED."
           )))
 ;;; Getting close to slick.
 ;;; TODO
+;;; (0)
+;;; Forgot to handle the quoted variable references: `perlnow-script-run-string'
 ;;; (1) 
 ;;;  List all perlnow-blah, subtract off my list of "important" ones, add the remainder. 
 ;;;  (Make it impossible to forget to add one to the list.)
@@ -2434,6 +2436,9 @@ STATUS: NOT FINISHED."
 ;;; Prepend boiler plate, explaining what the fuck it is? 
 ;;; Better: create a special purpose template.el template.
 ;;; Have the code create the html file, then do this fancy doctring insert at point. 
+;;; (5) Heuristics to split into multiple HTML pages? 
+;;;  E.g. sort symbol names, group by the second term, check the size, do they 
+;;;  all fit on one page?  If not, try grouping by the third term...
 
 (defun perlnow-html-ampersand-substitutions (string)
   "Do common html ampersand code substitutions to use this string safely in html."
@@ -2451,9 +2456,3 @@ STATUS: NOT FINISHED."
 ;   (perlnow-dump-docstrings-for-symbols-as-html perlnow-symbol-list)
   (perlnow-dump-docstrings-for-symbols-as-html-preserving-links perlnow-symbol-list)
   )
-
-
-
-
-
-
