@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.132 2004/02/20 00:46:15 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.133 2004/02/20 18:33:30 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -536,7 +536,7 @@ template with the \"use <package-name>\" line already filled in.
 \(By the way, the perldoc.el package looks like a promising
 alternative to running \\[man], but it seems to just act as
 a front-end to the man command... since you end up in the 
-same kind of buffer, the \\[perlnow-script-using-this-module]
+same kind of buffer, the \\[perlnow-script] command 
 will work with that also.\)
 
 Misc topic 2 - perlify:
@@ -2784,7 +2784,80 @@ wrappers."
 ;  (perlnow-dump-docstrings-for-symbols perlnow-symbol-list)
 ;   (perlnow-dump-docstrings-for-symbols-as-html perlnow-symbol-list)
 ;  (perlnow-dump-docstrings-for-symbols-as-html-preserving-links perlnow-symbol-list)
-   (perlnow-dump-docstrings-for-symbols-as-html-preserving-links-with-idiot-formatting perlnow-symbol-list)
+;   (perlnow-dump-docstrings-for-symbols-as-html-preserving-links-with-idiot-formatting perlnow-symbol-list)
+   (perlnow-dump-docstrings-for-symbols-as-html-preserving-links-with-idiot-formatting 
+    (perlnow-symbol-list-from-elisp-file))
   )
+
+;;;----------------------------------------------------------
+(defun perlnow-symbol-list-from-elisp-file ()
+  "Read in the text of this elisp file, extract all def* docstrings."
+  (save-excursion
+    (let* ((codefile "/home/doom/End/Cave/Perlnow/bin/perlnow.el")
+           (work-buffer (generate-new-buffer "*perlnow-work*"))
+           (def-pat  (concat 
+                      "^"        ;start of line
+                      "[ \t]*"   ;optional leading white space
+                      "(def"     ;start of some def* function name
+                      "[^ \t]*?" ;end of the def* name: (un|var|custom|const)
+                      "[ \t]+"   ;at least a little white space
+                      "\\("      ;begin capture to \1
+                      "[^ \t]*?" ;  symbol name: stuff that's not ws
+                      "\\)"      ;end capture to \1
+                      "[ \t]+"   ;at least a little white space
+                      )  ;;; I *could* keep going and read in the docstring in ""
+                         ;;; but then... why would I do all this in elisp? 
+             )
+           symbol-list
+           symbol-name)
+
+           (set-buffer work-buffer)
+           (insert-file-contents codefile nil nil nil t)
+           (goto-char (point-min))
+           (unwind-protect 
+               (while (char-after)
+                 (forward-line 0) ; beg-of-line
+                 (if (looking-at def-pat) 
+                     (if (setq symbol-name (match-string 1))
+                         (setq symbol-list (cons symbol-name symbol-list))))
+                 (forward-line 1)
+                 (end-of-line)
+                 )
+             (kill-buffer work-buffer))
+           (setq symbol-list (reverse symbol-list)))
+    ))
+
+
+;;;----------------------------------------------------------
+(defun blofp ()
+  "Return t if on the bottom line of the file, nil otherwise."
+  (save-excursion
+    (end-of-line)
+    (not (char-after))))
+
+;;;----------------------------------------------------------
+
+;;                       "("        ;some paren
+;;                       "\\("      ;begin capture to \2 
+;;                       "[^)]*?"   ;  the argument list (not a closing paren)
+;;                       "\\)"      ;end capture to \2
+;;                       ")"        ;
+
+
+
+;   For example, here we make an invisible buffer for temporary use, and
+;make sure to kill it before finishing:
+;
+;     (save-excursion
+;       (let ((buffer (get-buffer-create " *temp*")))
+;         (set-buffer buffer)
+;         (unwind-protect
+;             BODY
+;           (kill-buffer buffer))))
+
+
+
+
+
 
 ;;;==========================================================
