@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.82 2004/02/15 02:26:05 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.83 2004/02/15 02:47:45 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -42,7 +42,7 @@
 Check <http://www.grin.net/~mirthless/perlnow/> for the newest.")
 
 (defvar perlnow-documentation t 
- "A place to attach the documentation for the perlnow.el package.
+ "A dummy variable, a place to attach the perlnow.el documentation.
 Also see the documentation for variables: 
   `perlnow-documentation-installation'
   `perlnow-documentation-terminology'
@@ -276,8 +276,8 @@ this package.")
 (defvar perlnow-documentation-template-expansions t
   "The perlnow templates that use the template.el package  
 use some custom expansions defined here in perlnow code. 
-By the way, a template.el\"expansion\" is a place holder in 
-the template that gets replaced by something else when the 
+A template.el \"expansion\" is a place holder in the 
+template that gets replaced by something else when the 
 template is used.  For example, (>>>DATE<<<) will become 
 the current date. 
 
@@ -662,9 +662,8 @@ This uses an interactively set RUNSTRING determined from
 The run string can always be changed later by running 
 \[perlnow-set-run-string] manually."
   (interactive
-  (unless perlnow-run-string
-    (perlnow-set-run-string))
-  perlnow-run-string)
+   (unless perlnow-run-string
+     (perlnow-set-run-string)))
   (compile runstring))
 
 ;;;----------------------------------------------------------
@@ -686,8 +685,7 @@ default, and that's guaranteed to be wrong if you've switched
 to a different file."
   (interactive
   (unless perlnow-run-string
-    (perlnow-set-run-string))
-  perlnow-run-string)
+    (perlnow-set-run-string)))
 ;  (message "perlnow-perldb using: %s" runstring) ; debugging only  DELETE
   (perldb runstring))
 
