@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.84 2004/02/15 03:47:34 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.85 2004/02/15 09:13:14 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -42,16 +42,16 @@
 Check <http://www.grin.net/~mirthless/perlnow/> for the newest.")
 
 (defvar perlnow-documentation t 
- "A dummy variable, a place to attach the perlnow.el documentation.
-Also see the documentation for variables: 
+ "The introductary documentation to the perlnow.el package.
+Also see the documentation for:
   `perlnow-documentation-installation'
   `perlnow-documentation-terminology'
   `perlnow-documentation-template-expansions'
  
-This package is intended to speed development of perl code 
-by making it easier to jump into the development of perl code 
-when an idea strikes, and also by helping to automate 
-some routine development tasks. 
+This package is intended to speed development of perl code,
+largely by making it easier to jump into coding when an idea
+strikes. It also includes some commands to help automate some routine
+development tasks including testing the code in the emacs environment. 
 
 A perlnow command will typically prompt for a location and/or name, 
 open a file buffer with an appropriate framework already inserted 
@@ -484,7 +484,7 @@ really done\\) then this function will see the first package name."
     (perlnow-new-file-using-template filename perlnow-perl-script-template)
     
     ; ensure the module can be found by the script if needed, insert "use lib" line to 
-    (unless (module-root-in-INC-p module-root)
+    (unless (perlnow-module-root-in-INC-p module-root)
       (let ((relative-path
              (file-relative-name module-filename (file-name-directory filename))
              ))
@@ -1269,7 +1269,7 @@ a buffer object.  This can work on a read-only buffer."
   )))
 
 ;;;----------------------------------------------------------
-(defun module-root-in-INC-p (&optional module-root)
+(defun perlnow-module-root-in-INC-p (&optional module-root)
   "Determine if the MODULE-ROOT has been included in perl's @INC search path.
 If not given a MODULE-ROOT, it defaults to using the module root of the 
 current file buffer."
@@ -1725,8 +1725,8 @@ Perl package example: given \"/home/doom/lib/Taxed::Reb\" should return
 ;;;----------------------------------------------------------
 (defun perlnow-script-simple ()
   "Quickly jump into development of a new perl script. 
-This is a simple, though inflexible form of \[perlnow-script\].
-And advantage: does not require the templat.el package."
+This is a simple, though inflexible form of \[perlnow-script].
+One advantage: it does not require the template.el package."
 ;;; formerly: perlutil-perlnow
   (interactive)  
   ; ask the user the name of the script to create
@@ -1747,11 +1747,11 @@ And advantage: does not require the templat.el package."
 ;;;----------------------------------------------------------
 (defun perlnow-perlify-this-buffer-simple ()
   "Turn the current buffer into perl window.  This is a simple, 
-but inflexible, form that doesn't require template.el.  
-Does three things: 
-o  Adds the hashbang line along with a simple header, 
-o  Makes the file executable, 
-o  Goes into cperl-mode using font-lock-mode."
+but inflexible, command that doesn't require template.el.  
+It does three things: 
+   Adds the hashbang line along with a simple header, 
+   Makes the file executable, 
+   Goes into cperl-mode using font-lock-mode."
 ;;; Formerly: perlutil-perlify-this-buffer 
    (interactive)  
     ; insert the hash bang line at the top of the file:
@@ -1794,6 +1794,148 @@ o  Goes into cperl-mode using font-lock-mode."
     (+ (logand perlutil-file-permissions perlutil-all-but-execute-mask) perlnow-executable-setting))
   (set-file-modes (buffer-file-name) perlutil-new-file-permissions))
   (message "buffer is now perlified"))
+
+;;;==========================================================
+;;; Documentation utilities
+;;;==========================================================
+;;; The following functions make it easier to extract documentation 
+;;; from perlnow symbols as a first step toward converting 
+;;; it to another form such as html.
+;;; These are just quick hacks.  (I expect that before I
+;;; finished a more general set of tools I'd discover that
+;;; someone else has written them already.)
+
+(defvar perlnow-symbol-list (list 
+                                 "perlnow-documentation"
+                                 "perlnow-documentation-installation"
+                                 "perlnow-documentation-terminology"
+                                 "perlnow-script-location"
+                                 "perlnow-module-root"
+                                 "perlnow-executable-setting"
+                                 "perlnow-perl-script-template"
+                                 "perlnow-perl-module-template"
+                                 "perlnow-perl-module-name"
+                                 "perlnow-module-name-history"
+                                 "perlnow-documentation-template-expansions"
+                                 "perlnow-minimum-perl-version"
+                                 "perlnow-script-run-string"
+                                 "perlnow-module-run-string"
+                                 "perlnow-run-string"
+                                 "perlnow-test-path"
+                                 "perlnow-simple-hash-bang-line"
+                                 "perlnow-read-minibuffer-map"
+                                 "perlnow-run-check"
+                                 "perlnow-script"
+                                 "perlnow-script-using-this-module"
+                                 "perlnow-script-general"
+                                 "perlnow-run"
+                                 "perlnow-perldb"
+                                 "perlnow-set-run-string"
+                                 "perlnow-module"
+                                 "perlnow-module-two-questions"
+                                 "perlnow-h2xs"
+                                 "perlnow-script-simple"
+                                 "perlnow-perlify-this-buffer-simple"
+                                 "perlnow-get-module-name"
+                                 "perlnow-insert-spaces-the-length-of-this-string"
+                                 "perlnow-full-path-to-module"
+                                 "perlnow-make-sure-file-exists"
+                                 "perlnow-change-mode-to-executable"
+                                 "perlnow-prompt-user-for-file-to-create"
+                                 "perlnow-new-file-using-template"
+                                 "perlnow-nix-script-p"
+                                 "perlnow-script-p"
+                                 "perlnow-module-p"
+                                 "perlnow-get-module-name-from-module-buffer"
+                                 "perlnow-get-module-name-from-man"
+                                 "perlnow-vote-on-candidates"
+                                 "perlnow-prompt-for-h2xs"
+                                 "perlnow-prompt-for-h2xs-again"
+                                 "perlnow-one-up"
+                                 "perlnow-fixdir"
+                                 "perlnow-expand-dots-relative-to"
+                                 "perlnow-lowest-level-directory-name"
+                                 "perlnow-guess-module-run-string"
+                                 "perlnow-get-module-root"
+                                 "perlnow-perlversion-old-to-new"
+                                 "perlnow-full-path-to-h2xs-module"
+                                 "perlnow-full-path-to-h2xs-test-file"
+                                 "perlnow-blank-out-display-buffer"
+                                 "perlnow-module-found-in-INC"
+                                 "perlnow-prompt-for-module-to-create"
+                                 "perlnow-module-root-in-INC-p"
+                                 "perlnow-read-minibuffer-complete"
+                                 "perlnow-read-minibuffer-complete-word"
+                                 "perlnow-read-minibuffer-workhorse"
+                                 "perlnow-read-minibuffer-completion-help"
+                                 "perlnow-remove-pm-extensions-from-alist"
+                                 "perlnow-list-directories-and-modules-as-alist"
+                                 "perlnow-list-directory-as-alist"
+                                 "perlnow-split-perlish-module-name-with-path-to-module-root-and-name"
+                                 "perlnow-interesting-file-name-p"
+                                 "perlnow-split-module-path-to-dir-and-tail"
+                                 )
+"Listing of variables and functions in rough order of importance.
+Variables first, followed by functions with user-accessible interactive 
+functions preceeding the internally used ones.")
+
+(defun perlnow-dump-docstrings-for-symbols (list)
+  "Given a LIST of symbol names, dump their documentation strings."
+  (dolist (symbol-name list)
+    (insert (concat symbol-name ":\n"))
+    (let ((symbol (intern-soft symbol-name)))
+          (cond ((eq symbol nil)
+                 (message "warning: bad symbol-name %s" symbol-name))
+                ((functionp symbol)
+                 (insert (documentation symbol))
+                 (insert "\n\n"))
+                (t 
+                 (insert (documentation-property symbol 'variable-documentation)))))))
+
+
+(defun perlnow-dump-docstrings-for-symbols-as-html (list)
+  "Given a LIST of symbol names, insert the doc strings with some HTML markup."
+  (dolist (symbol-name list)
+    (insert (concat "<P><B>" symbol-name "</B>" ":<BR>\n"))
+    (let ( doc-string
+          (symbol (intern-soft symbol-name)))
+          (cond ((eq symbol nil)
+                 (message "warning: bad symbol-name %s" symbol-name))
+                ((functionp symbol)
+                 (setq doc-string
+                        (documentation symbol)))
+                (t 
+                 (setq doc-string 
+                       (documentation-property symbol 'variable-documentation))))
+          (setq doc-string (perlnow-html-ampersand-substitutions doc-string))
+          ; <PRE> if some lines have leading whitespace, else just <P>:
+          (cond ((string-match "\n[ \t][ \t]+" doc-string)
+                 (insert (concat "<PRE>" doc-string "</PRE></P>\n\n")))
+                (t
+                 (replace-regexp-in-string "^[ \t]*$" "<BR><BR>" doc-string)
+                 (insert (concat doc-string "</P>\n\n"))))
+          )))
+
+
+(defun perlnow-html-ampersand-substitutions (string)
+  "Do common html ampersand code substitutions to use this string safely in html."
+  (setq string (replace-regexp-in-string "&"   "&amp;"  string))
+  (setq string (replace-regexp-in-string "\""  "&quot;" string))
+  (setq string (replace-regexp-in-string ">"   "&gt;"   string))
+  (setq string (replace-regexp-in-string "<"   "&lt;"   string))
+;;;  (setq string (replace-regexp-in-string "" "" string))
+  )
+
+(defun perlnow-do-docstrings-insertion ()
+  "Runs the code that lists *all* of the perlnow doc strings."
+  (interactive)
+;  (perlnow-dump-docstrings-for-symbols perlnow-symbol-list)
+  (perlnow-dump-docstrings-for-symbols-as-html perlnow-symbol-list)
+  )
+
+
+
+
 
 ;;;==========================================================
 ;;; Experimental code (unfinished)
