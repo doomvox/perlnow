@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.182 2004/04/22 22:56:09 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.183 2004/04/23 01:31:10 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -154,12 +154,12 @@ Add something like the following to your ~/.emacs file:
    \(global-set-key \"\\C-c'h\" 'perlnow-h2xs\)
    \(global-set-key \"\\C-c'c\" 'perlnow-run-check\)
    \(global-set-key \"\\C-c'r\" 'perlnow-run\)
-   \(global-set-key \"\\C-c'4\" 'perlnow-alt-run\)
+   \(global-set-key \"\\C-c'a\" 'perlnow-alt-run\)
    \(global-set-key \"\\C-c'd\" 'perlnow-perldb\)
    \(global-set-key \"\\C-c'R\" 'perlnow-set-run-string\)
-   \(global-set-key \"\\C-c'$\" 'perlnow-set-alt-run-string\)
+   \(global-set-key \"\\C-c'A\" 'perlnow-set-alt-run-string\)
    \(global-set-key \"\\C-c't\" 'perlnow-edit-test-file\)
-
+   \(global-set-key \"\\C-c'b\" 'perlnow-back-to-code\)
 
    \(global-set-key \"\\C-c'b\" 'perlnow-perlify-this-buffer-simple\)
   \(setq `perlnow-script-location'
@@ -978,8 +978,8 @@ this writing, the latest is 5.8.2")
 
 ;;; TODO refactor - I intensely dislike have separate module and
 ;;;    script runstrings variables (both of which are almost
-;;;    certainly nil) and the one actuall run-string.
-;;;    This is a problem multiplied two now with the alt-run-string.
+;;;    certainly nil) and the one actual run-string.
+;;;    This is a problem multiplied by two now with the alt-run-string.
 
 (defvar perlnow-script-run-string nil
    "The run string for perl scripts, used by \\[perlnow-run].
@@ -1038,6 +1038,12 @@ and this should not typically be set by the user directly.
 See `perlnow-script-alt-run-string' and `perlnow-module-alt-run-string' instead.")
 (put 'perlnow-alt-run-string  'risky-local-variable t)
 (make-variable-buffer-local 'perlnow-alt-run-string)
+
+(defvar perlnow-associated-code-buffer nil
+  "Associated code for the current buffer (presumably a test file).
+Used by \\[perlnow-back-to-code].")
+(put 'perlnow-associated-code-buffer  'risky-local-variable t)
+(make-variable-buffer-local 'perlnow-associated-code-buffer)
 
 (defcustom perlnow-test-path (list "." "../t" "./t")
    "List of places to look for test scripts.
@@ -1566,46 +1572,38 @@ It does three things:
 ;;; variable.  Use ".test" or whatever, if you want.
 ;;; Note: watch the handling of the h2xs case, which *always* uses *.t,
 ;;; whatever might be used otherwise.
-;;;
-;;; TODO
-;;; Another want would be "perlnow-create-test-file-for-module" which would need
-;;; to read policy from somewhere, to know where to put it and what to call it.
-;;; My pick for policy: if inside of an h2xs structure, put in the appropriate "t",
-;;; otherwise create a local t for it, but use the full hyphenized module name as
-;;; base-name (to make it easy to move around without confusion).
-;;; How to specify policy?  Three pieces of info:
-;;;   1 - A dot form, e.g. "./t"
-;;;   2 - a definition of dot e.g. module-file-location
-;;;   3 - name style, e.g. hyphenized
-
 
 (defun perlnow-edit-test-file (testfile)
    "Find \(or create\) an appropriate TESTFILE for the current perl code.
 This command follows this process:
   o Uses the given testfile (if run non-interactively).
   o Checks if the code looks like a module or a script:
-    Scripts always use naming style \"basename\", and
-    dot-def \"fileloc\".
-  o Checks the test policy, looks for an existing file there.
-  o *And* Searches the test path, looks for an existing file there
-    If more than one is found it will complain.
+    Scripts have a modified test policy: always use naming style 
+    \"basename\", and dot-def \"fileloc\".
+  o Look for an existing file in place dictated by test policy.
+  o If not, Searches the test path, looks for an existing file there
+    (If more than one is found it will complain.)
   o If no existing file is found, creates one as determined by the
     test policy.
   o Finally, the run string for the current buffer is set so that
-    it will run this test.  (Remember: this is a bit different for an h2xs module
-    than a regular module.)
+    it will run this test.  
 The test policy is defined by this trio of variables:
 `perlnow-test-policy-test-location', e.g. \".\", \"./t\", \"../t\", etc.
 `perlnow-test-policy-dot-definition' i.e.  \"fileloc\" or \"incspot\"
 `perlnow-test-policy-naming-style'   i.e. \"hyphenized\"or \"basename\"."
 
+; Remember the *runstring* is a bit different for 
+; an h2xs module than a regular module.
+
   (interactive
    (list (perlnow-get-test-file-name)))  ;;; Uses new function defined way below:
 
+  ; set some buffer-local variables before we go any where
   (setq perlnow-run-string (concat "perl " testfile))
 
-  (let (package-name new-file-p)
+  (let (package-name new-file-p original-code)
     (setq new-file-p (not (file-exists-p testfile)))
+    (setq original-code (current-buffer))
     (cond                               
      ; if module
      ((setq package-name (perlnow-get-package-name-from-module-buffer))  
@@ -1627,7 +1625,6 @@ The test policy is defined by this trio of variables:
             (save-excursion
               (jump-to-register ?9)
               (perlnow-endow-script-with-access-to inc-spot)))
-
         ))
      ; if script
      ((perlnow-script-p) 
@@ -1646,7 +1643,27 @@ The test policy is defined by this trio of variables:
                )
               (t
                (message "This doesn't look like a perl buffer. Perlnow can't edit it's test file.")
-               )))))))
+               )))))
+    (setq perlnow-associated-code-buffer original-code)))
+
+
+;;;----------------------------------------------------------
+;; TODO bleh, (1) this *assumes* the buffer is going to 
+;; still be open (hasn't been killed), 
+;; ;; get the *file* not the buffer, use find-file, eh?
+;; (2) and it will ends up with a doubled display if 
+;; the buffer is *already* displayed.  
+(defun perlnow-back-to-code ()
+  "Return to the code that this testfile is for.
+Experimental feature.  Functionality may change."
+  (interactive)
+;Uses variable:
+;    perlnow-associated-code-buffer
+
+  ;; want the interactive form, because this isn't a temporary switch.
+  ;;(set-buffer perlnow-associated-code-buffer)
+  (switch-to-buffer perlnow-associated-code-buffer))
+
 
 ;;;==========================================================
 ;;; Internally used functions
@@ -1673,6 +1690,7 @@ in the new window, defaults to -20; TEMPLATE a template.el template to
 be used in creating a new file buffer."
 ;;; TODO - 
 ;;; Inelegant interface: *requires* NUMBLINES if you want to feed it a TEMPLATE
+;;; Also: requires a negative number for NUMBLINES, etc.
 
 ;;; TODO refactor -
 ;;;    look for occurances of delete-other-windows, replace with this function
@@ -2200,7 +2218,7 @@ schemes for your test files: `perlnow-documentation-test-file-strategies'."
 
 ;;; TODO
 ;;; And it's possible that the rest of this could be refactored using
-;;; the following module perlnow-get-test-file-name.
+;;; the following function perlnow-get-test-file-name.
 ;;;
              ; do munging of dots, deal with different possible meanings of "here"
             (dolist (testloc-dotform perlnow-test-path)
@@ -2276,7 +2294,7 @@ and the NAMESTYLE \(see `perlnow-test-policy-naming-style'\)."
 ;;; Note: perlnow-edit-test-file docs explains a lot of what
 ;;; has to happen here. I quote:
 ;;   o Checks the test policy, looks for an existing file there.
-;;   o *And* Searches the test path, looks for an existing file there
+;;   o If not, then searches the test path, looks for an existing file there
 ;;   o   (If more than one is found it will complain).
 
    (let* (
@@ -3173,12 +3191,12 @@ that gives it a hard-coded filename"
 
 (defvar perlnow-help-docs-title ""
   "The html title for the automatically extracted help docstrings.
-This global variable is used to feed a string into the HELP-DOCS-TITLE
+This global variable is used to feed a string into the HELP_DOCS_TITLE
 template.el expansion")
 
  (setq template-expansion-alist
        (cons
-       '("HELP-DOCS-TITLE" (insert perlnow-help-docs-title) )
+       '("HELP_DOCS_TITLE" (insert perlnow-help-docs-title) )
        template-expansion-alist))
 
 ; Needed to create my own html template with this expansion in
@@ -3193,6 +3211,7 @@ template.el expansion")
   (interactive "FName of html help file to create: ")
   (let ( (html-template "/home/doom/.templates/TEMPLATE.perlnow-html.tpl")
 
+;;; TODO
 ;;; Why wasn't $HOME expanding right?  Bug in fixdir?
 ;;          (concat
 ;;           (perlnow-fixdir "$HOME/.templates/")
