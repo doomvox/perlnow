@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.52 2004/02/11 05:59:24 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.53 2004/02/11 06:30:33 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -992,7 +992,7 @@ or single word completion will be used. "
                 (setq separator "/")
                 (setq file-system-path perlish-path)))
 
-         (setq candidate-alist (perlnow-list-directory-as-alist file-system-path fragment-pat))
+         (setq candidate-alist (perlnow-list-directories-and-modules-as-alist file-system-path fragment-pat))
          (setq returned (try-completion fragment candidate-alist))
 
          ;;; returned has to be conditioned immediately to turn logical responses into strings 
@@ -1063,7 +1063,7 @@ be bound to the \"?\" key during the minibuffer read."
                                               ; out of a list of bare filenames (no path)
          (file-system-path (replace-regexp-in-string "::" "/" perlish-path) )  
             ; unix file system separator "/" swapped in for perl package separators "::" 
-         (match-alist (perlnow-list-directory-as-alist file-system-path fragment-pat))
+         (match-alist (perlnow-list-directories-and-modules-as-alist file-system-path fragment-pat))
 ;;;         (file-list (mapcar '(lambda(pair) (car pair)) match-alist))
            ;;; could try file-list in place of the all-completions call. (yields stringp: NG?)
         )
@@ -1073,16 +1073,23 @@ be bound to the \"?\" key during the minibuffer read."
       ))
    ))
 
-(defun perlnow-list-directory-as-alist (file-system-path pattern)
+
+;perlnow-list-directories-and-modules-as-alist
+(defun perlnow-list-directories-and-modules-as-alist (file-system-path pattern)
   "Gets a directory listing from the given path, and returns
-an alist of the file names that match the given pattern, *and*
-which also pass the \[perlnow-interesting-file-name-p]
-test. These are simple file names not including the path, and
-the values associated with them in the alist are sequential numbers"
-;;; Want to mutate this into a perlnow-list-directories-and-modules-as-alist
+an alist of the file and directory names that match certain criteria. 
+All the names must match the given pattern \(expected
+to be of the form \"^leading_fragment\"\).  Further, the filenames 
+are restricted to being perl module names \(ending in \"*.pm\"\) 
+which also pass the \[perlnow-interesting-file-name-p] test. \n 
+These are simple file names that do not include the path, 
+and the values associated with them in the returned alist 
+are sequential integers."
+
 ;;; Do *two* directory-files, one matching only "\\.pm$" pattern, 
 ;;; Another that gets filtered through file-directory-p, then 
 ;;; glue the two lists together (append?)
+
 ;;; For extra credit, strip the .pm on the files. 
 
 ;;; TODO 
@@ -1094,6 +1101,38 @@ the values associated with them in the alist are sequential numbers"
 ;;; TODO 
 ;;; Help should not display ".pm" on module names.  
 
+   (let* ( 
+          match-alist
+          ; directory-files directory &optional full-name match-regexp nosort
+          (directory-full-name nil)
+          (directory-nosort nil)
+          (file-list 
+            (directory-files file-system-path directory-full-name pattern directory-nosort))
+          base-name
+          (i 1)  ; counter to build alist with numeric value
+          )
+     (dolist (file file-list)
+       (cond ((file-directory-p file)
+               (setq match-alist (cons (cons file i) match-alist)) 
+               (setq i (+ i 1)))
+             ((and (string-match "\\(.*\\)\\.pm$" file)
+                   (perlnow-interesting-file-name-p file))
+               (setq base-name (match-string 1 file))
+               (setq match-alist (cons (cons base-name i) match-alist))
+               (setq i (+ i 1)))))
+  ; Reverse the order of the match-alist to get values counting up starting from 1
+  (setq match-alist (reverse match-alist))  ;; maybe this isn't needed, but cargo cult programming is fun
+  ))
+
+
+;;;----------------------------------------------------------
+(defun perlnow-list-directory-as-alist (file-system-path pattern)
+  "Gets a directory listing from the given path, and returns
+an alist of the file names that match the given pattern, *and*
+which also pass the \[perlnow-interesting-file-name-p]
+test. These are simple file names not including the path, and
+the values associated with them in the alist are sequential numbers"
+;;; Functional, but most likely NOT USED 
    (let* ( 
           match-alist
           ; directory-files directory &optional full-name match-regexp nosort
