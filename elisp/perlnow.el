@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.156 2004/02/24 05:09:24 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.157 2004/02/24 06:12:56 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -2485,11 +2485,70 @@ Perl package example: given \"/home/doom/lib/Taxed::Reb\" should return
 
 
 ;;;----------------------------------------------------------
+(defun perlnow-self-extract-help-to-html ()
+  "Extracts the help doctrings from this file to html.
+A wrapper around \[perlnow-generate-html-doc-from-docstrings],
+that gives it a hard-coded filename"
+  (interactive)
+  (let ((html-file (concat 
+                    (perlnow-fixdir "../Docs/")
+                    "perlnow-el-docstrings.html"
+                    )))
+    (perlnow-generate-html-doc-from-docstrings html-file)))
+
+
+;;;----------------------------------------------------------
+
+
+(defvar perlnow-help-docs-title ""
+  "The html title for the automatically extracted help docstrings.
+This global variable is used to feed a string into the HELP-DOCS-TITLE 
+template.el expansion")
+
+ (setq template-expansion-alist 
+       (cons 
+       '("HELP-DOCS-TITLE" (insert perlnow-help-docs-title) )
+       template-expansion-alist))
+
+; Needed to create my own html template with this expansion in 
+; the place of the (>>>title<<<) expansion of the usual template,
+; because I could not find a way to feed in a definition to 
+; (>>>title<<<) programmatically.  It insists on an interactive 
+; response. 
+
+;;;----------------------------------------------------------
+(defun perlnow-generate-html-doc-from-docstrings (html-file)
+  "Create the HTML-FILE, and fills it with doctrings from this file."
+  (interactive "FName of html help file to create: ")
+  (let ( (html-template "/home/doom/.templates/TEMPLATE.perlnow-html.tpl") 
+
+;;; Why wasn't $HOME expanding right?  Bug in fixdir?
+;;          (concat
+;;           (perlnow-fixdir "$HOME/.templates/")
+;;           "TEMPLATE.html.tpl")) 
+
+         )
+    (setq perlnow-help-docs-title "Documentation from perldoc.el")
+
+   ; Must manually delete existing html-file first (to avoid prompt)
+   (if (file-exists-p html-file)
+       (delete-file html-file))
+
+    (perlnow-create-with-template html-file html-template)
+    (perlnow-insert-docstrings-from-elisp)
+;    (save-buffer)
+;;; Maybe kill the buffer? 
+    ))
+
+
+
+;;;----------------------------------------------------------
 (defun perlnow-insert-docstrings-from-elisp ()
-  "Lists *all* of the perlnow doc strings in html form.
+  "List *all* of the perlnow doc strings in html form.
 Presumes you've got an html framework open that you want to 
 insert this material into.
-The main job is done by \\[perlnow-dump-docstrings-as-html]."
+The main job is done by \\[perlnow-symbol-list-from-elisp-file] 
+and \\[perlnow-dump-docstrings-as-html]."
   (interactive)
    (perlnow-dump-docstrings-as-html 
     (perlnow-symbol-list-from-elisp-file "perlnow"))
