@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.57 2004/02/11 21:15:42 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.58 2004/02/11 21:37:48 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -918,10 +918,13 @@ defaults to using the module root of the current file buffer."
 ;;; BOOKMARK
 
 
+; TODO 
+; This Experimental variation of \[perlnow-module], should 
+; be re-named once it's finished.  The two question form might 
+; be retained, perhaps mildly deprecated, so it'll need to be 
+; renamed as well.
 (defun perlnow-module-one-step (module-root module-name) 
   "Quickly jump into development of a new perl module 
-Experimental variation of \[perlnow-module]. 
-
 When used interactively, gets path and module-name with a single 
 question, asking for an answer in a hybrid form like so:
    /home/hacker/perldev/lib/New::Module
@@ -949,6 +952,9 @@ though this may be edited at run time."
 
 ;;; TODO make this work:
 ;;; If the module exists already, this will ask for another name. 
+;;; At the moment, it just asks if you want to blow away the existing 
+;;; file.  (And I suspect that template.el then balks at using a 
+;;; template on an existing file).  
 
   (interactive 
    (let ((initial-contents perlnow-module-root)
@@ -964,8 +970,9 @@ though this may be edited at run time."
 
      (setq twofer 
            (perlnow-split-module-file-name-to-module-root-and-name result))
-     (setq module-root (car twofer))
-     (setq module-name (cadr twofer))))
+;     (setq module-root (car twofer))
+;     (setq module-name (cadr twofer))
+     twofer))
 
   (setq perlnow-perl-module-name module-name) ; global used to pass value into template
   (let ( (filename (perlnow-full-path-to-module module-root module-name)) )
@@ -1073,7 +1080,7 @@ or single word completion will be used. "
          ; Treat input string as a directory plus fragment
          (setq two-pieces-list
            (perlnow-split-module-path-to-dir-and-tail minibuffer-string))
-         (setq perlish-path     (car two-pieces-list))
+         (setq perlish-path (car two-pieces-list))
          (setq fragment (cadr two-pieces-list))
          (setq fragment-pat (concat "^" fragment))                                                    
 
@@ -1261,22 +1268,6 @@ the values associated with them in the alist are sequential numbers"
 
 
 
-(defun quote-regexp-stupid-backwhacks (string) 
-  "Takes an ordinary regexp string like (\tset|\techo) and 
-turns into into a string like \"\\(\tset\\|\techo\\)\", which is 
-suitable for tranformation into an emacs regexp, namely 
-\"\(\tset\|\techo\)\".  Note this leaves an escape like 
- \"\t\" alone (it becomes a literal tab internally)."
-;;; TODO  NOT FINISHED
-;;; There are other things like \w and \W that also need the 
-;;; double escape.
-  (let ((specious-char-class "[(|)]"))
-        ) 
-  ;;; want to match for all values of specious-char-class, 
-  ;;; capturing and replacing with "\\c" where "c" is whatever 
-  ;;; value was just matched.  
-))
-
 
 ;;;----------------------------------------------------------
 ;;; TODO this needs a better name
@@ -1354,6 +1345,29 @@ Perl package example: given \"/home/doom/lib/Taxed::Reb\" should return
                (t
                 (message "match failed") )) 
          (list directory fragment) ))
+
+
+;;;==========================================================
+;;; Experimental code (possibly unfinished)
+;;;==========================================================
+
+;;;----------------------------------------------------------
+(defun quote-regexp-stupid-backwhacks (string) 
+  "Takes an ordinary regexp string like (\tset|\techo) and 
+turns into into a string like \"\\(\tset\\|\techo\\)\", which is 
+suitable for tranformation into an emacs regexp, namely 
+\"\(\tset\|\techo\)\".  Note this leaves an escape like 
+ \"\t\" alone (it becomes a literal tab internally)."
+;;; TODO  NOT FINISHED
+;;; There are other things like \w and \W that also need the 
+;;; double escape.
+  (let ((specious-char-class "[(|)]"))
+        ) 
+  ;;; want to match for all values of specious-char-class, 
+  ;;; capturing and replacing with "\\c" where "c" is whatever 
+  ;;; value was just matched.  
+))
+
 
 ;;;===========================================================================
 ;;;  History 
