@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.101 2004/02/18 00:33:35 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.102 2004/02/18 00:49:45 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -68,19 +68,19 @@ should be installed.
 Primarily, perlnow.el provides the following interactive 
 functions: 
  
-\\[perlnow-script] - for creation of new perl scripts. 
+\\[perlnow-do-script] - for creation of new perl scripts. 
  
 \\[perlnow-script-using-this-module] - for creation of a script 
           that uses the module open in the current buffer. 
           This should work from a man page browsing the documentation 
           for a module, as well from inside of a code buffer. 
  
-\\[perlnow-script-general] - fancier version that should work 
+\\[perlnow-script] - fancier version that should work 
           automatically in both of the above two cases, as well 
           as from an open man page buffer describing a module. 
 
 \\[perlnow-script-simple] - an older, not quite deprecated form 
-          of \\[perlnow-script] that has the virtue of not needing 
+          of \\[perlnow-do-script] that has the virtue of not needing 
           template.el to operate. 
 
 \\[perlnow-module] - for creation of new modules. 
@@ -104,9 +104,9 @@ functions:
  
 This is a list of the functions that require template.el: 
  
-   \\[perlnow-script]
+   \\[perlnow-do-script]
    \\[perlnow-script-using-this-module]
-   \\[perlnow-script-general]
+   \\[perlnow-script]
    \\[perlnow-module]
    \\[perlnow-module-two-questions]
  
@@ -114,7 +114,7 @@ Many functions here do *not* need template.el to function.
 Briefly these are: the h2xs creation code, the code that
 guesses run-strings, the code to let you use the
 run-strings, including the perl-check, and the older
-alternate to \\[perlnow-script], \\[perlnow-script-simple].")
+alternate to \\[perlnow-do-script], \\[perlnow-script-simple].")
 
 (defvar perlnow-documentation-installation t
   "Instructions on installation of the perlnow package.
@@ -129,7 +129,7 @@ your ~/.emacs:
   \(require 'template\)
   \(template-initialize\)
   \(require 'perlnow\)
-  \(global-set-key  \"\M-ps\" 'perlnow-script\)
+  \(global-set-key  \"\M-ps\" 'perlnow-do-script\)
   \(global-set-key  \"\M-pm\" 'perlnow-module\)
   \(setq `perlnow-script-location' 
       \(substitute-in-file-name \"$HOME/bin\"\)\)
@@ -143,7 +143,7 @@ Some suggestions on key assignments:
 XXXX  TODO DONTFORGET  XXX  expand above.
 The main ones:
 
-\\[perlnow-script-general]
+\\[perlnow-script]
 \\[perlnow-run-check]
 \\[perlnow-run]
 \\[perlnow-module]
@@ -163,7 +163,7 @@ as a separator between levels, this package may
 have some problems.  I hope to make future versions 
 of this more portable. ")
 
-;    (define-key mode-map "\C-c=s" 'perlnow-script)
+;    (define-key mode-map "\C-c=s" 'perlnow-do-script)
 ;    (define-key mode-map "\C-c=m" 'perlnow-module)
 ;    (define-key mode-map "\C-c=h" 'perlnow-h2xs)
 ;    (define-key mode-map "\C-c=b" 'perlutil-perlify-this-buffer)
@@ -268,7 +268,7 @@ on how you might use them for different purposes:
  `perlnow-tutorial-test-file-strategies'")
 
 (defvar perlnow-documentation-tutorial-1-script-development t
-  "Got an idea for a script?  Hit \\[perlnow-script].
+  "Got an idea for a script?  Hit \\[perlnow-do-script].
 
 This will ask you for the name of the script you want to
 write, then kick you into a file buffer with a code template
@@ -278,7 +278,7 @@ For example, you might prefer to have \"use strict;\" appear
 commented out but ready to be enabled when you know the
 script is going to be longer than a dozen lines\).
 
-Currently perlnow-script tends to want to put all of your
+Currently perlnow-do-script tends to want to put all of your
 new scripts in one place, the `perlnow-script-location' that
 you've defined for it.  You can, of course, choose a
 different place to put a script at creation time, and you'll
@@ -293,7 +293,7 @@ things you've entered using: \\[previous-history-element]
 and \\[next-history-element]]. Typically these are bound to 
 Alt-p and Alt-n.\)
 
-But every time you use \\[perlnow-script] it's going to try
+But every time you use \\[perlnow-do-script] it's going to try
 and put it in the same default location, so \(a\) try and
 pick a good default, and \(b\) think about changing it on
 the fly if you're going to do a lot of work in a different
@@ -512,7 +512,7 @@ from inside of emacs with the \\[man] command.
   If you happen to be browsing some perl module
 documentation in an emacs man window, you might suddenly be
 struck by the urge to try it out in a script.  If so you
-should know that the \\[perlnow-script-general] command is
+should know that the \\[perlnow-script] command is
 smart enough \(*knock* *knock*\) to pick out the module name
 from a man page buffer. This should kick you into a script 
 template with the \"use <package-name>\" line already filled in.
@@ -535,7 +535,7 @@ and open it there\), and *then* you can insert a simple
 code template and make the file executable.    
 
 Originally I found that approach to be a little eaiser to get
-used to than the \\[perlnow-script-general] approach, but 
+used to than the \\[perlnow-script] approach, but 
 pretty quickly I abandoned it and switched over.  Still, someday 
 I expect to implement a template.el based \"perlify\", and 
 the older version is available to do with what you will.")
@@ -583,17 +583,20 @@ For a test file, you could use:
 
   ~/perldev/lib/Modular/t/Modular-Silliness.t
 
-If you don't like that you can use any of these strategies:
+If you don't like that you can use any of these schemes:
 
   ~/perldev/lib/t/Modular-Silliness.t
   ~/perldev/lib/Modular/t/Silliness.t
   ~/perldev/lib/Modular-Silliness.t
   ~/perldev/lib/Modular/Silliness.t
 
-The ones you probably don't want to use are these \(too much potential 
-for name collisions\):
+The ones you probably don't want to use are these :
   ~/perldev/lib/t/Silliness.t
   ~/perldev/lib/Silliness.t
+
+\(There's too much potential for name collisions, if you use
+the short \"basename\" form high up in the tree. Modular::Silliness 
+and Monolithic::Silliness would fight to use the same name.\)
 
 Note that perlnow \(at least currently\) does not care if you're 
 consistent about this choice, but for your own sanity you should 
@@ -830,7 +833,7 @@ less prompt \(also, it does not require mode-compile.el\)."
   (compile compile-command) )
    
 ;;;----------------------------------------------------------
-(defun perlnow-script (filename)
+(defun perlnow-do-script (filename)
   "Quickly jump into development of a new perl script. 
 Prompts the user for the FILENAME."
   (interactive 
@@ -870,7 +873,7 @@ Takes arguments SCRIPT-NAME PACKAGE-NAME INC-SPOT,
 which are all explained in `perlnow-documentation-terminology'.
 If INC-SPOT is nil, it skips adding the FindBin/use lib lines.
 Used by the old \\[perlnow-script-using-this-module], and the 
-newer \\[perlnow-script-general].  Always returns t, but someday 
+newer \\[perlnow-script].  Always returns t, but someday 
 it might return nil for failure."
 ;;; Skipping FindBin/use if inc-spot is nil is a hack to deal with 
 ;;; the case where we got the module name from a man page buffer, 
@@ -945,7 +948,7 @@ Used by \\[perlnow-script-using-this-module]."
 
 
 ;;;----------------------------------------------------------
-(defun perlnow-script-general (script-name)
+(defun perlnow-script (script-name)
   "General purpose command to quickly jump into coding a perl script. 
 This prompts the user for the new SCRIPT-NAME, then 
 looks at the current buffer and tries to guess what \"use\" lines
@@ -955,7 +958,7 @@ that module.  If the module is not in perl's @INC array, it will also
 insert the appropriate \"FindBin\" & \"use lib\" lines so that the script 
 can find the module. If none of that applies, you just get the usual 
 perl script buffer.\n
-If this works well, it obviates \\[perlnow-script] and 
+If this works well, it obviates \\[perlnow-do-script] and 
 \\[perlnow-script-using-this-module].  If it doesn't they're still there."
   (interactive
    (perlnow-prompt-user-for-file-to-create 
@@ -976,7 +979,7 @@ If this works well, it obviates \\[perlnow-script] and
         (perlnow-do-script-from-module script-name package-name))
       (t ; no package name found, so we're working with a script
          ; (someday, might use perlnow-script-p)
-       (perlnow-script script-name)))))
+       (perlnow-do-script script-name)))))
 ;;;
 ;;;      (setq module-filename (perlnow-module-found-in-INC package-name))
 ;;;         ; given colon-ized, returns first pm found, or nil if none
@@ -1058,7 +1061,7 @@ necessary to change the run command string later. \n
 From within a program, you'd probably be better off setting the variables 
 directly, see `perlnow-script-run-string' and `perlnow-module-run-string'.\n
 
-This function uses \\\[perlnow-module-p] to see if the code looks like a
+This function uses \\\[perlnow-module-code-p] to see if the code looks like a
 module (i.e. does it have a package line), otherwise it 
 assumes it's a perl script."
 ;; And if it's not perl at all, that's your problem: the obvious
@@ -1067,7 +1070,7 @@ assumes it's a perl script."
 ;; line: e.g. *.t files, windows perl...).
   (interactive)
    (cond
-   ((perlnow-module-p)
+   ((perlnow-module-code-p)
      ; set-up a decent default value
      (unless perlnow-module-run-string 
        (progn
@@ -1330,7 +1333,7 @@ e.g. test files \(*.t\) or scripts on non-unix-like systems."
     (looking-at hash-bang-line-pat))))
 
 ;;;----------------------------------------------------------
-(defun perlnow-module-p ()
+(defun perlnow-module-code-p ()
   "Determine if the buffer looks like a perl module. 
 This looks for the package line near the top."
   (save-excursion 
@@ -1525,7 +1528,7 @@ schemes for your test files: `perlnow-tutorial-test-file-strategies'."
 ;;;   2 - a definition of dot e.g. module-file-location
 ;;;   3 - name style, e.g. hyphenized
 
-  (unless (perlnow-module-p) 
+  (unless (perlnow-module-code-p) 
     (error "This buffer does not look like a perl module (no \"package\" line)"))
   (let* ( (package-name (perlnow-get-package-name-from-module-buffer))
           (module-file-location 
@@ -2292,9 +2295,9 @@ It does three things:
                                  "perlnow-simple-hash-bang-line"
                                  "perlnow-read-minibuffer-map"
                                  "perlnow-run-check"
-                                 "perlnow-script"
+                                 "perlnow-do-script"
                                  "perlnow-script-using-this-module"
-                                 "perlnow-script-general"
+                                 "perlnow-script"
                                  "perlnow-run"
                                  "perlnow-perldb"
                                  "perlnow-set-run-string"
@@ -2312,7 +2315,7 @@ It does three things:
                                  "perlnow-create-with-template"
                                  "perlnow-nix-script-p"
                                  "perlnow-script-p"
-                                 "perlnow-module-p"
+                                 "perlnow-module-code-p"
                                  "perlnow-get-package-name-from-module-buffer"
                                  "perlnow-get-package-name-from-man"
                                  "perlnow-vote-on-candidates"
