@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.93 2004/02/16 23:36:59 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.94 2004/02/17 07:20:03 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -72,6 +72,8 @@ functions:
  
 \\[perlnow-script-using-this-module] - for creation of a script 
           that uses the module open in the current buffer. 
+          This should work from a man page browsing the documentation 
+          for a module, as well from inside of a code buffer. 
  
 \\[perlnow-script-general] - fancier version that should work 
           automatically in both of the above two cases, as well 
@@ -133,6 +135,10 @@ your ~/.emacs:
       \(substitute-in-file-name \"$HOME/bin\"\)\)
   \(setq `perlnow-module-root' 
       \(substitute-in-file-name \"$HOME/lib\"\)\)\n
+  
+  \(setq `perlnow-h2xs-location'' 
+      \(substitute-in-file-name \"$HOME/dev\"\)\)\n
+
 Some suggestions on key assignments: 
 XXXX  TODO DONTFORGET  XXX  expand above.
 
@@ -189,7 +195,6 @@ staging area: the directory created by the h2xs command for
        a module root called \"lib\".
 
 h2xs location: the place where you put your staging areas
-      \(possibly /home/doom/dev ?\)
 
 perlish path: means a module path including double colons
        \(alternate term: \"colon-ized\"\),
@@ -230,8 +235,8 @@ on how you might use them for different purposes:
  `perlnow-documentation-tutorial-1-script-development'
  `perlnow-documentation-tutorial-2-module-development'
  `perlnow-documentation-tutorial-3-h2xs-module-development'
- `perlnow-documentation-tutorial-4-misc'")
-
+ `perlnow-documentation-tutorial-4-misc'
+ `perlnow-tutorial-script-test-file-strategies'")
 
 (defvar perlnow-documentation-tutorial-1-script-development t
   "Got an idea for a script?  Hit \\[perlnow-script].
@@ -320,7 +325,10 @@ for each script.  If you use the perldb command directly,
 you'll notice that the default is just however you ran it
 last.  If, for example, you're switching back and forth 
 between working on two scripts, that default is going to be
-wrong a lot.")
+wrong a lot.
+
+The next subject, developing perl modules: 
+  `perlnow-documentation-tutorial-2-module-development'")
 
  
 (defvar perlnow-documentation-tutorial-2-module-development t
@@ -364,8 +372,8 @@ code just as well as on scripts: you don't need to have a
 method of running the code to start getting syntax bugs out
 of it.
 
-If you do a \\[perlnow-run] it will (a) perform an elaborate 
-search to try and find a test file for the module (b) ask you 
+If you do a \\[perlnow-run] it will \(a\) perform an elaborate 
+search to try and find a test file for the module \(b\) ask you 
 for the name of a script to run that uses the module.  Unless 
 you're some kind of sick and twisted extreme programming freak, 
 the odds are pretty good you won't have either.  In which case, 
@@ -373,18 +381,198 @@ you may want to use this command:
 
    \\[perlnow-script-using-this-module]
 
-This will get you started writing a script that has a 
-\"use <module name>\"  line inserted already.  If the module 
-is not in your @INC search path, it will also add the 
-necessary \"FindBin/use lib\" magic to make sure that the 
-script will be able to find the module. 
+\(But by the way, if you *are* a test-first-code-later fanatic,
+take a look at see `perlnow-tutorial-script-test-file-strategies'\)
+
+Anyway, \\[perlnow-script-using-this-module] will get you
+started writing a script that has a \"use <module name>\"
+line inserted already.  If the module is not in your @INC
+search path, it will also add the necessary \"FindBin/use
+lib\" magic to make sure that the script will be able to
+find the module.
 
 If you skip back to the original module buffer, and do a \\[perlnow-run], 
 you'll notice that the script you just created has become the default 
-for the way the code in the mdoule gets run. 
+for the way the code in the module gets run. 
 
+Another little gimmick hidden away here, is that
+\\[perlnow-script-using-this-module] tries to snag the the
+name of whatever perl \"sub\" the cursor happens to be near,
+and pushes it on the kill-ring.  You can do a \\[yank] if
+you've got some use for it.
+
+But remember in order for that sub to be accessible, you
+might need to do something like add that sub name to the
+module's EXPORT_TAGS list, and then add it to the \"use
+<module-name>\" line inside the script.
+
+Currently the perlnow.el package is a little light on
+features to smooth/sleaze your way past those obstacles \(we
+do Have Plans, however\), but you might like to know that
+the module template provided with perlnow puts some useful
+locations in the numeric registers.  So you can quickly jump
+to these positions with the emacs command
+\\[jump-to-register], e.g. \(presuming the default
+bindings\), doing a \"control x r j 9\" will take you to the
+point stored in register 9.
+
+Here's the count-down: 
+
+register    position
+9           EXPORT_TAGS
+8           EXPORT 
+7           SYNOPSIS
+6           DESCRIPTION
+
+Next, the h2xs approach to module development: 
+  `perlnow-documentation-tutorial-3-h2xs-module-development'")
+
+(defvar perlnow-documentation-tutorial-3-h2xs-module-development t
+  "There's another completely different style of perl module development, 
+from the one discussed in: `perlnow-documentation-tutorial-2-module-development':
+The h2xs module approach, intended to be used for modules which 
+will be published on CPAN.  This of course, involves using the
+standard framework created by the h2xs command, and for your
+convenience the perlnow package provides: \\[perlnow-h2xs]. 
+
+This will ask you two questions, \(1\) where do you want to
+put the staging area that h2xs creates, and \(2\) what do you 
+want to call this module.  The first question defaults to the 
+customizeable variable `perlnow-h2xs-location'
+
+\(Aside: my feeling is that asking two questions for the
+creation of an h2xs structure, vs. the one question hybrid
+form used by \[perlnow-module] is okay.  It helps
+differentiate it from \[perlnow-module], and in any case it
+doesn't logically lend itself to a single question form.  In
+the case of h2xs the \"where?\" is the staging-area, not the
+module-root.  The module-root is located inside a \"lib\" 
+directory inside the staging-area, so there's a gap between 
+the \"where\" and the \"what\", and we might as well represent 
+that gap as the gap between the two questions.\)
+
+Anyway, after you answer the two questions, \[perlnow-h2xs] 
+will run the h2xs command, and then leave you with two windows 
+open, one showing the module file buffer, the other showing the 
+test file for the module. 
+
+One of the nice features of the h2xs style of development is
+the standard test framework.  These days this is implemented
+using Test::More, and you should familiarize yourself with
+the documentation for that.  
+
+If you do a \\[perlnow-run] inside of an h2xs module, 
+it should identify it as h2xs, and use \"make test\" as the 
+run string.  \(Though actually, the first time you do this, 
+it should notice that \"perl Makefile.PL\" hasn't been run 
+yet, and do that first.\).
+
+Next, everyone's favorite subject, \"Misc\":
+ `perlnow-documentation-tutorial-4-misc'
 ")
 
+
+(defvar perlnow-documentation-tutorial-4-misc t
+  "Misc topic 1 - starting from man:
+
+A typical 'nix-style box these days will have the documentation for 
+perl modules installed as man pages, which can be most simply read 
+from inside of emacs with the \\[man] command.  
+
+  If you happen to be browsing some perl module
+documentation in an emacs window, you might suddenly be
+struck by the urge to try it out in a script.  If so you
+should know that the \\[perlnow-script-general] command is
+smart enough \(*knock* *knock*\) to pick out the module name
+from a man page buffer. This should kick you into a script 
+template with the \"use <module-name>\" line already filled in.
+
+\(By the way, the perldoc.el package looks like a promising
+alternative to running \\[man], but it seems to just act as
+a front-end to the man command... since you end up in the 
+same kind of buffer, the \\[perlnow-script-using-this-module]
+will work with that also.\)
+
+Misc topic 2 - perlify:
+
+In addition to the old-style non-templat.el fallback:
+\\[perlnow-script-simple], there's another command 
+something like it: \\[perlnow-perlify-this-buffer-simple].
+The \"perlify\" concept is that you can use whatever 
+habits you're used to to begin working on a script \(e.g. 
+go into dired, choose a directory, choose a file name 
+and open it there\), and *then* you can insert a simple 
+code template and make the file executable.    
+
+Originally I found that approach to be a little eaiser to get
+used to than the \\[perlnow-script-general] approach, but 
+pretty quickly I abandoned it and switched over.  Still, someday 
+I expect to implement a template.el based \"perlify\", and 
+the older version is available to do with what you will.")
+
+
+
+(defvar perlnow-tutorial-script-test-file-strategies t
+  "As mentioned in a few other places, the \\[perlnow-run]
+and \\[set-perlnow-run-string] commands do try to find 
+test files for modules, even if they don't happen to be 
+inside of an h2xs structure.  There's a relatively elaborate 
+search path for this.  Here's a quick description of what it 
+looks for before giving up and prompting the user 
+ \(but please, avoid relying on the preceednece of this 
+search as currently implemented: it may change\): 
+
+First of all, test files all end with the \".t\" extension 
+\(just as with h2xs test files\).  There are two possibilities 
+for the name of the basename of the test file, \(1\) it might 
+just be the same as the base name for the \".pm\" file itself, 
+or it might be a \"hyphenized\" form of the module's package 
+name \(like an h2xs staging area name\).  For example, in the 
+case of \"Modular::Silliness\", the name might be \"Silliness.t\", 
+or \"Modular-Silliness.t\".
+
+Secondly, a test file might be located in the same place
+that a module file is located, or it may be located in the
+module root location where the module's package name space
+starts, or it might be tucked away in a directory called
+\"t\" which could be located in either of those places. 
+
+This means that there are a number of strategies you might
+choose to use for your perl modules that should work well
+with perlnow.el. \(And some of them are even reasonable. 
+And some of them are already in use in industry.  And there's 
+even some overlap between those two sets.\)
+
+An example of a good practice would be to always use the hyphenized 
+base name form, and always put test files in a subdirectory called 
+\"t\" in the same place that the \".pm\" file is located.  
+
+So if you've got a module called \"Modular::Silliness\", which 
+is really the file: ~/perldev/lib/Modular/Silliness.pm 
+For a test file, you could use:
+
+  ~/perldev/lib/Modular/t/Modular-Silliness.t
+
+If you don't like that you can use any of these strategies:
+
+  ~/perldev/lib/t/Modular-Silliness.t
+  ~/perldev/lib/Modular/t/Silliness.t
+  ~/perldev/lib/Modular-Silliness.t
+  ~/perldev/lib/Modular/Silliness.t
+
+The ones you probably don't want to use are these \(too much potential 
+for name collisions\):
+  ~/perldev/lib/t/Silliness.t
+  ~/perldev/lib/Silliness.t
+
+Note that perlnow \(at least currently\) does not care if you're 
+consistent about this choice, but for your own sanity you should 
+probably pick a standard way of doing it and stick to it.
+
+An obvious next step for future developments in perlnow is to implement 
+a set of \"create test file\" commands, which will require that the user 
+define a policy that dictates where test files should go.  See \"test 
+policy\" in `perlnow-documentation-terminology'.")
 
 
 
@@ -408,6 +596,9 @@ for the way the code in the mdoule gets run.
 (defcustom perlnow-module-root (getenv "HOME")
   "This is the default location to stash new perl modules.")
 (setq perlnow-module-root (file-name-as-directory perlnow-module-root))
+
+(defcustom perlnow-h2xs-location perlnow-module-root 
+  "This is the default location to do h2xs development of CPAN bound modules."
 
 (defcustom perlnow-executable-setting ?\110
   "The user-group-all permissions used to make a script executable.")
@@ -535,7 +726,6 @@ this writing, the latest is 5.8.2")
 
 ;;; DEBUG note: eval this to erase effects of the above two settings:
 ;;; (setq template-expansion-alist 'nil)
-
 
 ;;; TODO DONTFORGET 
 ;;; Could add remarks like the following to a 
@@ -909,7 +1099,7 @@ double-colon separated package name form\)."
 ; I'm doing the interactive call in stages: this way can change 
 ; default-directory momentarily, then restore it. Uses the dynamic scoping 
 ; of elisp's "let" (which is more like perl's "local" than perl's "my").
-  (let ((default-directory perlnow-module-root))
+  (let ((default-directory perlnow-h2xs-location))
      (call-interactively 'perlnow-prompt-for-h2xs)))
 
   (let* ( (default-directory h2xs-location)
@@ -947,13 +1137,7 @@ double-colon separated package name form\)."
   (search-forward "BEGIN { plan tests => 1")
   (other-window 1)
   ))
-;;; Note: my feeling is that asking two questions for the creation of an 
-;;; h2xs structure is okay.  It helps differentiate it from perlnow-module, 
-;;; and in any case it doesn't logically lend itself to a single question 
-;;; form.  In the case of h2xs the "where" is the staging-area, 
-;;; not the module-root... there are a couple of other levels between 
-;;; the where and the what, and we might as well represent that gap as the 
-;;; gap between the two questions.
+
 
 ;;;----------------------------------------------------------
 (defun perlnow-prompt-for-h2xs (where what) 
@@ -1306,7 +1490,7 @@ Note: Relying on the exact precedence of this search should be avoided
           (module-file-basename 
             (file-name-sans-extension (file-name-nondirectory (buffer-file-name))))
 
-          ;;; TODO - Consider exposing a prototype of this list (somehow) to users,
+          ;;; TODO - Consider exposing a this list to users in some form,
           ;;;        via a defvar or something
           ; This is a listing of possible names for the test file:
           (test-file-check-list (list (concat hyphenized-module-name ".t")
@@ -1359,7 +1543,9 @@ Note: Relying on the exact precedence of this search should be avoided
                        possible-name))
                 (if (file-regular-p testfile)
                     (progn 
-                      (setq fish (format "perl %s" testfile))
+;                      (setq fish (format "perl %s" testfile))
+                      (setq fish
+                            (format "perl \"-MExtUtils::Command::MM\" -e \"test_harness(1, %s)\"" testfile)
                       (throw 'COLD fish)))))))
     return)) 
 
