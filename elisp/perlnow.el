@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.143 2004/02/21 02:23:55 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.144 2004/02/21 10:36:19 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1836,12 +1836,13 @@ schemes for your test files: `perlnow-tutorial-test-file-strategies'."
   "Return a good guess for `perlnow-script-run-string'."
 ;;; Presumption is that this won't be called if we're in a module, 
 ;;; so there's no point in testing that again.  
-  (let ( run-line 
+  (let ( perl-command run-line 
         (filename (buffer-file-name)) 
         staging-area)
   ;;# check for hash bang:
-  (cond ( (setq run-line (perlnow-hashbang))
-           ; That's all: just pass through the hash-bang string, e.g. to preserve -T 
+  (cond ( (setq perl-command (perlnow-hashbang))
+           ; preserve the hash-bang run string, e.g. to preserve -T 
+          (setq run-line (concat perl-command " " filename))
            )
         ( (string-match "\.t$"  filename) ; it's a test file
           (if (setq staging-area (perlnow-find-h2xs-staging-area))
