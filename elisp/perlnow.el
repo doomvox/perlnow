@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.112 2004/02/18 19:14:58 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.113 2004/02/18 20:14:07 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -2447,9 +2447,7 @@ This version tries to preserve links in the documentation as html links.
 STATUS: NOT FINISHED."
   (interactive)
   (dolist (symbol-name list)
-    (insert (format "<A NAME=\"%s\"></A>\n" symbol-name))
-    (insert (concat "<P><B>" symbol-name "</B>" ":<BR>\n"))
-    (let ( doc-string
+    (let* ( doc-string indented-line-pat 
            doc-string-raw
           (symbol (intern-soft symbol-name)))
           (cond ((eq symbol nil)
@@ -2461,6 +2459,15 @@ STATUS: NOT FINISHED."
                  (setq doc-string-raw
                        (documentation-property symbol 'variable-documentation t))))
 
+          ; Named anchors on every entry for refs to link to
+          (insert (format "<A NAME=\"%s\"></A>\n" symbol-name))
+
+          ; Using bold face to indicate a function, italics for variables
+          (cond ((functionp symbol)
+                 (insert (concat "<P><B>" symbol-name "</B>" ":<BR>\n")))
+                (t
+                 (insert (concat "<P><I>" symbol-name "</I>" ":<BR>\n"))))
+
           (setq doc-string (perlnow-html-ampersand-substitutions doc-string-raw))
 
           ; turn \[(.*)]  into <A HREF="#\1">\1</A>
@@ -2469,12 +2476,39 @@ STATUS: NOT FINISHED."
                                           "<A HREF=\"#\\1\">\\1</A>" 
                                           doc-string))
 
-          ; <PRE> if some lines have leading whitespace, else just <P>:
-          (cond ((string-match "\n[ \t][ \t]+" doc-string)
-                 (insert (concat "<PRE>" doc-string "</PRE></P>\n\n")))
-                (t
-                 (replace-regexp-in-string "^[ \t]*$" "<BR><BR>" doc-string)
-                 (insert (concat doc-string "</P>\n\n"))))
+          ; turn `(.*)'  into <I><A HREF="#\1">\1</A></I>  - note: dot don't match line breaks
+          (setq doc-string 
+                (replace-regexp-in-string "`\\(.*?\\)']" ; that's `(.*?)'
+                                          "<I><A HREF=\"#\\1\">\\1</A></I>" 
+                                          doc-string))
+
+          (setq indented-line-pat 
+                (concat 
+                 ("\n"   ; start of line, in multi-line matching
+                  "\\("  ; begin capture to \1  
+                  "\\([ ][ ]+\\|\t\\)"  ; indent: 3 spaces or a tab (captures to \2) 
+                  ".*?"  ; stuff
+                  "\\)"  ; end of capture to \1
+                  "\n"   ; end of line
+                  ))
+
+          ; Put <PRE> wrapper around indented lines.
+          (setq doc-string 
+                (replace-regexp-in-string indented-line-pat
+                                          "<PRE>\\1</PRE>"
+                                          doc-string))
+          ; Blank lines => <BR><BR>
+          (setq doc-string 
+                (replace-regexp-in-string "^[ \t]*$" "<BR><BR>" doc-string))
+
+;          ; <PRE> if some lines have leading whitespace, else just <P>:
+;          (cond ((string-match "\n[ \t][ \t]+" doc-string)
+;                 (insert (concat "<PRE>" doc-string "</PRE></P>\n\n")))
+;                (t
+;                 (replace-regexp-in-string "^[ \t]*$" "<BR><BR>" doc-string)
+;                 (insert (concat doc-string "</P>\n\n")))
+
+          (insert (concat doc-string "</P>\n\n"))
           )))
 ;;; Getting close to slick.
 ;;; TODO
