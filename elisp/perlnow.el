@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.176 2004/04/19 06:26:34 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.177 2004/04/19 06:29:13 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1114,7 +1114,7 @@ assumes it's a perl script."
      ; set-up intelligent default run string 
      (unless perlnow-script-run-string 
        (progn
-         (setq perlnow-module-run-string 
+         (setq perlnow-script-run-string 
                (perlnow-guess-script-run-string))
          ))
      ; ask user how to run this script (use as default next time)
@@ -1170,7 +1170,7 @@ assumes it's a perl script."
      ; set-up intelligent default test string 
      (unless perlnow-script-test-string 
        (progn
-         (setq perlnow-module-test-string 
+         (setq perlnow-script-test-string 
                (perlnow-guess-script-run-string))
          ))
      ; ask user how to test this script (use as default next time)
