@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.111 2004/02/18 08:45:41 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.112 2004/02/18 19:14:58 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -60,12 +60,10 @@ open a file buffer with an appropriate framework already inserted
 \(e.g. the hash-bang line, comments including date and author 
 information, a perldoc outline, and so on\).  In the case of scripts 
 the file automatically becomes executable. 
- 
-Many of the perlnow.el features require that template.el package 
-has been installed, along with some templates for perl development 
-purposes, one for scripts, another for modules.  Most likely 
-~/.templates is the place these copies of these templates 
-should be installed. 
+
+Many of the perlnow.el features require that template.el
+package has been installed, along with some templates for
+perl development purposes. See `perlnow-documentation-installation'.
  
 Primarily, perlnow.el provides the following interactive 
 functions: 
@@ -128,7 +126,12 @@ template.el.  The latest version can be found at:
 
 In addition, you'll need some custom perl-oriented
 template.el templates that come with perlnow.el.  Most
-likely these templates should go in your ~/.templates.
+likely these templates should go in your ~/.templates,
+\(note they end with: '.tpl'\).  If you've somehow obtained
+the perlnow.el file without the associated templates, 
+you can look for copies of them here:
+
+   http://www.grin.net/~mirthless/perlnow/
 
 Add something like the following to your ~/.emacs file:
 
