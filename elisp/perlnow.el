@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.16 2004/02/04 07:21:40 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.17 2004/02/04 09:54:16 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -178,17 +178,18 @@ this writing, the latest is 5.8.2")
       '("MINIMUM_PERL_VERSON" (insert perlnow-minimum-perl-version))
       template-expansion-alist))
 
-;;; Developer note: eval this to erase effects of the above two settings:
+;;; DEBUG note: eval this to erase effects of the above two settings:
 ;;; (setq template-expansion-alist 'nil)
 
 
 ;;;----------------------------------------------------------
-;;; I am following my instinct and using make-variable-buffer-local to
-;;; force the following to always be buffer-local, despite the
-;;; admonition in the manual.  My reasoning: (1) makes the code a little 
-;;; simpler (I don't want to have to remember to use make-local-variable 
-;;; in different places); (2) I can't think of a case where the user 
-;;; would be annoyed at me depriving them of this choice. 
+;;; I am following my instinct and using make-variable-buffer-local 
+;;; to force the following to always be buffer-local, despite the
+;;; admonition in the emacs lisp ref.  My reasoning: (1) this makes 
+;;; the code a little simpler (I don't want to have to remember to 
+;;; use make-local-variable in different places); (2) I can't think 
+;;; of a case where the user would be annoyed at me depriving them 
+;;; of this choice. 
 
 (defvar perlnow-script-run-string nil 
 "The run string for perl scripts, used by \[perlnow-run]. 
@@ -284,6 +285,11 @@ will be added. "
 ;;; TODO alternate form (or extension of this?) That creates 
 ;;;      a script from a currently active documentation buffer. 
 ;;;      (man format?  perldoc.el?)
+;;; See notes on perlnow-get-module-name. Fix that to get 
+;;; package name from man page? 
+;;; *But* this is only part of the story.  Need actual installed location 
+;;; of module to do FindBin/use lib trick.  (buffer-file-name) 
+;;; wouldn't do it.  Punt for now.
 
 
 ;;;----------------------------------------------------------
@@ -610,6 +616,14 @@ double colon separated form\), or nil if there is none"
     return
 ;   (message "Ret: %s" return)  ; DEBUG only, DELETE
    )))
+
+;;; TODO
+;;; Theory about how to improve perlnow-script-using-this-module.
+;;; Adding capability to "perlnow-get-module-name" would do it: 
+;;; if there's no package line, start looking elsewhere for 
+;;; the module name.  First words after NAME ending at the next space?
+;;; (That would work for a *Man buffer).
+;;; This should load (match-string 1): "NAME[ \t\n]*\([^ \t]*\)[ \t]"
 
 ;;;----------------------------------------------------------
 (defun perlnow-one-up (dir)
