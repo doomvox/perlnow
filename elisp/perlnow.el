@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.194 2004/04/26 22:21:39 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.195 2004/04/27 00:19:03 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1446,15 +1446,15 @@ double-colon separated package name form\)."
   (forward-line 1)   ;alternate: (next-line 1)
 
   ; Also  open the *.t file 
-  (setq h2xs-test-file (perlnow-full-path-to-h2xs-test-file h2xs-staging-area))1
+  (setq h2xs-test-file (perlnow-full-path-to-h2xs-test-file h2xs-staging-area))
 
-
-  (setq perlnow-associated-code h2xs-test-file) ; bufloc, used by "C-c'b"
+;;; These two lines now inside of perlnow-open-file-other-window:                  ;;; DELETE
+;;;=1>  (setq perlnow-associated-code h2xs-test-file) ; bufloc, used by "C-c'b"    ;;; DELETE
   (perlnow-open-file-other-window 
       h2xs-test-file 
       window-size)  ; same number of lines as above.  Note: leaving args template and switchback nil.
   (search-forward "BEGIN { plan tests => 1")
-  (setq perlnow-associated-code h2xs-module-file) ; bufloc, used by "C-c'b"
+;;;=2>  (setq perlnow-associated-code h2xs-module-file) ; bufloc, used by "C-c'b"  ;;; DELETE
 
   (other-window 1)
   ))
@@ -1724,6 +1724,11 @@ original window, not the new one."
 ;;; TODO - 
 ;;; Inelegant interface: *requires* NUMBLINES if you want to feed it a TEMPLATE
 
+  ; before you open, point at where you're going to be from here
+  (setq perlnow-associated-code file)    ; bufloc, used by "C-c'b"
+  ; and save name of what we're looking at
+  (setq original-file-displayed (buffer-file-name)) ; Doesn't work if just a buffer without file...
+
   (unless numblines
     (setq numblines (- (/ (screen-height) 2) 1) )) ; new window defaults to half of frame height
 
@@ -1743,6 +1748,10 @@ original window, not the new one."
            (if template
                (perlnow-create-with-template file template)
              (find-file file))))
+
+    ; after opening, point back from new place to where we were
+    (setq perlnow-associated-code original-file-displayed) ; bufloc, used by "C-c'b"
+
     (if switchback 
         (other-window 1))
     ))
@@ -1810,15 +1819,6 @@ Currently always returns t, but future versions may return nil for failure."
          script-name
          nil
          perlnow-perl-script-template)
-
-;;; DELETE
-;;     ; force a two window display, existing module and new script
-;;     (delete-other-windows)
-;;     (split-window-vertically)
-;;     (other-window 1)
-
-;;     (perlnow-create-with-template script-name perlnow-perl-script-template)
-;;; END DELETIA
 
     (unless (eq inc-spot nil) ; without inc-spot, don't mess with FindBin/lib
       (perlnow-endow-script-with-access-to inc-spot)
