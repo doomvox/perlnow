@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.39 2004/02/10 06:02:19 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.40 2004/02/10 07:55:26 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -919,14 +919,24 @@ defaults to using the module root of the current file buffer."
 ;;; Note: this version completes the entire level, even if there's, say 
 ;;; a hyphen in it (getting "spacey" to do it's thing right will require 
 ;;; more work...)
+;;; (But not much more.  Take the suggested-completion, subtract off 
+;;; the existing "fragment", then peel off "^\w*"
+;;; (however emacs likes you to do that).  And discard the rest. 
+;;; With fragment subtracted you can skip the final concat... 
+;;; (Strategy: Finish up tabby, clone it again as spacey, then add 
+;;; this extra restriction.)  
+;;; Um: actually, turn tabby into a general routine that takes 
+;;; a flag that controls word-at-a-time or level-at-a-time. 
+;;; then tabby and spacey become simple wrappers.
 
 ;;; TODO
 ;;; [Note: should use (match-end 0) instead of adding length of pattern.]
+;;; (FIXED)
 
 ;;; TODO 
 ;;; If input string trails with a *single* colon, completion should supply 
 ;;; a second one (minimally).  Possibly it should silently fill it in, and try 
-;;; and complete again. 
+;;; and complete again.   (FIXED)
 
 ;;; TODO 
 ;;; If you enter something that doesn't match anything and try and do completion, 
@@ -939,35 +949,65 @@ defaults to using the module root of the current file buffer."
 ;;; of it.  
 
 ;;; TODO 
+;;; Shouldn't go appending separators after an obvious completion, like a ".pm".
+
+;;; TODO 
+;;; Consider restricting matches to directories and *.pm names?
+
+;;; TODO 
 ;;; Possibly help should not display ".pm" on module names.  Or possibly not.
+
+;;; TODO 
+;;; Entering path with no slash, gets wrong type argument sequencep. 
+;;; Ah, try-completion, up to it's tricks again:
+;;;       For a unique match which is exact, t is returned.
+;;; (FIXED)
 
   (interactive)
   (let* ( ; empty declarations:
          file-system-path-pat new-stuff-starts new-stuff result
          candidate-alist file-list completion-fodder suggested-completion
-          ; setq's in all but name:
+         field-start two-pieces-list perlish-path fragment fragment-pat file-system-path
+         lastchar
+         return
+          ; assignments setq's in all but name:
          (raw_string (buffer-string))
          (end-of-prompt-pat ": ")
-         (field-start (+ (string-match end-of-prompt-pat raw_string) (length end-of-prompt-pat)))
-         (minibuffer-string (substring raw_string field-start))
-         ; Treat input string as a directory plus fragment
-         (two-pieces-list
-           (perlnow-split-module-path-to-dir-and-tail minibuffer-string))
-         (perlish-path     (car two-pieces-list))
-         (fragment (cadr two-pieces-list))
-         (fragment-pat (concat "^" fragment)) ; for getting possible filename completions
-                                              ; out of a list of bare filenames (no path)
-         (file-system-path (replace-regexp-in-string "::" "/" perlish-path) )  
-            ; unix file system separator "/" swapped in for perl package separators "::" 
          )
 
+         (string-match end-of-prompt-pat raw_string)
+         (setq field-start (match-end 0))
+         (setq minibuffer-string (substring raw_string field-start))
+
+         ; No single trailing colons allowed: silently double them up
+         (if (string-match "[^:]:$" minibuffer-string)
+             (setq minibuffer-string (concat minibuffer-string ":")))
+
+         ; Treat input string as a directory plus fragment
+         (setq two-pieces-list
+           (perlnow-split-module-path-to-dir-and-tail minibuffer-string))
+         (setq perlish-path     (car two-pieces-list))
+         (setq fragment (cadr two-pieces-list))
+         (setq fragment-pat (concat "^" fragment)) ; for getting possible filename completions
+                                              ; out of a list of bare filenames (no path)
+         (setq file-system-path (replace-regexp-in-string "::" "/" perlish-path) )  
+            ; unix file system separator "/" swapped in for perl package separators "::" 
+         
          (setq candidate-alist (perlnow-list-directory-as-alist file-system-path fragment-pat))
          (setq completion-fodder fragment)
-         (setq suggested-completion (try-completion completion-fodder candidate-alist))
+         (setq returned (try-completion completion-fodder candidate-alist))
 
-         (if (eq suggested-completion nil)
-             (setq suggested-completion "")) 
+         (if (string-match "::" perlish-path) 
+             (setq separator "::")
+           (setq separator "/"))
 
+         (cond ((eq returned nil)
+                (setq suggested-completion "")) 
+               ((eq returned t)
+                (setq suggested-completion (concat fragment separator)))
+               (t
+                 (setq suggested-completion returned)) )
+               
          (setq result (concat perlish-path suggested-completion))
 
          (if (string= result minibuffer-string) ; if there's no change from the input value, go into help
@@ -982,7 +1022,7 @@ defaults to using the module root of the current file buffer."
 ;;; a little buggy... every so often it gets confused and deletes 
 ;;; all or part of the string... but this is remarkably close.
 ;;; 
-;;; at the moment this is a clone of the above routine. 
+;;; at the moment this is a clone of an old version of "tabby" above.
 ;;; supposed to do something similar, but only complete up 
 ;;; to the next "word".  
   (interactive)
@@ -1054,7 +1094,7 @@ an alist of the file names that match the given pattern, *and*
 which also pass the \[perlnow-interesting-file-name-p]
 test. These are simple file names not including the path, and
 the values associated with them are sequential numbers"
-   (let ( 
+   (let* ( 
           match-alist
           ; directory-files directory &optional full-name match-regexp nosort
           (directory-full-name nil)
