@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.110 2004/02/18 07:54:19 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.111 2004/02/18 08:45:41 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -44,11 +44,11 @@ Check <http://www.grin.net/~mirthless/perlnow/> for the newest.")
 (defvar perlnow-documentation t 
  "The introductary documentation to the perlnow.el package.
 Also see the documentation for:
-  `perlnow-documentation-installation'
-  `perlnow-documentation-terminology'
-  `perlnow-documentation-template-expansions'
-  `perlnow-documentation-tutorial'
-  `perlnow-documentation-test-file-strategies'
+`perlnow-documentation-installation'
+`perlnow-documentation-terminology'
+`perlnow-documentation-template-expansions'
+`perlnow-documentation-tutorial'
+`perlnow-documentation-test-file-strategies'
  
 This package is intended to speed development of perl code,
 largely by making it easier to jump into coding when an idea
@@ -70,66 +70,68 @@ should be installed.
 Primarily, perlnow.el provides the following interactive 
 functions: 
  
-\\[perlnow-script] - for creation of new perl scripts. 
-          If currently viewing some perl module code or  
-          a man page for a perl module, this begins the 
-          script with a few lines to use the module. 
+\\[perlnow-script] - for creation of new perl scripts.  If
+currently viewing some perl module code or a man page for a
+perl module, this begins the script with a few lines to use
+the module.
 
-\\[perlnow-script-simple] - an older, not quite deprecated form 
-          of \\[perlnow-script] that has the virtue of not needing 
-          template.el to operate. 
+\\[perlnow-script-simple] - an older, not quite deprecated
+form of \\[perlnow-script] that has the virtue of not
+needing template.el to operate.
 
-\\[perlnow-module] - for creation of new modules.  Asks for the 
-          location and name of the new module in a single prompt, 
-          using a hybrid form:  \"/usr/lib/perl/Some::Module\"
+\\[perlnow-module] - for creation of new modules.  Asks for
+the location and name of the new module in a single prompt,
+using a hybrid form: \"/usr/lib/perl/Some::Module\"
 
-\\[perlnow-h2xs] - runs the h2xs command, to begin working on a 
-           new module for distribution, such as via CPAN. 
+\\[perlnow-h2xs] - runs the h2xs command, to begin working
+on a new module for distribution, such as via CPAN.
 
-\\[perlnow-run-check] - does a perl syntax check on the current 
-           buffer, displaying error messages and warnings in 
-           the standard emacs style, so that the next-error 
-           command, usually bound to \"C-x \`\" \(control-x back-apostrophe\) 
-           will skip you to the location of the problem. 
- 
-\\[perlnow-run] - like the above, except that it actually tries to 
-           run the code, prompting the user for a run string 
-           it if it has not been defined yet. 
- 
-\\[perlnow-set-run-string] - Allows the user to manually change 
-           the run-string used by perlnow-run. 
+\\[perlnow-run-check] - does a perl syntax check on the
+current buffer, displaying error messages and warnings in
+the standard emacs style, so that the next-error command,
+usually bound to \"C-x \`\" \(control-x back-apostrophe\)
+will skip you to the location of the problem.
+
+\\[perlnow-run] - like the above, except that it actually
+tries to run the code, prompting the user for a run string
+it if it has not been defined yet.
+
+\\[perlnow-set-run-string] - Allows the user to manually
+change the run-string used by perlnow-run.
 
 \\[perlnow-perldb] - runs the perl debugger using the above run string.
 
-Here's a list of the important functions that require template.el: 
-   \\[perlnow-script]
-   \\[perlnow-module]
-   \\[perlnow-module-two-questions]
+A list of the important functions that require template.el: 
+\\[perlnow-script]
+\\[perlnow-module]
+\\[perlnow-module-two-questions]
  
 Many useful functions here don't need template.el.
 Briefly these are: 
-   \\[perlnow-run-check]
-   \\[perlnow-run]
-   \\[perlnow-set-run-string]
-   \\[perlnow-h2xs]
-   \\[perlnow-script-simple] \(older alternate to \\[perlnow-script]\)
-   \\[perlnow-perlify-this-buffer-simple] \(an even older alternate\)
-")
+\\[perlnow-run-check]
+\\[perlnow-run]
+\\[perlnow-set-run-string]
+\\[perlnow-h2xs]
+\\[perlnow-script-simple] \(older alternate to \\[perlnow-script]\)
+\\[perlnow-perlify-this-buffer-simple] \(an even older alternate\)")
 
 (defvar perlnow-documentation-installation t
   "Instructions on installation of the perlnow package.
 
 Put the perlnow.el file somewhere that's included in your `load-path'.
 
-Ditto for the template.el file if at all possible, because
+Also install template.el if at all possible, because
 many \(but not all\) features of this package depend on
-having template.el installed.
+template.el.  The latest version can be found at:
+
+   http://sourceforge.net/project/showfiles.php?group_id=47369
 
 In addition, you'll need some custom perl-oriented
 template.el templates that come with perlnow.el.  Most
 likely these templates should go in your ~/.templates.
 
 Add something like the following to your ~/.emacs file:
+
    \(require 'template\)
    \(template-initialize\)
    \(require 'perlnow\)
@@ -150,7 +152,7 @@ Add something like the following to your ~/.emacs file:
 
 Some suggestions on key assignments: 
 
-Here I'm suggesting the odd prefix \"control-c =\", simply
+Here I'm using the odd prefix \"control-c =\", simply
 because while the perlnow.el package is not a minor-mode, it
 has some aspects in common with them \(and maybe it's on
 it's way to becoming one\).  The C-c <punctuation> bindings
@@ -615,6 +617,59 @@ a set of \"create test file\" commands, which will require that the user
 define a policy that dictates where test files should go.  See \"test 
 policy\" in `perlnow-documentation-terminology'.")
 
+(defvar perlnow-documentation-unashamed-deviancy t 
+  "There are a number of areas where I'm aware of deviating from 
+standard andf/or recommended practice.  In a vain attempt 
+at forestalling criticism, I'm going to list them: 
+
+On variables such as `perlnow-script-run-string', I've 
+used \\[make-variable-buffer-local] in preference to the 
+recommended \\[make-local-variable].  I personally always 
+want these variables to be buffer local, and I have trouble 
+thinking of a reason that the user would want them otherwise.
+It's much more convienient to use make-variable-buffer-local
+right after they're defined, and to not have to worry about it 
+later.
+
+In minibuffer input, I typically define an \"initial\"
+string rather than a \"default\", because an initial string
+is easily and obviously editable.  It's a good point that 
+the newer minibuffer history features get you much of the 
+same functionality, but they're not terribly obvious (personally, 
+I've only just realized that they were there, and I've been 
+an emacs user for quite a long time).  The claim that 
+defaults are better than initial values because they're less 
+\"intrusive\" strikes me as a relatively abtruse issue, 
+in comparsion.
+
+It would probably be better if perlnow were a global minor-mode 
+with a set of built-in keymappings, but for now I've decided to 
+punt, and just instruct the user to add them to their global 
+key map in their .emacs file.  \(Whenever I research this issue, 
+my eyes begin to glaze over...\).
+
+Similarly, rather than master the intricacies of texinfo, I'm 
+copping out and entering documentation as variable docstrings 
+such as this.  I picked up this idea from looking at IZ's 
+cperl-mode, and I expect it appeals to me for the same reason 
+it appeals to him: we're perl programmers, and we're used to 
+\"pod\".
+
+I've adopted the practice of inserting horizontal rules
+between my function definitions (as suggested in a style
+guide written by the tinytools folks), because this makes it
+possible to use white space between chunks of code within
+the defuns without confusing things.  My comment style remains 
+strongly influenced by perl culture \(elisp people seem to think 
+it's possible to write \"self-documenting\" code...\). 
+
+Oh, and one last set of issues: for now I'm completely
+ignoring the newer emacs features for menubars and
+customization, because I don't know anything about them.  
+I never use them.  I'm a \(menu-bar-mode -1\) kind-of guy.
+Not to mention: \(scroll-bar-mode -1\) and \(tool-bar-mode -1\).")
+
+
 
 
 ;;;;##########################################################################
@@ -764,23 +819,17 @@ this writing, the latest is 5.8.2")
       (cons 
       '("MINIMUM_PERL_VERSON" (insert perlnow-minimum-perl-version))
       template-expansion-alist))
-
 ;;; DEBUG note: eval this to erase effects of the above two settings:
 ;;; (setq template-expansion-alist 'nil)
 
-;;; TODO DONTFORGET 
-;;; Could add remarks like the following to a 
-;;;   perldoc-documentation-unashamed-deviancy
-;;; (also talk about initial vs default there)
-;;; Might be worth mentioning the not-quite a minor-mode issue there.
 ;;;----------------------------------------------------------
 ;;; I am following my instinct and using make-variable-buffer-local 
 ;;; to force the following to always be buffer-local, despite the
-;;; admonition in the emacs lisp ref.  My reasoning: (1) this makes 
-;;; the code a little simpler (I don't want to have to remember to 
-;;; use make-local-variable in different places); (2) I can't think 
-;;; of a case where the user would be annoyed at me depriving them 
-;;; of this choice. 
+;;; admonition in the emacs lisp ref.  
+;;; (1) this makes the code a little simpler (I don't want to have 
+;;; to remember to use make-local-variable in different places); 
+;;; (2) I can't think of a case where the user would be annoyed at 
+;;; me depriving them of this choice. 
 
 (defvar perlnow-script-run-string nil 
    "The run string for perl scripts, used by \\[perlnow-run]. 
@@ -1611,8 +1660,8 @@ schemes for your test files: `perlnow-tutorial-test-file-strategies'."
 (defun perlnow-guess-script-run-string ()
   "Returns a good guess for `perlnow-script-run-string'."
 ;;# TODO DONTFORGET
-;;# check for hash bang? 
-;;#   Pass through at least *some* elements of hash-bang, e.g. -T
+;;# check for hash bang:
+;;#   Pass through at least *some* elements of hash-bang, e.g. -T (why not all?)
 ;;# check buffer-file-name, if extension .t
 ;;#   If a .t is it in an h2xs structure?  "make test"
 ;;#   Otherwise: (format "perl \"-MExtUtils::Command::MM\" -e \"test_harness(1, %s)\"" testfile)
@@ -2145,11 +2194,11 @@ and module name, which are returned as a two-element list."
 Takes a bare filename (sans path) as the STRING 
 argument and returns t if it doesn't match the list of
 uninteresting filenames patterns, otherwise nil."
-;; TODO DONTFORGET
-;; Don't just silently use completion-ignored-extensions or indeed 
-;; anything hardcoded in this function. Break it out as a defvar  
-;; "perlnow-interesting-file-name-pat" or something.
-;; Let the user define what's interesting. 
+;;; TODO
+;;; Shouldn't silently use completion-ignored-extensions.
+;;; Break it out as a defvar
+;;; "perlnow-interesting-file-name-pat" or something.  
+;;; Let the user define what's interesting.
   (let ( 
          (ignore-pat  
            (concat "\\("     
@@ -2272,7 +2321,7 @@ It does three things:
 ;;; These are just quick hacks.  (I expect that before I
 ;;; finished a more general set of tools I'd discover that
 ;;; someone else has written them already.)
-;;; TODO check that.
+;;; 
 ;;; Consider spinning off a general package, that extracts help strings
 ;;; and converts it into (a) html (b) texinfo
 ;;; In absence of my "symbol-list", could generate one following the 
