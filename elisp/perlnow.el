@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.50 2004/02/11 02:58:40 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.51 2004/02/11 03:24:09 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -917,21 +917,20 @@ defaults to using the module root of the current file buffer."
 ;;; time to switch to :: once you've entered a module-root.
 ;;; Sounds cool, but, like: later.
 
-;;; BOOKMARK
-
+;;;----------------------------------------------------------
 (defun perlnow-read-minibuffer-complete ()
-  "codename: new tabby\n
-Does automatic completion of up to an entire directory or file name if possible. 
-Used in reading in the name of a perl module name \(which need not 
-exist already\), where valid name separators are \(\"/\" or \"::\"\).\n
+  "Does automatic completion of up to an entire directory or file name 
+if possible. Used in reading in path and name of a perl module \(which 
+need not exist already\), where valid name separators are \(\"/\" or \"::\"\).\n
 Makes no attempt at \"aggressive\" completion past a file-system 
 boundary Not intended for non-interactive use."
+;;; codename: new tabby
   (interactive)
   (let ((restrict-to-word-completion nil))
         (perlnow-read-minibuffer-workhorse restrict-to-word-completion)
     ))
 
-
+;;;----------------------------------------------------------
 (defun perlnow-read-minibuffer-complete-word ()
   "codename: new spacey\n
 Does automatic completion only up to the end of the next \"word\", 
@@ -944,21 +943,19 @@ Not intended for non-interactive use."
     (perlnow-read-minibuffer-workhorse restrict-to-word-completion)
   ))
 
-
+;;;----------------------------------------------------------
 (defun perlnow-read-minibuffer-workhorse (restrict-to-word-completion)
-  "codename: workhorse\n
-Does most of the actual work of auto-completion when reading 
+  "Does most of the actual work of auto-completion when reading 
 reading in the name of a perl module name \(which need not 
 exist already\), where valid name separators are \(\"/\" or \"::\"\).
 Takes a single logical argument that controls whether whole name 
 or single word completion will be used. "
-
+;; codename: workhorse
+;;;
 ;;; TODO 
 ;;; I'm hardcoding "/" as the "file system" separator 
 ;;; which means that this code will need to be fixed to get it 
 ;;; to work on a non unix-like system.
-
-;;;  (interactive)
   (let* ( ; empty declarations:
          candidate-alist suggested-completion
          field-start 
@@ -1025,24 +1022,32 @@ or single word completion will be used. "
                (string-match "\\(^\\w*\\)\\(\\W\\|$\\)" new-portion)
                (setq new-portion-first-word
                      (match-string 1 new-portion))
-               (setq word-separator ; save next non-word character as a "separator" 
+               (setq word-separator ; save next non-word character: the "word-separator"
                      (match-string 2 new-portion))
 
-                ;When new-portion-first-word is empty, we know 
-                ;that what's next in line is a non-word character:
-                ;so we append the non-word separator
+                ;When new-portion-first-word is empty, we're at a word-separator
                (if (string= new-portion-first-word "")
                    (setq new-portion word-separator)
                  (setq new-portion new-portion-first-word))))
-
-;;;      (delete-region (+ 1 field-start) (point-max)) ; blank minibuffer 
-;;;      (insert result) 
          (insert new-portion)
          ))
 
+;;; BOOKMARK
 
 (defun perlnow-read-minibuffer-completion-help ()
-  "huh"
+   "The help command that displays a listing of available possible 
+completions  when reading in the path and name to a perl module \(which 
+need not exist already\), where valid name separators are 
+\(\"/\" or \"::\"\).\n
+Most likely this will be called by \[perlnow-read-minibuffer-complete-word] 
+and \[perlnow-read-minibuffer-complete] \(at least indirectly, through 
+\[perlnow-read-minibuffer-workhorse])\), though it's also expected to 
+be bound to the \"?\" key during the minibuffer read."
+;;; codename: huh
+;;;
+;;; TODO
+;;;  fix that ? call out.  Add the other keybindings in spacey and tabby descriptions
+;;; 
   (interactive)
   (let* (
          (raw_string (buffer-string))
@@ -1060,9 +1065,8 @@ or single word completion will be used. "
             ; unix file system separator "/" swapped in for perl package separators "::" 
          (match-alist (perlnow-list-directory-as-alist file-system-path fragment-pat))
 ;;;         (file-list (mapcar '(lambda(pair) (car pair)) match-alist))
-           ;;; could try file-list in place of the all-completions call. (stringp: NG?)
+           ;;; could try file-list in place of the all-completions call. (yields stringp: NG?)
         )
-
    (with-output-to-temp-buffer "*Completions*"
      (display-completion-list
       (all-completions fragment match-alist)
@@ -1074,7 +1078,7 @@ or single word completion will be used. "
 an alist of the file names that match the given pattern, *and*
 which also pass the \[perlnow-interesting-file-name-p]
 test. These are simple file names not including the path, and
-the values associated with them are sequential numbers"
+the values associated with them in the alist are sequential numbers"
 ;;; Want to mutate this into a perlnow-list-directories-and-modules-as-alist
 ;;; Do *two* directory-files, one matching only "\\.pm$" pattern, 
 ;;; Another that gets filtered through file-directory-p, then 
@@ -1082,13 +1086,13 @@ the values associated with them are sequential numbers"
 ;;; For extra credit, strip the .pm on the files. 
 
 ;;; TODO 
-;;; Consider restricting matches to directories and *.pm names?
-;;; Sounds very good, but would need to roll your own directory list code (I think)
-;;; Perhaps combine with a roll-your-own "try-completions"? 
+;;; Restricted matches to directories and *.pm names?
+;;; Need to roll your own directory list code (I think)
+
+;;; Perhaps (but probably not) combine this with a roll-your-own "try-completions".
 
 ;;; TODO 
-;;; Possibly help should not display ".pm" on module names.  Or possibly not.
-;;; Still not fixed, and this is not real elegant, I must say.
+;;; Help should not display ".pm" on module names.  
 
    (let* ( 
           match-alist
@@ -1109,50 +1113,36 @@ the values associated with them are sequential numbers"
   (setq match-alist (reverse match-alist))  ;; maybe this isn't needed, but cargo cult programming is fun
   ))
 
-;;; TO NOTE THE OBVIOUS:
-;;; Sometimes you really need to do this, and sometimes you don't:
-;;;         (setq full-file (concat path file))
-;;; E.g. when matching against a "file name" you really need to know 
-;;;      if it includes the path, or else "^" will never do what you expect.
-
 
 (defun perlnow-recursive-list-directory-as-alist (path pattern)
   "Gets a recursive directory listing from the given path, and returns an alist of the items 
 that match the given pattern, and which also pass the \[perlnow-interesting-file-name-p] 
 test. These are full file names including the path, and the values 
 associated with them are sequential numbers"
+;;; Giving up on this: NOT USED
    (let ( file-list
           full-file
           match-alist
           find-command
           raw-listing
           (i 1) )  ; counter used to build alist with numeric value
-
 ;;; Getting a recursive file-list
 ;;; Note this automatically applies "pattern", how about the "interesting"
 ;;; criteria?  Combine it with the given pattern?  Eh, screw it, do it later.
 ;;; ((well... you could put it in the chain as a grep filter))
-
      (setq find-command
            (concat 
              "find " path " -name '" (shell-quote-argument fragment) "*' -print" " 2>/dev/null "))
-
-;;;     (message "find-command %s" find-command) ; DEBUG only DELETE
      (setq raw-listing
            (shell-command-to-string find-command))
-            
      (setq file-list
            (split-string raw-listing "[\n\r]+"))
-
-;;;     (message "file-list: %s" file-list); DEBUG only DELETE
-     
      (dolist (full-file file-list)
        (if (perlnow-interesting-file-name-p full-file)
        (progn
          (setq match-alist (cons (cons full-file i) match-alist)) 
          (setq i (+ i 1))
          )))
-
   ; Reverse the order of the match-alist
   (setq match-alist (reverse match-alist))  ;; *might* not be needed. 
   ))
@@ -1175,6 +1165,9 @@ associated with them are sequential numbers"
 
 (defun readem ()
   "and weep, most likely"
+;;; TODO 
+;;; Getting near time to export this technique to perlnow-get-module-name-whatchamacallit
+;;; or whatever 
   (interactive)
   (let (
         (init   nil) ; 
@@ -1188,7 +1181,6 @@ associated with them are sequential numbers"
   (setq result
         (read-from-minibuffer "Give it to me: " 
                               init keymap read hist def iim))
-
   (message "result: %s" result)
    ))
 
@@ -1200,6 +1192,8 @@ suitable for tranformation into an emacs regexp, namely
 \"\(\tset\|\techo\)\".  Note this leaves an escape like 
  \"\t\" alone (it becomes a literal tab internally)."
 ;;; TODO  NOT FINISHED
+;;; There are other things like \w and \W that also need the 
+;;; double escape.
   (let ((specious-char-class "[(|)]"))
         ) 
   ;;; want to match for all values of specious-char-class, 
