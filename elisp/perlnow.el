@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.78 2004/02/14 20:33:42 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.79 2004/02/14 21:13:07 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -117,11 +117,15 @@ and the older alternate to \[perlnow-script], \[perlnow-script-simple].")
   "Instructions on installation of the perlnow package. 
 Put the perlnow.el file into your `load-path' and something like 
 the following into your ~/.emacs:
+  \(require 'template\)
+  \(template-initialize\)
   \(require 'perlnow\)
   \(global-set-key  \"\M-ps\" 'perlnow-script\)
   \(global-set-key  \"\M-pm\" 'perlnow-module\)
   \(setq `perlnow-script-location' \(substitute-in-file-name \"$HOME/bin\"\)\)
   \(setq `perlnow-module-root' \(substitute-in-file-name \"$HOME/lib\"\)\)")
+;;; I see that I'm doing a (load-library "perlnow") 
+;;; rather than a require.  Doesn't make a diff, right?
 
 (defvar perlnow-documentation-terminology t 
 "Definitions of some terms used here: 
@@ -646,12 +650,14 @@ assumes it's a perl script."
      (setq perlnow-run-string perlnow-script-run-string))))
 
 ;;;----------------------------------------------------------
-(defun perlnow-run (&optional runstring) ;;; is the optional okay there?
+(defun perlnow-run (runstring) 
   "Run the perl code in this file buffer.
 This uses `perlnow-run-string' which may have been set by using 
 \[perlnow-set-run-string]. If `perlnow-run-string' is nil, 
-\[perlnow-set-run-string] is called automatically.  May be called with 
-a different RUNSTRING that overrides that when used from a program."
+\[perlnow-set-run-string] is called automatically.\n
+When used from a program it may be called with a different RUNSTRING 
+that overrides the `perlnow-run-string' \(though it would make more 
+sense to just run the /[compile] command yourself\)."
   (interactive
   (unless perlnow-run-string
     (perlnow-set-run-string))
