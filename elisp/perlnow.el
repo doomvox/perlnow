@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.126 2004/02/19 17:20:34 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.127 2004/02/19 17:24:04 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -701,17 +701,14 @@ Not to mention: \(scroll-bar-mode -1\) and \(tool-bar-mode -1\).")
 ; exist and maybe create them otherwise. 
 ; Or see if they exist, and then use them, if not, silently fall back on HOME?
 
-(defcustom perlnow-script-location (getenv "HOME")
+(defcustom perlnow-script-location (file-name-as-directory (getenv "HOME"))
   "This is the default location to stash new perl scripts.")
-(setq perlnow-script-location (file-name-as-directory perlnow-script-location)) 
 
-(defcustom perlnow-module-location (getenv "HOME")
+(defcustom perlnow-module-location (file-name-as-directory (getenv "HOME"))  
   "This is the default location to stash new perl modules.")
-(setq perlnow-module-location (file-name-as-directory perlnow-module-location))
 
-(defcustom perlnow-h2xs-location perlnow-module-location 
+(defcustom perlnow-h2xs-location (file-name-as-directory perlnow-module-location)
   "This is the default location to do h2xs development of CPAN bound modules.")
-(setq perlnow-h2xs-location (file-name-as-directory perlnow-h2xs-location))
 
 (defcustom perlnow-executable-setting ?\110
   "The user-group-all permissions used to make a script executable.")
@@ -739,6 +736,7 @@ Defines the PERL_MODULE_NAME expansion.")
 ;;; portability to other systems (e.g. windows). Even if this works 
 ;;; though, there are still other places dependencies have crept in, 
 ;;; e.g. patterns that use [^/].
+;;; (Um... why not defconstant?)
 
 ;;;----------------------------------------------------------
 ;; Defining additional "expansions" for use in template.el templates.
