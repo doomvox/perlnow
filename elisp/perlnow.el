@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.159 2004/02/26 20:16:29 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.160 2004/02/26 20:21:24 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -696,12 +696,20 @@ is designed to work with other modes, and it needs to have
 a default keymap, so that would seem to imply it should 
 be a minor-mode.  
 
-But while *some* perlnow commands are only needed inside of a perl code 
-buffer \(e.g. \\[perlnow-run] and \\[perlnow-run-check]\) and could 
-reasonably be kept local to your perl-mode \(minor complication: there 
-are two of them\).  So that might imply it should be a global minor-mode, 
-\(or perhaps a combination of the two, a global and a local minor-mode, 
-in one .el package?\).  
+It has to make some assignments to the global keymap,
+because the main purpose of the package is to make it easy
+to jump into perl programming whatever the current mode
+happens to be.  So that might imply it should be a global
+minor-mode.
+
+But some perlnow commands are only needed inside of a perl code
+buffer \(e.g. \\[perlnow-run] and \\[perlnow-run-check]\)
+and could reasonably be kept local to your perl-mode \(minor
+complication: there are two of them\).
+
+So perhaps perlnow.el should be a combination of the two, a
+global and a local minor-mode, \(implemented in one .el
+package?\).
 
 Further, it's possible that I might add some other commands that should 
 be local to still *other* modes, for example a perlnow-script-from-dired
