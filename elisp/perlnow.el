@@ -5,9 +5,9 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.210 2004/11/12 07:52:09 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.211 2005/03/29 23:09:13 doom Exp root $
 ;; Keywords:
-;; X-URL: http://www.grin.net/~mirthless/perlnow/
+;; X-URL: http://obsidianrook.com/perlnow/
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -39,7 +39,7 @@
 
 (defconst perlnow-version "0.4"
   "The version number of the installed perlnow.el package.
-Check <http://www.grin.net/~mirthless/perlnow/> for the latest.")
+Check <http://obsidianrook.com/perlnow/> for the latest.")
 
 
 (defvar perlnow-documentation t
@@ -146,7 +146,7 @@ likely these templates should go in your ~/.templates,
 the perlnow.el file without the associated templates,
 you can look for copies of them here:
 
-   http://www.grin.net/~mirthless/perlnow/
+   http://obsidianrook.com/perlnow/
 
 Add something like the following to your ~/.emacs file:
 
@@ -2922,7 +2922,7 @@ current file buffer.  Used by \\[perlnow-do-script-from-module]."
 ;;; with a customized keymap that totally transforms it's behavior.
 ;;;
 ;;; For a discussion of the following code, see this article:
-;;; http://www.grin.net/~mirthles/devnotes/elisp-prompt-new-file-part3.html
+;;; http://obsidianrook.com/devnotes/elisp-prompt-new-file-part3.html
 ;;;
 ;;;==========================================================
 
