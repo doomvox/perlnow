@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.23 2004/02/06 21:34:07 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.24 2004/02/06 21:35:16 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1164,7 +1164,7 @@ will be assumed and need not be entered \(though it may be\).
 
    ; Filter that through the "predicate", *if* supplied (note, will leave gaps in the value numbers...)
    (unless (eq predicate-function-symbol nil) ; gotta be a better way. Try just: (unless predicate-function-symbol
-       (setq file-list (grep-list predicate-function-symbol match-alist)))
+       (setq match-alist (grep-list predicate-function-symbol match-alist)))
 
    ; Return the list of things that match if desired, if not just one of them
    (cond 
