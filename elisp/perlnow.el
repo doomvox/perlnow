@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.85 2004/02/15 09:13:14 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.86 2004/02/15 09:42:05 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -108,27 +108,31 @@ This is a list of the functions that require template.el:
    \[perlnow-module]
    \[perlnow-module-two-questions]
  
-Many functions here do *not* need template.el to function. 
-Briefly these are: the h2xs creation code, the code that guesses run-strings, 
-the code to let you use the run-strings, including the perl-check, 
-and the older alternate to \[perlnow-script], \[perlnow-script-simple].")
+Many functions here do *not* need template.el to function.
+Briefly these are: the h2xs creation code, the code that
+guesses run-strings, the code to let you use the
+run-strings, including the perl-check, and the older
+alternate to \[perlnow-script], \[perlnow-script-simple].")
 
 (defvar perlnow-documentation-installation t
   "Instructions on installation of the perlnow package.
 Some \(but not all\) features of this package depend on
 having template.el installed \(i.e. placed in your
-`load-path'\). In addition, you'll need some custom perl-oriented
-template.el templates that come with perlnow.el.  Most likely these 
-templates should go in ~/.templates.\n
-Put the perlnow.el file into your `load-path' and add something 
-like the following into your ~/.emacs:
+`load-path'\). In addition, you'll need some custom
+perl-oriented template.el templates that come with
+perlnow.el.  Most likely these templates should go in
+~/.templates.\n Put the perlnow.el file into your
+`load-path' and add something like the following into
+your ~/.emacs:
   \(require 'template\)
   \(template-initialize\)
   \(require 'perlnow\)
   \(global-set-key  \"\M-ps\" 'perlnow-script\)
   \(global-set-key  \"\M-pm\" 'perlnow-module\)
-  \(setq `perlnow-script-location' \(substitute-in-file-name \"$HOME/bin\"\)\)
-  \(setq `perlnow-module-root' \(substitute-in-file-name \"$HOME/lib\"\)\)\n
+  \(setq `perlnow-script-location' 
+      \(substitute-in-file-name \"$HOME/bin\"\)\)
+  \(setq `perlnow-module-root' 
+      \(substitute-in-file-name \"$HOME/lib\"\)\)\n
 Some suggestions on key assignments: 
 XXXX  TODO DONTFORGET  XXX  expand above.
 ")
@@ -246,47 +250,42 @@ test policy: the information necessary to know where to put
 (setq perlnow-module-root (file-name-as-directory perlnow-module-root))
 
 (defvar perlnow-executable-setting ?\110
-  "This is the pattern of user-group-all permission settings used when 
-making a script executable.")
+  "The user-group-all permissions used to make a script executable.")
 
 (defvar perlnow-perl-script-template 
   (substitute-in-file-name "$HOME/.templates/TEMPLATE.perlnow-pl.tpl")
-"This is the template.el template that new perl scripts will 
-be created with.")
+"The template that new perl scripts will be created with.")
 (put 'perlnow-perl-script-template 'risky-local-variable t)
 
 (defvar perlnow-perl-module-template 
   (substitute-in-file-name "$HOME/.templates/TEMPLATE.perlnow-pm.tpl")
-"This is the template.el template that new perl modules will 
-be created with." )
+"The template that new perl modules will be created with.")
 (put 'perlnow-perl-module-template  'risky-local-variable t)
 
 (defvar perlnow-perl-module-name nil
-  "This is used internally to pass the module name in the perl
-double-colon separated form to the template.el template for 
-new perl modules.")
+  "Used internally to pass the module name to the new module template.
+Defines the PERL_MODULE_NAME expansion.")
 
 (defvar perlnow-module-name-history nil
-"This records the minibuffer history for perl modules accessed by 
-this package.")
+"The minibuffer history for perl modules accessed by this package.")
 
 ;;;----------------------------------------------------------
 ;; Defining additional "expansions" for use in template.el templates.
 ;; 
 (defvar perlnow-documentation-template-expansions t
-  "The perlnow templates that use the template.el package  
-use some custom expansions defined here in perlnow code. 
-A template.el \"expansion\" is a place holder in the 
-template that gets replaced by something else when the 
-template is used.  For example, (>>>DATE<<<) will become 
-the current date. 
+  "The perlnow template.el templates use some custom
+expansions defined here in perlnow code.  A template.el
+\"expansion\" is a place holder in the template that
+gets replaced by something else when the template is
+used.  For example, (>>>DATE<<<) will become the
+current date.
 
 The perlnow custom expansions: 
 
-\(>>>PERLNOW_MODULE_NAME<<<\)
-becomes the perl module name \(in
-double-colon separated form\) when used by \[perlnow-module]
-function. 
+\(>>>PERL_MODULE_NAME<<<\)
+becomes the perl module name \(in double-colon
+separated form\) when used by \[perlnow-module]
+function.
 
 \(>>>MINIMUM_PERL_VERSON<<<\)
 The minimum perl version you usually support.  Gets used in 
@@ -295,9 +294,9 @@ Used by \[perlnow-module] to insert the value of
 `perlnow-minimum-perl-version'.
 
 \(>>>TAB<<<\)
-Experimental feature: should indent as though the tab key had been hit.
-I suspect that you need to insert (>>TAB<<<\) *after* the line of code
-and not before.
+Experimental feature: should indent as though the tab
+key had been hit.  I suspect that you need to insert
+(>>TAB<<<\) *after* the line of code and not before.
 
 \(>>>PNFS<<<\)
 stands for \"PerlNow Filename Spaces\" it should 
@@ -326,11 +325,11 @@ already be in that area.
 See `template-expansion-alist' for the current list of 
 defined expansions.")
 
-; Doing the actual definitions:
+; Now the actual definitions:
 
 (setq template-expansion-alist 
       (cons 
-      '("PERLNOW_MODULE_NAME" (insert perlnow-perl-module-name) )
+      '("PERL_MODULE_NAME" (insert perlnow-perl-module-name) )
       template-expansion-alist))
 
 (setq template-expansion-alist 
