@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.61 2004/02/12 01:38:32 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.62 2004/02/12 01:40:32 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1189,13 +1189,6 @@ and the values associated with them in the returned alist
 are sequential integers."
 ;;; And for extra credit it also strips the .pm on the file names
 ;;; Nope: I can't do that, it messes up "workhorse" as written. 
-;;; TODO
-;;; Completion has trouble understanding when it's done, now: 
-;;; wants to append "/" or ":" after the Blah[.pm] name.
-;;; TODO 
-;;; Getting single ":" added, that *don't* get doubled...
-;;; Then you get file not found, because the ":" won't get 
-;;; internall transformed to "/".
    (let* ( 
           match-alist
           ; directory-files directory &optional full-name match-regexp nosort
