@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.178 2004/04/19 06:33:49 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.179 2004/04/19 20:57:23 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -100,6 +100,16 @@ change the run-string used by perlnow-run.
 
 \\[perlnow-perldb] - runs the perl debugger using the above run string.
 
+
+\\[perlnow-alt-run] - works just like \\[perlnow-run]
+except that it uses the \"alt-run-string\" rather than 
+the \"run-string\".
+
+\\[perlnow-set-alt-run-string] - Allows the user to manually
+change the alt-run-string used by perlnow-alt-run.
+
+
+
 A list of the important functions that require template.el: 
 \\[perlnow-script]
 \\[perlnow-module]
@@ -144,10 +154,10 @@ Add something like the following to your ~/.emacs file:
    \(global-set-key \"\\C-c'h\" 'perlnow-h2xs\)
    \(global-set-key \"\\C-c'c\" 'perlnow-run-check\)
    \(global-set-key \"\\C-c'r\" 'perlnow-run\)
-   \(global-set-key \"\\C-c't\" 'perlnow-test\)
+   \(global-set-key \"\\C-c'4\" 'perlnow-alt-run\)
    \(global-set-key \"\\C-c'd\" 'perlnow-perldb\)
    \(global-set-key \"\\C-c'R\" 'perlnow-set-run-string\)
-   \(global-set-key \"\\C-c'T\" 'perlnow-set-test-string\)
+   \(global-set-key \"\\C-c'$\" 'perlnow-set-alt-run-string\)
 
    \(global-set-key \"\\C-c'b\" 'perlnow-perlify-this-buffer-simple\)
   \(setq `perlnow-script-location' 
@@ -941,37 +951,37 @@ See `perlnow-script-run-string' and `perlnow-module-run-string' instead.")
 (put 'perlnow-run-string  'risky-local-variable t)
 (make-variable-buffer-local 'perlnow-run-string) 
 
-;;; Now implementing the "test-string" concept: this is nearly 
-;;; identical to the "run-string" concept; having both allows for
+;;; Now implementing the "alt-run-string" in addition to 
+;;; the "run-string": having both allows for
 ;;; having two separate concurrently defined ways of running the 
-;;; the perl code in the current buffer.  Heuristics for guessing 
-;;; what string to use remain identical, though they may diverge 
-;;; somewhat later. 
-(defvar perlnow-script-test-string nil 
-   "The test string for perl scripts, used by \\[perlnow-test]. 
+;;; the perl code in the current buffer.  The heuristics for 
+;;; guessing what string to use remain identical.
+
+(defvar perlnow-script-alt-run-string nil 
+   "The alternative run string for perl scripts, used by \\[perlnow-alt-run]. 
 Leave this set to nil unless you want to override the heuristics 
-used by \\[perlnow-set-test-string] to determine the way to test 
+used by \\[perlnow-set-alt-run-string] to determine the way to test 
 the current script.  This is a buffer local variable, i.e. it 
 may be set differently for different files.")
-(put 'perlnow-script-test-string  'risky-local-variable t)
-(make-variable-buffer-local 'perlnow-script-test-string)
+(put 'perlnow-script-alt-run-string  'risky-local-variable t)
+(make-variable-buffer-local 'perlnow-script-alt-run-string)
 
-(defvar perlnow-module-test-string nil 
-   "The test string for perl modules, used by \\[perlnow-test]. 
+(defvar perlnow-module-alt-run-string nil 
+   "The alternative run string for perl modules, used by \\[perlnow-alt-run]. 
 Leave this set to nil unless you want to override the heuristics 
-used by \\[perlnow-set-test-string] to determine the way to test 
+used by \\[perlnow-set-alt-run-string] to determine the way to test 
 the current script.  This is a buffer local variable, i.e. it 
 may be set differently for different files.")
-(put 'perlnow-module-test-string  'risky-local-variable t)
-(make-variable-buffer-local 'perlnow-module-test-string)
+(put 'perlnow-module-alt-run-string  'risky-local-variable t)
+(make-variable-buffer-local 'perlnow-module-alt-run-string)
 
-(defvar perlnow-test-string nil
-  "Tells \\[perlnow-test] how to run the code in a particular file buffer. 
-This is a buffer local variable which is set by  \\[perlnow-script-test-string], 
+(defvar perlnow-alt-run-string nil
+  "Tells \\[perlnow-alt-run] how to run the code in a particular file buffer. 
+This is a buffer local variable which is set by  \\[perlnow-script-alt-run-string], 
 and this should not typically be set by the user directly.
-See `perlnow-script-test-string' and `perlnow-module-test-string' instead.")
-(put 'perlnow-test-string  'risky-local-variable t)
-(make-variable-buffer-local 'perlnow-test-string)
+See `perlnow-script-alt-run-string' and `perlnow-module-alt-run-string' instead.")
+(put 'perlnow-alt-run-string  'risky-local-variable t)
+(make-variable-buffer-local 'perlnow-alt-run-string)
 
 (defcustom perlnow-test-path (list "." "../t" "./t")
    "List of places to look for test scripts (*.t).
@@ -1035,22 +1045,22 @@ The run string can always be changed later by running
   (compile runstring))
 
 ;;;----------------------------------------------------------
-(defun perlnow-test (teststring)
-  "Test the perl code in this file buffer.
-This uses an interractively set TESTSTRING determined 
-from `perlnow-test-string' which may have been set by using 
-\\[perlnow-set-test-string].  If `perlnow-test-string' is nil, 
-\\[perlnow-set-test-string] is called automatically.\n
-The test string can always be changed later by running 
-\\[perlnow-set-test-string] manually." 
+(defun perlnow-alt-run (altrunstring)
+  "Run the perl code in this file buffer.
+This uses an interractively set ALTRUNSTRING determined 
+from `perlnow-alt-run-string' which may have been set by using 
+\\[perlnow-set-alt-run-string].  If `perlnow-alt-run-string' is nil, 
+\\[perlnow-set-alt-run-string] is called automatically.\n
+The alt run string can always be changed later by running 
+\\[perlnow-set-alt-run-string] manually." 
   (interactive
    (let (input)
-   (if (eq perlnow-test-string nil)
-       (setq input (perlnow-set-test-string))
-     (setq input perlnow-test-string))
+   (if (eq perlnow-alt-run-string nil)
+       (setq input (perlnow-set-alt-run-string))
+     (setq input perlnow-alt-run-string))
    (list input)
    ))
-  (perlnow-run teststring)) ; Note: uses perlnow-run rather than running compile directly
+  (perlnow-run altrunstring)) ; Note: uses perlnow-run rather than running compile directly
 
 ;;;----------------------------------------------------------
 (defun perlnow-perldb (runstring) 
@@ -1126,23 +1136,24 @@ assumes it's a perl script."
      (setq perlnow-run-string perlnow-script-run-string))))
 
 ;;;----------------------------------------------------------
-;;; NOTE: currently this is a copy and paste of perlnow-set-run-string
-;;; with the word "run" changed to "test".  
-;;; Except that it uses the same old functions:
+;;; NOTE: currently perlnow-set-alt-run-string is a 
+;;; copy and paste of perlnow-set-run-string
+;;; with the word "run" changed to "alt-run".  
+;;; However, it uses the same old functions:
 ;;;    perlnow-guess-script-run-string
 ;;;    perlnow-guess-module-run-string
-;;; On the theory that there is no practical difference bettween 
-;;; a "test" string and a "run" string.  
+;;; There's no practical difference bettween the heuristics 
+;;; to guess a "alt-run" string and a "run" string.  
 
-(defun perlnow-set-test-string ()
-  "Prompt the user for a new test string for the current buffer.
-This sets the global variable `perlnow-test-string' that \\[perlnow-test]
-will use to test the code in future in the current buffer. 
-Frequently, the user will prefer to use \\[perlnow-test] and let it 
+(defun perlnow-set-alt-run-string ()
+  "Prompt the user for a new alternative run string for the current buffer.
+This sets the global variable `perlnow-alt-run-string' that \\[perlnow-alt-run]
+will use to run the code in future in the current buffer. 
+Frequently, the user will prefer to use \\[perlnow-alt-run] and let it 
 run this indirectly command if need be; however using this command 
-directly is necessary to change the test command string later.  \n
+directly is necessary to change the alt-run command string later.  \n
 From within a program, it's probably best to set some variables 
-directly, see `perlnow-script-test-string' and `perlnow-module-test-string'.\n
+directly, see `perlnow-script-alt-run-string' and `perlnow-module-alt-run-string'.\n
 
 This function uses \\\[perlnow-module-code-p] to see if the code looks like a
 module (i.e. does it have a package line), otherwise it 
@@ -1155,31 +1166,31 @@ assumes it's a perl script."
    (cond
    ((perlnow-module-code-p)
      ; set-up a decent default value
-     (unless perlnow-module-test-string 
+     (unless perlnow-module-alt-run-string 
        (progn
-         (setq perlnow-module-test-string 
+         (setq perlnow-module-alt-run-string 
                (perlnow-guess-module-run-string))))
-     ; ask user how to test this module (use as default next time)
-     (setq perlnow-module-test-string 
+     ; ask user the alternative way to run this module (use as default next time)
+     (setq perlnow-module-alt-run-string 
            (read-from-minibuffer 
-            "Set the test string for this module: " 
-            perlnow-module-test-string))
-     ; tell perlnow-test how to do it
-     (setq perlnow-test-string perlnow-module-test-string))
+            "Set the alternative run string for this module: " 
+            perlnow-module-alt-run-string))
+     ; tell perlnow-alt-run how to do it
+     (setq perlnow-alt-run-string perlnow-module-alt-run-string))
    (t  ;;  assume it's a script since it's not a module.
-     ; set-up intelligent default test string 
-     (unless perlnow-script-test-string 
+     ; set-up intelligent default alt run string 
+     (unless perlnow-script-alt-run-string 
        (progn
-         (setq perlnow-script-test-string 
+         (setq perlnow-script-alt-run-string 
                (perlnow-guess-script-run-string))
          ))
-     ; ask user how to test this script (use as default next time)
-     (setq perlnow-script-test-string 
+     ; ask user the alternative way to run this script (use as default next time)
+     (setq perlnow-script-alt-run-string 
            (read-from-minibuffer 
-            "Set the test string for this script: " 
-            perlnow-script-test-string))
-     ; tell perlnow-test to do it that way
-     (setq perlnow-test-string perlnow-script-test-string))))
+            "Set the alternative run string for this script: " 
+            perlnow-script-alt-run-string))
+     ; tell perlnow-alt-run to do it that way
+     (setq perlnow-alt-run-string perlnow-script-alt-run-string))))
 
 
 ;;;==========================================================
