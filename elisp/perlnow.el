@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.7 2004/01/28 19:54:46 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.8 2004/01/30 12:13:08 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -57,7 +57,7 @@
 ;            buffer, displaying error messages and warnings in  
 ;            the standard emacs style, so that the next-error 
 ;            command, usually bound to "C-x `" (control-x back-apostrophe)
- ;            will skip you to the location of the problem. 
+;            will skip you to the location of the problem. 
 
 ;; Put this file into your load-path and the following into your ~/.emacs:
 ;;   (require 'perlnow)
@@ -66,6 +66,26 @@
 ;;   (setq perlnow-script-location (substitute-in-file-name "$HOME/bin"))
 ;;   (setq perlnow-module-root (substitute-in-file-name "$HOME/lib"))
 ;; 
+
+;;; Definitions of some terms used: 
+;;; TODO - expand this
+;;; TODO - check perl definitions, e.g. precise distinction between package and module.
+;;; module-file-name - the file system's name for the module file, e.g. /usr/lib/perl/Double/Colon.pm
+;;; module-file-basename - name of the module file itself, sans extension: in the above example, "Colon"
+;;; module-location  - directory portion of module-file-name, e.g. /usr/lib/perl/Double/
+;;; module-name or package-name - perl's double colon separated name, e.g. "Double::Colon"
+;;; module-root - The place where perl's double-colon name space begins (e.g. /usr/lib/perl)
+;;;               The PERL5LIB environment variable is a list of different module-roots. 
+;;; staging-area - the directory created by the h2xs command for module development, 
+;;;                a "hyphenized" form of the module-name e.g. Double-Colon.
+;;;                Every staging-area contains a module-root called "lib".
+;;; h2xs-location - the place where you put your staging-areas (possibly /home/doom/dev ?)
+
+;;; Upcoming:
+;;; test-script   - The *.t file associated with the current module/script(?), usually 
+;;;                 something like ModuleName.t or possibly Staging-Area.t. (For a script, scriptname.t?)
+;;; test-location - place where the test script(s) are for a given module/script(?)
+;;; test-path     - search path to look for test files. Note, can include relative locations, e.g. "../t"
 
 ;;; Code:
 
@@ -391,19 +411,21 @@ package line near the top."
       (setq pee 'nil))
     pee)))
 
-;;; TODO - need an alternate (perhaps a replacement?) version of this that returns 
-;;; the module-name.  NEEDS TESTING BADLY
 (defun perlnow-get-module-name () 
   "Return the module name from the package line, or nil if there is none"
+;  (interactive) ; DEBUG only, DELETE
   (save-excursion 
-  (let ((package-line-pat "^[ \t]*package[ \t]*\\(.*\\)[ \t;]")  ;;; got to add (Mod::Name) to this pat
+  (let ((package-line-pat "^[ \t]*package[ \t]*\\(.*\\)[ \t;]") ;; captures "Module::Name"
         (comment-line-pat "^[ \t]*$\\|^[ \t]*#")
-        pee)
+         return)
     (goto-char (point-min))
     (while (looking-at comment-line-pat) (forward-line 1))
     (if (looking-at package-line-pat) 
-        (match-string 1)
-      (nil)))))
+        (setq return (match-string 1))
+      (setq return nil))
+    return
+;   (message "Ret: %s" return)  ; DEBUG only, DELETE
+   )))
 
 (defvar perlnow-script-run-string nil "Default run string for perl scripts")
 (defvar perlnow-module-run-string nil "Default run string for perl modules")
@@ -467,56 +489,165 @@ perlnow-module-run-string, as appropriate"
 ;;;==========================================================
 ;;; Experimental code can go here     BOOKMARK (note: trying reg-*)
 
+(defun perlnow-one-up (dir)
+  "Gets an absolute path to the location one above the given location"
+;  (interactive "Dgimme a dir: ") ; DEBUG only DELETE
+  (setq dir (perlnow-fixdir dir))
+  (let ((return
+         (concat "/" ; TODO - might be good to have a func to prepend slash only if not already there 
+                 (mapconcat 'identity 
+                            (butlast 
+                             (split-string dir "/") 
+                             1) 
+                            "/"))))
+    (setq return (perlnow-fixdir return))
+;    (message "ret: %s" return) ; DEBUG only DELETE
+    return))
+
+(defun perlnow-fixdir (dir)
+  "Does the many cool and groovy elispy things that are a
+good idea for conditioning directories for portability and 
+robustness.  I don't always know when these things are needed, 
+but now that I've got them all in this one, easy to use function, 
+I will just use it all the goddamn time, and all of my problems 
+will be a thing of the far distant extreme galactic past."
+  (let ((return
+  (convert-standard-filename
+   (file-name-as-directory
+    (expand-file-name dir)))))
+    return))
+
+(defun perlnow-expand-dots-relative-to (dot_means given_path)
+  "Given a directory path that leads with  \".\" or \"..\" 
+expand to an absolute path using the given dot_means as 
+the value for \".\"."
+;;; Note, this is limited to *leading* dot expressions, 
+;;; Can't handle weirder stuff like: "/home/doom/tmp/../bin"
+;  (interactive "sGivenpath: \nsDot expansion: "); DEBUG only DELETE
+  (let ((two-dot-pat "^\\.\\.")  
+        (one-dot-pat "^\\.")   ; must check two-dot-pat first or this could match there 
+        newpath  )
+   (setq dot_means (perlnow-fixdir dot_means))
+   (setq newpath
+         (replace-regexp-in-string two-dot-pat (perlnow-one-up dot_means) given_path))
+   ; because perlnow-one-up uses perlnow-fixdir, no need to call it, (or to append "/" here)
+   (setq newpath
+         (replace-regexp-in-string one-dot-pat dot_means newpath))
+   (setq newpath (perlnow-fixdir newpath))
+;   (message "newpath: %s" newpath) ; DEBUG only DELETE
+   newpath))
+
+(defun perlnow-lowest-level-directory-name (dir)
+  "Return the lowest level directory name from a given path, 
+e.g. Given: \"/usr/lib/perl/\" Returns: \"perl\" "
+;;;  (interactive "Dgimme a place: ") ; DEBUG only DELETE
+  (let* ( (levels (split-string dir "/"))
+          (return (nth (- (length levels) 1) levels)) )
+    return))
+
+
+(defvar perlnow-test-path (list "." "../t" "./t")
+"List of places to look for test scripts (*.t), typically these will be relative paths.")
+
 (defun perlnow-choose-module-run-string ()
-  "Returns a good guess for an appropriate perlnow-module-run-string, determined like so:
-\(1\) Looks up one level above the module-root, checks the name of
-    this location, if it's the hyphenized form of the module name, 
-    then that's the perl package staging-area. 
-    \(a\) If there's a Makefile in the staging-area then use \"make test\".
-    \(b\) If there's a Makefile.PL there, then do a \"perl Makefile.PL\" first. 
-\(2\) If there's a subdir named \"t\" one-level up from the module root, 
-    run any *.t files there as perl\n"
-  (interactive) ;;; maybe just for debugging.  DELETE
+  "Returns a good guess for an appropriate perlnow-module-run-string. 
+First looks for the Makefile \(or Makefile.PL\) of an h2xs set-up.
+Failing that it looks for a nearby test file which would be named
+New-Module.t or Module.t, if the module were named New::Module.
+It searches the paths in perlnow-test-path, which are relative 
+to \"here\", where \"here\" means either the module-file-location or 
+the module-root.  This allows for a number of reasonable 
+organizational schemes for test files; though relying on the current
+precedence of this search should be avoided \(future versions 
+may work slightly differently\)."
+;;; Document in more detail?  Maybe elsewhere? 
+;;; TODO - will also at some point want a "perlnow-jump-into-test-file-for-module".
+;;; o  Maybe this code should be revamped, want code that returns test file name?
+;;; o  Still another: would be perlnow-create-test-file-for-module which would need 
+;;; to read policy from somewhere, to know where to put it and what to call it. 
+  (interactive) ;;; DEBUG only DELETE
+  (unless (perlnow-module-p) 
+    (error "This buffer does not look like a perl module (no \"package\" line)."))
   (let* ( (module-name (perlnow-get-module-name))
-          (module-file-location (file-name-directory (buffer-file-name)))
-          (module-root (perlnow-get-module-root module-name module-file-location ))
-  
-;;; BOOKMARK ;;; 
+          (module-file-location 
+           (file-name-directory (buffer-file-name)))
+          (module-root 
+           (perlnow-get-module-root module-name module-file-location ))
+          (hyphenized-module-name 
+           (mapconcat 'identity (split-string module-name "::") "-"))
+          (module-file-basename 
+           (file-name-sans-extension (file-name-nondirectory (buffer-file-name))))
+          (test-file-check-list '( (concat (hyphenized-module-name) ".t")
+                                   (concat (module-file-basename) ".t")
+                                  ; ("1.t") ;;; current thought: just let h2xs Makefile handle this
+                                   ))
+          staging-area
+          maybe-staging-area
+          maybe-staging-area-name
+          testloc
+          test-search-list       
+          testfile
+          water                  ; use when going fishing
+          fish                   ; similar 
+          result                 ; the returned run string 
+          ) 
 
+    (setq result 
+          (catch 'COLD
+            (setq maybe-staging-area (perlnow-one-up module-root))
+            (setq maybe-staging-area-name (perlnow-lowest-level-directory-name maybe-staging-area))
+            (cond
+             ((string= maybe-staging-area-name hyphenized-module-name)
+              (setq staging-area maybe-staging-area) 
+              (cond 
+               ((file-regular-p (concat (perlnow-fixdir staging-area) "Makefile"))
+                (setq water "make test")
+                (throw 'COLD water))
+               ((file-regular-p (concat (perlnow-fixdir staging-area) "Makefile.PL"))
+                (setq water "perl Makefile.PL; make test")
+                (throw 'COLD water)
+                ))))
 
-         )))
-;;; Point (2) implies a *list* of shell commands to run, doesn't it? 
-;;; Have code do a listp on the "run-string" to see what it really is?
-;;; Could punt, and write it as an external file /tmp/New-Module-test-02383.sh
-;;; Or could punter and just drop point (2) for now.  Except, it could also 
-;;; be used on (2b)...
+             ; do munging of dots, deal with different possible meanings of "here"
+            (dolist (testloc-dotform perlnow-test-path) 
+              (setq testloc 
+                    (perlnow-expand-dots-relative-to module-file-location testloc-dotform))
+              (if (file-directory-p testloc) 
+                  (setq test-search-list (cons testloc test-search-list)))
+              (setq testloc 
+                    (perlnow-expand-dots-relative-to module-root testloc-dotform))
+              (if (file-directory-p testloc) 
+                  (setq test-search-list (cons testloc test-search-list))))
 
-;;; TODO do this kind of stuff in the docs, where ever they may go.
-;;; Definitions: 
-;;; TODO - check perl definitions, e.g. precise distinction between package and module.
-;;; module-file-name - the file system's name for the module file, e.g. /usr/lib/perl/Double/Colon.pm
-;;; module-location  - directory portion of module-file-name, e.g. /usr/lib/perl/Double/
-;;; module-name or package-name - perl's double colon separated name, e.g. "Double::Colon"
-;;; module-root - The place where perl's double-colon name space begins (e.g. /usr/lib/perl)
-;;;               The PERL5LIB environment variable is a list of different module-roots. 
-;;; staging-area - the directory created by the h2xs command for module development, 
-;;;                a "hyphenized" form of the module-name e.g. Double-Colon
-;;; h2xs-location - the place where you put your staging-areas (possibly /home/doom/dev ?)
+            ; tracking down the *.t file (if any)
+            (dolist (real-place test-search-list) 
+              (dolist (possible-name test-file-check-list)
+                (setq testfile
+                      (concat 
+                       (perlnow-fixdir real-place) ;; I bet this fixdir is redundant
+                       possible-name))
+                (if (file-regular-p fish)
+                    (progn 
+                      (setq fish (concat "perl " testfile))
+                      (throw 'COLD fish)))))))
+    result)) 
+
 
 
 (defun perlnow-get-module-root (package-name module-location)
   "Given the module file location and the package name, determine module-root"
 ;  (interactive "sPackage Name: \nsModule Location: ") ;;; DEBUG only DELETE
 ;;; WORKS well enough.  TODO Cleanup names (function and variables)
-  (let (double-colon-count file-levels)
-    (setq double-colon-count (length (split-string package-name "::")))
+  (let (double-colon-count file-levels module-root)
+    (setq double-colon-count (- (length (split-string package-name "::")) 1))
     (setq file-levels (split-string module-location "/"))
     (setq module-root (mapconcat 'identity 
                                  (butlast file-levels double-colon-count)
                                  "/"))
     (setq module-root (concat "/" module-root)) ; kludge, prepends a "/" 
                                                 ; (code will break if not given full-path)
-    (message "Module root: %s" module-root)))
+;   (message "Module root: %s" module-root)
+    module-root))
 
   ;;; Example: 
   ;;;  /home/doom/Testes/Junk/Punk/Skunk/New/Module.pm 
