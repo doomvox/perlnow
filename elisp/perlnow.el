@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.151 2004/02/23 08:44:03 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.152 2004/02/23 08:49:14 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -2497,19 +2497,17 @@ Perl package example: given \"/home/doom/lib/Taxed::Reb\" should return
 
 ;;;----------------------------------------------------------
 (defun perlnow-insert-docstrings-from-elisp ()
-  "Run the code that lists *all* of the perlnow doc strings.
+  "Lists *all* of the perlnow doc strings in html form.
 Presumes you've got an html framework open that you want to 
-insert this material into."
+insert this material into.
+The main job is done by \\[perlnow-dump-docstrings-as-html]."
   (interactive)
-;   (perlnow-dump-docstrings-as-html 
-;    (perlnow-symbol-list-from-elisp-file "perlnow"))
-; Experimental method:
-   (perlnow-dump-docstrings-as-html-exp
+   (perlnow-dump-docstrings-as-html 
     (perlnow-symbol-list-from-elisp-file "perlnow"))
   )
 
 ;;;----------------------------------------------------------
-(defun perlnow-dump-docstrings-as-html (list)
+(defun perlnow-dump-docstrings-as-html-old-form-using-replace-regexp-in-string (list)
   "Given a LIST of symbol names, insert the doc strings with some HTML markup.
 This version tries to preserve links in the documentation as html links.
 And does idiot simple preservation of formatting: *all* docstrings get PRE 
@@ -2611,7 +2609,7 @@ wrappers."
   )
 
 ;;;----------------------------------------------------------
-(defun perlnow-dump-docstrings-as-html-exp (list)
+(defun perlnow-dump-docstrings-as-html (list)
   "Given a LIST of symbol names, insert the doc strings with some HTML markup.
 Preserves links in the documentation as html links: any
 reference to a function or variable defined inside of this
