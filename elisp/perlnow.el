@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.158 2004/02/25 18:42:24 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.159 2004/02/26 20:16:29 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -664,7 +664,8 @@ It would probably be better if perlnow were a global minor-mode
 with a set of built-in keymappings, but for now I've decided to 
 punt, and just instruct the user to add them to their global 
 key map in their .emacs file.  \(Whenever I research the issue, 
-my eyes begin to glaze over... \).
+my eyes begin to glaze over... if you'd care to join me, see 
+the ramblings in \\[perlnow-documentation-to-mode-or-not-to-mode] \).
 
 Similarly, rather than master the intricacies of texinfo, I'm 
 copping out and entering documentation as variable docstrings 
@@ -686,6 +687,29 @@ ignoring the newer emacs features for menubars and
 the \"customize\" facility, because I don't know anything 
 about them.  I never use them.  I'm a \(menu-bar-mode -1\) kind-of guy.
 Not to mention: \(scroll-bar-mode -1\) and \(tool-bar-mode -1\).")
+
+(defun perlnow-documentation-to-mode-or-not-to-mode t
+  "Should perlnow.el become a minor mode?
+
+This is an issue I keep noodling around: perlnow.el 
+is designed to work with other modes, and it needs to have 
+a default keymap, so that would seem to imply it should 
+be a minor-mode.  
+
+But while *some* perlnow commands are only needed inside of a perl code 
+buffer \(e.g. \\[perlnow-run] and \\[perlnow-run-check]\) and could 
+reasonably be kept local to your perl-mode \(minor complication: there 
+are two of them\).  So that might imply it should be a global minor-mode, 
+\(or perhaps a combination of the two, a global and a local minor-mode, 
+in one .el package?\).  
+
+Further, it's possible that I might add some other commands that should 
+be local to still *other* modes, for example a perlnow-script-from-dired
+might create a perlscript in the location displayed in a current dired 
+buffer.  So does that imply yet another sub-local-minor-mode?  
+
+Eh, I've punted on this for now.  It doesn't help that the Emacs Ref 
+Manual is a little light on examples of how to do global minor-modes.")
 
 
 
