@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.18 2004/02/05 08:29:18 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.19 2004/02/05 20:35:55 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -912,6 +912,18 @@ defaults to using the module root of the current file buffer."
 ;;;==========================================================
 
 ;;;----------------------------------------------------------
+(defun perlnow-module-one-step (module-root module-name) 
+  "Experimental variation of \[perlnow-module]. Gets path and module-name 
+with a singles question, using \[perlnow-prompt-for-new-module-in-one-step]\n
+Quickly jump into development of a new perl module"
+  (interactive 
+  (let ((default-directory perlnow-module-root))
+    (call-interactively 'perlnow-prompt-for-new-module-in-one-step)
+    (setq perlnow-perl-module-name module-name) ; global used to pass value into template
+    (let ( (filename (perlnow-full-path-to-module module-root module-name)) )
+      (perlnow-new-file-using-template filename perlnow-perl-module-template)))))
+
+;;;----------------------------------------------------------
 (defun perlnow-prompt-for-new-module-in-one-step (where what) 
 
   "Ask for the path and module name all in one shot, using
@@ -941,10 +953,7 @@ Returns a two element list, location and module-name."
           (current-prompt first-prompt)
           (later-prompt "That module exists already. New module to create: ") 
           string ; pick better name.  Jargon for path and modname?
-          module-root-and-name-list
-          module-root 
-          module-name
-          module-file-name)
+          module-root-and-name-list   module-root    module-name   module-file-name)
            
      (while 
          (progn 
@@ -958,8 +967,8 @@ Returns a two element list, location and module-name."
            (message "string: %s" string) ;; DEBUG only DELETE
 
            (setq module-root-and-name-list
-                 (perlnow-split-module-file-name-to-module-root-and-name string) ; note: drops any .pm
-           (setq module-root (car module-root-and-name-list))
+                 (perlnow-split-module-file-name-to-module-root-and-name string)) ; note: drops any .pm
+           (setq module-root (car module-root-and-name-list))  
            (setq module-name (cadr module-root-and-name-list)) 
            
            ;;; Convert to an actual file-system-path (Note: adds .pm)
@@ -969,7 +978,7 @@ Returns a two element list, location and module-name."
            ; In case the following test fails, set-up the prompt for 
            ; the next loop:
            (setq current-prompt later-prompt)
-           (not (file-exists-p module-file-name)))))
+           (not (file-exists-p module-file-name))))
      module-root-and-name-list )))
 
 
