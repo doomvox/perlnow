@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.103 2004/02/18 01:13:25 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.104 2004/02/18 01:57:29 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -118,60 +118,65 @@ Briefly these are:
 
 (defvar perlnow-documentation-installation t
   "Instructions on installation of the perlnow package.
-Some \(but not all\) features of this package depend on
-having template.el installed \(i.e. placed in your
-`load-path'\). In addition, you'll need some custom
-perl-oriented template.el templates which come with
-perlnow.el.  Most likely these templates should go in
-~/.templates.\n Put the perlnow.el file into your
-`load-path' and add something like the following into
-your ~/.emacs:
-  \(require 'template\)
-  \(template-initialize\)
-  \(require 'perlnow\)
-  \(global-set-key  \"\M-ps\" 'perlnow-do-script\)
-  \(global-set-key  \"\M-pm\" 'perlnow-module\)
+
+Put the perlnow.el file somewhere that's included in your `load-path'.
+
+Ditto for the template.el file if at all possible, because
+many \(but not all\) features of this package depend on
+having template.el installed.
+
+In addition, you'll need some custom perl-oriented
+template.el templates that come with perlnow.el.  Most
+likely these templates should go in your ~/.templates.
+
+Add something like the following to your ~/.emacs file:
+   \(require 'template\)
+   \(template-initialize\)
+   \(require 'perlnow\)
+   \(global-set-key \"\\C-c=s\" 'perlnow-script\)
+   \(global-set-key \"\\C-c=m\" 'perlnow-module\)
+   \(global-set-key \"\\C-c=h\" 'perlnow-h2xs\)
+   \(global-set-key \"\\C-c==\" 'perlnow-run-check\)
+   \(global-set-key \"\\C-c=r\" 'perlnow-run\)
+   \(global-set-key \"\\C-c=d\" 'perlnow-perldb\)
+   \(global-set-key \"\\C-c=c\" 'perlnow-set-run-string\)
+   \(global-set-key \"\\C-c=b\" 'perlutil-perlify-this-buffer\)
   \(setq `perlnow-script-location' 
       \(substitute-in-file-name \"$HOME/bin\"\)\)
   \(setq `perlnow-module-location' 
       \(substitute-in-file-name \"$HOME/lib\"\)\)\n
-  
   \(setq `perlnow-h2xs-location'' 
-      \(substitute-in-file-name \"$HOME/dev\"\)\)\n
+      \(substitute-in-file-name \"$HOME/perldev\"\)\)\n
 
 Some suggestions on key assignments: 
-XXXX  TODO DONTFORGET  XXX  expand above.
-The main ones:
 
-\\[perlnow-script]
-\\[perlnow-run-check]
-\\[perlnow-run]
-\\[perlnow-module]
-\\[perlnow-perldb]
-\\[perlnow-set-run-string]
-\\[perlnow-h2xs]
+Here I'm suggesting the odd prefix \"control-c =\", simply
+because while the perlnow.el package is not a minor-mode, it
+has some aspects in common with them \(and maybe it's on
+it's way to becoming one\).  The C-c <punctuation> bindings
+are the only places a minor mode is supposed to mess with
+the keymap \(and at least \"=\" is un-shifted on most
+keyboards\).  You, on the other hand, are free to do whatever
+you want in your .emacs, and I would suggest assigning the
+commands you like to function keys.  Some examples from my
+.emacs:
 
-Note: perlnow.el was developed using GNU emacs 21.1 
-running on a linux \(or GNU/Linux, if you prefer\), 
-box.  I've avoided using constructs that I know won't 
-work with earlier versions of emacs, and I don't 
-know of any reason it wouldn't work with xemacs, but 
-none of that has been tested.  On the other hand, I'm 
-pretty sure that some unix-isms have crept into this 
-code: for example, if your file-system expects a \"/\"
-as a separator between levels, this package may 
-have some problems.  I hope to make future versions 
-of this more portable. ")
+  \(global-set-key [f4] 'perlnow-script\)
 
-;    (define-key mode-map "\C-c=s" 'perlnow-do-script)
-;    (define-key mode-map "\C-c=m" 'perlnow-module)
-;    (define-key mode-map "\C-c=h" 'perlnow-h2xs)
-;    (define-key mode-map "\C-c=b" 'perlutil-perlify-this-buffer)
-;    (define-key mode-map "\C-c=c" 'perlnow-run-check)
+  \(add-hook 'cperl-mode-hook
+          '\(lambda \(\) 
+             \(define-key cperl-mode-map [f1] 'perlnow-perl-check\) \)\)
 
-
-;;; I see that I'm doing a (load-library "perlnow") in my .emacs
-;;; rather than a require.  Doesn't make a diff, right?
+Note: perlnow.el was developed using GNU emacs 21.1 running
+on a linux box \(or GNU/Linux, if you prefer\).  I've
+avoided using constructs that I know won't work with earlier
+versions of emacs, and I don't know of any reason it
+wouldn't work with xemacs, but none of that has been tested.
+On the other hand, I'm pretty sure that some unix-isms have
+crept into this code: for example, if your file-system
+expects a \"/\" as a separator between levels, this package
+may have some problems.  I'm ammenable to suggestions for
+ways to make future versions of this more portable.")
 
 (defvar perlnow-documentation-terminology t 
 "Definitions of some terms used here: 
@@ -268,7 +273,7 @@ on how you might use them for different purposes:
  `perlnow-tutorial-test-file-strategies'")
 
 (defvar perlnow-documentation-tutorial-1-script-development t
-  "Got an idea for a script?  Hit \\[perlnow-do-script].
+  "Got an idea for a script?  Hit \\[perlnow-script].
 
 This will ask you for the name of the script you want to
 write, then kick you into a file buffer with a code template
@@ -278,7 +283,7 @@ For example, you might prefer to have \"use strict;\" appear
 commented out but ready to be enabled when you know the
 script is going to be longer than a dozen lines\).
 
-Currently perlnow-do-script tends to want to put all of your
+Currently perlnow--script tends to want to put all of your
 new scripts in one place, the `perlnow-script-location' that
 you've defined for it.  You can, of course, choose a
 different place to put a script at creation time, and you'll
@@ -293,7 +298,7 @@ things you've entered using: \\[previous-history-element]
 and \\[next-history-element]]. Typically these are bound to 
 Alt-p and Alt-n.\)
 
-But every time you use \\[perlnow-do-script] it's going to try
+But every time you use \\[perlnow-script] it's going to try
 and put it in the same default location, so \(a\) try and
 pick a good default, and \(b\) think about changing it on
 the fly if you're going to do a lot of work in a different
@@ -2410,7 +2415,7 @@ STATUS: NOT FINISHED."
 
           ; turn \[(.*)]  into <A HREF="#\1">\1</A>
           (setq doc-string 
-                (replace-regexp-in-string "\\\\\\[\\(.*\\)\\]" ; that's \[(.*)]   (one hopes)
+                (replace-regexp-in-string "\\\\\\[\\(.*?\\)\\]" ; that's \[(.*?)]   (one hopes)
                                           "<A HREF=\"#\\1\">\\1</A>" 
                                           doc-string))
 
