@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.119 2004/02/19 02:34:28 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.120 2004/02/19 02:39:04 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1234,6 +1234,9 @@ double-colon separated package name form\)."
   (let ((default-directory perlnow-h2xs-location))
      (call-interactively 'perlnow-prompt-for-h2xs)))
 
+  (unless (file-exists-p h2xs-location)
+    (make-directory h2xs-location t))
+
   (let* ( (default-directory h2xs-location)
           (display-buffer (get-buffer-create "*perlnow-h2xs*")) )
 
@@ -1283,9 +1286,6 @@ already, and if so, asks for another name (by doing yet another
 defaults to the current `default-directory'.  Returns a two
 element list, h2xs-location and package-name."
   (interactive "DLocation for new h2xs structure? \nsName of new module \(e.g. New::Module\)? ")
-
-;;; TODO terminology here seems funny.  better: location-of-staging-area, or just staging-area
-;;; Use function perlnow-staging-area to get it?   Okay, just fix it:
   (let ( staging-area        
          )
   (setq staging-area (perlnow-staging-area where what))
