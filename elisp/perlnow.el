@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.38 2004/02/10 01:25:01 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.39 2004/02/10 06:02:19 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -912,41 +912,34 @@ defaults to using the module root of the current file buffer."
 
 (defun perlnow-read-minibuffer-complete ()
   "tabby"
-
-;;; Note: old form of "tabby" was copied to "spacey" as a starting point.
-
-;;; Agressive completion: trys to complete across levels, if possible.
-;;; Experimenting with doing a recursive directory listing, using it as collection.
-
-;;; This is *extremely* close to working, though there's a sequencep problem in 
-;;; here somewhere (I think when fed a string with trailing slash?)
-
-;;; Ah: when there are no matches, the candidate-alist is nil, and that ain't a string, 
-;;; hence stringp all over the floor.  (Maybe: force those nils to be empty strings?)
-;
-; (ah, elsip: a function that arguably should
-;  always return a string hands you a nil when it feels like
-; it, causing problems for the "high level" programmer):
-
-;;; Note: going to abandon this technique because I don't want to also kludge 
-;;; up the help display to make suggestions across levels using the double-colon 
-;;; form...   Also, you're not going to be able to use this feature that often... 
-;;; you'd need an empty intermediate level in your package name space, which is a 
-;;; mildly odd occurance unless you call your modules things like 
-;;;    Process::Kill::Die::Die::Die::Nuke::BeSure
-;;; (But note: help repeats an *awful* lot of the work done here in tabby (or spacey).
-;;; Another form of help that uses what you've got already?)
-
-;;; Argh, it's even *worse* than that.  try-completions will *not* go passed 
-;;; a level boundary no matter what.  Yet another piece of shit "feature"
-;;; buried *undocumented* in an emacs built-in without elisp you can browse 
-;;; through. 
-
-;;; I would have to re-write the functionality inside of try-completion, and I'm 
-;;; dumping this shit anyway, so just dump it. 
+;;; Goal:
+;;; Does automatic completion of up to an entire name if possible. 
+;;; Makes no attempt at "aggressive" completion past a file-system 
+;;; boundary ("/" or "::").
+;;; Note: this version completes the entire level, even if there's, say 
+;;; a hyphen in it (getting "spacey" to do it's thing right will require 
+;;; more work...)
 
 ;;; TODO
 ;;; [Note: should use (match-end 0) instead of adding length of pattern.]
+
+;;; TODO 
+;;; If input string trails with a *single* colon, completion should supply 
+;;; a second one (minimally).  Possibly it should silently fill it in, and try 
+;;; and complete again. 
+
+;;; TODO 
+;;; If you enter something that doesn't match anything and try and do completion, 
+;;; the part that doesn't match gets erased.  It should report [No completion] or 
+;;; something, which means that " [blah]" stuff should be detected and ignored 
+;;; in the input here. 
+
+;;; TODO 
+;;; Possibly, completion should not add a ".pm" if double-colons are in use in front 
+;;; of it.  
+
+;;; TODO 
+;;; Possibly help should not display ".pm" on module names.  Or possibly not.
 
   (interactive)
   (let* ( ; empty declarations:
@@ -966,42 +959,23 @@ defaults to using the module root of the current file buffer."
                                               ; out of a list of bare filenames (no path)
          (file-system-path (replace-regexp-in-string "::" "/" perlish-path) )  
             ; unix file system separator "/" swapped in for perl package separators "::" 
-        )
+         )
 
-;;; Note making this block setqs now for the sake of keeping them together. 
-;;; Need to do some conditional processing on them now.  
-;;; (Maybe shouldn't ever do fancy stuff inside of let* anyway, as a matter of policy).
-
-         (setq candidate-alist (perlnow-recursive-list-directory-as-alist file-system-path fragment-pat))
-         (setq file-list (mapcar '(lambda(pair) (car pair)) candidate-alist))
-         (setq completion-fodder (concat file-system-path fragment))
+         (setq candidate-alist (perlnow-list-directory-as-alist file-system-path fragment-pat))
+         (setq completion-fodder fragment)
          (setq suggested-completion (try-completion completion-fodder candidate-alist))
-         (if (not (eq suggested-completion nil))
-             (progn
-;;; Need to translate this suggested-completion back into the 
-;;; perl-package namespace form, if needed:
-;;; (1) Subtract off file-system-path from the front.  Replace with perlish-path (may have double-colons)
-;;; (2) If perlish-path does have a double-colon, then the newly suggest part of this completion 
-;;;     should have any slashes converted to double-colons also... 
 
-                (setq file-system-path-pat (concat "^" file-system-path)) ; need regexp quoting on file-system-path?
-                (string-match file-system-path-pat suggested-completion)
-                (setq new-stuff-starts (match-end 0))
-                (setq new-stuff (substring suggested-completion new-stuff-starts))
+         (if (eq suggested-completion nil)
+             (setq suggested-completion "")) 
 
-                (if (string-match "::" perlish-path) ; are we in the perl package namespace?
-                    (setq new-stuff (replace-regexp-in-string "/" "::" new-stuff))) ; then colon-ize it
-                ) ;;; Possibly this if block should be extended further... 
-           (setq new-stuff "")) 
+         (setq result (concat perlish-path suggested-completion))
 
-    (setq result (concat perlish-path new-stuff))
+         (if (string= result minibuffer-string) ; if there's no change from the input value, go into help
+             (perlnow-read-minibuffer-completion-help))
 
-    (if (string= result minibuffer-string) ; if there's no change from the input value, go into help
-        (perlnow-read-minibuffer-completion-help))
-
-    (delete-region (+ 1 field-start) (point-max))
-    (insert result)
-  ))
+         (delete-region (+ 1 field-start) (point-max))
+         (insert result)
+         ))
 
 (defun perlnow-read-minibuffer-complete-word ()
   "spacey"
