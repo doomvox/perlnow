@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.152 2004/02/23 08:49:14 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.153 2004/02/23 09:15:43 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1066,7 +1066,7 @@ If this works well, it obviates \\[perlnow-do-script] and
 ;;;    and report any problems, say by 
 ;;;    Inserting comment in code file near use lib: 
 ;;;         # Currently not found in @INC. Installed correctly?
-;;;    Could use this to check:
+;;;    Could use this to do the check:
 ;;;      (setq module-filename (perlnow-module-found-in-INC package-name))
 ;;;         ; given colon-ized, returns first pm found, or nil if none
 
@@ -1396,8 +1396,6 @@ element list, h2xs-location and package-name."
   (let ( staging-area        
          )
   (setq staging-area (perlnow-staging-area where what))
-;        (concat (perlnow-fixdir where)
-;                (mapconcat 'identity (split-string what "::") "-")))
 
   (while (file-exists-p staging-area)  ; really, directory exists
     (setq where-and-what  ; that's a list: (h2xs-location package-name)
@@ -1406,9 +1404,6 @@ element list, h2xs-location and package-name."
     (setq what (cadr where-and-what))
 
     (setq staging-area (perlnow-staging-area where what))
-;;;    (setq location-in-staging-area 
-;;;          (concat (perlnow-fixdir where)
-;;;                  (mapconcat 'identity (split-string what "::") "-")))
     )
   (list where what)))
 
@@ -1430,7 +1425,7 @@ It tries to find the name of the current perl sub \(the one that
 the cursor is inside of\) and pushes it onto the kill-ring, ready 
 to be yanked later.  Returns nil on failure, sub name on success. 
 Used by \\[perlnow-script-using-this-module]."
-  (interactive) ; DEBUG only DELETE
+  (interactive) 
   (let (return) 
   (save-excursion
     ; in case the cursor is *on top* of the keyword "sub", go forward a little.
@@ -1753,9 +1748,10 @@ it convenient to use this with a number of reasonable organizational
 schemes for your test files: `perlnow-tutorial-test-file-strategies'."
 
 ;;; TODO
-;;; o  Will also at some point want a "perlnow-edit-test-file-for-this-module".
-;;; Maybe this code should be revamped (again, sigh): need routine that returns test file name?
-;;; o  Still another want would be "perlnow-create-test-file-for-module" which would need 
+;;; Will also at some point want a "perlnow-edit-test-file-for-this-module".
+;;; Maybe this code should be revamped (again): need routine that returns test file name.
+;;; TODO 
+;;; Another want would be "perlnow-create-test-file-for-module" which would need 
 ;;; to read policy from somewhere, to know where to put it and what to call it. 
 ;;; My pick for policy: if inside of an h2xs structure, put in the appropriate "t", 
 ;;; otherwise create a local t for it, but use the full hyphenized module name as 
@@ -2214,77 +2210,72 @@ and \\[perlnow-read-minibuffer-complete-word\]."
     (setq minibuffer-string (substring raw_string field-start))
 
 
-    ; No single trailing colons allowed: silently double them up
-;;;    (if (string-match "[^:]:$" minibuffer-string)
-;;;        (setq minibuffer-string (concat minibuffer-string ":")))
-
+    ; No single trailing colons allowed: double them up
     (if (string-match "[^:]:$" minibuffer-string)
         (setq new-mini (concat minibuffer-string ":"))
       (progn ; else, do usual processing
 
-    ; Treat input string as a directory plus fragment
-    (setq two-pieces-list
-          (perlnow-split-module-path-to-dir-and-tail minibuffer-string))
-    (setq perlish-path (car two-pieces-list))
-    (setq fragment (cadr two-pieces-list))
-    (setq fragment-pat (concat "^" fragment))
+        ; Treat input string as a directory plus fragment
+        (setq two-pieces-list
+              (perlnow-split-module-path-to-dir-and-tail minibuffer-string))
+        (setq perlish-path (car two-pieces-list))
+        (setq fragment (cadr two-pieces-list))
+        (setq fragment-pat (concat "^" fragment))
 
-    (cond (; Are we inside the perl package namespace yet?
-           (string-match "::" perlish-path) 
-            (setq file-system-path (replace-regexp-in-string "::" perlnow-slash perlish-path))  
-            ; swap in file system separator "/"  for perl package separators "::" 
-            (setq separator "::"))
-          (t
-            (setq separator perlnow-slash)
-            (setq file-system-path perlish-path)))
+        (cond (; Are we inside the perl package namespace yet?
+               (string-match "::" perlish-path) 
+               (setq file-system-path (replace-regexp-in-string "::" perlnow-slash perlish-path))  
+               ; swap in file system separator "/"  for perl package separators "::" 
+               (setq separator "::"))
+              (t
+               (setq separator perlnow-slash)
+               (setq file-system-path perlish-path)))
 
-;;; (unless (file-directory-p file-system-path)
-
-    (setq candidate-alist (perlnow-list-directories-and-modules-as-alist file-system-path fragment-pat))
-    (setq returned (try-completion fragment candidate-alist))
+        (setq candidate-alist 
+              (perlnow-list-directories-and-modules-as-alist file-system-path fragment-pat))
+        (setq returned (try-completion fragment candidate-alist))
   
-    ; must convert logical values of "returned" into appropriate strings 
-    (cond ((eq returned nil)  
-           (setq suggested-completion fragment))
-          ((eq returned t) ; a precise match that is not a *.pm file is a directory: add separator
-           (if (string-match pm-extension-pat fragment)
-               (setq suggested-completion (substring fragment 0 (match-beginning 0) ))
-             (setq suggested-completion (concat fragment separator)))) 
-          (t
-           (setq suggested-completion returned)))
+       ; must convert logical values of "returned" into appropriate strings 
+        (cond ((eq returned nil)  
+               (setq suggested-completion fragment))
+              ((eq returned t) ; a precise match that is not a *.pm file is a directory: add separator
+               (if (string-match pm-extension-pat fragment)
+                   (setq suggested-completion (substring fragment 0 (match-beginning 0) ))
+                 (setq suggested-completion (concat fragment separator)))) 
+              (t
+               (setq suggested-completion returned)))
           
-    ; Prevents .pm extensions from appearing in the minibuffer
-    (if (string-match pm-extension-pat suggested-completion) ; Yeah, checking *again*. Inelegant, but WTH
-        (setq suggested-completion (substring suggested-completion 0 (match-beginning 0) )))
+        ; Prevents .pm extensions from appearing in the minibuffer
+        ; (Yeah, checking *again*. Inelegant, but WTH)
+        (if (string-match pm-extension-pat suggested-completion) 
+            (setq suggested-completion (substring suggested-completion 0 (match-beginning 0) )))
   
-    ; if there's no change from the input value, go into help
-    (setq result (concat perlish-path suggested-completion))
-    (if (string= result minibuffer-string) 
-        (perlnow-read-minibuffer-completion-help))
+        ; if there's no change from the input value, go into help
+        (setq result (concat perlish-path suggested-completion))
+        (if (string= result minibuffer-string) 
+            (perlnow-read-minibuffer-completion-help))
   
-    ; peel off existing fragment from suggested-completion, what remains is the new-portion
-    (string-match fragment-pat suggested-completion)
-    (setq new-portion (substring suggested-completion (match-end 0)))
-    (if restrict-to-word-completion  ; for "spacey" 
-        (progn ; peel off word from the new-portion of suggested-completion
-          (string-match "\\(^\\w*\\)\\(\\W\\|$\\)" new-portion)
-          (setq new-portion-first-word
-                (match-string 1 new-portion))
-          (setq word-separator ; save next non-word character: the "word-separator"
-                (match-string 2 new-portion))
+        ; peel off existing fragment from suggested-completion, what remains is the new-portion
+        (string-match fragment-pat suggested-completion)
+        (setq new-portion (substring suggested-completion (match-end 0)))
+        (if restrict-to-word-completion  ; for "spacey" 
+            (progn ; peel off word from the new-portion of suggested-completion
+              (string-match "\\(^\\w*\\)\\(\\W\\|$\\)" new-portion)
+              (setq new-portion-first-word
+                    (match-string 1 new-portion))
+              (setq word-separator ; save next non-word character: the "word-separator"
+                    (match-string 2 new-portion))
   
-          ;When new-portion-first-word is empty, we're at a word-separator
-          (if (string= new-portion-first-word "")
-              (setq new-portion word-separator)
-            (setq new-portion new-portion-first-word))))
+              ;When new-portion-first-word is empty, we're at a word-separator
+              (if (string= new-portion-first-word "")
+                  (setq new-portion word-separator)
+                (setq new-portion new-portion-first-word))))
   
-    (setq new-mini (concat perlish-path fragment new-portion))
-   )) ; end if/else, close of "usual processing" 
+        (setq new-mini (concat perlish-path fragment new-portion))
+        )) ; end if/else, close of "usual processing" 
   
     (delete-region (+ 1 field-start) (point-max))
     (insert new-mini)
-
-;;;       )
     ))
 
 
@@ -2298,7 +2289,6 @@ be bound to the \"?\" key during the minibuffer read."
 ;;; codename: huh
   (interactive)
   (let* (
-;;;         (raw_string (buffer-string))
          (raw_string (buffer-substring-no-properties (point-min) (point-max)))
          (pat ": ")
          (field-start (+ (string-match pat raw_string) (length pat)))
@@ -2314,22 +2304,21 @@ be bound to the \"?\" key during the minibuffer read."
             ; unix file system separator "/" swapped in for perl package separators "::" 
          match-alist
          )
-;    (unless (file-directory-p file-system-path)
-      (setq match-alist (perlnow-list-directories-and-modules-as-alist file-system-path fragment-pat))
-      (setq match-alist (perlnow-remove-pm-extensions-from-alist match-alist))
-;      )
-   (with-output-to-temp-buffer "*Completions*"
-     (display-completion-list
-      (all-completions fragment match-alist)
-      ))
-   ))
+    (setq match-alist (perlnow-list-directories-and-modules-as-alist file-system-path fragment-pat))
+    (setq match-alist (perlnow-remove-pm-extensions-from-alist match-alist))
+
+    (with-output-to-temp-buffer "*Completions*"
+      (display-completion-list
+       (all-completions fragment match-alist)
+       ))
+    ))
 
 ;;;----------------------------------------------------------
 (defun perlnow-remove-pm-extensions-from-alist (alist)
   "Remove the pm extension from the names in the ALIST of file names and values.
 Currently this throws away the numeric value and re-numbers the names in the 
 alist in order."
-; Does that behavior matter one way or another? 
+; Does the numbering of items in the alist matter one way or another? 
   (let (name new-alist (i (length alist)) )
     (dolist (pair alist)
       (setq name (car pair))
@@ -2507,63 +2496,12 @@ The main job is done by \\[perlnow-dump-docstrings-as-html]."
   )
 
 ;;;----------------------------------------------------------
-(defun perlnow-dump-docstrings-as-html-old-form-using-replace-regexp-in-string (list)
-  "Given a LIST of symbol names, insert the doc strings with some HTML markup.
-This version tries to preserve links in the documentation as html links.
-And does idiot simple preservation of formatting: *all* docstrings get PRE 
-wrappers."
-  (dolist (symbol-name list)
-    (let* ( doc-string 
-            doc-string-raw
-            (symbol-value-as-variable nil)
-          (symbol (intern-soft symbol-name)))
-          (cond ((eq symbol nil)
-                 (message "warning: bad symbol-name %s" symbol-name))
-                ((functionp symbol)
-                 (setq doc-string-raw
-                        (documentation symbol t)))
-                (t 
-                 (setq doc-string-raw
-                       (documentation-property symbol 'variable-documentation t))
-                 (setq symbol-value-as-variable 
-                       (perlnow-html-ampersand-subs (pp-to-string (eval symbol))))
-                 ))
-
-          ; Do this early (before adding any html double quotes)
-          (setq doc-string (perlnow-html-ampersand-subs doc-string-raw))
-          ; Put named anchors on every entry for refs to link to
-          (insert (format "<A NAME=\"%s\"></A>\n" symbol-name))
-          (insert (concat "<P><H3>" symbol-name ":" ))
-          (if (not (functionp symbol))
-              (insert (concat 
-                       "&nbsp;&nbsp;&nbsp;&nbsp;" 
-                       symbol-value-as-variable )))
-          (insert (concat "</h3>" "\n"))
-
-           ; turn `(.*)' into <I><A HREF="#\1">\1</A></I>  note: dot don't match line breaks (good: safer)
-           (setq doc-string 
-                 (replace-regexp-in-string "[`]\\(.*?\\)'" ; that's `(.*?)'
-                                           "<I><A HREF=\"#\\1\">\\1</A></I>" 
-                                           doc-string))
-
-          ; turn \[(.*)]  into <A HREF="#\1">\1</A>
-          (setq doc-string 
-                (replace-regexp-in-string "\\\\\\[\\(.*?\\)\\]" ; that's \[(.*?)]   (one hopes)
-                                          "<A HREF=\"#\\1\">\\1</A>" 
-                                          doc-string))
-
-          (insert (concat "<PRE>\n" doc-string "</PRE></P>\n\n"))
-          )))
-
-;;;----------------------------------------------------------
 (defun perlnow-symbol-list-from-elisp-file (library)
   "Read the elisp for the given LIBRARY & extract all def* docstrings."
 ;;; Defining two patterns here, def-star-pat and def-star-pat-exp.
 ;;; The first is in use, because it actually works.
   (save-excursion
     (let* (
-;;;         (codefile "/home/doom/End/Cave/Perlnow/bin/perlnow.el")
-;;;         (codefile (locate-library "perlnow"))
            (codefile (locate-library library))
            (work-buffer (generate-new-buffer "*perlnow-work*"))
            (def-star-pat  
@@ -2583,9 +2521,6 @@ wrappers."
                  ;;; but then... why would I do all this in elisp? 
            symbol-list
            symbol-name)
-
-;;;      (message "The def-star-pat: %s" def-star-pat) ; DEBUG only DELETE
-      
       (set-buffer work-buffer)
       (insert-file-contents codefile nil nil nil t)
       (goto-char (point-min))
