@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.95 2004/02/17 19:23:51 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.96 2004/02/17 19:44:12 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -821,7 +821,7 @@ Prompts the user for the FILENAME."
    
    
 ;;;----------------------------------------------------------
-(defun perlnow-script-using-this-module (filename)
+(defun perlnow-script-using-this-module (script-name)
   "Quickly jump into a new script that uses the module code 
 in the currently open buffer.  If the module is not in perl's 
 search path \(@INC\), then an appropriate \"use lib\" statement 
@@ -840,8 +840,19 @@ really done\\) then this function will see the first package name."
     (unless package-name 
       (error "%s" "This file doesn't look like a perl module (no leading package line)."))
 
+    (perlnow-do-script-from-module scriptname package-name module-root)))
+
+;;;----------------------------------------------------------
+(defun perlnow-do-script-from-module (script-name package-name module-root 
+  "Does the work of creating a script from a module-buffer. 
+Takes arguments SCRIPT-NAME PACKAGE-NAME MODULE-ROOT, 
+which are all explained in `perlnow-documentation-terminology'.
+Used by the old \\[perlnow-script-using-this-module], and the 
+newer \\[perlnow-script-general].  Always returns t, but someday 
+it might return nil for failure."
+
     ; We expect to use the new script to run the code in this module, so make it the default.
-    (setq perlnow-module-run-string (format "perl %s" filename))
+    (setq perlnow-module-run-string (format "perl %s" script-name))
 
     (perlnow-sub-name-to-kill-ring)
 
@@ -850,12 +861,12 @@ really done\\) then this function will see the first package name."
     (split-window-vertically)
     (other-window 1)
 
-    (perlnow-new-file-using-template filename perlnow-perl-script-template)
+    (perlnow-new-file-using-template script-name perlnow-perl-script-template)
     
-    ; ensure the module can be found by the script if needed, insert "use lib" line to 
+    ; ensure the module can be found by the script if needed, insert "use lib" line
     (unless (perlnow-module-root-in-INC-p module-root)
       (let ((relative-path
-             (file-relative-name module-root (file-name-directory filename))
+             (file-relative-name module-root (file-name-directory script-name))
              ))
         (insert "use FindBin qw\($Bin\);\n")
         (insert "use lib \(\"$Bin/")
