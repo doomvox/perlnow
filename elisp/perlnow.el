@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.154 2004/02/24 04:11:14 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.155 2004/02/24 05:01:44 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -2673,11 +2673,10 @@ Internally used by perlnow-dump-docstrings-as-html-exp."
                    (concat open-link symb-name mid-link symb-name close-link)))
             (t
              (setq tranny        ; usual *help* display form
-                   (concat " "
-                           "<I>"
+                   (concat "<STRONG>"
                            symb-name
-                           "</I>"
-                           " "))))
+                           "</STRONG>"
+                           ))))
       (setq doc-string
             (concat
              (substring doc-string 0 beg)
