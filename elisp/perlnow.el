@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.162 2004/02/26 20:35:45 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.163 2004/02/28 23:49:05 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -182,7 +182,7 @@ versions of emacs, and I don't know of any reason it
 wouldn't work with xemacs, but none of that has been tested.
 On the other hand, I'm pretty sure that some unix-isms have
 crept into this code: for example, if your file-system
-expects a \"/\" as a separator between levels, this package
+expects a \"\\\" as a separator between levels, this package
 may have some problems.  I'm amenable to suggestions for
 ways to make future versions of this more portable.")
 
