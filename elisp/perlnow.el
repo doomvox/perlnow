@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.10 2004/01/31 08:56:49 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.11 2004/01/31 09:32:00 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -294,13 +294,14 @@ in the currently open buffer"
 
 ;;; TODO: Question: is there something intelligent that could be done 
 ;;; with EXPORT_OK to provide a menu of options here? 
-;;; Should you qw() *all* of them (maybe except for :all) and let user delete?
+;;; Option to qw() *all* of them (maybe except for :all) and let user delete 
+;;; what they don't want.
 
 ;;; TODO
 ;;; Maybe someday: check first PERL5LIB and don't add FindBin jazz if module 
 ;;; is already findable.  Easy enough: (getenv "PERL5LIB") Search through result 
 ;;; for matching module-root 
-;;; Duh, this ain't good enough: (file-name-directory module-name).
+;;; But it has to be the module-root dude, this ain't good enough: (file-name-directory module-name).
 
 ;;; TODO: Option to insert the SYNOPSIS section in commented out form
 
@@ -315,7 +316,6 @@ in the currently open buffer"
 
 ;;; Note: before you look into this stuff too much, see what h2xs does 
 ;;; *for* you.
-
 
 ;;;----------------------------------------------------------
 (defun perlnow-module (module-root module-name) 
@@ -880,6 +880,37 @@ default-directory. Returns a two element list, location and module-name."
 ;          (read-from-minibuffer "That module name is already in use. Please choose another: " what))
 ;       (setq filename (perlnow-full-path-to-module where what)))
 ;;; END DELETIA
+
+;;;----------------------------------------------------------
+;;; TODO 
+;;;  perlnow-get-module-root  doesn't really "get" it, 
+;;;  it determines it from givens (calculate? figure out?)
+;;;  change this.
+
+;;;----------------------------------------------------------
+(defun module-root-in-INC-p (&optional module-root)
+  "Determine if the module-root \(i.e. the beginning of the package name space 
+for a given module\) has been included in perls INC search path already \(and 
+hence not in need of a \"use lib\"\). "
+;;; just getenv("PERL5LIB") would be close, but checking the @INC 
+;;; inside perl seems more solid. 
+;;; NEEDS TESTING 
+  (unless module-root
+    (setq module-root 
+          (perlnow-get-module-root 
+           (perlnow-get-module-name
+            (file-name-directory (buffer-file-name))))))
+
+    (let* (
+      (perl-inc (shell-command-to-string "perl -e 'foreach (@INC) {print \"$_|||\"}'" ))
+      (inc-path-list (split-string perl-inc "|||"))
+      return )
+      (setq return 
+            (catch 'UP
+              (dolist (path inc-path-list)
+                (if (string= path module-root)
+                    (throw 'UP t)))))
+      return))
 
 
 ;;;===========================================================================
