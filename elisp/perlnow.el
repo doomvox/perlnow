@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.45 2004/02/10 19:57:43 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.46 2004/02/10 20:21:11 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -911,25 +911,50 @@ defaults to using the module root of the current file buffer."
 ;;; BOOKMARK
 
 (defun perlnow-read-minibuffer-complete ()
-  "tabby"
-;;; Goal:
-;;; Does automatic completion of up to an entire name if possible. 
-;;; Makes no attempt at "aggressive" completion past a file-system 
-;;; boundary ("/" or "::").
-;;; Note: this version completes the entire level, even if there's, say 
-;;; a hyphen in it (getting "spacey" to do it's thing right will require 
-;;; more work...)
-;;; (But not much more.  Take the suggested-completion, subtract off 
+  "codename: new tabby\n
+Does automatic completion of up to an entire directory or file name if possible. 
+Used in reading in the name of a perl module name \(which need not 
+exist already\), where valid name separators are \(\"/\" or \"::\"\).\n
+Makes no attempt at \"aggressive\" completion past a file-system 
+boundary Not intended for non-interactive use."
+  (interactive)
+  (let ((restrict-to-word-completion nil))
+        (perlnow-read-minibuffer-workhorse restrict-to-word-completion)
+    ))
+
+
+(defun perlnow-read-minibuffer-complete-word ()
+  "codename: new spacey\n
+Does automatic completion only up to the end of the next \"word\", 
+as opposed to an entire directory or file name.
+Used in reading in the name of a perl module name \(which need not 
+exist already\), where valid name separators are \(\"/\" or \"::\"\).\n
+Not intended for non-interactive use."
+  (interactive)
+  (let restrict-to-word-completion t)
+  (perlnow-read-minibuffer-workhorse restrict-to-word-completion)
+  )
+
+
+(defun perlnow-read-minibuffer-workhorse (restrict-to-word-completion)
+  "codename: spacey tabbey\n
+Does most of the actual work of auto-completion when reading 
+reading in the name of a perl module name \(which need not 
+exist already\), where valid name separators are \(\"/\" or \"::\"\).
+Takes a single logical argument that controls whether whole name 
+or single word completion will be used. "
+;;; single word completion is not implemented yet:
+
+;;; TODO 
+;;; (if restrict-to-word-completion  then:
+;;; Take the suggested-completion, subtract off 
 ;;; the existing "fragment", then peel off "^\w*"
 ;;; (however emacs likes you to do that).  And discard the rest. 
-;;; With fragment subtracted you can skip the final concat... 
-;;; (Strategy: Finish up tabby, clone it again as spacey, then add 
-;;; this extra restriction.)  
-;;; Um: actually, turn tabby into a general routine that takes 
-;;; a flag that controls word-at-a-time or level-at-a-time. 
-;;; then tabby and spacey become simple wrappers.
+;;; Note: with the old fragment subtracted you can skip the
+;;; final blank/concat...  and just do an insert of the new
+;;; portion.
 
-  (interactive)
+;;;  (interactive)
   (let* ( ; empty declarations:
          candidate-alist suggested-completion
          field-start 
