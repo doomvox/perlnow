@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.92 2004/02/16 23:18:55 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.93 2004/02/16 23:36:59 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -656,7 +656,7 @@ really done\\) then this function will see the first package name."
     ; ensure the module can be found by the script if needed, insert "use lib" line to 
     (unless (perlnow-module-root-in-INC-p module-root)
       (let ((relative-path
-             (file-relative-name module-filename (file-name-directory filename))
+             (file-relative-name module-root (file-name-directory filename))
              ))
         (insert "use FindBin qw\($Bin\);\n")
         (insert "use lib \(\"$Bin/")
@@ -896,10 +896,6 @@ to a different file."
      (setq interactive-return perlnow-run-string))
    (list interactive-return)
    ))
-;;;  (interactive
-;;;  (unless perlnow-run-string
-;;;    (perlnow-set-run-string)))
-;  (message "perlnow-perldb using: %s" runstring) ; debugging only  DELETE
   (perldb runstring))
 
 ;;;----------------------------------------------------------
@@ -1282,9 +1278,10 @@ it convenient to use this with a number of reasonable organizational
 schemes for your test files.\n
 Note: Relying on the exact precedence of this search should be avoided
 \(future versions may work slightly differently\)."
-;;; Document those schemes for test file locations in detail.  Where? 
-;;; A web page for now.
-;;; TODO:
+;;; TODO DONTFORGET
+;;; Document those schemes for test file locations in detail: 
+;;;  perlnow-documentation-test-schemes
+;;; TODO
 ;;; o  Will also at some point want a "perlnow-edit-test-file-for-this-module".
 ;;; Maybe this code should be revamped (again, sigh): need routine that returns test file name?
 ;;; o  Still another want would be "perlnow-create-test-file-for-module" which would need 
@@ -1314,7 +1311,7 @@ Note: Relying on the exact precedence of this search should be avoided
           ; This is a listing of possible names for the test file:
           (test-file-check-list (list (concat hyphenized-module-name ".t")
                                       (concat module-file-basename ".t")
-                                      )) ; note, h2xs test files need not be included in this list.
+
 
           staging-area      ; The location of an h2xs-style dev structure 
           staging-area-candidate staging-area-candidate-name 
