@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.108 2004/02/18 07:10:34 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.109 2004/02/18 07:26:35 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -938,13 +938,13 @@ Used by \\[perlnow-script-using-this-module]."
     (setq return
           (catch 'HELL
             (unless (re-search-backward "^[ \t]*sub " nil t)
-              (throw nil))
+              (throw 'HELL nil))
             ; jump to start of name
             (forward-word 1) 
             (forward-char)
             (let ((beg (point)))
               (unless (re-search-forward "[ \\\\(\\{]" nil t)
-                (throw nil))
+                (throw 'HELL nil))
               (backward-word 1)
               (forward-word 1) 
               (copy-region-as-kill beg (point))
@@ -972,7 +972,6 @@ If this works well, it obviates \\[perlnow-do-script] and
     "Name for the new perl script? " perlnow-script-location))
   (require 'template) 
   (let ( package-name) 
-
     (cond 
      ((setq package-name (perlnow-get-package-name-from-module-buffer))
        (let* ( (module-filename (buffer-file-name))
