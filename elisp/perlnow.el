@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.89 2004/02/16 21:38:59 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.90 2004/02/16 22:51:39 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -672,24 +672,31 @@ really done\\) then this function will see the first package name."
 This is intended to be run inside an open buffer of perl code. 
 It tries to find the name of the current perl sub \(the one that 
 the cursor is inside of\) and pushes it onto the kill-ring, ready 
-to be yanked later.  Used by \\[perlnow-script-using-this-module]."
+to be yanked later.  Returns nil on failure, sub name on success. 
+Used by \\[perlnow-script-using-this-module]."
   (interactive) ; DEBUG only DELETE
+  (let (return) 
   (save-excursion
     ; in case the cursor is *on top* of the keyword "sub", go forward a little.
     (forward-word 1) 
     (forward-char)
-    (unless (re-search-backward "^[ \t]*sub " nil t)
-      (error "Unable to find sub beginning"))
-    ; jump to start of name
-    (forward-word 1) 
-    (forward-char)
-    (let ((beg (point)))
-      (unless (re-search-forward "[ \\\\(\\{]" nil t)
-        (error "Unable to find sub name end"))
-      (backward-word 1)
-      (forward-word 1) 
-      (copy-region-as-kill beg (point))
-      )))
+    (setq return
+          (catch 'HELL
+            (unless (re-search-backward "^[ \t]*sub " nil t)
+              (throw nil))
+            ; jump to start of name
+            (forward-word 1) 
+            (forward-char)
+            (let ((beg (point)))
+              (unless (re-search-forward "[ \\\\(\\{]" nil t)
+                (throw nil))
+              (backward-word 1)
+              (forward-word 1) 
+              (copy-region-as-kill beg (point))
+              (setq return 
+                    (buffer-substring-no-properties beg (point)))
+              ))))
+  return))
 
 
 ;;;----------------------------------------------------------
@@ -858,7 +865,8 @@ The run string can always be changed later by running
 \\[perlnow-set-run-string] manually."
   (interactive
    (unless perlnow-run-string
-     (perlnow-set-run-string)))
+     (perlnow-set-run-string))
+   (list perlnow-run-string))
   (compile runstring))
 
 ;;;----------------------------------------------------------
