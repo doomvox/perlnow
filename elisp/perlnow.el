@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.206 2004/04/28 23:51:12 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.207 2004/04/29 17:27:16 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1533,6 +1533,7 @@ double-colon separated package name form\)."
 
   ; Also  open the *.t file 
   (setq h2xs-test-file (perlnow-full-path-to-h2xs-test-file h2xs-staging-area))
+  (funcall (perlnow-lookup-preferred-perl-mode))
 
   (perlnow-open-file-other-window 
       h2xs-test-file 
