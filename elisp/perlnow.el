@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.171 2004/03/17 20:29:43 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.172 2004/03/17 21:14:56 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1886,7 +1886,7 @@ schemes for your test files: `perlnow-tutorial-test-file-strategies'."
 ;                      (setq fish (format "perl %s" testfile))
                       (setq fish
 ;                            (format "perl -MExtUtils::Command::MM -e \"test_harness(1, '%s')\"" testfile))
-                            (format "perl '%s" testfile))
+                            (format "perl '%s'" testfile))
                       (throw 'COLD fish)))))))
     return))
 
@@ -1908,7 +1908,7 @@ schemes for your test files: `perlnow-tutorial-test-file-strategies'."
               (setq run-line (concat "cd " staging-area "; " "make test"))
             (setq run-line
 ;               (format "perl -MExtUtils::Command::MM -e \"test_harness(1, '%s')\"" filename))
-                  (format "perl '%s" testfile))
+                  (format "perl '%s'" testfile))
              ))
         (t ; When all else fails, just feed it to perl and hope for the best
          (setq run-line (format "perl %s" filename))
