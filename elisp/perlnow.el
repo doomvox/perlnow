@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.117 2004/02/19 02:07:59 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.118 2004/02/19 02:22:43 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1256,6 +1256,8 @@ double-colon separated package name form\)."
                 (concat "-b" 
                         (perlnow-perlversion-old-to-new perlnow-minimum-perl-version)))
 
+  (perlnow-process-Makefile.PL h2xs-location package-name)
+
   (find-file 
    (perlnow-full-path-to-h2xs-module h2xs-location package-name))
   (search-forward "# Preloaded methods go here.")
@@ -1738,6 +1740,34 @@ which is more suitable for use as the -b parameter of h2xs."
     (error "Does not look like an old-style perl version: %s" old-version))
   (setq minor1 (substring mantissa 2))
   (concat major "." minor1 "." "0")))
+
+;;;----------------------------------------------------------
+(defun perlnow-staging-area (h2xs-location package-name)
+  "Return path to h2xs module staging area for H2XS-LOCATION & PACKAGE-NAME."
+  (let ((staging-area
+         (concat 
+          (file-name-as-directory h2xs-location)
+          (mapconcat 'identity (split-string package-name "::") "-"))))
+    staging-area))
+
+;;;----------------------------------------------------------
+(defun perlnow-process-Makefile.PL (h2xs-location package-name)
+  "Do a perl Makefile.PL down in the given immediately after creating h2xs location."
+  (let ( (default-directory 
+           (perlnow-staging-area h2xs-location package-name))
+           (display-buffer (get-buffer-create "*perlnow-h2xs-build*")) 
+         )
+    
+  (perlnow-blank-out-display-buffer display-buffer)
+
+   ; A typical h2xs run string:  h2xs -AX -n Net::Acme -b 5.6.0
+  (call-process "perl"
+                nil
+                display-buffer      ; must be buffer object?
+                nil
+                "Makefile.PL"
+                )
+    ))
 
 
 ;;;----------------------------------------------------------
