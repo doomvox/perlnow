@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.107 2004/02/18 06:59:45 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.108 2004/02/18 07:10:34 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1364,6 +1364,7 @@ return nil if none is found."
     (if (looking-at package-line-pat) 
         (setq return (match-string 1))
       (setq return nil))
+    (set-text-properties 0 (length return) nil return) ; remove all text properties
     return)))
 
 ;;;----------------------------------------------------------
