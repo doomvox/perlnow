@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.40 2004/02/10 07:55:26 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.41 2004/02/10 08:35:12 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -929,50 +929,45 @@ defaults to using the module root of the current file buffer."
 ;;; a flag that controls word-at-a-time or level-at-a-time. 
 ;;; then tabby and spacey become simple wrappers.
 
-;;; TODO
-;;; [Note: should use (match-end 0) instead of adding length of pattern.]
-;;; (FIXED)
-
-;;; TODO 
-;;; If input string trails with a *single* colon, completion should supply 
-;;; a second one (minimally).  Possibly it should silently fill it in, and try 
-;;; and complete again.   (FIXED)
-
 ;;; TODO 
 ;;; If you enter something that doesn't match anything and try and do completion, 
-;;; the part that doesn't match gets erased.  It should report [No completion] or 
-;;; something, which means that " [blah]" stuff should be detected and ignored 
-;;; in the input here. 
+;;; the part that doesn't match gets erased.  Minimally: it should not get erased.
+;;; ((FIXED))
+
+;;; TODO 
+;;; Ideally it should report [No completion] or something, 
+;;; which means that " [blah]" stuff should be detected and ignored 
+;;; in the input here.  (low priority)
 
 ;;; TODO 
 ;;; Possibly, completion should not add a ".pm" if double-colons are in use in front 
-;;; of it.  
+;;; of it.  ((FIXED))
 
 ;;; TODO 
 ;;; Shouldn't go appending separators after an obvious completion, like a ".pm".
+;;; ((FIXED))
 
 ;;; TODO 
 ;;; Consider restricting matches to directories and *.pm names?
+;;; Sounds very good, but would need to roll your own directory list code (I think)
+;;; Perhaps combine with a roll-your-own "try-completions"? 
 
 ;;; TODO 
 ;;; Possibly help should not display ".pm" on module names.  Or possibly not.
+;;; Still not fixed, and this is not real elegant, I must say.
 
-;;; TODO 
-;;; Entering path with no slash, gets wrong type argument sequencep. 
-;;; Ah, try-completion, up to it's tricks again:
-;;;       For a unique match which is exact, t is returned.
-;;; (FIXED)
 
   (interactive)
   (let* ( ; empty declarations:
          file-system-path-pat new-stuff-starts new-stuff result
-         candidate-alist file-list completion-fodder suggested-completion
+         candidate-alist file-list suggested-completion
          field-start two-pieces-list perlish-path fragment fragment-pat file-system-path
          lastchar
          return
           ; assignments setq's in all but name:
          (raw_string (buffer-string))
          (end-of-prompt-pat ": ")
+         (pm-extension-pat "\\.pm$")
          )
 
          (string-match end-of-prompt-pat raw_string)
@@ -989,25 +984,32 @@ defaults to using the module root of the current file buffer."
          (setq perlish-path     (car two-pieces-list))
          (setq fragment (cadr two-pieces-list))
          (setq fragment-pat (concat "^" fragment)) ; for getting possible filename completions
-                                              ; out of a list of bare filenames (no path)
+                                                   ; out of a list of bare filenames (no path)
          (setq file-system-path (replace-regexp-in-string "::" "/" perlish-path) )  
             ; unix file system separator "/" swapped in for perl package separators "::" 
          
          (setq candidate-alist (perlnow-list-directory-as-alist file-system-path fragment-pat))
-         (setq completion-fodder fragment)
-         (setq returned (try-completion completion-fodder candidate-alist))
+         (setq returned (try-completion fragment candidate-alist))
 
          (if (string-match "::" perlish-path) 
              (setq separator "::")
            (setq separator "/"))
 
          (cond ((eq returned nil)
-                (setq suggested-completion "")) 
+                (setq suggested-completion fragment)) 
                ((eq returned t)
-                (setq suggested-completion (concat fragment separator)))
+                (if (string-match pm-extension-pat fragment)
+                    (setq suggested-completion (substring fragment 0 (match-beginning 0) ))
+                  (setq suggested-completion (concat fragment separator))
+                  )
+                )
                (t
-                 (setq suggested-completion returned)) )
+                 (setq suggested-completion returned)))
                
+         ; yeah, checking this *again* is inelegant, but WTH
+         (if (string-match pm-extension-pat suggested-completion)
+             (setq suggested-completion (substring suggested-completion 0 (match-beginning 0) )))
+
          (setq result (concat perlish-path suggested-completion))
 
          (if (string= result minibuffer-string) ; if there's no change from the input value, go into help
