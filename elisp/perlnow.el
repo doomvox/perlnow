@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.147 2004/02/22 03:07:39 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.148 2004/02/23 07:45:33 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -2627,13 +2627,6 @@ wrappers."
 ;;;    (substitute-command-keys STRING)
 ;;;    Substitute key descriptions for command names in STRING.
 
-;;; Instead of replace-regexps, 
-;;; Loop over string-matches, so we can
-;;; extract to a variable, 
-;;; check to see if it's in the given list
-;;;  if so do html formatting
-;;;  if not:
-;;;  (substitute-command-keys STRING)
 
 ;;; To start with, just worry about function references.
 ;;; add variable refs later.
@@ -2677,65 +2670,66 @@ wrappers."
                  (replace-regexp-in-string "[`]\\(.*?\\)'" ; that's `(.*?)'
                                            "<I><A HREF=\"#\\1\">\\1</A></I>" 
                                            doc-string))
+           (setq doc-string 
+                 (perlnow-htmlicize-function-references doc-string list))
 
-           ; Fixing function refs in doc-string, either internal (become HTML jumps) 
-           ; or external (use the same style of output as *Help* buffers)
-           (let (
-                 ; define constants
-                 (func-ref-pat "\\\\\\[\\(.*?\\)\\]") ; that's \[(.*?)]   (one hopes)
-                 (open-link "<I><A HREF=\"#")
-                 (mid-link  (concat "\"" ">"))
-                 (close-link "</A></I>")
-                 ; initialize
-                 (start-search 0)
-                 ; declare
-                 symb-name ; symbol name, searched for with the find-var-ref-pat
-                 beg end ; end points of the symbol name in the doc-string
-                 tranny; either html string built up from the symbname using above constants.
-                       ; or the output from (substitute-command-keys symb-name)
-                 tranny-length ; 
-                 adjust ; length change in the doc-string after a link is swapped in
-                 )
-             (catch 'OUT 
-               (while (setq beg (string-match func-ref-pat doc-string start-search))
-                 (setq symb-name (match-string 1 doc-string))
-                 (setq end (match-end 0))
-
-                 ; Is the reference internal or external?
-                 (if (member symb-name list)  
-                     (setq tranny       ; link form
-                           (concat open-link symb-name mid-link symb-name close-link))
-                   (setq tranny  ; usual *help* display form
-                         (concat " "
-                                 (substitute-command-keys symb-name)
-                                 " ")
-                         ))
-
-                 (setq doc-string
-                       (concat
-                        (substring doc-string 0 (- beg 1))
-                        tranny
-                        (substring doc-string (+ end 1))
-                        ))
-
-                 (setq tranny-length (length tranny))
-                 (setq symb-length (length symb-name))
-                 (setq adjust (- tranny-length symb-length))
-;;               (setq adjust (- adjust 1)) ;;; hackery daquiri docs
-
-                 (setq start-search (+ end adjust))
-                 ; experimental hack to cover a bug
-                 (if (> start-search (length doc-string))
-                     (throw 'OUT t))
-                 )))
           (insert (concat "<PRE>\n" doc-string "</PRE></P>\n\n"))
           )))
 
-             ;;;debuugery:
-;;             (message "start-search: %d " start-search)
-;;             (message "length doc-string: %d " (length doc-string))
-;;;;;???             (message "adjust: %d " adjust)
-;;             (message "doc-string: %s" doc-string)
+;;;----------------------------------------------------------
+(defun perlnow-htmlicize-function-references (doc-string list)
+  "Transform function references in a DOC-STRING into html form.
+Requires a LIST of internal symbols, to identify whether a function 
+reference can jump to another docstring from the same .el file, or 
+if it's a pointer to something from another package. 
+Internally used by perlnow-dump-docstrings-as-html-exp."
+; In this incarnation: 
+; function refs in doc-string become either internal (become HTML jumps) 
+; or external (use the same style of output as *Help* buffers)
+;;; TODO - It turns out that this sucks. Do something different, eh?
+  (let (
+        ; define constants
+        (func-ref-pat "\\\\\\[\\(.*?\\)\\]") ; that's \[(.*?)]   (one hopes)
+        (open-link "<I><A HREF=\"#")
+        (mid-link  (concat "\"" ">"))
+        (close-link "</A></I>")
+        ; initialize
+        (start-search 0)
+        ; declare
+        symb-name ; symbol name, searched for with the find-var-ref-pat
+        beg end ; end points of the symbol name in the doc-string
+        tranny ; the transformed form of the reference to be used in output
+        adjust ; length change in the doc-string after a link is swapped in
+        )
+    (catch 'OUT 
+      (while (setq beg (string-match func-ref-pat doc-string start-search))
+        (setq symb-name (match-string 1 doc-string))
+        (setq end (match-end 0))
+
+        ; Is the reference internal or external?
+        (cond ((member symb-name list)
+               (setq tranny  ; html link to internal label
+                     (concat open-link symb-name mid-link symb-name close-link)))
+              (t
+               (setq tranny  ; usual *help* display form
+                     (concat " "
+                             (substitute-command-keys symb-name)
+                             " "))))
+        (setq doc-string
+              (concat
+               (substring doc-string 0 (- beg 1))
+               tranny
+               (substring doc-string (+ end 1))
+               ))
+        (setq symb-length (length symb-name))
+        (setq adjust (- (length tranny) symb-length))
+        (setq start-search (+ end adjust))
+        ; hack to make out of bounds search impossible:
+        (if (> start-search (length doc-string))
+            (throw 'OUT t))
+        )))
+  doc-string)
+
 
 ;;; Okay, I got this "working", but what it does is completely 
 ;;; uninteresting and useless.  E.g.                
