@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.90 2004/02/16 22:51:39 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.91 2004/02/16 23:15:04 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -864,9 +864,12 @@ This uses an interactively set RUNSTRING determined from
 The run string can always be changed later by running 
 \\[perlnow-set-run-string] manually."
   (interactive
-   (unless perlnow-run-string
-     (perlnow-set-run-string))
-   (list perlnow-run-string))
+   (let (interactive-return)
+   (if (eq perlnow-run-string nil)
+       (setq interactive-return (perlnow-set-run-string))
+     (setq interactive-return perlnow-run-string))
+   (list interactive-return)
+   ))
   (compile runstring))
 
 ;;;----------------------------------------------------------
@@ -1040,7 +1043,8 @@ This is to make sure that the file actually exists."
   "Ask for the name of the file to create. 
 Check to see if one exists already, and if so, ask for another name.  
 Asks the question ASK-MESS, and defaults to the using the location 
-DEFAULT-LOCATION.  Returns full file name with path."
+DEFAULT-LOCATION.  Returns a list of a single string, full file name 
+with path."
   (let ( filename )
   (setq default-location (file-name-as-directory default-location)) 
   (while (progn 
