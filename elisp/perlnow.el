@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.199 2004/04/27 01:20:17 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.200 2004/04/27 02:00:36 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1412,7 +1412,7 @@ The location for the new module defaults to the global
 
      (setq result
            (read-from-minibuffer
-            "New module to create \(e.g. /tmp/dev/New::Mod\): "
+            "New OOP module to create \(e.g. /tmp/dev/New::Mod\): "
                                  initial keymap nil history nil nil))
      (setq filename (concat (replace-regexp-in-string "::" perlnow-slash result) ".pm"))
 
@@ -2676,7 +2676,7 @@ Output is appended to the *perlnow-h2xs* window."
             (set-buffer display-buffer)
             (insert "Trying to generate Makefile from Makefile.PL\n")
             (let ( (default-directory h2xs-staging-area) )
-              (message "dd: %s" default-directory)
+;;;              (message "dd: %s" default-directory) ;;; DELETE
               (call-process "perl"
                             nil
                             display-buffer
