@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.181 2004/04/22 22:54:39 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.182 2004/04/22 22:56:09 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1747,20 +1747,6 @@ Currently always returns t, but future versions may return nil for failure."
 
     (unless (eq inc-spot nil) ; without inc-spot, don't mess with FindBin/lib
       (perlnow-endow-script-with-access-to inc-spot)
-;;; DELME
-;;; TODO - test this change, using above function instead of this block:
-;;  DONE.  Looks okay.
-;;       (progn
-;;         ; ensure the module can be found by the script if needed, insert "use lib" line
-;;         (unless (perlnow-inc-spot-in-INC-p inc-spot)
-;;           (let ((relative-path
-;;                  (file-relative-name inc-spot (file-name-directory script-name))
-;;                  ))
-;;             (insert "use FindBin qw\($Bin\);\n")
-;;             (insert "use lib \(\"$Bin/")
-;;             (insert relative-path)
-;;             (insert "\");\n"))))
-;;; END DELETIA
       )
     ; insert the "use Modular::Stuff;" line
     (insert (format "use %s;" package-name)) ;;; and maybe a qw() list?
