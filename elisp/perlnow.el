@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.22 2004/02/06 19:40:42 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.23 2004/02/06 21:34:07 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1158,6 +1158,9 @@ will be assumed and need not be entered \(though it may be\).
 
    ; Reverse the order of the match-alist
    (setq match-alist (reverse match-alist))  ;; *might* not be needed. 
+
+   ; Maybe I gotta do this? 
+   (setq minibuffer-completion-table match-alist)
 
    ; Filter that through the "predicate", *if* supplied (note, will leave gaps in the value numbers...)
    (unless (eq predicate-function-symbol nil) ; gotta be a better way. Try just: (unless predicate-function-symbol
