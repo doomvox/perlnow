@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.198 2004/04/27 01:10:58 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.199 2004/04/27 01:20:17 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -82,6 +82,9 @@ needing template.el to operate.
 the location and name of the new module in a single prompt,
 using a hybrid form: \"/usr/lib/perl/Some::Module\"
 
+\\[perlnow-object-module] - for creation of new OOP modules.
+Much like perlnow-module, but uses a different template.
+
 \\[perlnow-h2xs] - runs the h2xs command, to begin working
 on a new module for distribution, such as via CPAN.
 
@@ -151,6 +154,7 @@ Add something like the following to your ~/.emacs file:
    \(require 'perlnow\)
    \(global-set-key \"\\C-c's\" 'perlnow-script\)
    \(global-set-key \"\\C-c'm\" 'perlnow-module\)
+   \(global-set-key \"\\C-c'o\" 'perlnow-object-module\)
    \(global-set-key \"\\C-c'h\" 'perlnow-h2xs\)
    \(global-set-key \"\\C-c'c\" 'perlnow-run-check\)
    \(global-set-key \"\\C-c'r\" 'perlnow-run\)
@@ -815,6 +819,11 @@ own use.")
   "The template that new perl modules will be created with.")
 (put 'perlnow-perl-module-template  'risky-local-variable t)
 
+(defcustom perlnow-perl-object-module-template
+  (substitute-in-file-name "$HOME/.templates/TEMPLATE.perlnow-object-pm.tpl")
+  "The template that new perl object modules will be created with.")
+(put 'perlnow-perl-object-module-template  'risky-local-variable t)
+
 (defcustom perlnow-perl-test-script-template
     (substitute-in-file-name "$HOME/.templates/TEMPLATE.perlnow-pl-t.tpl")
   "The template that tests for perl scripts will be created with.")
@@ -1379,6 +1388,48 @@ creation."
   (setq perlnow-perl-package-name package-name) ; global used to pass value into template
   (let ( (filename (perlnow-full-path-to-module inc-spot package-name)) )
     (perlnow-create-with-template filename perlnow-perl-module-template)))
+
+
+;;;----------------------------------------------------------
+(defun perlnow-object-module (inc-spot package-name)
+  "Quickly jump into development of a new perl OOP module.
+In interactive use, gets the path INC-SPOT and PACKAGE-NAME
+with a single question, asking for an answer in a hybrid form
+like so:
+   /home/hacker/perldev/lib/New::Module
+This works much like \\[perlnow-module], except that it uses 
+a different template.\n
+The location for the new module defaults to the global
+`perlnow-pm-location'."  
+;;; Mutated from perlnow-module
+
+  (interactive
+   (let ((initial perlnow-pm-location)
+         (keymap perlnow-read-minibuffer-map) ; The keymap is key: transforms read-from-minibuffer.
+         (history 'perlnow-package-name-history)
+         result filename return
+         )
+
+     (setq result
+           (read-from-minibuffer
+            "New module to create \(e.g. /tmp/dev/New::Mod\): "
+                                 initial keymap nil history nil nil))
+     (setq filename (concat (replace-regexp-in-string "::" perlnow-slash result) ".pm"))
+
+     (while (file-exists-p filename)
+       (setq result
+             (read-from-minibuffer
+              "This name is in use, choose another \(e.g. /tmp/dev/New::Mod\): "
+                                 result keymap nil history nil nil))
+       (setq filename (concat (replace-regexp-in-string "::" perlnow-slash result) ".pm")))
+
+     (setq return
+           (perlnow-split-perlish-package-name-with-path-to-inc-spot-and-name result))
+     return))
+  (require 'template)
+  (setq perlnow-perl-package-name package-name) ; global used to pass value into template
+  (let ( (filename (perlnow-full-path-to-module inc-spot package-name)) )
+    (perlnow-create-with-template filename perlnow-perl-object-module-template)))
 
 
 ;;;----------------------------------------------------------
