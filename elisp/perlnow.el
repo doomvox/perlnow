@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.106 2004/02/18 02:55:21 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.107 2004/02/18 06:59:45 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1904,85 +1904,92 @@ and \\[perlnow-read-minibuffer-complete-word\]."
 ;;; I'm hardcoding "/" as the "file system" separator 
 ;;; which means that this code will need to be fixed to get it 
 ;;; to work on a non unix-like system.
-  (let* ( ; empty declarations:
-         candidate-alist suggested-completion
-         field-start 
+  (let ( ; empty declarations:
+         raw_string candidate-alist suggested-completion field-start word-separator 
          two-pieces-list perlish-path fragment fragment-pat file-system-path
          lastchar returned new-portion new-portion-first-word result new-mini
-         word-separator
-          ; assignments, setq's in all but name:
-         (raw_string (buffer-string))
-         (end-of-prompt-pat ": ")
-         (pm-extension-pat "\\.pm$")
-         )
+          ; definitions
+          (end-of-prompt-pat ": ")
+          (pm-extension-pat "\\.pm$") )
 
-         (string-match end-of-prompt-pat raw_string)
-         (setq field-start (match-end 0)) ; also used later to blank minibuffer
-         (setq minibuffer-string (substring raw_string field-start))
+    (setq raw_string (buffer-string))
+    (string-match end-of-prompt-pat raw_string)
+    (setq field-start (match-end 0)) ; also used later to blank minibuffer
+    (setq minibuffer-string (substring raw_string field-start))
 
-         ; No single trailing colons allowed: silently double them up
-         (if (string-match "[^:]:$" minibuffer-string)
-             (setq minibuffer-string (concat minibuffer-string ":")))
 
-         ; Treat input string as a directory plus fragment
-         (setq two-pieces-list
-           (perlnow-split-module-path-to-dir-and-tail minibuffer-string))
-         (setq perlish-path (car two-pieces-list))
-         (setq fragment (cadr two-pieces-list))
-         (setq fragment-pat (concat "^" fragment))                                                    
+    ; No single trailing colons allowed: silently double them up
+;;;    (if (string-match "[^:]:$" minibuffer-string)
+;;;        (setq minibuffer-string (concat minibuffer-string ":")))
 
-         (cond (; Are we inside the perl package namespace yet?
-                (string-match "::" perlish-path) 
-                (setq file-system-path (replace-regexp-in-string "::" "/" perlish-path))  
-                   ; swap in file system separator "/"  for perl package separators "::" 
-                (setq separator "::"))
-               (t
-                (setq separator "/")
-                (setq file-system-path perlish-path)))
+    (if (string-match "[^:]:$" minibuffer-string)
+        (setq new-mini (concat minibuffer-string ":"))
+      (progn ; else, do usual processing
 
-         (setq candidate-alist (perlnow-list-directories-and-modules-as-alist file-system-path fragment-pat))
-         (setq returned (try-completion fragment candidate-alist))
+    ; Treat input string as a directory plus fragment
+    (setq two-pieces-list
+          (perlnow-split-module-path-to-dir-and-tail minibuffer-string))
+    (setq perlish-path (car two-pieces-list))
+    (setq fragment (cadr two-pieces-list))
+    (setq fragment-pat (concat "^" fragment))
 
-         ; must convert logical values of "returned" into appropriate strings 
-         (cond ((eq returned nil)  
-                (setq suggested-completion fragment))
-               ((eq returned t) ; precise match that is not a *.pm file is a directory, add separator
-                 (if (string-match pm-extension-pat fragment)
-                    (setq suggested-completion (substring fragment 0 (match-beginning 0) ))
-                  (setq suggested-completion (concat fragment separator)))) 
-               (t
-                 (setq suggested-completion returned)))
-        
-         ; Prevents .pm extensions from appearing in the minibuffer
-         (if (string-match pm-extension-pat suggested-completion) ; Yeah, checking *again*. Inelegant, but WTH
-             (setq suggested-completion (substring suggested-completion 0 (match-beginning 0) )))
+    (cond (; Are we inside the perl package namespace yet?
+           (string-match "::" perlish-path) 
+            (setq file-system-path (replace-regexp-in-string "::" "/" perlish-path))  
+            ; swap in file system separator "/"  for perl package separators "::" 
+            (setq separator "::"))
+          (t
+            (setq separator "/")
+            (setq file-system-path perlish-path)))
 
-         ; if there's no change from the input value, go into help
-         (setq result (concat perlish-path suggested-completion))
-         (if (string= result minibuffer-string) 
-             (perlnow-read-minibuffer-completion-help))
+;;; (unless (file-directory-p file-system-path)
 
-         ;;; peel off existing fragment from suggested-completion, what remains is the new-portion
-         (string-match fragment-pat suggested-completion)
-         (setq new-portion (substring suggested-completion (match-end 0)))
-         (if restrict-to-word-completion  ; for "spacey" 
-             (progn ; peel off word from the new-portion of suggested-completion
-               (string-match "\\(^\\w*\\)\\(\\W\\|$\\)" new-portion)
-               (setq new-portion-first-word
-                     (match-string 1 new-portion))
-               (setq word-separator ; save next non-word character: the "word-separator"
-                     (match-string 2 new-portion))
+    (setq candidate-alist (perlnow-list-directories-and-modules-as-alist file-system-path fragment-pat))
+    (setq returned (try-completion fragment candidate-alist))
+  
+    ; must convert logical values of "returned" into appropriate strings 
+    (cond ((eq returned nil)  
+           (setq suggested-completion fragment))
+          ((eq returned t) ; a precise match that is not a *.pm file is a directory: add separator
+           (if (string-match pm-extension-pat fragment)
+               (setq suggested-completion (substring fragment 0 (match-beginning 0) ))
+             (setq suggested-completion (concat fragment separator)))) 
+          (t
+           (setq suggested-completion returned)))
+          
+    ; Prevents .pm extensions from appearing in the minibuffer
+    (if (string-match pm-extension-pat suggested-completion) ; Yeah, checking *again*. Inelegant, but WTH
+        (setq suggested-completion (substring suggested-completion 0 (match-beginning 0) )))
+  
+    ; if there's no change from the input value, go into help
+    (setq result (concat perlish-path suggested-completion))
+    (if (string= result minibuffer-string) 
+        (perlnow-read-minibuffer-completion-help))
+  
+    ; peel off existing fragment from suggested-completion, what remains is the new-portion
+    (string-match fragment-pat suggested-completion)
+    (setq new-portion (substring suggested-completion (match-end 0)))
+    (if restrict-to-word-completion  ; for "spacey" 
+        (progn ; peel off word from the new-portion of suggested-completion
+          (string-match "\\(^\\w*\\)\\(\\W\\|$\\)" new-portion)
+          (setq new-portion-first-word
+                (match-string 1 new-portion))
+          (setq word-separator ; save next non-word character: the "word-separator"
+                (match-string 2 new-portion))
+  
+          ;When new-portion-first-word is empty, we're at a word-separator
+          (if (string= new-portion-first-word "")
+              (setq new-portion word-separator)
+            (setq new-portion new-portion-first-word))))
+  
+    (setq new-mini (concat perlish-path fragment new-portion))
+   )) ; end if/else, close of "usual processing" 
+  
+    (delete-region (+ 1 field-start) (point-max))
+    (insert new-mini)
 
-                ;When new-portion-first-word is empty, we're at a word-separator
-               (if (string= new-portion-first-word "")
-                   (setq new-portion word-separator)
-                 (setq new-portion new-portion-first-word))))
-
-         (setq new-mini (concat perlish-path fragment new-portion))
-
-         (delete-region (+ 1 field-start) (point-max))
-         (insert new-mini)
-         ))
+;;;       )
+    ))
 
 
 ;;;----------------------------------------------------------
@@ -1995,7 +2002,8 @@ be bound to the \"?\" key during the minibuffer read."
 ;;; codename: huh
   (interactive)
   (let* (
-         (raw_string (buffer-string))
+;;;         (raw_string (buffer-string))
+         (raw_string (buffer-substring-no-properties (point-min) (point-max)))
          (pat ": ")
          (field-start (+ (string-match pat raw_string) (length pat)))
          (string (substring raw_string field-start))
@@ -2008,11 +2016,12 @@ be bound to the \"?\" key during the minibuffer read."
                                               ; out of a list of bare filenames (no path)
          (file-system-path (replace-regexp-in-string "::" "/" perlish-path) )  
             ; unix file system separator "/" swapped in for perl package separators "::" 
-         (match-alist (perlnow-list-directories-and-modules-as-alist file-system-path fragment-pat))
-;;;         (file-list (mapcar '(lambda(pair) (car pair)) match-alist))
-           ;;; could try file-list in place of the all-completions call. (yields stringp: NG?)
-        )
-   (setq match-alist (perlnow-remove-pm-extensions-from-alist match-alist))
+         match-alist
+         )
+;    (unless (file-directory-p file-system-path)
+      (setq match-alist (perlnow-list-directories-and-modules-as-alist file-system-path fragment-pat))
+      (setq match-alist (perlnow-remove-pm-extensions-from-alist match-alist))
+;      )
    (with-output-to-temp-buffer "*Completions*"
      (display-completion-list
       (all-completions fragment match-alist)
@@ -2052,12 +2061,11 @@ are sequential integers."
 ;;; Nope: I can't do that, it messes up "workhorse" as written. 
    (let* ( 
           match-alist
-          ; directory-files directory &optional full-name match-regexp nosort
+          ; some directory-files arguments:
           (directory-full-name nil)
           (directory-nosort nil)
           (file-list 
             (directory-files file-system-path directory-full-name pattern directory-nosort))
-;;;       base-name
           (i 1)  ; counter to build alist with numeric value
           )
      (dolist (file file-list)
@@ -2066,9 +2074,6 @@ are sequential integers."
                    (setq match-alist (cons (cons file i) match-alist))
                    (setq i (+ i 1)))
                  ((string-match "\\.pm$" file)
-;;;               (string-match "^\\(.*\\)\\.pm$" file)
-;;;                 (setq base-name (match-string 1 file))
-;;;                 (setq match-alist (cons (cons base-name i) match-alist))
                    (setq match-alist (cons (cons file i) match-alist))
                    (setq i (+ i 1))))))
   ; Reverse the order of the match-alist to get values counting up starting from 1
