@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.55 2004/02/11 09:29:25 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.56 2004/02/11 18:41:25 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -236,9 +236,9 @@ either the module root or the module location.")
 (defun perlnow-run-check ()
   "Run a perl check on the current buffer, displaying errors
 and warnings in another window.  Afterwards, you can skip to
-the location of the next problem with \\[next-error] \n This
-command is like \\[cperl-check-syntax] with one less prompt
-\(also, it does not require mode-compile.el\)"
+the location of the next problem with \\[next-error] \n 
+This command is like \\[cperl-check-syntax] with one 
+less prompt \(also, it does not require mode-compile.el\)"
   (interactive)
   (save-buffer)
   (setq compile-command (format "perl -cw \'%s\'" (buffer-file-name)))
@@ -904,18 +904,136 @@ defaults to using the module root of the current file buffer."
 ;;; so we won't need to do this over and over... 
 
 ;;;==========================================================
-;;;  Another approach to programmed completion for 
-;;;  reading in perlmodule path and names in one step.  
-;;;  Instead of completing-read, using read-from-minibuffer
+;;; Implementing 
+;;;    perlnow-prompt-for-new-module-in-one-step
+;;; to read in perlmodule path and names in one step
+;;; (A variant of perlnow-prompt-for-module-to-create.)
+;;; Uses a custom programmed completion scheme.  Note: 
+;;; instead of completing-read, using read-from-minibuffer 
+;;; directly.
 ;;;==========================================================
 
-;;; TODO FEATURE
-;;; Weird feature idea: when just tabbing away, and you get to 
-;;; a level boundary, current behavior is to add a separator "/".
-;;; Does not switch to "::" until the user has entered one. 
-;;; Might be better to consult the @INC array, and guess that it's 
-;;; time to switch to :: once you've entered a module-root.
-;;; Sounds cool, but, like: later.
+;;; perlnow-prompt-for-new-module-in-one-step
+
+;;; BOOKMARK
+
+
+(defun perlnow-module-one-step (module-root module-name) 
+  "Quickly jump into development of a new perl module 
+Experimental variation of \[perlnow-module]. 
+
+When used interactively, gets path and module-name with a single 
+question, asking for an answer in a hybrid form like so:
+   /home/hacker/perldev/lib/New::Module
+This uses the file-system separator  \"/\" for the module-root 
+location and then the perl package name-space separator \"::\" 
+for the module-name.  The \".pm\" extension is assumed 
+and need not be entered. \n
+If the module exists already, this will ask for another name. 
+The location defaults to the global \[perlnow-module-root\], 
+though this may be edited at run time."
+;;; TODO more explication?
+;;; The use must be careful to switch to double-colon separators 
+;;; in the right place, to tell perlnow where the division is 
+;;; in the namespaces. 
+;;; TODO make this work:
+;;; If the module exists already, this will ask for another name. 
+
+  (interactive 
+   (let ((initial-contents perlnow-module-root)
+         (keymap perlnow-read-minibuffer-map) 
+         (history   nil)   ; TODO - History can not stay "nil"
+         result
+         pair module-name module-name
+         )
+     (setq result
+           (read-from-minibuffer "New module to create e.g. /tmp/dev/New::Mod: " 
+                                 initial-contents keymap nil history nil nil))
+     (message "result: %s" result)      ; DEBUG only DELETE 
+
+     (setq twofer 
+           (perlnow-split-module-file-name-to-module-root-and-name result))
+     (setq module-root (car twofer))
+     (setq module-name (cadr twofer))))
+
+  (setq perlnow-perl-module-name module-name) ; global used to pass value into template
+  (let ( (filename (perlnow-full-path-to-module module-root module-name)) )
+    (perlnow-new-file-using-template filename perlnow-perl-module-template)))
+
+;;;----------------------------------------------------------
+(defun perlnow-prompt-for-new-module-in-one-step (where what) 
+
+;
+;Autocompletion works in a way very similar to the usual
+;emacs input methods for file names and paths, but the
+;transition to double-colon separators is used to indicate
+;where perl's package namespace begins.  
+;
+;An example of typical input might be: \n
+;   /usr/local/lib/perl/New::Module\n
+;Where \"/usr/local/lib/perl/\" is the module-root and 
+;\"New::Module\" is the module-name (aka package-name).\n
+
+;;;; ANYTHING ELSE? 
+;;; ... 
+
+  (interactive)
+  (let (
+        (init   nil) ; 
+        (keymap perlnow-read-minibuffer-map) ; Can feed it a keymap!  
+        (read   nil) ; 
+        (hist   nil) ; 
+        (def    nil) ; 
+        (iim    nil) ; 
+         result
+        )
+  (setq result
+        (read-from-minibuffer "New module to create e.g. /tmp/dev/New::Mod: " 
+                              init keymap read hist def iim))
+  (message "result: %s" result) ; DEBUG only DELETE 
+
+   ))
+
+
+
+;;;----------------------------------------------------------
+;;; DELETE - test routine
+(defun readem ()
+  "and weep, most likely"
+;;; TODO 
+;;; Getting near time to export this technique to perlnow-get-module-name-whatchamacallit
+;;; or whatever 
+  (interactive)
+  (let (
+        (init   nil) ; 
+        (keymap perlnow-read-minibuffer-map) ; Can feed it a keymap!  
+        (read   nil) ; 
+        (hist   nil) ; 
+        (def    nil) ; 
+        (iim    nil) ; 
+         result
+        )
+  (setq result
+        (read-from-minibuffer "Give it to me: " 
+                              init keymap read hist def iim))
+  (message "result: %s" result)
+   ))
+;;; END DELETIA
+
+
+;;;----------------------------------------------------------
+;;; Define the keymap used for module completion
+(setq perlnow-read-minibuffer-map '(keymap
+  ; "?"
+  (63 . perlnow-read-minibuffer-completion-help)
+  ; space 
+  (32 . perlnow-read-minibuffer-complete-word)
+  ; tab
+  (9 . perlnow-read-minibuffer-complete)
+  (10 . exit-minibuffer)
+  (13 . exit-minibuffer)
+  (7 . abort-recursive-edit)
+  ))
 
 ;;;----------------------------------------------------------
 (defun perlnow-read-minibuffer-complete ()
@@ -1036,22 +1154,18 @@ or single word completion will be used. "
          (insert new-mini)
          ))
 
-;;; BOOKMARK
 
+;;;----------------------------------------------------------
 (defun perlnow-read-minibuffer-completion-help ()
    "The help command that displays a listing of available possible 
 completions  when reading in the path and name to a perl module \(which 
 need not exist already\), where valid name separators are 
 \(\"/\" or \"::\"\).\n
-Most likely this will be called by \[perlnow-read-minibuffer-complete-word] 
-and \[perlnow-read-minibuffer-complete] \(at least indirectly, through 
-\[perlnow-read-minibuffer-workhorse])\), though it's also expected to 
+Most likely this will be called by \\[perlnow-read-minibuffer-complete-word] 
+and \\[perlnow-read-minibuffer-complete] \(at least indirectly, through 
+\\[perlnow-read-minibuffer-workhorse])\), though it's also expected to 
 be bound to the \"?\" key during the minibuffer read."
 ;;; codename: huh
-;;;
-;;; TODO
-;;;  fix that ? call out.  Add the other keybindings in spacey and tabby descriptions
-;;; 
   (interactive)
   (let* (
          (raw_string (buffer-string))
@@ -1078,6 +1192,7 @@ be bound to the \"?\" key during the minibuffer read."
       ))
    ))
 
+;;;----------------------------------------------------------
 (defun perlnow-remove-pm-extensions-from-alist (alist)
   "Go through an alist of file names and values, removing the 
 pm extension from the end of any file names in which it appears."
@@ -1094,6 +1209,7 @@ pm extension from the end of any file names in which it appears."
    (setq new-alist (reverse new-alist))
    ))
 
+;;;----------------------------------------------------------
 (defun perlnow-list-directories-and-modules-as-alist (file-system-path pattern)
   "Gets a directory listing from the given path, and returns
 an alist of the file and directory names that match certain criteria. 
@@ -1167,40 +1283,6 @@ the values associated with them in the alist are sequential numbers"
   ))
 
 
-;;;----------------------------------------------------------
-;;;
-(setq perlnow-read-minibuffer-map '(keymap
-  ; "?"
-  (63 . perlnow-read-minibuffer-completion-help)
-  ; space 
-  (32 . perlnow-read-minibuffer-complete-word)
-  ; tab
-  (9 . perlnow-read-minibuffer-complete)
-  (10 . exit-minibuffer)
-  (13 . exit-minibuffer)
-  (7 . abort-recursive-edit)
-  ))
-
-(defun readem ()
-  "and weep, most likely"
-;;; TODO 
-;;; Getting near time to export this technique to perlnow-get-module-name-whatchamacallit
-;;; or whatever 
-  (interactive)
-  (let (
-        (init   nil) ; 
-        (keymap perlnow-read-minibuffer-map) ; Can feed it a keymap!  
-        (read   nil) ; 
-        (hist   nil) ; 
-        (def    nil) ; 
-        (iim    nil) ; 
-         result
-        )
-  (setq result
-        (read-from-minibuffer "Give it to me: " 
-                              init keymap read hist def iim))
-  (message "result: %s" result)
-   ))
 
 
 (defun quote-regexp-stupid-backwhacks (string) 
@@ -1219,163 +1301,6 @@ suitable for tranformation into an emacs regexp, namely
   ;;; value was just matched.  
 ))
 
-
-
-
-;;;==========================================================
-;;; The following functions are all related to the use of 
-;;; programmed completion to implement:
-;;;    perlnow-prompt-for-new-module-in-one-step
-;;; (A variant of perlnow-prompt-for-module-to-create.)
-;;; NOT WORKING LOOKS LIKE A DEAD END
-;;;==========================================================
-
-;;;----------------------------------------------------------
-(defun perlnow-module-one-step (module-root module-name) 
-  "Experimental variation of \[perlnow-module]. Gets path and module-name 
-with a singles question, using \[perlnow-prompt-for-new-module-in-one-step]\n
-Quickly jump into development of a new perl module"
-  (interactive 
-  (let ((default-directory perlnow-module-root))
-    (call-interactively 'perlnow-prompt-for-new-module-in-one-step)
-    (setq perlnow-perl-module-name module-name) ; global used to pass value into template
-    (let ( (filename (perlnow-full-path-to-module module-root module-name)) )
-      (perlnow-new-file-using-template filename perlnow-perl-module-template)))))
-
-;;;----------------------------------------------------------
-(defun perlnow-prompt-for-new-module-in-one-step (where what) 
-
-  "Ask for the path and module name for a new perl module, 
-in a hybrid form like so: /home/hacker/perldev/lib/New::Module
-We use the file-system separator  \"/\" for the module-root 
-location and then the perl package name-space separator \"::\" 
-for the module-name.  The \".pm\"
-extension will be assumed and need not be entered \(though
-it may be\).  
-If the module exists already, this will ask for another name. \n
-The location defaults to the current `default-directory'.  [***TODO - zat okay?***]
-Returns a two element list, location and module-name."
-;
-;Autocompletion works in a way very similar to the usual
-;emacs input methods for file names and paths, but the
-;transition to double-colon separators is used to indicate
-;where perl's package namespace begins.  
-;
-;An example of typical input might be: \n
-;   /usr/local/lib/perl/New::Module\n
-;Where \"/usr/local/lib/perl/\" is the module-root and 
-;\"New::Module\" is the module-name (aka package-name).\n
-  (interactive 
-   (let* ((initial default-directory)
-          (require-match nil) ; REQUIRE-MATCH set to nil to allow creation
-          (first-prompt "XXXXX New module to create \(e.g. /tmp/dev/New::Mod\): ") ; XXXXX is for DEBUG only 
-          (current-prompt first-prompt)
-          (later-prompt "That module exists already. New module to create: ") 
-          string ; pick better name.  Jargon for path and modname?
-          module-root-and-name-list   module-root    module-name   module-file-name)
-           
-     (while 
-         (progn 
-           (setq string 
-                 (completing-read 
-                  current-prompt
-                  'perlnow-completing-read-path-and-module-name
-                  nil ;  Used to do this:  'perlnow-interesting-file-name-in-cons-cell-p
-                  require-match 
-                  initial))
-
-           (message "XXXXX string: %s" string) ;; DEBUG only DELETE
-
-           (setq module-root-and-name-list
-                 (perlnow-split-module-file-name-to-module-root-and-name string)) ; note: drops any .pm
-           (setq module-root (car module-root-and-name-list))  
-           (setq module-name (cadr module-root-and-name-list)) 
-           
-           ;;; Convert to an actual file-system-path (Note: adds .pm)
-           (setq module-file-name 
-                 (perlnow-full-path-to-module module-root module-name))
-
-           ; In case the following test fails, set-up the prompt for 
-           ; the next loop:
-           (setq current-prompt later-prompt)
-           (file-exists-p module-file-name)))
-     module-root-and-name-list )))
-
-;;;----------------------------------------------------------
-(defun perlnow-completing-read-path-and-module-name (minibuffer-string predicate-function-symbol all-completions-flag)
-  "Programmed Completion Experiments.  Working towards:
-Read in the path and module name for a perl module, allowing use of the 
-perl double-colon separated package name for the module.  The \".pm\" extension 
-will be assumed and need not be entered \(though it may be\).
-  minibuffer-string - string to be completed, expected to be the current contents of the minibuffer 
-  predicate-function-symbol - symbol containing name of a filter to screen out unwanted choices
-  all-completions-flag might be nil t or lambda. Status: nil works, t needs testing & lambda is unsupported"
-;;; You might think you could simplify this code a little with file-name-all-completions, 
-;;; but I don't like the way it behaves.  It tends to append slashes to the string 
-;;; being completed, and I want to allow for "::" instead of "/". 
-  (let* (
-         ; Treat input string as a directory plus fragment
-         (two-pieces-list
-           (perlnow-split-module-path-to-dir-and-tail minibuffer-string))
-         (path     (car two-pieces-list))
-         (fragment (cadr two-pieces-list))
-         (fragment-pat (concat "^" fragment)) ; for getting possible filename completions
-                                              ; out of a list of bare filenames (no path)
-         (file-system-path (replace-regexp-in-string "::" "/" path) )  
-            ; unix file system separator "/" swapped in for perl package separators "::" 
-         match-list   ; list of files sans path 
-         match-alist  ; alist of files with paths, value a sequential number (zat matter?)
-         full-file    ; full-file, filename including path, used to build the alist above
-         )
-
-   ; Get a directory listing
-   (setq file-list (directory-files file-system-path))
-   ; Do a regexp search of the fragment against items in the file-list
-   (let ((i 1))  ; counter used to build alist with numeric value
-     (dolist (file file-list)
-       (if (and 
-            (string-match fragment-pat file) 
-            (perlnow-interesting-file-name-p file))
-
-           (progn
-             (setq full-file (concat path file)) ;; an absolutely necessary and simple but non-obvious step
-             (setq match-alist (cons (cons full-file i) match-alist)) 
-             (setq i (+ i 1))
-             ))))
-
-   ; Reverse the order of the match-alist
-   (setq match-alist (reverse match-alist))  ;; *might* not be needed. 
-
-   ; Maybe I gotta do this? 
-   (setq minibuffer-completion-table match-alist)
-
-   ; Filter that through the "predicate", *if* supplied (note, will leave gaps in the value numbers...)
-   (unless (eq predicate-function-symbol nil) ; gotta be a better way. Try just: (unless predicate-function-symbol
-       (setq match-alist (grep-list predicate-function-symbol match-alist)))
-
-   ; Return the list of things that match if desired, if not just one of them
-   (cond 
-    (all-completions-flag 
-     (with-output-to-temp-buffer "*Completions*"
-       (display-completion-list
-        (all-completions (buffer-string) match-alist)))
-     )
-;      match-alist)
-    ((not all-completions-flag)
-;;;      (perlnow-longest-string-from-alist match-alist)  ; if you want the longest matching string as default
-     (try-completion fragment match-alist)
-      )
-    ((eq all-completions-flag lambda)   
-;   ;;; handle lambda case how? If one match t?
-      (message "I've been lambda-ciszed") ; DEBUG only DELETE
-        t ;;; stub.  If you say lambda, I say t.
-    
-       )
-    )))
-
-;; Another TODO item: 
-;; Don't just silently use that extension filter in "interesting", 
-;; break-it out, let the user define what's not interesting. 
 
 ;;;----------------------------------------------------------
 ;;; TODO this needs a better name
@@ -1408,50 +1333,15 @@ and module-name, which are returned in a list."
 
 
 ;;;----------------------------------------------------------
-(defun perlnow-capitalized-completion-p (cons-arg)
-  "Check the input string embedded as the car of the cons
-cell, which is what is evidentally actually passed in by the
-braindead emacs read-completion bullshit. (Silly me, I
-figured if we're checking *strings* and returning nil/t
-maybe we'd pass *in* strings.  Here we're checking to see if
-this string is capitalized"
-;;; Not currently used
-  (let ( (string (car cons-arg) )
-         (modstring (upcase-initials string)) )
-    (unless (stringp string)
-      (error "Expected string in input")
-    (string= string modstring)
-  )))
-
-;;;----------------------------------------------------------
-(defun perlnow-interesting-file-name-in-cons-cell-p (cons-arg)
-  "Takes input in the form of a cons cell, whose car
-contains the string we're interested in checking (this 
-awkward form is required to use this with the emacs \"Programmed
-Completion\" features, e.g. \[completing-read]\).  Here the
-string is a file name which will get p'ed on if it looks
-like an automatic back-up or an auto save file."
-  (let ( (string (car cons-arg) )
-         (ignore-pat  
-           (concat "\\("     
-                   (mapconcat 'regexp-quote completion-ignored-extensions "\\|")
-                   "\\)$"
-                   "\\|"   ; also skip the dot files "." and ".."
-                   "^\\.$"
-                   "\\|"
-                   "^\\.\\.$"
-                   ))
-         )
-    (unless (stringp string)
-      (error "Expected cons cell containing a string in input"))
-    (not (string-match ignore-pat string))
-    ))
-
-;;;----------------------------------------------------------
 (defun perlnow-interesting-file-name-p (string)
   "Takes a bare filename (sans path) in the form of a
 string, returns t if it doesn't match the list of
 uninteresting filenames patterns, otherwise nil."
+;; TODO
+;; Don't just silently use completion-ignored-extensions or indeed 
+;; anything hardcoded in this function. Break out as a defvar  
+;; "perlnow-interesting-file-name-pat" or something.
+;; Let the user define what's interesting. 
   (let ( 
          (ignore-pat  
            (concat "\\("     
@@ -1488,25 +1378,6 @@ Perl package example: given \"/home/doom/lib/Taxed::Reb\" should return
                (t
                 (message "match failed") )) 
          (list directory fragment) ))
-
-
-
-;;;----------------------------------------------------------
-(defun perlnow-longest-string-from-alist (match-alist)
-  "I bet one of these has *never* been written before"
-  (let ( (longest "" )
-         (longest_length 0)
-         string 
-         )
-    (dolist (item match-alist)
-      (setq string (car item))
-       (if (> (length string) longest_length)
-           (progn 
-             (setq longest string)
-             (setq longest_length (length string))
-             )))
-  longest))
-
 
 ;;;===========================================================================
 ;;;  History 
