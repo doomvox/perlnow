@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.140 2004/02/21 01:32:56 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.141 2004/02/21 01:35:02 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -145,7 +145,7 @@ Add something like the following to your ~/.emacs file:
    \(global-set-key \"\\C-c'=\" 'perlnow-run-check\)
    \(global-set-key \"\\C-c'r\" 'perlnow-run\)
    \(global-set-key \"\\C-c'd\" 'perlnow-perldb\)
-   \(global-set-key \"\\C-c'c\" 'perlnow-set-run-string\)
+   \(global-set-key \"\\C-c'u\" 'perlnow-set-run-string\)
    \(global-set-key \"\\C-c'b\" 'perlutil-perlify-this-buffer\)
   \(setq `perlnow-script-location' 
       \(substitute-in-file-name \"$HOME/bin\"\)\)
