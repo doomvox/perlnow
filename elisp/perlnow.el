@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.56 2004/02/11 18:41:25 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.57 2004/02/11 21:15:42 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -936,6 +936,17 @@ though this may be edited at run time."
 ;;; The use must be careful to switch to double-colon separators 
 ;;; in the right place, to tell perlnow where the division is 
 ;;; in the namespaces. 
+
+;Autocompletion works in a way very similar to the usual
+;emacs input methods for file names and paths, but the
+;transition to double-colon separators is used to indicate
+;where perl's package namespace begins.  
+
+;An example of typical input might be: \n
+;   /usr/local/lib/perl/New::Module\n
+;Where \"/usr/local/lib/perl/\" is the module-root and 
+;\"New::Module\" is the module-name (aka package-name).\n
+
 ;;; TODO make this work:
 ;;; If the module exists already, this will ask for another name. 
 
@@ -959,41 +970,6 @@ though this may be edited at run time."
   (setq perlnow-perl-module-name module-name) ; global used to pass value into template
   (let ( (filename (perlnow-full-path-to-module module-root module-name)) )
     (perlnow-new-file-using-template filename perlnow-perl-module-template)))
-
-;;;----------------------------------------------------------
-(defun perlnow-prompt-for-new-module-in-one-step (where what) 
-
-;
-;Autocompletion works in a way very similar to the usual
-;emacs input methods for file names and paths, but the
-;transition to double-colon separators is used to indicate
-;where perl's package namespace begins.  
-;
-;An example of typical input might be: \n
-;   /usr/local/lib/perl/New::Module\n
-;Where \"/usr/local/lib/perl/\" is the module-root and 
-;\"New::Module\" is the module-name (aka package-name).\n
-
-;;;; ANYTHING ELSE? 
-;;; ... 
-
-  (interactive)
-  (let (
-        (init   nil) ; 
-        (keymap perlnow-read-minibuffer-map) ; Can feed it a keymap!  
-        (read   nil) ; 
-        (hist   nil) ; 
-        (def    nil) ; 
-        (iim    nil) ; 
-         result
-        )
-  (setq result
-        (read-from-minibuffer "New module to create e.g. /tmp/dev/New::Mod: " 
-                              init keymap read hist def iim))
-  (message "result: %s" result) ; DEBUG only DELETE 
-
-   ))
-
 
 
 ;;;----------------------------------------------------------
