@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.66 2004/02/12 07:21:39 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.67 2004/02/12 07:59:37 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -29,18 +29,19 @@
 ; This package is intended to make it easier to jump into the
 ; development of perl code when an idea strikes.
 
-; The main idea is to automate the routine tasks when you
-; begin work on a new file of perl code.  A single perlnow
+; The main idea is to automate the routine tasks involved with 
+; starting work on new perl code.  A single perlnow
 ; command will typically prompt for a location and a name,
 ; open a file buffer with an appropriate framework already
 ; inserted (e.g. the hash-bang line, comments including date
 ; and author information, a perldoc outline, and so on). In
-; the case of scripts the file automatically become executable.
+; the case of scripts the file automatically becomes executable.
 
-; To function properly, it requires that template.el has been 
+; To function properly, perlnow.el requires that template.el has been 
 ; installed, along with two templates for perl development 
 ; purposes, one for scripts, another for modules.  Most likely
-; ~/.templates is the place these templates should be installed.
+; ~/.templates is the place these copies of these templates should 
+; be installed.
 
 ; Primarily, perlnow.el provides the following interactive
 ; functions:
@@ -57,6 +58,18 @@
 ;            the standard emacs style, so that the next-error 
 ;            command, usually bound to "C-x `" (control-x back-apostrophe)
 ;            will skip you to the location of the problem. 
+
+; perlnow-run - like the above, except that it actually runs 
+;            the code, prompting the user for a run string for 
+;            it if it has not been defined yet. 
+
+; perlnow-set-run-string - Allows the user to manually change 
+;            the run-string used by perlnow-run.
+
+; perlnow-h2xs - Creates a new h2xs module structure (which is 
+;            used by CPAN modules.)
+
+
 
 ;; Put this file into your load-path and the following into your ~/.emacs:
 ;;   (require 'perlnow)
@@ -100,8 +113,6 @@
 ;;; test-path     - search path to look for test files. Note, can include relative locations, e.g. "../t"
 
 
-
-
 ;;; Code:
 
 (provide 'perlnow)
@@ -117,7 +128,7 @@
 ;;;;##########################################################################
 
 ;;;; TODO - fix keybindings:
-
+;;;; DONTFORGET
 ;;; What's the right way to do this shit:
 ;;; "eval" doesn't work here....
 
@@ -334,8 +345,9 @@ really done\\) then this function will see the first package name."
 (defun perlnow-prompt-for-module-to-create (where what) 
   "Ask the user two questions: the \"module root\" location, and the name 
 of the perl module to create there.  Checks to see if one exists already, 
-and if so, asks for another name ((TODO-check that)).  The location defaults to the current 
-`default-directory'.  Returns a two element list, location and module-name."
+and if so, asks for another name.  The location defaults to the current 
+`default-directory'.  Returns a two element list, location and module-name.\n
+Note: This is used only by the mildly deprecated \[perlnow-module-two-questions\]."
   (interactive "DLocation for new module?  \nsName of new module \(e.g. New::Module\)? ")
   (let* ((filename (perlnow-full-path-to-module where what))
          (dirname (convert-standard-filename (file-name-directory filename))))
@@ -508,19 +520,12 @@ given \"/home/doom/lib\" and \"Text::Gibberish\" would yield /home/doom/lib/Text
 (defun perlnow-make-sure-file-exists()
   "Forcibly saves the current buffer to it's associated file, 
 to make sure that the file actually exists."
-; inserting and deleting a space to make sure it's considered "modified" 
-; and in need of saving. 
-; TODO (TEST): should probably just do this:
   (set-buffer-modified-p t)
-;  (insert " ") 
-;  (delete-backward-char 1) 
   (save-buffer))
 
 ;;;----------------------------------------------------------
 (defun perlnow-change-mode-to-executable ()
   "Makes the file associated with the current buffer executable"
-; Need to make sure the file really exists before we chmod it
-; so we save it, but to make sure that happens it has to be "modified":
   (perlnow-make-sure-file-exists)
   (let* ((all-but-execute-mask ?\666)
          (filename (buffer-file-name))
@@ -528,9 +533,6 @@ to make sure that the file actually exists."
          (new-file-permissions 
           (+ (logand file-permissions all-but-execute-mask) perlnow-executable-setting)
           ))
-;  (setq file-permissions (file-modes filename))
-;  (setq new-file-permissions 
-;    (+ (logand file-permissions all-but-execute-mask) perlnow-executable-setting))
   (set-file-modes filename new-file-permissions)))
 
 
@@ -556,9 +558,8 @@ Returns full file name with path."
 (defun perlnow-new-file-using-template (filename template)
   "Given filename and template, does the actual creation of
 the file and associated buffer using the template"
-
-;;; Because of a bug in template.el, when using template-new-file 
-;;; non-interactively, we must set the global "template-file" here:
+; Because of a bug in template.el, when using template-new-file 
+; non-interactively, we must set the global "template-file" here:
   (setq template-file (template-split-filename filename)) 
   (template-new-file filename template)
   (write-file filename))
@@ -695,26 +696,31 @@ e.g. Given: \"/usr/lib/perl/\" Returns: \"perl\" "
 (defun perlnow-guess-module-run-string ()
   "Returns a good guess for an appropriate perlnow-module-run-string. 
 First looks for the Makefile \(or Makefile.PL\) of an h2xs set-up.
-Failing that it looks for a nearby test file which, for example, 
-could be named New-Module.t or Module.t, if the module were named 
-New::Module.  It searches the paths in `perlnow-test-path', which use 
-the typical dot notation \(\".\" \"..\"\) to specify them relative to 
-\"here\" \(rather than the usual current directory\), where \"here\" 
-means either the module-file-location or the module-root. \n
+Failing that it looks for a nearby test file of an appropriate name.
+For example if the module were named New::Module, the test file 
+could be New-Module.t or Module.t.  It searches the paths in 
+`perlnow-test-path', which uses a familiar dot notation \(\".\" \"..\"\) 
+to specify them relative to \"here\", where \"here\" means either 
+the module-file-location or the module-root \(both interpretations 
+are checked\). \n
 If this seems too complex, that's because it is, but it does make 
 it convenient to use a number of reasonable organizational schemes for 
-test files.\n
+your test files.\n
 Note: Relying on the exact precedence of this search should be avoided
 \(future versions may work slightly differently\)."
 ;;; Document those schemes for test file locations in detail.  Where? 
+;;; A web page for now.
 ;;; TODO:
 ;;; o  Will also at some point want a "perlnow-edit-test-file-for-this-module".
 ;;; Maybe this code should be revamped (sigh), prefer code that returns test file name?
 ;;; o  Still another want would be "perlnow-create-test-file-for-module" which would need 
 ;;; to read policy from somewhere, to know where to put it and what to call it. 
 ;;; My pick for policy: if inside of an h2xs structure, put in the appropriate "t", 
-;;; otherwise... put in parallel?  (Possibly, create a local t for it.)
-;
+;;; otherwise create a local t for it, but use the full hyphenized module name as 
+;;; base-name (to make it easy to move around). 
+;;; How to specify policy?  A dot form like ./t, plus a definition of dot 
+;;; e.g. module-file-location, plus a name style, like hyphenized.  3 pieces of info.
+
 ;  (interactive) ;;; DEBUG only DELETE
   (unless (perlnow-module-p) 
     (error "This buffer does not look like a perl module (no \"package\" line)."))
@@ -906,7 +912,7 @@ defaults to using the module root of the current file buffer."
 ;;; so we won't need to do the above over and over... 
 
 ;;;==========================================================
-;;; Implementing 
+;;; perlnow-module now uses the following: 
 ;;;    perlnow-prompt-for-new-module-in-one-step
 ;;; to read in perlmodule path and names in one step
 ;;; (A variant of perlnow-prompt-for-module-to-create.)
@@ -937,8 +943,8 @@ defaults to using the module root of the current file buffer."
 
 
 (defun perlnow-module (module-root module-name) 
-  "Quickly jump into development of a new perl module 
-When used interactively, gets path and module-name with a single 
+  "Quickly jump into development of a new perl module.
+In interactive use, gets path and module-name with a single 
 question, asking for an answer in a hybrid form like so:
    /home/hacker/perldev/lib/New::Module
 This uses the file-system separator  \"/\" for the module-root 
@@ -994,20 +1000,6 @@ though this may be edited at run time."
   (let ( (filename (perlnow-full-path-to-module module-root module-name)) )
     (perlnow-new-file-using-template filename perlnow-perl-module-template)))
 
-
-;;;----------------------------------------------------------
-;;; Define the keymap used for module completion
-;; (setq perlnow-read-minibuffer-map '(keymap
-;;   ; "?"
-;;   (63 . perlnow-read-minibuffer-completion-help)
-;;   ; space 
-;;   (32 . perlnow-read-minibuffer-complete-word)
-;;   ; tab
-;;   (9 . perlnow-read-minibuffer-complete)
-;;   (10 . exit-minibuffer)
-;;   (13 . exit-minibuffer)
-;;   (7 . abort-recursive-edit)
-;;   ))
 
 ;;;----------------------------------------------------------
 (defun perlnow-read-minibuffer-complete ()
@@ -1193,7 +1185,7 @@ which also pass the \[perlnow-interesting-file-name-p] test. \n
 These are simple file names that do not include the path, 
 and the values associated with them in the returned alist 
 are sequential integers."
-;;; And for extra credit it also strips the .pm on the file names
+;;; For extra credit how about stripping the .pm on the file names?
 ;;; Nope: I can't do that, it messes up "workhorse" as written. 
    (let* ( 
           match-alist
@@ -1284,7 +1276,7 @@ and module-name, which are returned in a list."
   "Takes a bare filename (sans path) in the form of a
 string, returns t if it doesn't match the list of
 uninteresting filenames patterns, otherwise nil."
-;; TODO
+;; TODO DONTFORGET
 ;; Don't just silently use completion-ignored-extensions or indeed 
 ;; anything hardcoded in this function. Break out as a defvar  
 ;; "perlnow-interesting-file-name-pat" or something.
@@ -1330,7 +1322,7 @@ Perl package example: given \"/home/doom/lib/Taxed::Reb\" should return
 ;;; Older code 
 ;;;==========================================================
 
-;;; TODO 
+;;; TODO  DONTFORGET
 ;;; Maybe: include the old perlutil-* routines. 
 ;;; Detect if template.el is installed, and if not, 
 ;;; fall back on using these (instant gratification principle... 
