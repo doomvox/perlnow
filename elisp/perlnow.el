@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.149 2004/02/23 07:48:57 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.150 2004/02/23 08:20:29 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -2166,7 +2166,7 @@ path for it may exist, and autocompletion should be
 available for the parts that do exist\).  Valid name
 separators are \(\"/\" or \"::\"\).\n 
 This makes no attempt at a more aggressive completion past 
-a file-system boundary."
+a file-system name separator boundary."
 ;;; codename: new tabby
   (interactive)
   (let ((restrict-to-word-completion nil))
@@ -2677,9 +2677,9 @@ wrappers."
           )))
 
 ;;;----------------------------------------------------------
-(defun perlnow-htmlicize-function-references (doc-string list)
+(defun perlnow-htmlicize-function-references (doc-string internal-symbols)
   "Transform function references in a DOC-STRING into html form.
-Requires a LIST of internal symbols, to identify whether a function 
+Requires a list of INTERNAL-SYMBOLS, to identify whether a function 
 reference can jump to another docstring from the same .el file, or 
 if it's a pointer to something from another package. 
 Internally used by perlnow-dump-docstrings-as-html-exp."
@@ -2690,9 +2690,9 @@ Internally used by perlnow-dump-docstrings-as-html-exp."
   (let (
         ; define constants
         (func-ref-pat "\\\\\\[\\(.*?\\)\\]") ; that's \[(.*?)]   (one hopes)
-        (open-link "<I><A HREF=\"#")
+        (open-link "<A HREF=\"#")
         (mid-link  (concat "\"" ">"))
-        (close-link "</A></I>")
+        (close-link "</A>")
         ; initialize
         (start-search 0)
         ; declare
@@ -2701,38 +2701,47 @@ Internally used by perlnow-dump-docstrings-as-html-exp."
         tranny ; the transformed form of the reference to be used in output
         adjust ; length change in the doc-string after a link is swapped in
         )
-    (catch 'OUT 
+;;(catch 'OUT 
       (while (setq beg (string-match func-ref-pat doc-string start-search))
         (setq symb-name (match-string 1 doc-string))
         (setq end (match-end 0))
 
         ; Is the reference internal or external?
-        (cond ((member symb-name list)
+        (cond ((member symb-name internal-symbols)
                (setq tranny  ; html link to internal label
                      (concat open-link symb-name mid-link symb-name close-link)))
               (t
                (setq tranny  ; usual *help* display form
                      (concat " "
-;;;                             (substitute-command-keys symb-name)
                              "<I>"
-                             symb-name
+                             (substitute-command-keys (concat "\\[" symb-name "]"))
+;;;                             symb-name
                              "</I>"
                              " "))))
         (setq doc-string
               (concat
-               (substring doc-string 0 (- beg 1))
+               (substring doc-string 0 beg)
                tranny
-               (substring doc-string (+ end 1))
+               (substring doc-string end)
                ))
         (setq symb-length (length symb-name))
-        (setq adjust (- (length tranny) symb-length))
+        (setq adjust (- (length tranny) symb-length 3)) ;;; Experimenting with adjusting adjust
         (setq start-search (+ end adjust))
         ; hack to make out of bounds search impossible:
-        (if (> start-search (length doc-string))
-            (throw 'OUT t))
-        )))
+;;       (if (> start-search (length doc-string))
+;;           (throw 'OUT t))
+        )
+;;   )
+    )
   doc-string)
 
+
+;;; "substitute-command-keys" Does nothing useful here. 
+;;; The symb-name "next-error" just gets turned into "next-error",
+;;; without even a M-x prefix (which is what I expected).
+;;; Ah, I get it... I'm supposed to pass it in *with* the \[] 
+;;; brackets.  In any case, I dunno how much I care... 
+;;; Eh, give it a try, I guess.. 
 
 ;;; Okay, I got this "working", but what it does is completely 
 ;;; uninteresting and useless.  E.g.                
