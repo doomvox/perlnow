@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.184 2004/04/23 01:51:11 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.185 2004/04/23 17:57:11 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -160,8 +160,8 @@ Add something like the following to your ~/.emacs file:
    \(global-set-key \"\\C-c'A\" 'perlnow-set-alt-run-string\)
    \(global-set-key \"\\C-c't\" 'perlnow-edit-test-file\)
    \(global-set-key \"\\C-c'b\" 'perlnow-back-to-code\)
+   \(global-set-key \"\\C-c'~\" 'perlnow-perlify-this-buffer-simple\)
 
-   \(global-set-key \"\\C-c'b\" 'perlnow-perlify-this-buffer-simple\)
   \(setq `perlnow-script-location'
       \(substitute-in-file-name \"$HOME/bin\"\)\)
   \(setq `perlnow-pm-location'
