@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.102 2004/02/18 00:49:45 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.103 2004/02/18 01:13:25 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -47,6 +47,8 @@ Also see the documentation for:
   `perlnow-documentation-installation'
   `perlnow-documentation-terminology'
   `perlnow-documentation-template-expansions'
+  `perlnow-documentation-tutorial'
+  `perlnow-documentation-test-file-strategies'
  
 This package is intended to speed development of perl code,
 largely by making it easier to jump into coding when an idea
@@ -68,25 +70,21 @@ should be installed.
 Primarily, perlnow.el provides the following interactive 
 functions: 
  
-\\[perlnow-do-script] - for creation of new perl scripts. 
- 
-\\[perlnow-script-using-this-module] - for creation of a script 
-          that uses the module open in the current buffer. 
-          This should work from a man page browsing the documentation 
-          for a module, as well from inside of a code buffer. 
- 
-\\[perlnow-script] - fancier version that should work 
-          automatically in both of the above two cases, as well 
-          as from an open man page buffer describing a module. 
+\\[perlnow-script] - for creation of new perl scripts. 
+          If currently viewing some perl module code or  
+          a man page for a perl module, this begins the 
+          script with a few lines to use the module. 
 
 \\[perlnow-script-simple] - an older, not quite deprecated form 
-          of \\[perlnow-do-script] that has the virtue of not needing 
+          of \\[perlnow-script] that has the virtue of not needing 
           template.el to operate. 
 
-\\[perlnow-module] - for creation of new modules. 
- 
+\\[perlnow-module] - for creation of new modules.  Asks for the 
+          location and name of the new module in a single prompt, 
+          using a hybrid form:  \"/usr/lib/perl/Some::Module\"
+
 \\[perlnow-h2xs] - runs the h2xs command, to begin working on a 
-           new module for distribution, e.g. through CPAN. 
+           new module for distribution, such as via CPAN. 
 
 \\[perlnow-run-check] - does a perl syntax check on the current 
            buffer, displaying error messages and warnings in 
@@ -95,26 +93,28 @@ functions:
            will skip you to the location of the problem. 
  
 \\[perlnow-run] - like the above, except that it actually tries to 
-           run the code, prompting the user for a run string for 
+           run the code, prompting the user for a run string 
            it if it has not been defined yet. 
  
 \\[perlnow-set-run-string] - Allows the user to manually change 
            the run-string used by perlnow-run. 
- 
- 
-This is a list of the functions that require template.el: 
- 
-   \\[perlnow-do-script]
-   \\[perlnow-script-using-this-module]
+
+\\[perlnow-perldb] - runs the perl debugger using the above run string.
+
+Here's a list of the important functions that require template.el: 
    \\[perlnow-script]
    \\[perlnow-module]
    \\[perlnow-module-two-questions]
  
-Many functions here do *not* need template.el to function.
-Briefly these are: the h2xs creation code, the code that
-guesses run-strings, the code to let you use the
-run-strings, including the perl-check, and the older
-alternate to \\[perlnow-do-script], \\[perlnow-script-simple].")
+Many useful functions here don't need template.el.
+Briefly these are: 
+   \\[perlnow-run-check]
+   \\[perlnow-run]
+   \\[perlnow-set-run-string]
+   \\[perlnow-h2xs]
+   \\[perlnow-script-simple] \(older alternate to \\[perlnow-script]\)
+   \\[perlnow-perlify-this-buffer-simple] \(an even older alternate\)
+")
 
 (defvar perlnow-documentation-installation t
   "Instructions on installation of the perlnow package.
@@ -542,7 +542,7 @@ the older version is available to do with what you will.")
 
 
 
-(defvar perlnow-tutorial-test-file-strategies t
+(defvar perlnow-documentation-test-file-strategies t
   "As mentioned in a few other places, the \\[perlnow-run]
 and \\[set-perlnow-run-string] commands do try to find 
 test files for modules, even if they don't happen to be 
@@ -730,16 +730,16 @@ defined expansions.")
 
 (setq template-expansion-alist 
       (cons 
-      '("EMAIL_AT_45" ((lambda ()
-                         (move-to-column 45 t)      
+      '("EMAIL_AT_40" ((lambda ()
+                         (move-to-column 40 t)      
                          (insert user-mail-address)
                        )))
       template-expansion-alist))
 
 (setq template-expansion-alist 
       (cons 
-      '("TIMESTAMP_AT_45" ((lambda ()
-                         (move-to-column 45 t)      
+      '("TIMESTAMP_AT_40" ((lambda ()
+                         (move-to-column 40 t)      
                          (insert (current-time-string))
                        )))
       template-expansion-alist))
@@ -762,7 +762,7 @@ this writing, the latest is 5.8.2")
 
 ;;; TODO DONTFORGET 
 ;;; Could add remarks like the following to a 
-;;;   perldoc-documentation-deviant-policy
+;;;   perldoc-documentation-unashamed-deviancy
 ;;; (also talk about initial vs default there)
 ;;; Might be worth mentioning the not-quite a minor-mode issue there.
 ;;;----------------------------------------------------------
@@ -2449,7 +2449,7 @@ STATUS: NOT FINISHED."
   (setq string (replace-regexp-in-string "\""  "&quot;" string))
   (setq string (replace-regexp-in-string ">"   "&gt;"   string))
   (setq string (replace-regexp-in-string "<"   "&lt;"   string))
-;;;  (setq string (replace-regexp-in-string "" "" string))
+ ;;;  (setq string (replace-regexp-in-string "" "" string))
   )
 
 (defun perlnow-do-docstrings-insertion ()
