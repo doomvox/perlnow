@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.172 2004/03/17 21:14:56 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.173 2004/03/25 05:51:27 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -193,7 +193,7 @@ Note: This documentation \(and some of the code\), makes the
 simplifying assumption that a perl package is a perl module
 is a single file, \(with extension *.pm\).  Even though
 technically multiple packages can occur in a single file,
-that is typically never done in practice.
+that is typically rarely done in practice.
 
 Why is there such a mess of terminology below?
 Because there's a file system name space and a module name space:
@@ -265,7 +265,7 @@ put a newly created test file \(\( *not yet implemented*
   "Well, first you install it: `perlnow-documentation-installation'.
 Then what? 
 
-Depending on how you config things, you should then have
+Depending on how you configure things, you should then have
 easy access (perhaps as easy as a single keystroke of a
 function key) to some quick short-cuts.  Here's a run down 
 on how you might use them for different purposes:
@@ -274,14 +274,14 @@ on how you might use them for different purposes:
  `perlnow-documentation-tutorial-2-module-development'
  `perlnow-documentation-tutorial-3-h2xs-module-development'
  `perlnow-documentation-tutorial-4-misc'
- `perlnow-tutorial-test-file-strategies'")
+ `perlnow-documentation-test-file-strategies'")
 
 (defvar perlnow-documentation-tutorial-1-script-development t
   "Got an idea for a script?  Hit \\[perlnow-script].
 
 This will ask you for the name of the script you want to
-write, then kick you into a file buffer with a code template
-set-up already.  
+write, then kick you into a file buffer with a recommended 
+code template already filled in.
 
 If you don't like the template, change it \(it should be in
 your ~/.templates directory\).  For example, you might
@@ -289,13 +289,14 @@ prefer to have \"use strict;\" appear commented out but
 ready to be enabled when you know the script is going to be
 longer than a dozen lines.
 
-Currently perlnow--script tends to want to put all of your
+Currently perlnow-script tends to want to put all of your
 new scripts in one place, the `perlnow-script-location' that
 you've defined for it.  You can, of course, choose a
-different place to put a script at creation time, and you'll
-notice that the default is available as a starting point to
-edit into some new location, plus you've also got access to
-the minibuffer history to get other starting places.
+different place to put a script at creation time.  You'll
+notice that this default is inserted into the minibuffer 
+so that you can use it as a starting point to edit into 
+some new location.  Similarly you've also got access to the 
+minibuffer history to get other starting places.
 
 \(By the way: you do know about the minibuffer history,
 don't you?  I didn't until recently.  During a minibuffer
@@ -428,7 +429,7 @@ which would get you started on writing a script that uses the
 module. 
 
 \(But by the way, if you *are* a test-first-code-later fanatic,
-take a look see `perlnow-tutorial-test-file-strategies'\)
+take a look at `perlnow-documentation-test-file-strategies'\)
 
 Anyway, \\[perlnow-script] will create a file with a script
 template inserted that already has a simple \"use <module
@@ -702,7 +703,7 @@ minor-mode.
 
 But some perlnow commands are only needed inside of a perl code
 buffer \(e.g. \\[perlnow-run] and \\[perlnow-run-check]\)
-and could reasonably be kept local to your perl-mode \(slight 
+and could reasonably be kept local to your perl mode \(slight 
 complication: there are two perl modes\).
 
 So perhaps perlnow.el should be a combination of the two, a
@@ -714,8 +715,9 @@ be local to still *other* modes, for example a perlnow-script-from-dired
 might create a perlscript in the location displayed in a current dired 
 buffer.  So does that imply yet another sub-local-minor-mode?  
 
-Eh, I've punted on this for now.  It doesn't help that the Emacs Ref 
-Manual is a little light on examples of how to do global minor-modes.
+Eh, I've punted on this for now.  It doesn't help that the Emacs Lisp 
+Reference Manual is a little light on examples of how to do global 
+minor-modes.
 
 In general, it's not entirely clear to me how minor-modes are supposed
 to play together nicely.  The segment of the keymap available for
@@ -1798,7 +1800,7 @@ the module-file-location or the inc-spot \(both interpretations
 are checked\). \n
 If this seems too complex, that's because it is, but it does make 
 it convenient to use this with a number of reasonable organizational 
-schemes for your test files: `perlnow-tutorial-test-file-strategies'."
+schemes for your test files: `perlnow-documentation-test-file-strategies'."
 
 ;;; TODO
 ;;; Will also at some point want a "perlnow-edit-test-file-for-this-module".
