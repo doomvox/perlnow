@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.208 2004/04/29 17:29:46 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.209 2004/11/12 07:42:06 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -2608,7 +2608,7 @@ has been chosen as the default to work on perl code."
               (setq run-line (concat "cd " staging-area "; " "make test"))
             (setq run-line
 ;               (format "perl -MExtUtils::Command::MM -e \"test_harness(1, '%s')\"" filename))
-                  (format "perl '%s'" filename))
+                  (format "perl %s" filename))
              ))
         (t ; When all else fails, just feed it to perl and hope for the best
          (setq run-line (format "perl %s" filename))
