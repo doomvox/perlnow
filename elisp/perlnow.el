@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.124 2004/02/19 03:19:15 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.125 2004/02/19 04:25:23 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -711,6 +711,7 @@ Not to mention: \(scroll-bar-mode -1\) and \(tool-bar-mode -1\).")
 
 (defcustom perlnow-h2xs-location perlnow-module-location 
   "This is the default location to do h2xs development of CPAN bound modules.")
+(setq perlnow-h2xs-location (file-name-as-directory perlnow-h2xs-location))
 
 (defcustom perlnow-executable-setting ?\110
   "The user-group-all permissions used to make a script executable.")
