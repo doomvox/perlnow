@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.59 2004/02/12 00:21:02 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.60 2004/02/12 01:32:55 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -899,7 +899,6 @@ defaults to using the module root of the current file buffer."
 
 ;;; BOOKMARK
 
-
 ; TODO 
 ; This Experimental variation of \[perlnow-module], should 
 ; be re-named once it's finished.  The two question form might 
@@ -932,29 +931,32 @@ though this may be edited at run time."
 ;Where \"/usr/local/lib/perl/\" is the module-root and 
 ;\"New::Module\" is the module-name (aka package-name).\n
 
-;;; TODO make this work:
+;;; TODO test this
 ;;; If the module exists already, this will ask for another name. 
-;;; At the moment, it just asks if you want to blow away the existing 
-;;; file.  (And I suspect that template.el then balks at using a 
-;;; template on an existing file).  
 
   (interactive 
    (let ((initial-contents perlnow-module-root)
          (keymap perlnow-read-minibuffer-map) 
          (history   nil)   ; TODO - History can not stay "nil"
-         result
-         pair module-name module-name
+         result filename return
          )
-     (setq result
-           (read-from-minibuffer "New module to create e.g. /tmp/dev/New::Mod: " 
-                                 initial-contents keymap nil history nil nil))
-     (message "result: %s" result)      ; DEBUG only DELETE 
 
-     (setq twofer 
+     (setq result
+           (read-from-minibuffer 
+            "New module to create \\(e.g. /tmp/dev/New::Mod\\):)" 
+                                 initial-contents keymap nil history nil nil))
+     (setq filename (concat (replace-regexp-in-string "::" "/" result) ".pm"))
+
+     (while (file-exists-p filename)
+       (setq result
+             (read-from-minibuffer 
+              "This name is in use, choose another \\(e.g. /tmp/dev/New::Mod\\): " 
+                                 result keymap nil history nil nil))
+       (setq filename (concat (replace-regexp-in-string "::" "/" result) ".pm")))
+
+     (setq return
            (perlnow-split-module-file-name-to-module-root-and-name result))
-;     (setq module-root (car twofer))
-;     (setq module-name (cadr twofer))
-     twofer))
+     return))
 
   (setq perlnow-perl-module-name module-name) ; global used to pass value into template
   (let ( (filename (perlnow-full-path-to-module module-root module-name)) )
