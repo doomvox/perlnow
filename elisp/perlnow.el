@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.68 2004/02/12 18:35:20 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.69 2004/02/12 23:39:30 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -171,10 +171,16 @@
 (defvar perlnow-perl-script-template 
   (substitute-in-file-name "$HOME/.templates/TEMPLATE.perlnow-pl.tpl")
 "The template.el template new perl scripts will be created with" )
+;;; DEBUG only DELETE:
+;;;(setq perlnow-perl-script-template 
+;;;  (substitute-in-file-name "$HOME/.templates/TEMPLATE.perlnow-pl.tpl"))
 
 (defvar perlnow-perl-module-template 
   (substitute-in-file-name "$HOME/.templates/TEMPLATE.perlnow-pm.tpl")
 "The template.el template new perl modules will be created with" )
+;;; DEBUG only DELETE:
+;;;(setq perlnow-perl-module-template 
+;;;  (substitute-in-file-name "$HOME/.templates/TEMPLATE.perlnow-pm.tpl"))
 
 (defvar perlnow-perl-module-name nil
   "Used internally to pass the a module name in the perl
@@ -185,13 +191,70 @@ perl modules. ")
 "Records the minibuffer history for perl modules accessed by this package.")
 
 ;;;----------------------------------------------------------
-;;; Add feature PERL_MODULE_NAME for the perlnow-module function 
-;;; (an "expansion" used in a template.el template like so: 
-;;; (>>>PERL_MODULE_NAME<<<);
+;; Additional "expansions" for use in template.el templates.
+;; 
+;; PERLNOW_MODULE_NAME is for the perlnow-module function, 
+;; You'll see it used in templates like so: (>>>PERLNOW_MODULE_NAME<<<);
+
 (setq template-expansion-alist 
       (cons 
-      '("PERL_MODULE_NAME" (insert perlnow-perl-module-name) )
+      '("PERLNOW_MODULE_NAME" (insert perlnow-perl-module-name) )
       template-expansion-alist))
+
+;; PNFS stands for "PerlNow Filename Spaces" it should 
+;; always insert the same number of spaces as characters
+;; in the name of the file.  This is a gross kludge
+;; which can be used to get formatting to line up, for example:
+;;    (>>>FILE<<<)              (>>>AUTHOR<<<)
+;;    (>>>PNFS<<<)              (>>>DATE<<<)
+;; Note the utility of having "PNFS" be four characters, 
+;; the same length as "FILE".  Like I said, a gross kludge.
+
+(setq template-expansion-alist 
+      (cons 
+      '("PNFS" 
+        (perlnow-insert-spaces-the-length-of-this-string 
+         (make-string (length 
+                       (file-name-nondirectory (buffer-file-name))
+                       ) ?\ )
+         ))
+      template-expansion-alist))
+
+; Experimenting with an alternative gross kludges 
+; This moves to column 45 before inserting the user email address 
+; (as understood by emacs, typically from a .emacs file setting)
+; Note that this will obediently over-write anything else that might 
+; already be in that area:
+(setq template-expansion-alist 
+      (cons 
+      '("EMAIL_AT_45" ((lambda ()
+                         (move-to-column 45 t)      
+                         (insert user-mail-address)
+                       )))
+      template-expansion-alist))
+
+; Experimenting with an alternative gross kludges 
+; This moves to column 45 before inserting the timestamp 
+; returned by current-time-string.
+; Note that this will obediently over-write anything else that might 
+; already be in that area:
+
+(setq template-expansion-alist 
+      (cons 
+      '("TIMESTAMP_AT_45" ((lambda ()
+                         (move-to-column 45 t)      
+                         (insert (current-time-string))
+                       )))
+      template-expansion-alist))
+
+; Experimental feature: should indent as though the TAB key had been hit
+; suspect that you need to use this *after* code has been inserted 
+; not before.
+(setq template-expansion-alist 
+      (cons 
+      '("TAB" (indent-according-to-mode) )
+      template-expansion-alist))
+
 
 (defvar perlnow-minimum-perl-version "5.006"
   "Used to replace template MINIMUM_PERL_VERSON with the
@@ -312,7 +375,7 @@ really done\\) then this function will see the first package name."
    
 ;;; TODO 
 ;;; Want to be able to create a script from a currently active documentation buffer
-;;; (presume it's "man format" for now).  And alternate form of the above, 
+;;; (presume it's "man format" for now).  An alternate form of the above, 
 ;;; or an extension of it?
 ;;;
 ;;; See notes on perlnow-get-module-name. Fix that to get package name from man page? 
@@ -447,6 +510,8 @@ If perlnow-run-string is nil, perlnow-set-run-string is called automatically."
 
   (find-file 
    (perlnow-full-path-to-h2xs-module h2xs-location module-name))
+;;;  Skip to just after text: "# Preloaded methods go here."
+
  ; (delete-other-windows) 
 ;;; TODO: find-file the *.t also, leave that open that in a buffer too
   ))
