@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.185 2004/04/23 17:57:11 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.186 2004/04/23 20:08:12 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1685,11 +1685,12 @@ Experimental feature.  Functionality may change."
 
 
 ;;;----------------------------------------------------------
-(defun perlnow-open-file-other-window (file &optional numblines template)
+(defun perlnow-open-file-other-window (file &optional numblines template switchback)
   "Utility to open file in another window, leaving current visible.
 Options: NUMBLINES, negative integer controlling the number of lines 
 in the new window, defaults to -20; TEMPLATE a template.el template to 
-be used in creating a new file buffer."
+be used in creating a new file buffer.  If SWITCHBACK is true, the cursor 
+is left in the original window, not the new one."
 ;;; TODO - 
 ;;; Inelegant interface: *requires* NUMBLINES if you want to feed it a TEMPLATE
 ;;; Also: requires a negative number for NUMBLINES, etc.
@@ -1719,7 +1720,8 @@ be used in creating a new file buffer."
            (if template
                (perlnow-create-with-template file template)
              (find-file file))))
-
+    (if switchback 
+        (other-window 1))
     ))
 
 ;;;----------------------------------------------------------
