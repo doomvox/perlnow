@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.46 2004/02/10 20:21:11 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.47 2004/02/10 20:27:06 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -908,6 +908,15 @@ defaults to using the module root of the current file buffer."
 ;;;  reading in perlmodule path and names in one step.  
 ;;;  Instead of completing-read, using read-from-minibuffer
 ;;;==========================================================
+
+;;; TODO FEATURE
+;;; Weird feature idea: when just tabbing away, and you get to 
+;;; a level boundary, current behavior is to add a separator "/".
+;;; Does not switch to "::" until the user has entered one. 
+;;; Might be better to consult the @INC array, and guess that it's 
+;;; time to switch to :: once you've entered a module-root.
+;;; Sounds cool, but, like: later.
+
 ;;; BOOKMARK
 
 (defun perlnow-read-minibuffer-complete ()
@@ -931,9 +940,9 @@ Used in reading in the name of a perl module name \(which need not
 exist already\), where valid name separators are \(\"/\" or \"::\"\).\n
 Not intended for non-interactive use."
   (interactive)
-  (let restrict-to-word-completion t)
-  (perlnow-read-minibuffer-workhorse restrict-to-word-completion)
-  )
+  (let ((restrict-to-word-completion t))
+    (perlnow-read-minibuffer-workhorse restrict-to-word-completion)
+  ))
 
 
 (defun perlnow-read-minibuffer-workhorse (restrict-to-word-completion)
