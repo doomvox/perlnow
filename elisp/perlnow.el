@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.25 2004/02/06 21:35:51 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.26 2004/02/06 22:05:44 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -943,8 +943,9 @@ The location defaults to the current `default-directory'.  [***TODO - zat okay?*
 Returns a two element list, location and module-name."
 
 ;; Dropping this idea:
-;;     Autocompletion uses perl's @INC,
-;; you might want to create a module somewhere that's not INC'd yet.
+;;     Autocompletion useing perl's @INC,
+;; because you might want to create a module somewhere that's not INC'd yet.
+;; (other complications: one place in INC may be nested inside another)
 
   (interactive 
    (let* ((initial default-directory)
@@ -961,7 +962,8 @@ Returns a two element list, location and module-name."
            (setq string (completing-read 
                          current-prompt
                          'perlnow-completing-read-path-and-module-name
-                         'perlnow-interesting-file-name-in-cons-cell-p
+;;;                         'perlnow-interesting-file-name-in-cons-cell-p
+                         nil
                          require-match 
                          initial))
 
@@ -1014,26 +1016,6 @@ and module-name, which are returned in a list."
 
 
 ;;;----------------------------------------------------------
-(defun perlnow-test-perlnow-completing-read-path-and-module-name (somestring)
-  "Used to test \[perlnow-completing-read-path-and-module-name]."
-  (interactive 
-     (let ((initial "/home/doom/tmp/Testes/Perlnow/Taxe")  ; DEBUG would set to nil in real use.
-            (require-match nil)  ; REQUIRE-MATCH should be nil for creation, t for finding an old one
-           some-alist 
-           string)
-           
-       (setq string (completing-read 
-                      "Gimme: " 
-                      'perlnow-completing-read-path-and-module-name
-                      'perlnow-interesting-file-name-in-cons-cell-p
-                      require-match 
-                      initial))  
-       (message "string: %s" string)
-
-       (list string)
-       )))
-
-;;;----------------------------------------------------------
 (defun perlnow-capitalized-completion-p (cons-arg)
   "Check the input string embedded as the car of the cons
 cell, which is what is evidentally actually passed in by the
@@ -1078,7 +1060,6 @@ like an automatic back-up or an auto save file."
   "Takes a bare filename (sans path) in the form of a
 string, returns t if it doesn't match the list of
 uninteresting filenames patterns, otherwise nil."
-;;; Not currently used.
   (let ( 
          (ignore-pat  
            (concat "\\("     
@@ -1147,9 +1128,9 @@ will be assumed and need not be entered \(though it may be\).
    ; Get a directory listing
    (setq file-list (directory-files munged-path))
    ; Do a regexp search of the fragment against items in the file-list
-   (dolist (file file-list)
-     (if (string-match fragment-pat file)
-         (let ((i 1))        ; counter used in building alist below with numeric "value"
+   (let ((i 1))        ; counter used in building alist below with numeric "value"
+     (dolist (file file-list)
+       (if (and (string-match fragment-pat file) (perlnow-interesting-file-name-p file))
            (progn
              (setq full-file (concat path file)) ;; an absolutely necessary and simple but non-obvious step
              (setq match-alist (cons (cons full-file i) match-alist)) 
@@ -1181,23 +1162,6 @@ will be assumed and need not be entered \(though it may be\).
 ;     )
     )))
 
-;;;----------------------------------------------------------
-(defun perlnow-longest-string-from-alist (match-alist)
-  "I bet one of these has *never* been written before"
-  (let ( (longest "" )
-         (longest_length 0)
-         string 
-         )
-    (dolist (item match-alist)
-      (setq string (car item))
-       (if (> (length string) longest_length)
-           (progn 
-             (setq longest string)
-             (setq longest_length (length string))
-             )))
-  longest))
-
-
 ;; TODO 
 
 ;; Note that this works: 
@@ -1217,6 +1181,27 @@ will be assumed and need not be entered \(though it may be\).
 ;; Another TODO item: 
 ;; Don't just silently use that extension filter, break-it out, 
 ;; let the user define what's not interesting. 
+
+
+
+
+;;;----------------------------------------------------------
+(defun perlnow-longest-string-from-alist (match-alist)
+  "I bet one of these has *never* been written before"
+  (let ( (longest "" )
+         (longest_length 0)
+         string 
+         )
+    (dolist (item match-alist)
+      (setq string (car item))
+       (if (> (length string) longest_length)
+           (progn 
+             (setq longest string)
+             (setq longest_length (length string))
+             )))
+  longest))
+
+
 
 
 ;;;==========================================================
