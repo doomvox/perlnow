@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.161 2004/02/26 20:27:15 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.162 2004/02/26 20:35:45 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -724,7 +724,18 @@ to play together nicely.  The segment of the keymap available for
 minor-mode usage is pretty small \(C-c [punctuation], and not *all*
 punctuation either\).  I would think you could easily run into situations 
 where the order in which you load minor-modes would change the keymappings
-you end up with.")
+you end up with.
+
+By the way, if you go looking for a good prefix of your own to attach
+\"perl\" stuff like the perlnow commands, consider that \"C-x p\" is
+used by the p4.el package \(a front-end to the perforce version control
+package -- which is proprietary, but still widely used\), and you
+should be aware that \"M-p\" is used in many contexts for \"history\"
+navigation.  On the other hand, *most* of the places that \"M-p\" is 
+defined are not places that you'd probably want to issue a perlnow 
+command -- the one exception I can think of is in a *shell* buffer, so 
+you might want to be gutsy and experiment with grabbing Alt-p for your 
+own use. ")
 
 
 
