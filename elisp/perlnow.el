@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.142 2004/02/21 02:02:03 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.143 2004/02/21 02:23:55 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -2492,7 +2492,7 @@ Presumes you've got an html framework open that you want to
 insert this material into."
   (interactive)
    (perlnow-dump-docstrings-as-html 
-    (perlnow-symbol-list-from-elisp-file "perldoc"))
+    (perlnow-symbol-list-from-elisp-file "perlnow"))
 ; Experiment is no go:
 ;   (perlnow-dump-docstrings-as-html-exp
 ;    (perlnow-symbol-list-from-elisp-file))
@@ -2582,39 +2582,13 @@ wrappers."
       (insert-file-contents codefile nil nil nil t)
       (goto-char (point-min))
       (unwind-protect 
-          (while (char-after)
-            (forward-line 0) ; beg-of-line
-            (if (looking-at def-star-pat) 
-                (if (setq symbol-name (match-string 1))
-                    (setq symbol-list (cons symbol-name symbol-list))))
-            (forward-line 1)
-            (end-of-line)
-            )
+          (while (re-search-forward def-star-pat nil t)
+            (cond ((setq symbol-name (match-string 1))
+                   (setq symbol-list (cons symbol-name symbol-list))
+                   )))
         (kill-buffer work-buffer))
       (setq symbol-list (reverse symbol-list)))
     ))
-;;; def-star-pat-exp is a pattern that I *thought* 
-;;; would work better in some obscure cases, but essentially 
-;;; do the same thing.  Instead, I get a mysterious bug with it 
-;;; (that I have seen with other pattern attempts), the symbols get 
-;;; *repeated* in the list multiple times.  E.g. perlnow-version 5 times, 
-;;; perlnow-documentation 5 times, perlnow-documentation-installation
-;;; something like 75 times (!), and so on:
-
-;;            (def-star-pat-exp
-;;              (concat 
-;;               "^[^;]*?"              ; No comment chars allowed in front
-;;               "(def"                 ;start of a func name that defines: (def*
-;;               "\\(?:un\\|"           ; defUN
-;;                    "var\\|"          ; defVAR
-;;                    "custom\\|"       ; defCUSTOM
-;;                    "const\\)"        ; defCONST
-;;               "[ \t]+"               ;at least a little white space
-;;               "\\("                  ;begin capture to \1
-;;               "[^ \t]*?"             ;SYMBOL-NAME (any stuff that's not ws)
-;;               "\\)"                  ;end capture to \1
-;;               "\\(?:[ \t]+\\|$\\)"   ;a little white space *or* the EOL
-;;               ))
 
 
 ;;;----------------------------------------------------------
