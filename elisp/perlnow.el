@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.19 2004/02/05 20:35:55 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.20 2004/02/05 20:50:30 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -995,16 +995,16 @@ and module-name, which are returned in a list."
 ;; NEEDS TESTING
   (interactive "stest string: ") ; DEBUG only DELETE
   (let* ( (pattern 
-           (regexp-quote 
             (concat 
-             "^\(.*\)"       ; whatever is at the beginning becomes the mod root
-             "/"             ; the *last* slash, because: 
-             "\([^/]*\)"     ; mod name: everything that is not a slash --
-             "\(\.pm\)*$"    ; up to the end (or an optional .pm extension)
-             )))
+             "^\\(.*\\)"       ; whatever is at the beginning becomes the mod root
+             "/"               ; the *last* slash, because: 
+             "\\([^/]*\\)"     ; mod name: everything that is not a slash --
+             "\\(\\.pm\\)*$"   ; up to the end (or an optional .pm extension)
+             ))
            module-root 
            module-name
           )
+    (message "debug - pattern: %s") ; DEBUG only DELETE
          (cond ((string-match pattern string)
                 (setq module-root (match-string 1 string))
                 (setq module-name (match-string 2 string)) ) ; note: does not include any .pm
