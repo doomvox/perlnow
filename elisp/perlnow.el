@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.94 2004/02/17 07:20:03 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.95 2004/02/17 19:23:51 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -121,7 +121,7 @@ alternate to \\[perlnow-script], \\[perlnow-script-simple].")
 Some \(but not all\) features of this package depend on
 having template.el installed \(i.e. placed in your
 `load-path'\). In addition, you'll need some custom
-perl-oriented template.el templates that come with
+perl-oriented template.el templates which come with
 perlnow.el.  Most likely these templates should go in
 ~/.templates.\n Put the perlnow.el file into your
 `load-path' and add something like the following into
@@ -141,6 +141,15 @@ your ~/.emacs:
 
 Some suggestions on key assignments: 
 XXXX  TODO DONTFORGET  XXX  expand above.
+The main ones:
+
+\\[perlnow-script-general]
+\\[perlnow-run-check]
+\\[perlnow-run]
+\\[perlnow-module]
+\\[perlnow-perldb]
+\\[perlnow-set-run-string]
+\\[perlnow-h2xs]
 
 Note: perlnow.el was developed using GNU emacs 21.1 
 running on a linux \(or GNU/Linux, if you prefer\), 
@@ -236,7 +245,7 @@ on how you might use them for different purposes:
  `perlnow-documentation-tutorial-2-module-development'
  `perlnow-documentation-tutorial-3-h2xs-module-development'
  `perlnow-documentation-tutorial-4-misc'
- `perlnow-tutorial-script-test-file-strategies'")
+ `perlnow-tutorial-test-file-strategies'")
 
 (defvar perlnow-documentation-tutorial-1-script-development t
   "Got an idea for a script?  Hit \\[perlnow-script].
@@ -382,7 +391,7 @@ you may want to use this command:
    \\[perlnow-script-using-this-module]
 
 \(But by the way, if you *are* a test-first-code-later fanatic,
-take a look at see `perlnow-tutorial-script-test-file-strategies'\)
+take a look at see `perlnow-tutorial-test-file-strategies'\)
 
 Anyway, \\[perlnow-script-using-this-module] will get you
 started writing a script that has a \"use <module name>\"
@@ -480,7 +489,7 @@ perl modules installed as man pages, which can be most simply read
 from inside of emacs with the \\[man] command.  
 
   If you happen to be browsing some perl module
-documentation in an emacs window, you might suddenly be
+documentation in an emacs man window, you might suddenly be
 struck by the urge to try it out in a script.  If so you
 should know that the \\[perlnow-script-general] command is
 smart enough \(*knock* *knock*\) to pick out the module name
@@ -512,14 +521,14 @@ the older version is available to do with what you will.")
 
 
 
-(defvar perlnow-tutorial-script-test-file-strategies t
+(defvar perlnow-tutorial-test-file-strategies t
   "As mentioned in a few other places, the \\[perlnow-run]
 and \\[set-perlnow-run-string] commands do try to find 
 test files for modules, even if they don't happen to be 
 inside of an h2xs structure.  There's a relatively elaborate 
 search path for this.  Here's a quick description of what it 
 looks for before giving up and prompting the user 
- \(but please, avoid relying on the preceednece of this 
+ \(but please, avoid relying on the precedence of this 
 search as currently implemented: it may change\): 
 
 First of all, test files all end with the \".t\" extension 
@@ -598,7 +607,7 @@ policy\" in `perlnow-documentation-terminology'.")
 (setq perlnow-module-root (file-name-as-directory perlnow-module-root))
 
 (defcustom perlnow-h2xs-location perlnow-module-root 
-  "This is the default location to do h2xs development of CPAN bound modules."
+  "This is the default location to do h2xs development of CPAN bound modules.")
 
 (defcustom perlnow-executable-setting ?\110
   "The user-group-all permissions used to make a script executable.")
@@ -1034,8 +1043,9 @@ assumes it's a perl script."
      ; set-up intelligent default run string 
      (unless perlnow-script-run-string 
        (progn
-         (setq perlnow-script-run-string 
-             (format "perl %s" (buffer-file-name)))))
+         (setq perlnow-module-run-string 
+               (perlnow-guess-script-run-string))
+         ))
      ; ask user how to run this script (use as default next time)
      (setq perlnow-script-run-string 
            (read-from-minibuffer 
@@ -1459,12 +1469,8 @@ the module-file-location or the module-root \(both interpretations
 are checked\). \n
 If this seems too complex, that's because it is, but it does make 
 it convenient to use this with a number of reasonable organizational 
-schemes for your test files.\n
-Note: Relying on the exact precedence of this search should be avoided
-\(future versions may work slightly differently\)."
-;;; TODO DONTFORGET
-;;; Document those schemes for test file locations in detail: 
-;;;  perlnow-documentation-test-schemes
+schemes for your test files: `perlnow-tutorial-test-file-strategies'."
+
 ;;; TODO
 ;;; o  Will also at some point want a "perlnow-edit-test-file-for-this-module".
 ;;; Maybe this code should be revamped (again, sigh): need routine that returns test file name?
@@ -1495,7 +1501,7 @@ Note: Relying on the exact precedence of this search should be avoided
           ; This is a listing of possible names for the test file:
           (test-file-check-list (list (concat hyphenized-module-name ".t")
                                       (concat module-file-basename ".t")
-
+                                      ))
 
           staging-area      ; The location of an h2xs-style dev structure 
           staging-area-candidate staging-area-candidate-name 
@@ -1513,12 +1519,12 @@ Note: Relying on the exact precedence of this search should be avoided
                   (perlnow-lowest-level-directory-name staging-area-candidate))
             (cond
              ((string= staging-area-candidate-name hyphenized-module-name)
-              (setq staging-area staging-area-candidate) 
+              (setq staging-area (perlnow-fixdir staging-area-candidate)) 
               (cond 
-               ((file-regular-p (concat (perlnow-fixdir staging-area) "Makefile"))
+               ((file-regular-p (concat staging-area "Makefile"))
                 (setq water "make test")
                 (throw 'COLD water))
-               ((file-regular-p (concat (perlnow-fixdir staging-area) "Makefile.PL"))
+               ((file-regular-p (concat staging-area "Makefile.PL"))
                 (setq water "perl Makefile.PL; make test")
                 (throw 'COLD water)
                 ))))
@@ -1547,7 +1553,20 @@ Note: Relying on the exact precedence of this search should be avoided
                       (setq fish
                             (format "perl \"-MExtUtils::Command::MM\" -e \"test_harness(1, %s)\"" testfile)
                       (throw 'COLD fish)))))))
-    return)) 
+    return)))
+
+;;;----------------------------------------------------------
+(defun perlnow-guess-script-run-string ()
+  "Returns a good guess for `perlnow-script-run-string'."
+;;# TODO DONTFORGET
+;;# check for hash bang? 
+;;#   Pass through at least *some* elements of hash-bang, e.g. -T
+;;# check buffer-file-name, if extension .t
+;;#   If a .t is it in an h2xs structure?  "make test"
+;;#   Otherwise: (format "perl \"-MExtUtils::Command::MM\" -e \"test_harness(1, %s)\"" testfile)
+  (setq perlnow-script-run-string 
+        (format "perl %s" (buffer-file-name)))
+)
 
 ;;;----------------------------------------------------------
 (defun perlnow-get-module-root (package-name module-location)
@@ -2334,54 +2353,4 @@ functions preceeding the internally used ones.")
 
 
 
-;;;==========================================================
-;;; Experimental code (unfinished)
-;;;==========================================================
 
-;;;----------------------------------------------------------
-;; (defun quote-regexp-stupid-backwhacks (string) 
-;;   "Takes an ordinary regexp string like (\tset|\techo) and 
-;; turns into into a string like \"\\(\tset\\|\techo\\)\", which is 
-;; suitable for tranformation into an emacs regexp, namely 
-;; \"\(\tset\|\techo\)\".  Note this leaves an escape like 
-;;  \"\t\" alone (it becomes a literal tab internally)."
-;; ;;; TODO  NOT FINISHED
-;; ;;; There are other things like \w and \W that also need the 
-;; ;;; double escape.
-;;   (let ((specious-char-class "[(|)]"))
-;;         ) 
-;;   ;;; want to match for all values of specious-char-class, 
-;;   ;;; capturing and replacing with "\\c" where "c" is whatever 
-;;   ;;; value was just matched.  
-;; ))
-
-
-;;; TODO DONTFORGET 
-;;; Either delete this babble, or make it a perldoc-documentation-history variable:
-;;;===========================================================================
-;;; History:
-;;;===========================================================================
-
-;; This began life as excerpts from "perlutil.el" -- which was not distributed.
-;; It was time to clean-up some cruft now that I was settling on  
-;; using template.el templating, and I wanted to do a package re-name in any case 
-;; ("perlutil" already means something else in the perl world, "man perlutil" 
-;; will tell you about utilities that come with perl).
-
-;; The main concept is to make it easy to quickly jump into perl development.
-;; It's first incarnation was a keyboard macro that inserted the hashbang line. 
-;; Then came some elisp that could do useful things like make the new file 
-;; executable, and insert a standard header with title, email and date. 
-;; Then I wanted to get away from the hard-coded header, so I started 
-;; experimenting with templating systems -- following the golden (silver? 
-;; tin?) rule: "though shalt not invent yet another templating 
-;; system" I started looking at the various existing lisp packages.  
-;; The tempo.el package had some promise, but also some problems and it's largely
-;; designed for other things (heavily interactive uses, like writing new major 
-;; modes; and it presumes template authors are familiar with lisp).  
-;; I've settled on template.el as being closest to what I want 
-;; though it's also probably more complicated than what I need, probably 
-;; not as widely distributed. I've had to kludge a work-around in a few existing 
-;; bugs (which I will report Real Soon).
-
-;;; perlnow.el ends here
