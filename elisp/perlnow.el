@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.105 2004/02/18 02:45:38 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.106 2004/02/18 02:55:21 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -187,7 +187,7 @@ is a single file, \(with extension *.pm\).  Even though
 technically multiple packages can occur in a single file,
 that is almost never done in practice.
 
-You might wonder, \"why is there such a mess of terminology here?\"
+Why is there such a mess of terminology here?
 Because there's a file system name space and a module name space:
 
    /usr/lib/perl/Some/Module.pm
@@ -1815,28 +1815,18 @@ like so:
    /home/hacker/perldev/lib/New::Module
 This uses the file-system separator  \"/\" for the INC-SPOT 
 location and then the perl package name-space separator \"::\" 
-for the package-name.  The \".pm\" extension is assumed 
-and need not be entered. \n
-If the module exists already, this will ask for another name. 
+for the package-name.  Autocompletion works in a way very similar
+to the usual emacs input methods for file names and paths, 
+even after switching to the \"::\" separators, though after 
+the string is input the transition from slash to double-colon 
+is used to determine where perl's package namespace begins. \n
+The \".pm\" extension is assumed and need not be entered. \n
+If the module exists already, the user is asked for another name. \n
 The location for the new module defaults to the global 
-`perlnow-module-location'. This may be edited at run time."
+`perlnow-module-location'. The default location is used as the initial 
+contents of the minibuffer, so that it may be edited at time of module 
+creation."
 ;;; Formerly named: perlnow-prompt-for-new-module-in-one-step
-
-;;; TODO DONTFORGET maybe add following to docs
-;;; 
-;;; The use must be careful to switch to double-colon separators 
-;;; in the right place, to tell perlnow where the division is 
-;;; in the namespaces. 
-
-;Autocompletion works in a way very similar to the usual
-;emacs input methods for file names and paths, but the
-;transition to double-colon separators is used to indicate
-;where perl's package namespace begins.  
-
-;An example of typical input might be: \n
-;   /usr/local/lib/perl/New::Module\n
-;Where \"/usr/local/lib/perl/\" is the inc-spot and 
-;\"New::Module\" is the package-name (aka package-name).\n
 
   (interactive 
    (let ((initial perlnow-module-location)
