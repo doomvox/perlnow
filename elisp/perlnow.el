@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.80 2004/02/14 21:32:05 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.81 2004/02/15 02:12:34 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -114,17 +114,25 @@ the code to let you use the run-strings, including the perl-check,
 and the older alternate to \[perlnow-script], \[perlnow-script-simple].")
 
 (defvar perlnow-documentation-installation t
-  "Instructions on installation of the perlnow package. 
-Put the perlnow.el file into your `load-path' and something like 
-the following into your ~/.emacs:
+  "Instructions on installation of the perlnow package.
+Some \(but not all\) features of this package depend on
+having template.el installed \(i.e. placed in your
+`load-path'\). In addition, you'll need some custom perl-oriented
+template.el templates that come with perlnow.el.  Most likely these 
+templates should go in ~/.templates.\n
+Put the perlnow.el file into your `load-path' and add something 
+like the following into your ~/.emacs:
   \(require 'template\)
   \(template-initialize\)
   \(require 'perlnow\)
   \(global-set-key  \"\M-ps\" 'perlnow-script\)
   \(global-set-key  \"\M-pm\" 'perlnow-module\)
   \(setq `perlnow-script-location' \(substitute-in-file-name \"$HOME/bin\"\)\)
-  \(setq `perlnow-module-root' \(substitute-in-file-name \"$HOME/lib\"\)\)")
-;;; I see that I'm doing a (load-library "perlnow") 
+  \(setq `perlnow-module-root' \(substitute-in-file-name \"$HOME/lib\"\)\)\n
+Some suggestions on key assignments: 
+XXXX  TODO DONTFORGET  XXX  expand above.
+")
+;;; I see that I'm doing a (load-library "perlnow") in my .emacs
 ;;; rather than a require.  Doesn't make a diff, right?
 
 (defvar perlnow-documentation-terminology t 
@@ -301,8 +309,7 @@ which can be used to get formatting to line up, for example:
 Note the utility of having \"PNFS\" be four characters, 
 the same length as \"FILE\".  Like I said: a gross kludge.
 
-
-Experimental, alternative gross kludges: 
+Some experimental, alternative gross kludges: 
 
 \(>>>EMAIL_AT_45<<<\)
 This moves to column 45 before inserting the user email address 
@@ -329,11 +336,7 @@ defined expansions.")
 (setq template-expansion-alist 
       (cons 
       '("PNFS" 
-        (perlnow-insert-spaces-the-length-of-this-string 
-         (make-string (length 
-                       (file-name-nondirectory (buffer-file-name))
-                       ) ?\ )
-         ))
+        (perlnow-insert-spaces-the-length-of-this-string (buffer-file-name)))
       template-expansion-alist))
 
 (setq template-expansion-alist 
@@ -1785,6 +1788,13 @@ o  Goes into cperl-mode using font-lock-mode."
   (set-file-modes (buffer-file-name) perlutil-new-file-permissions))
   (message "buffer is now perlified"))
 
+;;;----------------------------------------------------------
+(defun perlnow-insert-spaces-the-length-of-this-string (string) 
+  "Inserts as many spaces as characters in the given string."
+  (insert 
+   (make-string (length 
+                 (file-name-nondirectory string)
+                 ) ?\ )))
 
 ;;;==========================================================
 ;;; Experimental code (unfinished)
