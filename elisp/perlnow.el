@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.24 2004/02/06 21:35:16 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.25 2004/02/06 21:35:51 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1149,7 +1149,7 @@ will be assumed and need not be entered \(though it may be\).
    ; Do a regexp search of the fragment against items in the file-list
    (dolist (file file-list)
      (if (string-match fragment-pat file)
-         (let (i 1)        ; counter used in building alist below with numeric "value"
+         (let ((i 1))        ; counter used in building alist below with numeric "value"
            (progn
              (setq full-file (concat path file)) ;; an absolutely necessary and simple but non-obvious step
              (setq match-alist (cons (cons full-file i) match-alist)) 
