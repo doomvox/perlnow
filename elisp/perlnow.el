@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.13 2004/01/31 21:29:44 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.14 2004/02/04 02:35:20 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -66,15 +66,19 @@
 ;;   (setq perlnow-module-root (substitute-in-file-name "$HOME/lib"))
 ;; 
 
+;;TODO 
+;;; document Simplifying assumptions:
+;;;   like package = module = one *.pm file
+
 ;;; Definitions of some terms used: 
 ;;; TODO - expand this
-;;; TODO - check perl definitions, e.g. precise distinction between package and module.
 ;;; module-file-name - the file system's name for the module file, e.g. /usr/lib/perl/Double/Colon.pm
 ;;; module-file-basename - name of the module file itself, sans extension: in the above example, "Colon"
 ;;; module-location  - directory portion of module-file-name, e.g. /usr/lib/perl/Double/
 ;;; module-name or package-name - perl's double colon separated name, e.g. "Double::Colon"
 ;;; module-root - The place where perl's double-colon name space begins (e.g. /usr/lib/perl)
-;;;               The PERL5LIB environment variable is a list of different module-roots. 
+;;;               Perl's @INC is a list of different module-roots. 
+;;;               [silly thought: rename module-root as inc-spot?]
 ;;; staging-area - the directory created by the h2xs command for module development, 
 ;;;                a "hyphenized" form of the module-name e.g. Double-Colon.
 ;;;                Every staging-area contains a module-root called "lib".
@@ -101,32 +105,25 @@
 
 ;;;; TODO - fix keybindings:
 
-; I'm grabbing "Alt p" as the perlnow prefix, but using the
-; cperl-mode-map and perl-mode-map since perlnow doesn't
-; have a map of it's own since it's not a mode.  
+;;; What's the right way to do this shit:
+;;; "eval" doesn't work here....
 
-; Is Alt-p okay? (It *and* Alt-n are undefined by default, 
-; but that suggests some intent to use them as customizeable 
-; navigation bindings)   ((Yeah, navigates history in a sub shell!))
+;; (defun perlnow-define-global-keys (mode-map-name)
+;;   "Several key assignments made to the global key map."
+;;   (define-key (eval mode-map-name) "\C-=s" 'perlnow-script)
+;;   (define-key (eval mode-map-name) "\C-=m" 'perlnow-module)
+;;   (define-key (eval mode-map-name) "\C-=h" 'perlnow-h2xs)
+;;   (define-key (eval mode-map-name) "\C-=b" 'perlutil-perlify-this-buffer)
+;; )
 
-; Also need global bindings for "perlnow-script" and 
-; "perlnow-module": want them to jump in to perl programming 
-; fast.  Probably can't rightly do global settings by default 
-; though. 
+;; (defun perlnow-define-perl-mode-keys (mode-map-name)
+;;   "Key assignments made to the perl-mode and cperl-mode key maps."
+;;   (define-key (eval mode-map-name) "\C-=c" 'perlnow-run-check)
+;; )
 
-(add-hook 'cperl-mode-hook
-          '(lambda ()
-             (define-key cperl-mode-map "\M-pb" 'perlutil-perlify-this-buffer)
-             (define-key cperl-mode-map "\M-pn" 'perlutil-perlnow)
-             (define-key cperl-mode-map "\M-pc" 'perlnow-run-check)
-             ))
+;; (add-hook 'perl-mode-hook '(perlnow-define-perl-mode-keys))
+;; (add-hook 'cperl-mode-hook '(perlnow-define-perl-mode-keys))
 
-(add-hook 'perl-mode-hook
-          '(lambda ()
-             (define-key cperl-mode-map "\M-pb" 'perlutil-perlify-this-buffer)
-             (define-key cperl-mode-map "\M-pn" 'perlutil-perlnow)
-             (define-key cperl-mode-map "\M-pc" 'perlnow-run-check)
-             ))
 
 ; TODO:
 ; on the following two, I'm currently using HOME environment variable for
@@ -159,7 +156,6 @@
   "Used internally to pass the a module name in the perl
 double-colon separated form to the template.el template for 
 perl modules. ")
-;;; TODO - Look for a way to do this without a global variable
 
 ;;;----------------------------------------------------------
 ;;; Add feature PERL_MODULE_NAME for the perlnow-module function 
@@ -870,20 +866,23 @@ already, this will ask for another name. The location defaults to the current
 ;;; Consider loading a lisp structure with @INC once early on, so I won't need 
 ;;; to do that over and over... 
 
-  (interactive "DLocation for new module?  \nsName of new module \(e.g. New::Module\)? ")
-  (let* ((filename (perlnow-full-path-to-module where what))
-         (dirname (convert-standard-filename (file-name-directory filename))))
-  (while (file-exists-p filename)
-    (setq what 
-          (read-from-minibuffer "That module name is already in use. Please choose another: " what))
-    (setq filename (perlnow-full-path-to-module where what)))
-  (list where what)))
+;;; Hm... Having a hard time comprehending the docs on completing-reads and so on. 
+;;; This bit may have to wait.
+
+; Might want to steal a notion or two from here. 
+
+;  (interactive "DLocation for new module?  \nsName of new module \(e.g. New::Module\)? ")
+;  (let* ((filename (perlnow-full-path-to-module where what))
+;         (dirname (convert-standard-filename (file-name-directory filename))))
+;  (while (file-exists-p filename)
+;    (setq what 
+;          (read-from-minibuffer "That module name is already in use. Please choose another: " what))
+;    (setq filename (perlnow-full-path-to-module where what)))
+;  (list where what))
+
+  )
 
 
-
-)
-
-   
 ;;;----------------------------------------------------------
 (defun perlnow-prompt-for-h2xs (where what) 
   "Ask the user two questions: the location to put the h2xs structure 
@@ -901,6 +900,8 @@ default-directory. Returns a two element list, location and module-name."
 ;;;  Unfortunately that this can't be made to work: 
 ;;;        /home/perl/modev/New/Module.pm
 ;;;  (no way to pick out the module-root reliably).
+;;; (But... staging-area and module-root are different concepts... 
+;;; would you really want to select an h2xs the same way as a module? 
 
 ;;; DELETE   
 ;;; check for existance of what?  The directory?  Then you need to convert the module 
@@ -934,6 +935,202 @@ default-directory. Returns a two element list, location and module-name."
 ;;       (message "Yep")
 ;;     (message "Nope")))
 ;; ;;; END DELETIA
+
+;;; BOOKMARK WOOGYWOO
+
+(defun perlnow-capitalized-completion-p (cons-arg)
+  "Check the input string embedded as the car of the cons
+cell, which is what is evidentally actually passed in by the
+braindead emacs read-completion bullshit. (Silly me, I
+figured if we're checking *strings* and returning nil/t
+maybe we'd pass *in* strings.  Here we're checking to see if
+this string is capitalized"
+;;; Not currently used
+  (let ( (string (car cons-arg) )
+         (modstring (upcase-initials string)) )
+    (unless (stringp string)
+      (error "Expected string in input")
+    (string= string modstring)
+  )))
+
+(defun perlnow-interesting-file-name-in-cons-cell-p (cons-arg)
+  "Takes input in the form of a cons cell, whose car
+contains the string we're interested in checking (this 
+awkward form is required to use this with the emacs \"Programmed
+Completion\" features, e.g. \[completing-read]\).  Here the
+string is a file name which will get p'ed on if it looks
+like an automatic back-up or an auto save file."
+  (let ( (string (car cons-arg) )
+         (ignore-pat  
+           (concat "\\("     
+                   (mapconcat 'regexp-quote completion-ignored-extensions "\\|")
+                   "\\)$"
+                   "\\|"   ; also skip the dot files "." and ".."
+                   "^\\.$"
+                   "\\|"
+                   "^\\.\\.$"
+                   ))
+         )
+    (unless (stringp string)
+      (error "Expected cons cell containing a string in input"))
+    (not (string-match ignore-pat string))
+    ))
+
+(defun perlnow-interesting-file-name-p (string)
+  "Takes a bare filename (sans path) in the form of a
+string, returns t if it doesn't match the list of
+uninteresting filenames patterns, otherwise nil."
+;;; Not currently used.
+  (let ( 
+         (ignore-pat  
+           (concat "\\("     
+                   (mapconcat 'regexp-quote completion-ignored-extensions "\\|")
+                   "\\)$"
+                   "\\|"   ; also skip the dot files "." and ".."
+                   "^\\.$"
+                   "\\|"
+                   "^\\.\\.$"
+                   ))
+         )
+    (unless (stringp (string))
+      (error "Expected string in input"))
+    (not (string-match ignore-pat string))
+    ))
+
+(defun perlnow-split-perl-module-path-to-dir-and-tail (string)
+  "Splits a file system path into directory and trailing 
+fragment, allowing for the use of perl's double-colon 
+package name separators in addition to the usual unix-like 
+slash character.  \n
+Simple example: given \"/home/doom/lib/Stri\" should return 
+ \"/home/doom/lib/\" and \"Stri\"\n
+Perl package example: given \"/home/doom/lib/Taxed::Reb\" should return 
+ \"/home/doom/lib/Taxed::\" and \"Reb\"\n"
+  (interactive "stest string: ") ; debug only
+  (let* ( (pattern "^\\(.*\\(/\\|::\\)\\)\\([^/:]*$\\)" )
+           directory fragment
+          )
+         (cond ((string-match pattern string)
+                (setq directory (match-string 1 string))
+                (setq fragment (match-string 3 string)) )
+               (t
+                (message "match failed") )) 
+         (list directory fragment) ))
+
+
+(defun perlnow-completing-read-path-and-module-name (minibuffer-string predicate-function-symbol all-completions-flag)
+  "Programmed Completion Experiments.  Working towards:
+Read in the path and module name for a perl module, allowing use of the 
+perl double-colon separated package name for the module.  The \".pm\" extension 
+is assumed and need not be entered \(though it may be\).
+  minibuffer-string - string to be completed, expected to be the current contents of the minibuffer 
+  predicate-function-symbol - symbol containing name of a filter to screen out unwanted choices
+  all-completions-flag might be nil t or lambda. Status: nil works, t needs testing & lambda is unsupported"
+;;; You might think you could simplify this code a little with file-name-all-completions, 
+;;; but I don't like the way it behaves.  It tends to append slashes to the string 
+;;; being completed, and I want to allow for "::" instead of "/". 
+  (let* (
+         ; Treat input string as a directory plus fragment
+         (two-pieces-list
+           (perlnow-split-perl-module-path-to-dir-and-tail minibuffer-string))
+         (path     (car two-pieces-list))
+         (fragment (cadr two-pieces-list))
+         (fragment-pat (concat "^" fragment)) ; grepping filename out of a 
+                                              ; list of bare filenames
+         (munged-path (replace-regexp-in-string "::" "/" path) )  
+            ; unix file system separator "/" swapped in for perl package separators "::" 
+         (i 1)        ; counter used in building alist below with numeric "value"
+         match-list   ; list of files sans path 
+         match-alist  ; alist of files with paths, value a sequential number (zat matter?)
+         full-file    ; full-file, filename including path, used to build the alist above
+         )
+
+   ; Get a directory listing
+   (setq file-list (directory-files munged-path))
+   ; Do a regexp search of the fragment against items in the file-list
+   (dolist (file file-list)
+     (if (string-match fragment-pat file)
+         (progn
+           (setq full-file (concat path file)) ;; an absolutely necessary and simple but non-obvious step
+           (setq match-alist (cons (cons full-file i) match-alist)) 
+           (setq i (+ i 1))
+           )))
+   ;;;   (message "Found %d matches" (- i 1) ) ; DEBUG
+
+   ; Reverse the order of the match-alist
+   (setq match-alist (reverse match-alist))  ;; *might* not be needed. 
+
+   ; Filter that through the "predicate", *if* supplied.
+   (unless (eq predicate-function-symbol nil) ; gotta be a better way. Try just: (unless predicate-function-symbol
+       (setq file-list (grep-list predicate-function-symbol match-alist)))
+
+   ; Return the list of things that match if desired, if not just one of them
+   (cond 
+    (all-completions-flag 
+      match-alist)
+    ((not all-completions-flag)
+      (perlnow-longest-string-from-alist match-alist))
+;   ((eq all-completions-flag lambda)   
+;   ;;; handle lambda case how? If one match t?
+;     )
+    )))
+
+(defun perlnow-longest-string-from-alist (match-alist)
+  "I bet one of these has *never* been written before"
+  (let ( (longest "" )
+         (longest_length 0)
+         string 
+         )
+    (dolist (item match-alist)
+      (setq string (car item))
+       (if (> (length string) longest_length)
+           (progn 
+             (setq longest string)
+             (setq longest_length (length string))
+             )))
+  longest))
+
+(defun perlnow-test-perlnow-completing-read-path-and-module-name (somestring)
+  "Used to test \[perlnow-completing-read-path-and-module-name]."
+  (interactive 
+     (let ((initial "/home/doom/tmp/Testes/Perlnow/Taxe")  ; DEBUG would set to nil in real use.
+            (require-match nil)  ; REQUIRE-MATCH should be nil for creation, t for finding an old one
+           some-alist 
+           string)
+           
+       (setq string (completing-read 
+                      "Gimme: " 
+                      'perlnow-completing-read-path-and-module-name
+                      'perlnow-interesting-file-name-in-cons-cell-p
+                      require-match 
+                      initial))  
+       (message "string: %s" string)
+
+       (list string)
+       )))
+
+;; TODO 
+
+;; Note that this works: 
+;;    perlnow-interesting-file-name-in-cons-cell-p
+;; because the filtering has been moved later and is 
+;; applied to match-alist.
+
+;; It would seem cleaner to use this earlier, 
+;;    perlnow-interesting-file-name-p
+;; and apply it to file-list (before the alist is built). 
+
+;; Possibly: Do it that way, but *embed* the filter name, 
+;; don't pass it in.  Leave in place the later filter on alist, 
+;; for the sake of compatibility with the emacs way of doing 
+;; things (someone might want to apply a second filter later?)
+
+;; Another TODO item: 
+;; Don't just silently use that extension filter, break-it out, 
+;; let the user define it. 
+
+
+
 
 
 ;;;===========================================================================
