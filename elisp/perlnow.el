@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.127 2004/02/19 17:24:04 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.128 2004/02/19 17:46:12 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -958,8 +958,8 @@ it might return nil for failure."
 ;;; the case where we got the module name from a man page buffer, 
 ;;; and it's not so easy to say where the pm file is really installed.
 ;;; It's reasonably likely that it is though, and it's reasonably 
-;;; likely that it's already in the @INC. 
-;;; For now I just assume that it is.  
+;;; likely that it's already in the @INC, so 
+;;; for now I just assume that it is.  
 ;;; Maybe later I'll institute some checking. (TODO?)
 
     ; We expect to use the new script will be used to run the code 
@@ -1704,6 +1704,27 @@ schemes for your test files: `perlnow-tutorial-test-file-strategies'."
   (setq perlnow-script-run-string 
         (format "perl %s" (buffer-file-name)))
 )
+
+
+;;;----------------------------------------------------------
+(defun perlnow-hashbang ()
+  "What is the hash bang line for this file buffer?
+Returns nil if there is none."
+  (save-excursion 
+    (let ( (hash-bang-pat (concat     ; Want:  "^#!(rest captured)"
+                           "^"        
+                           "[ \t]*"   ; Allowing whitespace between everything
+                           "#"
+                           "[ \t]*"
+                           "!"
+                           "[ \t]*"
+                           "\\(.*\\)$"
+                           )) )
+      (goto-char (point-min)) ; Presume the hash bang, if any, is the first line (no blanks or comments)
+      (looking-at hash-bang-line-pat) ; why not just string-match?
+      (setq return
+            (match-string 1))
+      )))
 
 ;;;----------------------------------------------------------
 (defun perlnow-get-inc-spot (package-name module-location)
