@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.115 2004/02/19 01:15:42 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.116 2004/02/19 01:54:07 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -195,33 +195,35 @@ that is almost never done in practice.
 Why is there such a mess of terminology here?
 Because there's a file system name space and a module name space:
 
-   /usr/lib/perl/Some/Module.pm
-   /usr/lib/perl/Some::Module
+   /usr/lib/perl/Modular/Stuff.pm
+   /usr/lib/perl/Modular::Stuff
 
 This makes the answers to simple questions ambiguous:
 
 What is the module called?  
-  Module.pm
-  Some::Module
+  Stuff.pm
+or
+  Modular::Stuff
 
 Where is the module? 
-  /usr/lib/perl/Some
+  /usr/lib/perl/Modular
+or
   /usr/lib/perl
 
 The following terms are used here in an attempt at being
 more precise:
 
 PM FILE \(or MODULE FILENAME\): the file system's name for
-the module file, e.g. /usr/lib/perl/Some/Module.pm
+the module file, e.g. /usr/lib/perl/Modular/Stuff.pm
 
 MODULE FILE BASENAME: name of the module file itself, sans
-extension: in the above example, \"Module\"
+extension: in the above example, \"Stuff\"
 
 MODULE LOCATION \(or MODULE FILE LOCATION\): directory
-portion of module file name, e.g. /usr/lib/perl/Some/
+portion of module file name, e.g. /usr/lib/perl/Modular/
 
 MODULE NAME or PACKAGE NAME: perl's double colon separated
-name, e.g. \"Some::Module\"
+name, e.g. \"Modular::Stuff\"
 
 INC SPOT: a place where perl's package space begins
 \(e.g. /usr/lib/perl\). Perl's @INC is a list of different
@@ -230,7 +232,7 @@ such \"inc spots\" \(alternate term: \"module root\" or
 
 STAGING AREA: the directory created by the h2xs command
 for module development, a hyphenized-form of the module name
-e.g. Some-Module.  Every staging area contains a module root
+e.g. Modular-Stuff.  Every staging area contains a module root
 \(or \"inc spot\") called \"lib\".
 
 H2XS LOCATION: the place where you put your staging areas
@@ -250,7 +252,7 @@ module/script\(?\), usually something like ModuleName.t or
 possibly Staging-Area.t.
 
 TEST LOCATION: place where the test script\(s\) are for
-a given module/script
+a given module.
 
 TEST PATH: search path to look for test files. Note, can
 include relative locations, e.g. \"./t\", but the the dot
@@ -259,9 +261,10 @@ directory... See: `perlnow-test-path'.
 
 TEST POLICY: the information necessary to know where to
 put a newly created test file \(\( *not yet implemented*
-\)\): 1 - the test path dot form, e.g. \"./t\" 2 - the
-definition of dot e.g. module-file-location vs. inc-spot 3 -
-the naming style, e.g. hyphenized vs. base.")
+\)\): 
+1 - the test path dot form, e.g. \"./t\"; 
+2 - the definition of dot e.g. module-file-location vs. inc-spot;
+3 - the naming style, e.g. hyphenized vs. base.")
 
 (defvar perlnow-documentation-tutorial t
   "Well, first you install it: `perlnow-documentation-installation'.
@@ -538,20 +541,30 @@ will work with that also.\)
 
 Misc topic 2 - perlify:
 
-In addition to the old-style non-templat.el fallback:
+In addition to the old-style non-template.el fallback:
 \\[perlnow-script-simple], there's another command 
-something like it: \\[perlnow-perlify-this-buffer-simple].
+that's somewhat similar called: \\[perlnow-perlify-this-buffer-simple].
 The \"perlify\" concept is that you can use whatever 
 habits you're used to to begin working on a script \(e.g. 
 go into dired, choose a directory, choose a file name 
-and open it there\), and *then* you can insert a simple 
-code template and make the file executable.    
+and open it there\), and *then* you can run \"perlify\"
+and insert a simple code template and make the file executable.    
 
 Originally I found that approach to be a little eaiser to get
 used to than the \\[perlnow-script] approach, but 
-pretty quickly I abandoned it and switched over.  Still, someday 
-I expect to implement a template.el based \"perlify\", and 
-the older version is available to do with what you will.")
+pretty quickly I abandoned it and switched over.  
+
+Note that template.el plus a good perl template, plus that
+new emacs 21 trick for making scripts executable
+automatically all gets you very close to having this
+functionality without any help from perlnow.el... except for
+one little gotcha: most of us do not use a standard file
+extension (like '.pl') on our perl scripts.  That makes it a
+little hard for template.el to spot that you're creating
+one.  Though if you can get into the habit of doing a
+\\[template-new-file] instead of \\[find-file], and don't
+mind selecting the correct template after you enter the file
+name then you're pretty much there.")
 
 
 
@@ -969,7 +982,7 @@ it might return nil for failure."
             (insert relative-path)
             (insert "\");\n"))))
 
-      ; insert the "use Some::Module;" line
+      ; insert the "use Modular::Stuff;" line
       (insert (format "use %s;" package-name)) ;;; and maybe a qw() list? 
       (insert "\n"))
     t)
