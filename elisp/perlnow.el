@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.34 2004/02/07 02:57:22 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.35 2004/02/09 01:49:40 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -897,6 +897,195 @@ defaults to using the module root of the current file buffer."
 ;;; Consider loading a lisp structure with @INC once early on, 
 ;;; so we won't need to do this over and over... 
 
+;;;==========================================================
+;;;  Another approach to programmed completion for 
+;;;  reading in perlmodule path and names in one step.  
+;;;  Instead of completing-read, using read-from-minibuffer
+;;;==========================================================
+
+(defun perlnow-read-minibuffer-complete ()
+  "tabby"
+;;; copying this code as a starting point for the spacey routine below.
+;;;
+;;; a little buggy... every so often it gets confused and deletes 
+;;; all or part of the string... but this is remarkably close.
+;;; 
+;;; shouldn't this be more agressive about completion, trying to complete 
+;;; across levels if possible?  Need to do a recursive directory listing,
+;;; use it as collection? 
+
+  (interactive)
+  (let* ( 
+         (raw_string (buffer-string))
+         (pat ": ")
+         (field-start (+ (string-match pat raw_string) (length pat)))
+         (string (substring raw_string field-start))
+         ; Treat input string as a directory plus fragment
+         (two-pieces-list
+           (perlnow-split-module-path-to-dir-and-tail string))
+         (path     (car two-pieces-list))
+         (fragment (cadr two-pieces-list))
+         (fragment-pat (concat "^" fragment)) ; for getting possible filename completions
+                                              ; out of a list of bare filenames (no path)
+         (file-system-path (replace-regexp-in-string "::" "/" path) )  
+            ; unix file system separator "/" swapped in for perl package separators "::" 
+         (match-alist (perlnow-list-directory-as-alist file-system-path fragment-pat))
+         (file-list (mapcar '(lambda(pair) (car pair)) match-alist))
+           ;;; could try file-list in place of the all-completions call. (stringp: NG?)
+         (result (try-completion fragment match-alist))
+        )
+    (if (string= result fragment)
+        (perlnow-read-minibuffer-completion-help))
+
+    (delete-region (+ 1 field-start) (point-max))
+    (insert (concat path result))
+  ))
+  (message "perlnow-read-minibuffer-complete: %s" string)
+)
+
+(defun perlnow-read-minibuffer-complete-word ()
+  "spacey"
+;;; a little buggy... every so often it gets confused and deletes 
+;;; all or part of the string... but this is remarkably close.
+;;; 
+;;; at the moment this is a clone of the above routine. 
+;;; supposed to do something similar, but only complete up 
+;;; to the next "word".  
+  (interactive)
+  (let* ( 
+         (raw_string (buffer-string))
+         (pat ": ")
+         (field-start (+ (string-match pat raw_string) (length pat)))
+         (string (substring raw_string field-start))
+         ; Treat input string as a directory plus fragment
+         (two-pieces-list
+           (perlnow-split-module-path-to-dir-and-tail string))
+         (path     (car two-pieces-list))
+         (fragment (cadr two-pieces-list))
+         (fragment-pat (concat "^" fragment)) ; for getting possible filename completions
+                                              ; out of a list of bare filenames (no path)
+         (file-system-path (replace-regexp-in-string "::" "/" path) )  
+            ; unix file system separator "/" swapped in for perl package separators "::" 
+         (match-alist (perlnow-list-directory-as-alist file-system-path fragment-pat))
+         (file-list (mapcar '(lambda(pair) (car pair)) match-alist))
+           ;;; could try file-list in place of the all-completions call. (stringp: NG?)
+         (result (try-completion fragment match-alist))
+        )
+    (if (string= result fragment)
+        (perlnow-read-minibuffer-completion-help))
+
+    (delete-region (+ 1 field-start) (point-max))
+    (insert (concat path result))
+  ))
+  (message "perlnow-read-minibuffer-complete: %s" string)
+)
+
+
+(defun perlnow-read-minibuffer-completion-help ()
+  "huh"
+;;; For come reason, nothing is ever display in the *Completions* buffer, 
+;;; when I know there should be about four items with a test of /home/doom/tmp/Te
+;;; (redundant stuff is ndone here and there, but I no care. )
+;;; Tried it with this line commented out, without any luck:
+;;;    (setq full-file (concat path file)) ;; an absolutely necessary and simple but non-obvious step
+  (interactive)
+  (let* (
+         (raw_string (buffer-string))
+         (pat ": ")
+         (field-start (+ (string-match pat raw_string) (length pat)))
+         (string (substring raw_string field-start))
+         ; Treat input string as a directory plus fragment
+         (two-pieces-list
+           (perlnow-split-module-path-to-dir-and-tail string))
+         (path     (car two-pieces-list))
+         (fragment (cadr two-pieces-list))
+         (fragment-pat (concat "^" fragment)) ; for getting possible filename completions
+                                              ; out of a list of bare filenames (no path)
+         (file-system-path (replace-regexp-in-string "::" "/" path) )  
+            ; unix file system separator "/" swapped in for perl package separators "::" 
+         (match-alist (perlnow-list-directory-as-alist file-system-path fragment-pat))
+         (file-list (mapcar '(lambda(pair) (car pair)) match-alist))
+           ;;; could try file-list in place of the all-completions call. (stringp: NG?)
+        )
+
+   (with-output-to-temp-buffer "*Completions*"
+     (display-completion-list
+      (all-completions fragment match-alist)
+      ))
+   ))
+;;; all-completions is returning nothing...
+
+(defun perlnow-list-directory-as-alist (path pattern)
+  "Gets a directory listing from the given path, and returns an alist of the file name 
+ones that match the given pattern, and which also pass the \[perlnow-interesting-file-name-p] 
+test. These are full file names including the path, and the values 
+associated with them are sequential numbers"
+   (let ( file-list
+          full-file
+          match-alist
+          (i 1))  ; counter used to build alist with numeric value
+     (setq file-list (directory-files file-system-path))
+     (dolist (file file-list)
+;       (if (and 
+;            (string-match pattern file) 
+;            (perlnow-interesting-file-name-p file))
+       (progn
+;;;         (setq full-file (concat path file)) ;; an absolutely necessary and simple but non-obvious step
+;;;                                             ;; (but evidentally not for these purposes)
+;;;         (setq full-file file)
+         (setq match-alist (cons (cons file i) match-alist)) 
+         (setq i (+ i 1))
+         ))
+; )
+  ; Reverse the order of the match-alist
+  (setq match-alist (reverse match-alist))  ;; *might* not be needed. 
+))
+
+(setq perlnow-read-minibuffer-map '(keymap
+  ; "?"
+  (63 . perlnow-read-minibuffer-completion-help)
+  ; space 
+  (32 . perlnow-read-minibuffer-complete-word)
+  ; tab
+  (9 . perlnow-read-minibuffer-complete)
+  (10 . exit-minibuffer)
+  (13 . exit-minibuffer)
+  (7 . abort-recursive-edit)
+  ))
+
+(defun readem ()
+  "and weep, most likely"
+  (interactive)
+  (let (  (init   nil) ; 
+        (keymap perlnow-read-minibuffer-map) ; Can feed it a keymap!  
+        (read   nil) ; 
+        (hist   nil) ; 
+        (def    nil) ; 
+        (iim    nil) ; 
+         result
+        )
+  (setq result
+        (read-from-minibuffer "Give it to me: " 
+                              init keymap read hist def iim))
+  (message "result: %s" result)
+   ))
+
+
+(defun quote-regexp-stupid-backwhacks (string) 
+  "Takes an ordinary regexp string like (\tset|\techo) and 
+turns into into a string like \"\\(\tset\\|\techo\\)\", which is 
+suitable for tranformation into an emacs regexp, namely 
+\"\(\tset\|\techo\)\".  Note the need to leave an escape like 
+ \"\t\" alone throughout."
+  (let ((specious-char-class "[(|)]"))
+        ) 
+  ;;; want to match for all values of specious-char-class, 
+  ;;; capturing and replacing with "\\c" where "c" is whatever 
+  ;;; value was just matched.  
+))
+
+
+
 
 ;;;==========================================================
 ;;; The following functions are all related to the use of 
@@ -920,27 +1109,26 @@ Quickly jump into development of a new perl module"
 ;;;----------------------------------------------------------
 (defun perlnow-prompt-for-new-module-in-one-step (where what) 
 
-  "Ask for the path and module name all in one shot, using
-the \"/\" separator for the module-root location, then the
-\"::\" separator in specifying the module-name.
-Autocompletion works in a way very similar to the usual
-emacs input methods for file names and paths, but the
-transition to double-colon separators is used to indicate
-where perl's package namespace begins.  The \".pm\"
+  "Ask for the path and module name for a new perl module, 
+in a hybrid form like so: /home/hacker/perldev/lib/New::Module
+We use the file-system separator  \"/\" for the module-root 
+location and then the perl package name-space separator \"::\" 
+for the module-name.  The \".pm\"
 extension will be assumed and need not be entered \(though
-it may be\).  An example of typical input might be: \n
-   /usr/local/lib/perl/New::Module\n
-Where \"/usr/local/lib/perl/\" is the module-root and 
-\"New::Module\" is the module-name (aka package-name).\n
-If the module exists already, this will ask for another name. 
+it may be\).  
+If the module exists already, this will ask for another name. \n
 The location defaults to the current `default-directory'.  [***TODO - zat okay?***]
 Returns a two element list, location and module-name."
-
-;; Dropping this idea:
-;;     Autocompletion useing perl's @INC,
-;; because you might want to create a module somewhere that's not INC'd yet.
-;; (other complications: one place in INC may be nested inside another)
-
+;
+;Autocompletion works in a way very similar to the usual
+;emacs input methods for file names and paths, but the
+;transition to double-colon separators is used to indicate
+;where perl's package namespace begins.  
+;
+;An example of typical input might be: \n
+;   /usr/local/lib/perl/New::Module\n
+;Where \"/usr/local/lib/perl/\" is the module-root and 
+;\"New::Module\" is the module-name (aka package-name).\n
   (interactive 
    (let* ((initial default-directory)
           (require-match nil) ; REQUIRE-MATCH set to nil to allow creation
@@ -952,7 +1140,6 @@ Returns a two element list, location and module-name."
            
      (while 
          (progn 
-
            (setq string 
                  (completing-read 
                   current-prompt
@@ -975,7 +1162,6 @@ Returns a two element list, location and module-name."
            ; In case the following test fails, set-up the prompt for 
            ; the next loop:
            (setq current-prompt later-prompt)
-           (setq initial string) ; perhaps a silly notion, that.
            (file-exists-p module-file-name)))
      module-root-and-name-list )))
 
@@ -994,12 +1180,12 @@ will be assumed and need not be entered \(though it may be\).
   (let* (
          ; Treat input string as a directory plus fragment
          (two-pieces-list
-           (perlnow-split-perl-module-path-to-dir-and-tail minibuffer-string))
+           (perlnow-split-module-path-to-dir-and-tail minibuffer-string))
          (path     (car two-pieces-list))
          (fragment (cadr two-pieces-list))
          (fragment-pat (concat "^" fragment)) ; for getting possible filename completions
                                               ; out of a list of bare filenames (no path)
-         (munged-path (replace-regexp-in-string "::" "/" path) )  
+         (file-system-path (replace-regexp-in-string "::" "/" path) )  
             ; unix file system separator "/" swapped in for perl package separators "::" 
          match-list   ; list of files sans path 
          match-alist  ; alist of files with paths, value a sequential number (zat matter?)
@@ -1007,7 +1193,7 @@ will be assumed and need not be entered \(though it may be\).
          )
 
    ; Get a directory listing
-   (setq file-list (directory-files munged-path))
+   (setq file-list (directory-files file-system-path))
    ; Do a regexp search of the fragment against items in the file-list
    (let ((i 1))  ; counter used to build alist with numeric value
      (dolist (file file-list)
@@ -1147,7 +1333,7 @@ uninteresting filenames patterns, otherwise nil."
     ))
 
 ;;;----------------------------------------------------------
-(defun perlnow-split-perl-module-path-to-dir-and-tail (string)
+(defun perlnow-split-module-path-to-dir-and-tail (string)
   "Splits a file system path into directory and trailing 
 fragment, allowing for the use of perl's double-colon 
 package name separators in addition to the usual unix-like 
