@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.148 2004/02/23 07:45:33 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.149 2004/02/23 07:48:57 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -2713,7 +2713,10 @@ Internally used by perlnow-dump-docstrings-as-html-exp."
               (t
                (setq tranny  ; usual *help* display form
                      (concat " "
-                             (substitute-command-keys symb-name)
+;;;                             (substitute-command-keys symb-name)
+                             "<I>"
+                             symb-name
+                             "</I>"
                              " "))))
         (setq doc-string
               (concat
