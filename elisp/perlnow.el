@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.14 2004/02/04 02:35:20 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.15 2004/02/04 06:44:59 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -185,10 +185,9 @@ this writing, the latest is 5.8.2")
 ;;;----------------------------------------------------------
 ;;; I am following my instinct and using make-variable-buffer-local to
 ;;; force the following to always be buffer-local, despite the
-;;; admonition in the manual (which has a "religious issue" smell to
-;;; my nose).  My reasoning is that this makes the code a little 
+;;; admonition in the manual.  My reasoning: (1) makes the code a little 
 ;;; simpler (I don't want to have to remember to use make-local-variable 
-;;; in different places), and I can't think of a case where the user 
+;;; in different places); (2) I can't think of a case where the user 
 ;;; would be annoyed at me depriving them of this choice. 
 
 (defvar perlnow-script-run-string nil 
@@ -383,8 +382,8 @@ If perlnow-run-string is nil, perlnow-set-run-string is called automatically."
 ; I'm doing the interactive call in two stages: this way can change 
 ; default-directory momentarily, then restore it. Uses dynamic scoping via "let".
 ; (which is more like perl's "local" than perl's "my".)
-  (let ((default-directory perlnow-module-root))
-    (call-interactively 'perlnow-prompt-for-h2xs)))
+   (let ((default-directory perlnow-module-root))
+     (call-interactively 'perlnow-prompt-for-h2xs)))
 
   (let* ( (default-directory h2xs-location)
           (display-buffer (get-buffer-create "*perlnow-h2xs*")) )
@@ -645,7 +644,7 @@ test files.\n
 Note: Relying on the exact precedence of this search should be avoided
 \(future versions may work slightly differently\)."
 
-;;; Document those test schemes in detail.  Where? 
+;;; Document those schemes for test file locations in detail.  Where? 
 ;;; TODO:
 ;;; o  Will also at some point want a "perlnow-edit-test-file-for-this-module".
 ;;; Maybe this code should be revamped (sigh), prefer code that returns test file name?
@@ -809,7 +808,6 @@ This can work on a read-only buffer."
         (setq buffer-read-only original-read-only-status) ; make it read-only if we found it that way
         )
     (get-buffer-create buffer)
-
   )))
 
 ;;;----------------------------------------------------------
@@ -838,49 +836,15 @@ defaults to using the module root of the current file buffer."
                     (throw 'UP t)))))
       return))
 
+;;; TODO
+;;; Consider loading a lisp structure with @INC once early on, 
+;;; so we won't need to do this over and over... 
+
+
 
 ;;;==========================================================
 ;;; Experimental code can go below here     BOOKMARK (note: trying reg-*)
 
-
-;;; Working on a variant of this:
-;;; (defun perlnow-prompt-for-module-to-create (where what) 
-;;; Goal:
-;;; TODO:  would like to accept slash separated form of the name
-;;;       as well as double colon notation.
-;;;       (Appending *.pm should be allowed, but not required)
-;;;       Autocompletion on the part of the module name that corresponds to 
-;;;       a directory would be cool... 
-
-(defun perlnow-prompt-for-module-to-create-single-question (where what) 
-  "Ask for the path and module name all in one shot, allows use 
-of / or :: as separator.  Autocompletion uses perl's @INC, then 
-looks to the file system for the levels of the package namespace. 
-A \".pm\" can be appended, but is not needed.  If the module exists 
-already, this will ask for another name. The location defaults to the current 
-`default-directory'.  Returns a two element list, location and module-name."
-
-;;; BOOKMARK
-;;; Now what?  Got to roll my own, now special interactive code will do this.
-
-;;; Consider loading a lisp structure with @INC once early on, so I won't need 
-;;; to do that over and over... 
-
-;;; Hm... Having a hard time comprehending the docs on completing-reads and so on. 
-;;; This bit may have to wait.
-
-; Might want to steal a notion or two from here. 
-
-;  (interactive "DLocation for new module?  \nsName of new module \(e.g. New::Module\)? ")
-;  (let* ((filename (perlnow-full-path-to-module where what))
-;         (dirname (convert-standard-filename (file-name-directory filename))))
-;  (while (file-exists-p filename)
-;    (setq what 
-;          (read-from-minibuffer "That module name is already in use. Please choose another: " what))
-;    (setq filename (perlnow-full-path-to-module where what)))
-;  (list where what))
-
-  )
 
 
 ;;;----------------------------------------------------------
@@ -892,52 +856,157 @@ default-directory. Returns a two element list, location and module-name."
 
   (interactive "DLocation for new h2xs structure? \nsName of new module \(e.g. New::Module\)? ")
   (list where what))
-;;; TODO - Still need to check for already existing module. 
 
-;;; TODO - would like to allow more varied types of input. 
-;;;        Why not:  /home/perl/modev/New::Module ?
-;;;        or even:  /home/perl/modev/New::Module.pm
-;;;  Unfortunately that this can't be made to work: 
-;;;        /home/perl/modev/New/Module.pm
-;;;  (no way to pick out the module-root reliably).
-;;; (But... staging-area and module-root are different concepts... 
-;;; would you really want to select an h2xs the same way as a module? 
+;;; TODO - Still need to add a check for already existing module:
+;;; Check for existance of the hyphenized directory in the staging-area.
+;;; Convert module name into hyphenized form, append it to the "where", 
+;;; do a file-exists-p on it, (or something)
 
-;;; DELETE   
-;;; check for existance of what?  The directory?  Then you need to convert the module 
-;;; name into the directory name (I think '::' -> '-'), and append that to where. 
+;;; Note, if we need to ask for another one, would like to
+;;; change the value of the prompt.
 
-;;; call this routine again (recursively) if we need another one? 
-;;; cute, but hard to modify the prompt that way... unless it's 
-;;; a *string*, defined with "let" in the calling routine above.  Hm.
+;;; 
+;;; Note: my feeling is that asking two questions for the creation of an 
+;;; h2xs structure is okay.  It helps differentiate it from perlnow-module, 
+;;; and in any case it doesn't logically lend itself to a single question 
+;;; form.  In the case of h2xs the "where" is the staging-area, 
+;;; not the module-root... there are a couple of other levels between 
+;;; the where and the what, and we might as well represent those as the 
+;;; gap between the two questions.
 
-;  (let* ((filename (perlnow-full-path-to-module where what))
-;         (dirname (convert-standard-filename (file-name-directory filename))))
-                        ;    (while (file-exists-p filename)
-                                        ;       (setq what 
-;          (read-from-minibuffer "That module name is already in use. Please choose another: " what))
-;       (setq filename (perlnow-full-path-to-module where what)))
-;;; END DELETIA
 
-;;;----------------------------------------------------------
-;;; TODO 
-;;;  perlnow-get-module-root  doesn't really "get" it, 
-;;;  it determines it from givens (calculate? figure out?)
-;;;  change this.
+;;;==========================================================
+;;; The following functions are all related to the use of 
+;;; programmed completion to implement:
+;;;    perlnow-prompt-for-new-module-in-one-step
+;;; (A variant of perlnow-prompt-for-module-to-create.)
+;;;==========================================================
 
 ;;;----------------------------------------------------------
+(defun perlnow-prompt-for-new-module-in-one-step (where what) 
 
-;; ;;; DELETE
-;; (defun doom-testes ()
-;;   "both"
-;;   (interactive)
-;;   (if (module-root-in-INC-p)
-;;       (message "Yep")
-;;     (message "Nope")))
-;; ;;; END DELETIA
+  "Ask for the path and module name all in one shot, using
+the \"/\" separator for the module-root location, then the
+\"::\" separator in specifying the module-name.
+Autocompletion works in a way very similar to the usual
+emacs input methods for file names and paths, but the
+transition to double-colon separators is used to indicate
+where perl's package namespace begins.  The \".pm\"
+extension will be assumed and need not be entered \(though
+it may be\).  An example of typical input might be: \n
+   /usr/local/lib/perl/New::Module\n
+Where \"/usr/local/lib/perl/\" is the staging-area and 
+\"New::Module\" is the module-name (aka package-name).\n
+If the module exists already, this will ask for another name. 
+The location defaults to the current `default-directory'.  [***TODO - zat okay?***]
+Returns a two element list, location and module-name."
 
-;;; BOOKMARK WOOGYWOO
+;; Dropping this idea:
+;;     Autocompletion uses perl's @INC,
+;; you might want to create a module somewhere that's not INC'd yet.
 
+  (interactive 
+   (let* ((initial default-directory)
+          (require-match nil) ; REQUIRE-MATCH set to nil to allow creation
+          (first-prompt "New module to create \(e.g. /tmp/dev/New::Mod\): ") 
+          (current-prompt first-prompt)
+          (later-prompt "That module exists already. New module to create: ") 
+          string ; pick better name.  Jargon for path and modname?
+          module-root-and-name-list
+          module-root 
+          module-name
+          module-file-name)
+           
+     (while 
+         (progn 
+           (setq string (completing-read 
+                         current-prompt
+                         'perlnow-completing-read-path-and-module-name
+                         'perlnow-interesting-file-name-in-cons-cell-p
+                         require-match 
+                         initial))  
+
+           (message "string: %s" string) ;; DEBUG only DELETE
+
+           (setq module-root-and-name-list
+                 (perlnow-split-module-file-name-to-module-root-and-name string) ; note: drops any .pm
+           (setq module-root (car module-root-and-name-list))
+           (setq module-name (cadr module-root-and-name-list)) 
+           
+           ;;; Convert to an actual file-system-path (Note: adds .pm)
+           (setq module-file-name 
+                 (perlnow-full-path-to-module module-root module-name))
+
+           ; In case the following test fails, set-up the prompt for 
+           ; the next loop:
+           (setq current-prompt later-prompt)
+           (not (file-exists-p module-file-name)))))
+     module-root-and-name-list )))
+
+
+;;;----------------------------------------------------------
+;;; TODO this needs a better name
+(defun perlnow-split-module-file-name-to-module-root-and-name (string)
+  "Input is expected to be a hybrid file system
+path using slashes for the module root name space, and
+double colons for the package name space inside of that. \n
+\(TODO - maybe this should be discussed up top, define 
+terminology for it.\)\n
+This input is split into two pieces, the module-root 
+and module-name, which are returned in a list."
+;; NEEDS TESTING
+  (interactive "stest string: ") ; DEBUG only DELETE
+  (let* ( (pattern 
+           (regexp-quote 
+            (concat 
+             "^\(.*\)"       ; whatever is at the beginning becomes the mod root
+             "/"             ; the *last* slash, because: 
+             "\([^/]*\)"     ; mod name: everything that is not a slash --
+             "\(\.pm\)*$"    ; up to the end (or an optional .pm extension)
+             )))
+           module-root 
+           module-name
+          )
+         (cond ((string-match pattern string)
+                (setq module-root (match-string 1 string))
+                (setq module-name (match-string 2 string)) ) ; note: does not include any .pm
+               (t
+                (message "match failed: could not separate into module root and name.") )) 
+         (list module-root module-name) ))
+
+;;; pattern for first slash before the first ::? Ah, no. 
+;;; sometimes there won't be any.  So this is simpler:
+;;;  (.*)/([^/]*)(\.pm)*$   
+;;; The module-name is the part before the end with no slashes in it.
+;;; The module-root is the stuff before that.  The .pm, if any ends 
+;;; up in the third place...
+;;; Build this in pieces, then use 
+;;;  Use regexp-quote
+;;; on it? 
+
+
+
+;;;----------------------------------------------------------
+(defun perlnow-test-perlnow-completing-read-path-and-module-name (somestring)
+  "Used to test \[perlnow-completing-read-path-and-module-name]."
+  (interactive 
+     (let ((initial "/home/doom/tmp/Testes/Perlnow/Taxe")  ; DEBUG would set to nil in real use.
+            (require-match nil)  ; REQUIRE-MATCH should be nil for creation, t for finding an old one
+           some-alist 
+           string)
+           
+       (setq string (completing-read 
+                      "Gimme: " 
+                      'perlnow-completing-read-path-and-module-name
+                      'perlnow-interesting-file-name-in-cons-cell-p
+                      require-match 
+                      initial))  
+       (message "string: %s" string)
+
+       (list string)
+       )))
+
+;;;----------------------------------------------------------
 (defun perlnow-capitalized-completion-p (cons-arg)
   "Check the input string embedded as the car of the cons
 cell, which is what is evidentally actually passed in by the
@@ -953,6 +1022,7 @@ this string is capitalized"
     (string= string modstring)
   )))
 
+;;;----------------------------------------------------------
 (defun perlnow-interesting-file-name-in-cons-cell-p (cons-arg)
   "Takes input in the form of a cons cell, whose car
 contains the string we're interested in checking (this 
@@ -976,6 +1046,7 @@ like an automatic back-up or an auto save file."
     (not (string-match ignore-pat string))
     ))
 
+;;;----------------------------------------------------------
 (defun perlnow-interesting-file-name-p (string)
   "Takes a bare filename (sans path) in the form of a
 string, returns t if it doesn't match the list of
@@ -997,6 +1068,7 @@ uninteresting filenames patterns, otherwise nil."
     (not (string-match ignore-pat string))
     ))
 
+;;;----------------------------------------------------------
 (defun perlnow-split-perl-module-path-to-dir-and-tail (string)
   "Splits a file system path into directory and trailing 
 fragment, allowing for the use of perl's double-colon 
@@ -1018,11 +1090,12 @@ Perl package example: given \"/home/doom/lib/Taxed::Reb\" should return
          (list directory fragment) ))
 
 
+;;;----------------------------------------------------------
 (defun perlnow-completing-read-path-and-module-name (minibuffer-string predicate-function-symbol all-completions-flag)
   "Programmed Completion Experiments.  Working towards:
 Read in the path and module name for a perl module, allowing use of the 
 perl double-colon separated package name for the module.  The \".pm\" extension 
-is assumed and need not be entered \(though it may be\).
+will be assumed and need not be entered \(though it may be\).
   minibuffer-string - string to be completed, expected to be the current contents of the minibuffer 
   predicate-function-symbol - symbol containing name of a filter to screen out unwanted choices
   all-completions-flag might be nil t or lambda. Status: nil works, t needs testing & lambda is unsupported"
@@ -1075,6 +1148,7 @@ is assumed and need not be entered \(though it may be\).
 ;     )
     )))
 
+;;;----------------------------------------------------------
 (defun perlnow-longest-string-from-alist (match-alist)
   "I bet one of these has *never* been written before"
   (let ( (longest "" )
@@ -1090,24 +1164,6 @@ is assumed and need not be entered \(though it may be\).
              )))
   longest))
 
-(defun perlnow-test-perlnow-completing-read-path-and-module-name (somestring)
-  "Used to test \[perlnow-completing-read-path-and-module-name]."
-  (interactive 
-     (let ((initial "/home/doom/tmp/Testes/Perlnow/Taxe")  ; DEBUG would set to nil in real use.
-            (require-match nil)  ; REQUIRE-MATCH should be nil for creation, t for finding an old one
-           some-alist 
-           string)
-           
-       (setq string (completing-read 
-                      "Gimme: " 
-                      'perlnow-completing-read-path-and-module-name
-                      'perlnow-interesting-file-name-in-cons-cell-p
-                      require-match 
-                      initial))  
-       (message "string: %s" string)
-
-       (list string)
-       )))
 
 ;; TODO 
 
@@ -1127,7 +1183,7 @@ is assumed and need not be entered \(though it may be\).
 
 ;; Another TODO item: 
 ;; Don't just silently use that extension filter, break-it out, 
-;; let the user define it. 
+;; let the user define what's not interesting. 
 
 
 
