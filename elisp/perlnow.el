@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.97 2004/02/17 20:19:00 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.98 2004/02/17 20:31:08 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -176,11 +176,30 @@ of this more portable. ")
 (defvar perlnow-documentation-terminology t 
 "Definitions of some terms used here: 
 
-This documentation \(and some of the code\), makes the
+Note: This documentation \(and some of the code\), makes the
 simplifying assumption that a perl package is a perl module
 is a single file, \(with extension *.pm\).  Even though
 technically multiple packages can occur in a single file,
 that is almost never done in practice.
+
+You might wonder, \"why is there such a mess of terminology here?\"
+Because there's a file system name space and a module name space:
+
+   /usr/lib/perl/Some/Module.pm
+   /usr/lib/perl/Some::Module
+
+This makes the answers to simple questions ambiguous:
+
+What is the module called?  
+  Module.pm
+  Some::Module
+
+Where is the module? 
+  /usr/lib/perl/Some
+  /usr/lib/perl
+
+The following terms are used here in an attempt at being
+more precise:
 
 module filename: the file system's name for the module file,
        e.g. /usr/lib/perl/Some/Module.pm
@@ -194,9 +213,9 @@ module file location: directory portion of module file name,
 module name or package name: perl's double colon separated
        name, e.g. \"Some::Module\"
 
-inc spot: The name I use for a place where perl's double package 
-       space begins \(e.g. /usr/lib/perl\), because perl's @INC 
-       is a list of different such \"inc spots\"  \(alternate term:
+inc spot: a place where perl's package space begins
+       \(e.g. /usr/lib/perl\). Perl's @INC is a list
+       of different such \"inc spots\"  \(alternate term:
        \"module root\" or \"package root\"\).
 
 staging area: the directory created by the h2xs command for
