@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.73 2004/02/13 06:14:36 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.74 2004/02/13 06:58:25 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -119,7 +119,20 @@
 (eval-when-compile
   (require 'cl))
 
-(require 'template) ; templating system: easily customizeable initial file contents
+; The require for the template.el templating system 
+; (which provides easily customizeable initial file contents) 
+; is being moved down inside the functions that need it:
+; 
+;   perlnow-script
+;   perlnow-script-using-this-module
+;   perlnow-script-general
+;   perlnow-module
+;   perlnow-module-two-questions
+
+; Many functions here do *not* need template.el installed to function. 
+; Briefely, the h2xs creation code, the code that guess at run-strings, 
+; the code to let you use the run-strings, including the perl-check, 
+; and the older alternate to perlnow-script, perlnow-script-simple.
 
 
 
@@ -194,7 +207,7 @@ perl modules. ")
 "Records the minibuffer history for perl modules accessed by this package.")
 
 ;;;----------------------------------------------------------
-;; Additional "expansions" for use in template.el templates.
+;; Defining additional "expansions" for use in template.el templates.
 ;; 
 ;; PERLNOW_MODULE_NAME is for the perlnow-module function, 
 ;; You'll see it used in templates like so: (>>>PERLNOW_MODULE_NAME<<<);
@@ -318,6 +331,11 @@ directory via \".\" or  \"..\", though rather than the actual
 either the module root or the module location.")
 (put 'perlnow-test-path  'risky-local-variable t)
 
+(defvar perlnow-simple-hash-bang-line "#!/usr/bin/perl -w"
+  "A typical hash bang line for perl code.  Used only 
+by the somewhat deprecated \"simple\" functions: 
+\[perlnow-script-simple] \[perlnow-perlify-this-buffer-simple]")
+
 
 ;;;==========================================================
 ;;; User Commands
@@ -342,6 +360,7 @@ less prompt \(also, it does not require mode-compile.el\)"
   (interactive 
    (perlnow-prompt-user-for-file-to-create 
     "Name for the new perl script? " perlnow-script-location))
+  (require 'template) 
   (perlnow-new-file-using-template filename perlnow-perl-script-template)
   (perlnow-change-mode-to-executable))
    
@@ -357,6 +376,7 @@ really done\\) then this function will see the first package name."
   (interactive 
    (perlnow-prompt-user-for-file-to-create 
     "Name for the new perl script? " perlnow-script-location))
+  (require 'template) 
   (let* ( (module-filename (buffer-file-name))
           (module-location (file-name-directory module-filename))
           (package-name (perlnow-get-module-name-from-module-buffer)) 
@@ -396,6 +416,7 @@ If this works well, it obviates \[perlnow-script] and
   (interactive
    (perlnow-prompt-user-for-file-to-create 
     "Name for the new perl script? " perlnow-script-location))
+  (require 'template) 
   (let ( module-filename module-location package-name ) 
     (cond 
      ((setq package-name perlnow-get-module-name)
@@ -459,6 +480,7 @@ array, or nil if it is not found."
    ; (It's more like perl's "local" than perl's "my".)
    (let ((default-directory perlnow-module-root))
      (call-interactively 'perlnow-prompt-for-module-to-create)))
+  (require 'template) 
   (setq perlnow-perl-module-name module-name) ; global used to pass value into template
   (let ( (filename (perlnow-full-path-to-module module-root module-name)) )
     (perlnow-new-file-using-template filename perlnow-perl-module-template)))
@@ -1121,13 +1143,13 @@ defaults to using the module root of the current file buffer."
 ;;; so we won't need to do the above over and over... 
 
 ;;;==========================================================
-;;; perlnow-module now uses the following: 
-;;;    perlnow-prompt-for-new-module-in-one-step
-;;; to read in perlmodule path and names in one step
-;;; (A variant of perlnow-prompt-for-module-to-create.)
+;;; The following block of code is used by perlnow-module:
+;;; perlnow-prompt-for-new-module-in-one-step and relatives 
+;;; are used to read in perlmodule path and names in one step
+;;; (A variant of the old perlnow-prompt-for-module-to-create.)
 ;;;
 ;;; Note: instead of completing-read this uses read-from-minibuffer 
-;;; directly, with a customized keymap to change it's behavior.
+;;; with a customized keymap that totally transforms it's behavior.
 ;;;==========================================================
 
 ;;;----------------------------------------------------------
@@ -1205,7 +1227,7 @@ though this may be edited at run time."
      (setq return
            (perlnow-split-perlish-module-name-with-path-to-module-root-and-name result))
      return))
-
+  (require 'template) 
   (setq perlnow-perl-module-name module-name) ; global used to pass value into template
   (let ( (filename (perlnow-full-path-to-module module-root module-name)) )
     (perlnow-new-file-using-template filename perlnow-perl-module-template)))
@@ -1523,29 +1545,84 @@ Perl package example: given \"/home/doom/lib/Taxed::Reb\" should return
          (list directory fragment) ))
 
 ;;;==========================================================
-;;; Older code 
+;;; The "simple" functions.  Older code that doesn't use template.el.
 ;;;==========================================================
 
-;;; TODO  DONTFORGET
-;;; Maybe: include the old perlutil-* routines. 
-;;; Detect if template.el is installed, and if not, 
-;;; fall back on using these (instant gratification principle... 
-;;; try and do something useful, even if the installation isn't 
-;;; quite right... but notify somehow that there's a problem to 
-;;; be fixed). 
+;;;----------------------------------------------------------
+(defun perlnow-script-simple ()
+  "Quickly jump into development of a new perl script. Simple, 
+though inflexible form, which does not require templat.el"
+;;; formerly: perlutil-perlnow
+  (interactive)  
+  ; ask the user the name of the script to create
+  ; check to see if one exists already, and if so, ask for another name 
+  (let ( (perlutil-ask-mess "Name for the new perl script? " )
+         (perlutil-perlnow-file-name "") )
+    (while (progn 
+             (setq perlutil-perlnow-file-name 
+                   (read-file-name perlutil-ask-mess perlnow-script-location)
+                   )
+             (setq perlutil-ask-mess "That name is already in use, use another file name: " )
+             (file-exists-p perlutil-perlnow-file-name)))
+                                        ; open a buffer associated with the file 
+    (find-file perlutil-perlnow-file-name))
+  ; Insert the hashbang, a simple header, and make the file executable:
+  (perlnow-perlify-this-buffer-simple))
 
 ;;;----------------------------------------------------------
-;;;   (defun perlutil-perlnow ()
-;;;----------------------------------------------------------
-;;;   (defun perlutil-perlify-this-buffer ()
-
-
-
-
+(defun perlnow-perlify-this-buffer-simple
+  "Turn the current buffer into perl window.  This is a simple, 
+but inflexible, form that doesn't require template.el.  
+Does three things: 
+o  Adds the hashbang line along with a simple header, 
+o  Makes the file executable, 
+o  Goes into cperl-mode using font-lock-mode."
+;;; Formerly: perlutil-perlify-this-buffer 
+   (interactive)  
+    ; insert the hash bang line at the top of the file:
+    (goto-char (point-min))
+    (insert perlnow-simple-bang-line) 
+    (insert "\n")
+    (insert "# ")
+    ; now, insert a simple header, of the form: 
+    ; <programname> - <author's email> 
+    ;                 <timestamp>
+    (let ((perlutil-file-name-no-path (file-name-nondirectory (buffer-file-name)) ))
+      (insert perlutil-file-name-no-path)
+        (insert " - " )
+        (insert user-mail-address)
+        (insert "\n")
+      (insert "# ")
+        ; Indent so that the date lines up under the email address:
+        (let ( (i 0) )
+        (while (< i (length perlutil-file-name-no-path) )
+          (setq i (1+ i))
+          (insert " ")))
+        (insert "   ")   ; extend indent passed the " - " on line above
+      (insert (current-time-string))
+      (insert "\n\n"))
+  ; Switch buffer to cperl-mode (whether you like it or not)
+  (cperl-mode)  
+  ; Turn on font-lock-mode, (if not on already)
+  (if (font-lock-mode) 
+      (font-lock-mode))
+     ; (You might think it should be "if *not* font-lock", but this works.)
+  ;; Make the file executable:
+  ; Save first: make sure the file really exists before
+  ; we change the protections on it
+  (save-buffer)
+  (let ((perlutil-all-but-execute-mask ?\666) ; Mask to screen out executable file permissions
+        (perlutil-file-permissions)
+        (perlutil-new-file-permissions))
+  (setq perlutil-file-permissions (file-modes (buffer-file-name)))
+  (setq perlutil-new-file-permissions 
+    (+ (logand perlutil-file-permissions perlutil-all-but-execute-mask) perlnow-executable-setting))
+  (set-file-modes (buffer-file-name) perlutil-new-file-permissions))
+  (message "buffer is now perlified"))
 
 
 ;;;==========================================================
-;;; Experimental code (possibly unfinished)
+;;; Experimental code (unfinished)
 ;;;==========================================================
 
 ;;;----------------------------------------------------------
