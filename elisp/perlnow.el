@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.30 2004/02/06 23:36:56 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.31 2004/02/06 23:50:00 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1153,7 +1153,10 @@ will be assumed and need not be entered \(though it may be\).
      )
 ;      match-alist)
     ((not all-completions-flag)
-      (perlnow-longest-string-from-alist match-alist))
+;;;      (perlnow-longest-string-from-alist match-alist)  ; if you want the longest matching string as default
+     (try-completion fragment match-alist)
+     )
+
 ;   ((eq all-completions-flag lambda)   
 ;   ;;; handle lambda case how? If one match t?
 ;     )
