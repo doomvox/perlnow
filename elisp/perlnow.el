@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.83 2004/02/15 02:47:45 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.84 2004/02/15 03:47:34 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -208,25 +208,25 @@ test policy: the information necessary to know where to put
 ;; Something funny I got to do to get it to take the =?
 ;; Grep for code examples... 
 
-(defun perlnow-define-global-keys (mode-map)
-   "Several key assignments made to the global key map. 
-Though actually, this makes the assignment to whatever 
-mode-map is specified as an argument."
-   (define-key mode-map "\C-c=s" 'perlnow-script)
-   (define-key mode-map "\C-c=m" 'perlnow-module)
-   (define-key mode-map "\C-c=h" 'perlnow-h2xs)
-   (define-key mode-map "\C-c=b" 'perlutil-perlify-this-buffer)
- )
+;; (defun perlnow-define-global-keys (mode-map)
+;;    "Several key assignments made to the global key map. 
+;; Though actually, this makes the assignment to whatever 
+;; mode-map is specified as an argument."
+;;    (define-key mode-map "\C-c=s" 'perlnow-script)
+;;    (define-key mode-map "\C-c=m" 'perlnow-module)
+;;    (define-key mode-map "\C-c=h" 'perlnow-h2xs)
+;;    (define-key mode-map "\C-c=b" 'perlutil-perlify-this-buffer)
+;;  )
 
-(defun perlnow-define-perl-mode-keys (mode-map)
-  "Key assignments made to the perl-mode and cperl-mode key maps.
-Though actually, this makes the assignment to whatever 
-mode-map is specified as an argument."
-  (define-key mode-map "\C-c=c" 'perlnow-run-check)
-)
+;; (defun perlnow-define-perl-mode-keys (mode-map)
+;;   "Key assignments made to the perl-mode and cperl-mode key maps.
+;; Though actually, this makes the assignment to whatever 
+;; mode-map is specified as an argument."
+;;   (define-key mode-map "\C-c=c" 'perlnow-run-check)
+;; )
 
-(add-hook 'perl-mode-hook '(perlnow-define-perl-mode-keys perl-mode-map))
-(add-hook 'cperl-mode-hook '(perlnow-define-perl-mode-keys cperl-mode-map))
+;; (add-hook 'perl-mode-hook '(perlnow-define-perl-mode-keys perl-mode-map))
+;; (add-hook 'cperl-mode-hook '(perlnow-define-perl-mode-keys cperl-mode-map))
 
 
 ; TODO:
@@ -516,7 +516,7 @@ If this works well, it obviates \[perlnow-script] and
   (require 'template) 
   (let ( module-filename module-location package-name ) 
     (cond 
-     ((setq package-name perlnow-get-module-name)
+     ((setq package-name (perlnow-get-module-name))
       (setq perlnow-perl-module-name package-name) ; global used to pass value into template
       (cond
           ((setq module-filename (perlnow-module-found-in-INC package-name))
@@ -1334,6 +1334,7 @@ current file buffer."
 ;;;     (define-key map [prior] 'previous-history-element)
 
 
+;;;----------------------------------------------------------
 (defun perlnow-module (module-root module-name) 
   "Quickly jump into development of a new perl module.
 In interactive use, gets the path MODULE-ROOT and MODULE-NAME 
