@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.91 2004/02/16 23:15:04 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.92 2004/02/16 23:18:55 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -890,8 +890,15 @@ used directly always re-uses it's previous run-string as a
 default, and that's guaranteed to be wrong if you've switched 
 to a different file."
   (interactive
-  (unless perlnow-run-string
-    (perlnow-set-run-string)))
+   (let (interactive-return)
+   (if (eq perlnow-run-string nil)
+       (setq interactive-return (perlnow-set-run-string))
+     (setq interactive-return perlnow-run-string))
+   (list interactive-return)
+   ))
+;;;  (interactive
+;;;  (unless perlnow-run-string
+;;;    (perlnow-set-run-string)))
 ;  (message "perlnow-perldb using: %s" runstring) ; debugging only  DELETE
   (perldb runstring))
 
