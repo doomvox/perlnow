@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.150 2004/02/23 08:20:29 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.151 2004/02/23 08:44:03 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -2613,30 +2613,16 @@ wrappers."
 ;;;----------------------------------------------------------
 (defun perlnow-dump-docstrings-as-html-exp (list)
   "Given a LIST of symbol names, insert the doc strings with some HTML markup.
-This version tries to preserve links in the documentation as html links.
-And does idiot simple preservation of formatting: *all* docstrings get PRE 
-wrappers."
+Preserves links in the documentation as html links: any
+reference to a function or variable defined inside of this
+package becomes an internal link to the appropriate named
+anchor inside the html output.  External links are run through 
+\\[substitute-command-keys] to get the keystroke equivalent.
+Formatting is preserved through the simple expedient of PRE wrappers 
+around all docstrings.  This spits out the main body of an html file into 
+the current buffer, does not generate html header or footer."
 ;;; You know you're not confident when you use cut-and-paste version 
 ;;; control in addition to RCS.
-;;; Anyway, what I'm after here is intelligent handling of refs that 
-;;; *don't* point to places inside this file. 
-
-;;; TODO
-;;; If a \[blah] is *not* a perlnow-* (best: check if it's in the list)
-;;; Then, run it through the emacs filter: 
-;;;    (substitute-command-keys STRING)
-;;;    Substitute key descriptions for command names in STRING.
-
-
-;;; To start with, just worry about function references.
-;;; add variable refs later.
-
-;;; And you know what, I don't care that much just now.
-;;; Giving up: there's an argument out of range problem 
-;;; that's not yeilding to my debuggery. 
-;;; Looks like it dies on doc-strings with function refs 
-;;; right at the end, with no other material. 
-;;; (Thought maybe adjust was off? But manual tweakage was no help.)
 
   (dolist (symbol-name list)
     (let* ( doc-string  doc-string-raw
@@ -2665,11 +2651,9 @@ wrappers."
                        symbol-value-as-variable )))
           (insert (concat "</h3>" "\n"))
 
-           ; turn `(.*)' into <I><A HREF="#\1">\1</A></I>  note: dot don't match line breaks (good: safer)
            (setq doc-string 
-                 (replace-regexp-in-string "[`]\\(.*?\\)'" ; that's `(.*?)'
-                                           "<I><A HREF=\"#\\1\">\\1</A></I>" 
-                                           doc-string))
+                 (perlnow-htmlicize-variable-references doc-string list))
+
            (setq doc-string 
                  (perlnow-htmlicize-function-references doc-string list))
 
@@ -2682,11 +2666,9 @@ wrappers."
 Requires a list of INTERNAL-SYMBOLS, to identify whether a function 
 reference can jump to another docstring from the same .el file, or 
 if it's a pointer to something from another package. 
+External pointers are turned into keystroke mappings in the same 
+style as is used in the *Help* buffer. 
 Internally used by perlnow-dump-docstrings-as-html-exp."
-; In this incarnation: 
-; function refs in doc-string become either internal (become HTML jumps) 
-; or external (use the same style of output as *Help* buffers)
-;;; TODO - It turns out that this sucks. Do something different, eh?
   (let (
         ; define constants
         (func-ref-pat "\\\\\\[\\(.*?\\)\\]") ; that's \[(.*?)]   (one hopes)
@@ -2701,62 +2683,88 @@ Internally used by perlnow-dump-docstrings-as-html-exp."
         tranny ; the transformed form of the reference to be used in output
         adjust ; length change in the doc-string after a link is swapped in
         )
-;;(catch 'OUT 
-      (while (setq beg (string-match func-ref-pat doc-string start-search))
-        (setq symb-name (match-string 1 doc-string))
-        (setq end (match-end 0))
 
-        ; Is the reference internal or external?
-        (cond ((member symb-name internal-symbols)
-               (setq tranny  ; html link to internal label
-                     (concat open-link symb-name mid-link symb-name close-link)))
-              (t
-               (setq tranny  ; usual *help* display form
-                     (concat " "
-                             "<I>"
-                             (substitute-command-keys (concat "\\[" symb-name "]"))
-;;;                             symb-name
-                             "</I>"
-                             " "))))
-        (setq doc-string
-              (concat
-               (substring doc-string 0 beg)
-               tranny
-               (substring doc-string end)
-               ))
-        (setq symb-length (length symb-name))
-        (setq adjust (- (length tranny) symb-length 3)) ;;; Experimenting with adjusting adjust
-        (setq start-search (+ end adjust))
-        ; hack to make out of bounds search impossible:
-;;       (if (> start-search (length doc-string))
-;;           (throw 'OUT t))
-        )
-;;   )
-    )
+    (while (setq beg (string-match func-ref-pat doc-string start-search))
+      (setq symb-name (match-string 1 doc-string))
+      (setq end (match-end 0))
+      (cond ((member symb-name internal-symbols) ; Is the reference internal or external?
+             (setq tranny      ; html link to internal label
+                   (concat open-link symb-name mid-link symb-name close-link)))
+            (t
+             (setq tranny        ; usual *help* display form
+                   (concat " "
+                           "<I>"
+                           (substitute-command-keys (concat "\\[" symb-name "]"))
+                           "</I>"
+                           " "))))
+      (setq doc-string
+            (concat
+             (substring doc-string 0 beg)
+             tranny
+             (substring doc-string end)
+             ))
+      (setq symb-length (length symb-name))
+      (setq adjust (- (length tranny) symb-length 3)) ; here 3 is for the 3 chars: \[]
+      (setq start-search (+ end adjust))
+      ))
   doc-string)
 
+;;;----------------------------------------------------------
+(defun perlnow-htmlicize-variable-references (doc-string internal-symbols)
+  "Transform variable references in a DOC-STRING into html form.
+Requires a list of INTERNAL-SYMBOLS, to identify whether a function 
+reference can jump to another docstring from the same .el file, or 
+if it's a pointer to something from another package. 
+External references are simply indicated with italics.
+Internally used by perlnow-dump-docstrings-as-html-exp."
+  (let (
+        ; define constants
+        (var-ref-pat "[`]\\(.*?\\)'") ; that's `(.*?)'
+        (open-link "<I><A HREF=\"#")
+        (mid-link  (concat "\"" ">"))
+        (close-link "</A></I>")
+        ; initialize
+        (start-search 0)
+        ; declare
+        symb-name ; symbol name, searched for with the find-var-ref-pat
+        beg end ; end points of the symbol name in the doc-string
+        tranny ; the transformed form of the reference to be used in output
+        adjust ; length change in the doc-string after a link is swapped in
+        )
 
-;;; "substitute-command-keys" Does nothing useful here. 
-;;; The symb-name "next-error" just gets turned into "next-error",
-;;; without even a M-x prefix (which is what I expected).
-;;; Ah, I get it... I'm supposed to pass it in *with* the \[] 
-;;; brackets.  In any case, I dunno how much I care... 
-;;; Eh, give it a try, I guess.. 
+    (while (setq beg (string-match var-ref-pat doc-string start-search))
+      (setq symb-name (match-string 1 doc-string))
+      (setq end (match-end 0))
+      (cond ((member symb-name internal-symbols) ; Is the reference internal or external?
+             (setq tranny      ; html link to internal label
+                   (concat open-link symb-name mid-link symb-name close-link)))
+            (t
+             (setq tranny        ; usual *help* display form
+                   (concat " "
+                           "<I>"
+                           symb-name
+                           "</I>"
+                           " "))))
+      (setq doc-string
+            (concat
+             (substring doc-string 0 beg)
+             tranny
+             (substring doc-string end)
+             ))
+      (setq symb-length (length symb-name))
+      (setq adjust (- (length tranny) symb-length 2)) ; here 2 is for the 2 chars: `'
+      (setq start-search (+ end adjust))
+      ))
+  doc-string)
 
-;;; Okay, I got this "working", but what it does is completely 
-;;; uninteresting and useless.  E.g.                
-;;;
-;;;    It looks like your binding is: next-error 
-;;; 
-;;; I could do just as well by *stripping formatting* if 
-;;; the symb-name is not found, (or more likely by italicising it).
-;;; So do that next. 
-
-;;; Next version after that, might be to automatically generate a footnote 
-;;; section with definitions of stuff referenced externally...
-
+;;; TODO 
+;;; Currently, external refs become dead text, the keystroke mappings (italicized).
+;;; Next version might be to automatically generate a footnote 
+;;; section with docstrings of the stuff referenced externally.
+;;; Alternately: generate an entire file for any package referenced externally.
 
 ;;;==========================================================
+
 (provide 'perlnow)
 
 ;;; perlnow.el ends here
