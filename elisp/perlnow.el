@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.81 2004/02/15 02:12:34 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.82 2004/02/15 02:26:05 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -792,6 +792,14 @@ different message.  Returns a two element list, location and module-name."
 ;;; Internally used functions 
 ;;;==========================================================
 
+;;;----------------------------------------------------------
+(defun perlnow-insert-spaces-the-length-of-this-string (string) 
+  "Inserts as many spaces as characters in the given string.
+Used by the template.el expansion PNFS."
+  (insert 
+   (make-string (length 
+                 (file-name-nondirectory string)
+                 ) ?\ )))
 
 ;;;----------------------------------------------------------
 (defun perlnow-full-path-to-module (module-root module-name)
@@ -1738,7 +1746,7 @@ And advantage: does not require the templat.el package."
   (perlnow-perlify-this-buffer-simple))
 
 ;;;----------------------------------------------------------
-(defun perlnow-perlify-this-buffer-simple
+(defun perlnow-perlify-this-buffer-simple ()
   "Turn the current buffer into perl window.  This is a simple, 
 but inflexible, form that doesn't require template.el.  
 Does three things: 
@@ -1787,14 +1795,6 @@ o  Goes into cperl-mode using font-lock-mode."
     (+ (logand perlutil-file-permissions perlutil-all-but-execute-mask) perlnow-executable-setting))
   (set-file-modes (buffer-file-name) perlutil-new-file-permissions))
   (message "buffer is now perlified"))
-
-;;;----------------------------------------------------------
-(defun perlnow-insert-spaces-the-length-of-this-string (string) 
-  "Inserts as many spaces as characters in the given string."
-  (insert 
-   (make-string (length 
-                 (file-name-nondirectory string)
-                 ) ?\ )))
 
 ;;;==========================================================
 ;;; Experimental code (unfinished)
