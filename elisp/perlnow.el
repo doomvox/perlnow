@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.109 2004/02/18 07:26:35 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.110 2004/02/18 07:54:19 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -206,56 +206,57 @@ Where is the module?
 The following terms are used here in an attempt at being
 more precise:
 
-\"module filename\": the file system's name for the module file,
-       e.g. /usr/lib/perl/Some/Module.pm
+PM FILE \(or MODULE FILENAME\): the file system's name for
+the module file, e.g. /usr/lib/perl/Some/Module.pm
 
-\"module file basename\": name of the module file itself, sans
-       extension: in the above example, \"Module\"
+MODULE FILE BASENAME: name of the module file itself, sans
+extension: in the above example, \"Module\"
 
-\"module location\" \(or \"module file location\"\): directory portion of module file name,
-       e.g. /usr/lib/perl/Some/
+MODULE LOCATION \(or MODULE FILE LOCATION\): directory
+portion of module file name, e.g. /usr/lib/perl/Some/
 
-\"module name\" or \"package name\": perl's double colon separated
-       name, e.g. \"Some::Module\"
+MODULE NAME or PACKAGE NAME: perl's double colon separated
+name, e.g. \"Some::Module\"
 
-\"inc spot\": a place where perl's package space begins
-       \(e.g. /usr/lib/perl\). Perl's @INC is a list
-       of different such \"inc spots\"  \(alternate term:
-       \"module root\" or \"package root\"\).
+INC SPOT: a place where perl's package space begins
+\(e.g. /usr/lib/perl\). Perl's @INC is a list of different
+such \"inc spots\" \(alternate term: \"module root\" or
+\"package root\"\).
 
-\"staging area\": the directory created by the h2xs command for
-       module development, a hyphenized-form of the module
-       name e.g. Some-Module.  Every staging area contains
-       a module root \(or \"inc spot\") called \"lib\".
+STAGING AREA: the directory created by the h2xs command
+for module development, a hyphenized-form of the module name
+e.g. Some-Module.  Every staging area contains a module root
+\(or \"inc spot\") called \"lib\".
 
-\"h2xs location\": the place where you put your staging areas
+H2XS LOCATION: the place where you put your staging areas
 
-\"perlish path\": this means a module path including double colons
-       \(alternate term: \"colon-ized\"\),
+PERLISH PATH: this means a module path including double
+colons \(alternate term: \"colon-ized\"\),
 
-\"file system path\" \(or \"filesys path\"\): as opposed to \"perlish\".
-       This is the regular \'nix style slash separated path.
+FILE SYSTEM PATH \(or FILESYS PATH\): as opposed to
+\"perlish\".  This is the regular \'nix style slash
+separated path.
 
-\"full\": usually meaning that the full path is included, 
-       e.g. \"full file name\".  
+FULL: usually meaning that the full path is included,
+e.g. \"full file name\".
 
-\"test script\": The *.t file associated with the current
-        module/script\(?\), usually something like
-        ModuleName.t or possibly Staging-Area.t. 
+TEST SCRIPT: The *.t file associated with the current
+module/script\(?\), usually something like ModuleName.t or
+possibly Staging-Area.t.
 
-\"test location\": place where the test script\(s\) are for a
-        given module/script
+TEST LOCATION: place where the test script\(s\) are for
+a given module/script
 
-\"test path\": search path to look for test files. Note, can
-       include relative locations, e.g. \"./t\", but the 
-       the dot there shouldn't be taken as simply the current 
-       directory... See: `perlnow-test-path'.
+TEST PATH: search path to look for test files. Note, can
+include relative locations, e.g. \"./t\", but the the dot
+there shouldn't be taken as simply the current
+directory... See: `perlnow-test-path'.
 
-\"test policy\": the information necessary to know where to put 
-       a newly created test file \(\( *not yet implemented* \)\):
-       1 - the test path dot form, e.g. \"./t\"
-       2 - the definition of dot e.g. module-file-location vs. inc-spot
-       3 - the naming style, e.g. hyphenized vs. base.")
+TEST POLICY: the information necessary to know where to
+put a newly created test file \(\( *not yet implemented*
+\)\): 1 - the test path dot form, e.g. \"./t\" 2 - the
+definition of dot e.g. module-file-location vs. inc-spot 3 -
+the naming style, e.g. hyphenized vs. base.")
 
 (defvar perlnow-documentation-tutorial t
   "Well, first you install it: `perlnow-documentation-installation'.
@@ -455,11 +456,11 @@ point stored in register 9.
 
 Here's the count-down: 
 
-register    position
-9           EXPORT_TAGS
-8           EXPORT 
-7           SYNOPSIS
-6           DESCRIPTION
+   register    position
+   9           EXPORT_TAGS
+   8           EXPORT 
+   7           SYNOPSIS
+   6           DESCRIPTION
 
 Next, the h2xs approach to module development: 
   `perlnow-documentation-tutorial-3-h2xs-module-development'")
@@ -903,7 +904,7 @@ it might return nil for failure."
     (other-window 1)
 
     (perlnow-create-with-template script-name perlnow-perl-script-template)
-    
+
     (unless (eq inc-spot nil) ; without inc-spot, don't mess with FindBin/lib
       (progn
         ; ensure the module can be found by the script if needed, insert "use lib" line 
