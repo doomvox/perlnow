@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.173 2004/03/25 05:51:27 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.174 2004/03/27 20:30:44 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -793,10 +793,10 @@ Defines the PERL_MODULE_NAME expansion.")
 ;; 
 (defvar perlnow-documentation-template-expansions t
   "The perlnow template.el templates use some custom
-expansions defined here in perlnow code.  A template.el
+expansions defined in perlnow.el.  A template.el
 \"expansion\" is a place holder in the template that
 gets replaced by something else when the template is
-used.  For example, (>>>DATE<<<) will become the
+used.  For example, \(>>>DATE<<<\) will become the
 current date.
 
 The perlnow custom expansions: 
@@ -2187,6 +2187,10 @@ current file buffer.  Used by \\[perlnow-do-script-from-module]."
 ;;;
 ;;; Note: instead of completing-read this uses read-from-minibuffer 
 ;;; with a customized keymap that totally transforms it's behavior.
+;;; 
+;;; For a discussion of the following code, see this article: 
+;;; http://www.grin.net/~mirthles/devnotes/elisp-prompt-new-file-part3.html
+;;; 
 ;;;==========================================================
 
 ;;;----------------------------------------------------------
