@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.146 2004/02/21 23:15:32 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.147 2004/02/22 03:07:39 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -2501,11 +2501,11 @@ Perl package example: given \"/home/doom/lib/Taxed::Reb\" should return
 Presumes you've got an html framework open that you want to 
 insert this material into."
   (interactive)
-   (perlnow-dump-docstrings-as-html 
+;   (perlnow-dump-docstrings-as-html 
+;    (perlnow-symbol-list-from-elisp-file "perlnow"))
+; Experimental method:
+   (perlnow-dump-docstrings-as-html-exp
     (perlnow-symbol-list-from-elisp-file "perlnow"))
-; Experiment is no go:
-;   (perlnow-dump-docstrings-as-html-exp
-;    (perlnow-symbol-list-from-elisp-file))
   )
 
 ;;;----------------------------------------------------------
@@ -2646,21 +2646,20 @@ wrappers."
 ;;; (Thought maybe adjust was off? But manual tweakage was no help.)
 
   (dolist (symbol-name list)
-    (let* ( doc-string 
-            doc-string-raw
-            (symbol-value-as-variable nil)
-          (symbol (intern-soft symbol-name)))
-          (cond ((eq symbol nil)
-                 (message "warning: bad symbol-name %s" symbol-name))
-                ((functionp symbol)
-                 (setq doc-string-raw
-                        (documentation symbol t)))
-                (t 
-                 (setq doc-string-raw
-                       (documentation-property symbol 'variable-documentation t))
-                 (setq symbol-value-as-variable 
-                       (perlnow-html-ampersand-subs (pp-to-string (eval symbol))))
-                 ))
+    (let* ( doc-string  doc-string-raw
+             (symbol-value-as-variable nil)
+             (symbol (intern-soft symbol-name)))
+      (cond ((eq symbol nil)
+             (message "warning: bad symbol-name %s" symbol-name))
+            ((functionp symbol)
+             (setq doc-string-raw
+                   (documentation symbol t)))
+            (t 
+             (setq doc-string-raw
+                   (documentation-property symbol 'variable-documentation t))
+             (setq symbol-value-as-variable 
+                   (perlnow-html-ampersand-subs (pp-to-string (eval symbol))))
+             ))
 
           ; Do this early (before adding any html double quotes)
           (setq doc-string (perlnow-html-ampersand-subs doc-string-raw))
@@ -2679,14 +2678,8 @@ wrappers."
                                            "<I><A HREF=\"#\\1\">\\1</A></I>" 
                                            doc-string))
 
-          ; turn \[(.*)]  into <A HREF="#\1">\1</A>
-;          (setq doc-string 
-;                (replace-regexp-in-string "\\\\\\[\\(.*?\\)\\]" ; that's \[(.*?)]   (one hopes)
-;                                          "<A HREF=\"#\\1\">\\1</A>" 
-;                                          doc-string))
-
            ; Fixing function refs in doc-string, either internal (become HTML jumps) 
-           ; or external (use the usual *Help* buffer style of output)
+           ; or external (use the same style of output as *Help* buffers)
            (let (
                  ; define constants
                  (func-ref-pat "\\\\\\[\\(.*?\\)\\]") ; that's \[(.*?)]   (one hopes)
@@ -2703,41 +2696,58 @@ wrappers."
                  tranny-length ; 
                  adjust ; length change in the doc-string after a link is swapped in
                  )
+             (catch 'OUT 
+               (while (setq beg (string-match func-ref-pat doc-string start-search))
+                 (setq symb-name (match-string 1 doc-string))
+                 (setq end (match-end 0))
 
-             (while (setq beg (string-match func-ref-pat doc-string start-search))
-               (setq symb-name (match-string 1 doc-string))
-               (setq end (match-end 0))
+                 ; Is the reference internal or external?
+                 (if (member symb-name list)  
+                     (setq tranny       ; link form
+                           (concat open-link symb-name mid-link symb-name close-link))
+                   (setq tranny  ; usual *help* display form
+                         (concat " "
+                                 (substitute-command-keys symb-name)
+                                 " ")
+                         ))
 
-               ; Is the reference internal or external?
-               (if (member symb-name list)  
-                   (setq tranny ; link form
-                         (concat open-link symb-name mid-link symb-name close-link))
-                 (setq tranny   ; usual *help* display form
-                       (substitute-command-keys symb-name)))
+                 (setq doc-string
+                       (concat
+                        (substring doc-string 0 (- beg 1))
+                        tranny
+                        (substring doc-string (+ end 1))
+                        ))
 
-               (setq doc-string
-                     (concat
-                      (substring doc-string 0 (- beg 1))
-                      tranny
-                      (substring doc-string (+ end 1))
-                      ))
-
-               (setq tranny-length (length tranny))
-               (setq symb-length (length symb-name))
-               (setq adjust (- tranny-length symb-length))
+                 (setq tranny-length (length tranny))
+                 (setq symb-length (length symb-name))
+                 (setq adjust (- tranny-length symb-length))
 ;;               (setq adjust (- adjust 1)) ;;; hackery daquiri docs
 
-               (setq start-search (+ end adjust)))
+                 (setq start-search (+ end adjust))
+                 ; experimental hack to cover a bug
+                 (if (> start-search (length doc-string))
+                     (throw 'OUT t))
+                 )))
+          (insert (concat "<PRE>\n" doc-string "</PRE></P>\n\n"))
+          )))
+
              ;;;debuugery:
 ;;             (message "start-search: %d " start-search)
 ;;             (message "length doc-string: %d " (length doc-string))
 ;;;;;???             (message "adjust: %d " adjust)
 ;;             (message "doc-string: %s" doc-string)
 
-               ))
+;;; Okay, I got this "working", but what it does is completely 
+;;; uninteresting and useless.  E.g.                
+;;;
+;;;    It looks like your binding is: next-error 
+;;; 
+;;; I could do just as well by *stripping formatting* if 
+;;; the symb-name is not found, (or more likely by italicising it).
+;;; So do that next. 
 
-          (insert (concat "<PRE>\n" doc-string "</PRE></P>\n\n"))
-          )))
+;;; Next version after that, might be to automatically generate a footnote 
+;;; section with definitions of stuff referenced externally...
 
 
 ;;;==========================================================
