@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.167 2004/03/17 18:53:28 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.168 2004/03/17 18:54:25 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1914,7 +1914,7 @@ schemes for your test files: `perlnow-tutorial-test-file-strategies'."
           (if (setq staging-area (perlnow-find-h2xs-staging-area))
               (setq run-line (concat "cd " staging-area "; " "make test"))
             (setq run-line
-               (format "perl \"-MExtUtils::Command::MM\" -e \"test_harness(1, %s)\"" filename))
+               (format "perl \"-MExtUtils::Command::MM\" -e \"test_harness(1, '%s')\"" filename))
              ))
         (t ; When all else fails, just feed it to perl and hope for the best
          (setq run-line (format "perl %s" filename))
