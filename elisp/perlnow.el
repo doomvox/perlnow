@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.69 2004/02/12 23:39:30 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.70 2004/02/13 00:20:51 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -171,6 +171,7 @@
 (defvar perlnow-perl-script-template 
   (substitute-in-file-name "$HOME/.templates/TEMPLATE.perlnow-pl.tpl")
 "The template.el template new perl scripts will be created with" )
+(put 'perlnow-perl-script-template 'risky-local-variable t)
 ;;; DEBUG only DELETE:
 ;;;(setq perlnow-perl-script-template 
 ;;;  (substitute-in-file-name "$HOME/.templates/TEMPLATE.perlnow-pl.tpl"))
@@ -178,6 +179,8 @@
 (defvar perlnow-perl-module-template 
   (substitute-in-file-name "$HOME/.templates/TEMPLATE.perlnow-pm.tpl")
 "The template.el template new perl modules will be created with" )
+(put 'perlnow-perl-module-template  'risky-local-variable t)
+
 ;;; DEBUG only DELETE:
 ;;;(setq perlnow-perl-module-template 
 ;;;  (substitute-in-file-name "$HOME/.templates/TEMPLATE.perlnow-pm.tpl"))
@@ -287,6 +290,7 @@ Leave this set to nil unless you want to override the heuristics
 used by \[perlnow-set-run-string] to determine the way to run 
 the current script.  This is a buffer local variable, i.e. it 
 may be set differently for different files.")
+(put 'perlnow-script-run-string  'risky-local-variable t)
 (make-variable-buffer-local 'perlnow-script-run-string)
 
 (defvar perlnow-module-run-string nil 
@@ -295,6 +299,7 @@ Leave this set to nil unless you want to override the heuristics
 used by \[perlnow-set-run-string] to determine the way to run 
 the current script.  This is a buffer local variable, i.e. it 
 may be set differently for different files.")
+(put 'perlnow-module-run-string  'risky-local-variable t)
 (make-variable-buffer-local 'perlnow-module-run-string)
 
 (defvar perlnow-run-string nil 
@@ -302,6 +307,7 @@ may be set differently for different files.")
 \[perlnow-run] how to run the code in a particular file buffer.  This should 
 not typically be set by the user directly.  See `perlnow-script-run-string' 
 and `perlnow-module-run-string' instead.")
+(put 'perlnow-run-string  'risky-local-variable t)
 (make-variable-buffer-local 'perlnow-run-string)
 
 (defvar perlnow-test-path (list "." "../t" "./t")
@@ -310,6 +316,7 @@ and `perlnow-module-run-string' instead.")
 directory via \".\" or  \"..\", though rather than the actual 
 \"current\" location, they will be interpreted as relative to 
 either the module root or the module location.")
+(put 'perlnow-test-path  'risky-local-variable t)
 
 
 ;;;==========================================================
@@ -987,7 +994,7 @@ defaults to using the module root of the current file buffer."
 ;;;==========================================================
 
 ;;;----------------------------------------------------------
- (defvar perlnow-read-minibuffer-map
+(defvar perlnow-read-minibuffer-map
    (let ((map (make-sparse-keymap)))
      (define-key map "?"       'perlnow-read-minibuffer-completion-help)
      (define-key map " "       'perlnow-read-minibuffer-complete-word)
@@ -1001,6 +1008,7 @@ defaults to using the module root of the current file buffer."
      (define-key map "\M-p"    'previous-history-element)
      map)
    "Keymap for reading a perl module name via the minibuffer")
+(put 'perlnow-read-minibuffer-map  'risky-local-variable t)
 ;;; TODO
 ;;; Look at minibuffer-local-map for hints on how to set up menu-bar: 
 ;;;     (define-key map [next] 'next-history-element)
