@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.71 2004/02/13 01:33:03 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.72 2004/02/13 01:35:04 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -951,7 +951,7 @@ module  were \"New::Module\", it should return:
     (cond ((file-exists-p module-filename) 
            (setq return module-filename))
           ((file-directory-p module-test-location) 
-           (dired module-test-location))
+           (setq return module-test-location))
            (t 
            (error "Can't find h2xs test file or test location")
            ))
