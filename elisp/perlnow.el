@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.187 2004/04/26 14:58:35 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.188 2004/04/26 19:13:19 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1388,6 +1388,7 @@ creation."
   (let ( (filename (perlnow-full-path-to-module inc-spot package-name)) )
     (perlnow-create-with-template filename perlnow-perl-module-template)))
 
+
 ;;;----------------------------------------------------------
 (defun perlnow-h2xs (h2xs-location package-name)
   "To quickly jump into development of a new perl CPAN module.
@@ -1399,6 +1400,7 @@ double-colon separated package name form\)."
 ; I'm doing the interactive call in stages: this way can change
 ; default-directory momentarily, then restore it. Uses the dynamic scoping
 ; of elisp's "let" (which is more like perl's "local" than perl's "my").
+
   (let ((default-directory perlnow-h2xs-location))
         (call-interactively 'perlnow-prompt-for-h2xs)))
 
@@ -1406,34 +1408,20 @@ double-colon separated package name form\)."
     (make-directory h2xs-location t))
 
   (let* ( (default-directory h2xs-location)
-          (display-buffer (get-buffer-create "*perlnow-h2xs*")) ;;; DEBUG maybe, effect default-directory?
+           display-buffer ; buffer object
           (h2xs-module-file "")
           (h2xs-test-file   "")
+          (h2xs-staging-area "")
           )
 
+    (setq display-buffer (get-buffer-create "*perlnow-h2xs*")) 
+
   ;Bring the *perlnow-h2xs* display window to the fore (bottom window of the frame)
-  (perlnow-show-buffer-other-window display-buffer -14 t) ;;;; DEBUG could this change default-directory?
-;;; DELETE FOLLOWING
-;;; Using above fun call, instead of: 
-;;   (delete-other-windows)
-;;   (split-window-vertically -14) ; Number of lines of *.t to display
-;;   (other-window 1)
-;;   (switch-to-buffer display-buffer)
-;;; END DELETIA
+  (perlnow-show-buffer-other-window display-buffer -14 t)
 
-  (perlnow-blank-out-display-buffer display-buffer t)  ;;;; DEBUG could *this* change default-directory? 
+  (perlnow-blank-out-display-buffer display-buffer t)
 
-;;; DELETE FOLLOWING
-;;; Can skip this line, now that I'm using the "switchback" option above.
-;;;   (other-window 1)
-;;; END DELETIA
-
-;;; TODO FIXME NOW
-;;; I must not be changing the default directory or something
-;;; This is getting run in an old place
-;;; So force it?
-
-  (let ((default-directory h2xs-location)) ; DEBUGGING trying again.... 
+  (let ((default-directory h2xs-location)) 
      ; A typical h2xs run string:  h2xs -AX -n Net::Acme -b 5.6.0
     (call-process "h2xs"
                 nil
@@ -1443,8 +1431,13 @@ double-colon separated package name form\)."
                 (concat "-n" package-name)
                 (concat "-b"
                         (perlnow-perlversion-old-to-new perlnow-minimum-perl-version)))
-    (perlnow-process-Makefile.PL h2xs-location package-name)
     )
+
+;;; TODO -- This method isn't working:
+;;  (perlnow-process-Makefile.PL h2xs-location package-name)
+;;; Doing it like this instead:
+  (setq h2xs-staging-area (perlnow-staging-area h2xs-location package-name))
+  (perlnow-run-perl-makefile-pl-if-needed h2xs-staging-area)
 
   (setq h2xs-module-file (perlnow-full-path-to-h2xs-module h2xs-location package-name))
   (find-file h2xs-module-file)
@@ -1453,17 +1446,11 @@ double-colon separated package name form\)."
 
   ; Also  open the *.t file 
   (setq h2xs-test-file (perlnow-full-path-to-h2xs-test-file h2xs-location package-name))
-  (message "h2xs-test-file: %s" h2xs-test-file) ;;; DEBUG
+;;;  (message "h2xs-test-file: %s" h2xs-test-file) ;;; DEBUG
   (setq perlnow-associated-code h2xs-test-file) ; bufloc, used by "C-c'b"
   (perlnow-open-file-other-window 
     h2xs-test-file 
     -14)  ; same number of lines as above.  No template, No switchback.
-;;; DELETE FOLLOWING
-;;; Trying the above funcall rather than (though this is barely an improvement):
-;;   (other-window 1)
-;;   (find-file
-;;    (perlnow-full-path-to-h2xs-test-file h2xs-location package-name))
-;;; END DELETIA
   (search-forward "BEGIN { plan tests => 1")
   (setq perlnow-associated-code h2xs-module-file) ; bufloc, used by "C-c'b"
   (other-window 1)
@@ -2721,6 +2708,9 @@ and generate it."
 ;;; something similar is done with 
 ;;;   perlnow-process-Makefile.PL (h2xs-location package-name)
 ;;; any advantages?  Bring the two together.
+;;; Currently -- Mon Apr 26 12:05:07 2004 -- looks like the 
+;;; other method has weird problems with getting the wrong current directory. 
+;;; So I'm using this one instead.
 
 ;;;----------------------------------------------------------
 (defun perlnow-hashbang ()
@@ -2803,19 +2793,32 @@ which is more suitable for use as the -b parameter of h2xs."
 (defun perlnow-process-Makefile.PL (h2xs-location package-name)
   "Create Makefile from Makefile.PL in an h2xs set-up.
 Uses H2XS-LOCATION and PACKAGE-NAME to find the current staging-area
-and do a \"perl Makefile.PL\" there, to create a Makefile."
-  (let ( (default-directory
+and do a \"perl Makefile.PL\" there, to create a Makefile.
+NOTE: not currently in use.  call-process doesn't see default-directory 
+as advertised."
+;;; TODO - get this working, or delete it.  Using this instead:
+;;;   perlnow-run-perl-makefile-pl-if-needed
+
+  (let ( (h2xs-staging-area
            (perlnow-staging-area h2xs-location package-name))
-         (display-buffer (get-buffer-create "*perlnow-h2xs-build*")) )
-    (perlnow-blank-out-display-buffer display-buffer)
+         (display-buffer (get-buffer-create "*perlnow-h2xs*")) )
 
-    (call-process "perl"
-                  nil
-                  display-buffer
-                  nil
-                  "Makefile.PL"
-                  )))
+;;;    (perlnow-blank-out-display-buffer display-buffer)
 
+    (set-buffer display-buffer)
+    (insert "Trying to generate Makefile from Makefile.PL")
+    (let ( (default-directory h2xs-staging-area) )
+      (message "dd: %s" default-directory)
+      (call-process "perl"
+                    nil
+                    display-buffer
+                    nil
+                    "Makefile.PL"
+                    ))))
+;; Double-checking the documentation for call-process in the elisp ref manual: 
+;;   The subprocess gets its current directory from the value of
+;;`default-directory' (*note File Name Expansion::).
+;; Ah: but that's a buffer-local variable.... maybe that's it?  Nope.
 
 ;;;----------------------------------------------------------
 (defun perlnow-full-path-to-h2xs-module (h2xs-location package-name)
@@ -2846,19 +2849,19 @@ PACKAGE-NAME  were \"New::Module\", it should return:
            (file-name-as-directory h2xs-location)
            (mapconcat 'identity (split-string package-name "::") "-")
            "/t/"))
-         (pm-file
+         (test-file
           (concat
            module-test-location
            (mapconcat 'identity (split-string package-name "::") "-")
            ".t")))
-    (cond ((file-exists-p pm-file)
-           (setq return pm-file))
+    (cond ((file-exists-p test-file)
+           (setq return test-file))
           ((file-directory-p module-test-location)
            (setq return module-test-location))
            (t
            (error "Can't find h2xs test file or test location")
            ))
-    pm-file))
+    test-file))
 
 ;;;----------------------------------------------------------
 (defun perlnow-blank-out-display-buffer (buffer &optional switchback)
@@ -2870,6 +2873,7 @@ Returns the buffer object.  Argument BUFFER can be a string or
 a buffer object.  This can work on a read-only buffer."
 
   (let ((original-buff (buffer-name))
+        (original-default-directory default-directory)
         original-read-only-status)
 
   ; Buffer argument may be string or buffer object
@@ -2892,7 +2896,9 @@ a buffer object.  This can work on a read-only buffer."
     (get-buffer-create buffer))
 
   (if switchback
-   (set-buffer buffer))))
+   (set-buffer buffer))
+
+  (setq default-directory original-default-directory)))
 
 ;;;----------------------------------------------------------
 (defun perlnow-inc-spot-in-INC-p (&optional inc-spot)
