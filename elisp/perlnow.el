@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.76 2004/02/14 01:09:03 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.77 2004/02/14 09:10:45 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -25,96 +25,14 @@
 
 ;;;==========================================================
 ;;; Commentary:
-
-; This package is intended to make it easier to jump into the
-; development of perl code when an idea strikes.
-
-; The main idea is to automate the routine tasks involved with 
-; starting work on new perl code.  A single perlnow
-; command will typically prompt for a location and a name,
-; open a file buffer with an appropriate framework already
-; inserted (e.g. the hash-bang line, comments including date
-; and author information, a perldoc outline, and so on). In
-; the case of scripts the file automatically becomes executable.
-
-; To function properly, perlnow.el requires that template.el has been 
-; installed, along with two templates for perl development 
-; purposes, one for scripts, another for modules.  Most likely
-; ~/.templates is the place these copies of these templates should 
-; be installed.
-
-; Primarily, perlnow.el provides the following interactive
-; functions:
-
-; perlnow-script - for creation of new perl scripts. 
-
-; perlnow-module - for creation of new moduls. 
-
-; perlnow-script-using-this-module - for creation of a script 
-;            that uses the module open in the current buffer. 
-
-; perlnow-run-check - does a perl syntax check on the current
-;            buffer, displaying error messages and warnings in  
-;            the standard emacs style, so that the next-error 
-;            command, usually bound to "C-x `" (control-x back-apostrophe)
-;            will skip you to the location of the problem. 
-
-; perlnow-run - like the above, except that it actually runs 
-;            the code, prompting the user for a run string for 
-;            it if it has not been defined yet. 
-
-; perlnow-set-run-string - Allows the user to manually change 
-;            the run-string used by perlnow-run.
-
-; perlnow-h2xs - Creates a new h2xs module structure (which is 
-;            used by CPAN modules.)
-
-
-
-;; Put this file into your load-path and the following into your ~/.emacs:
-;;   (require 'perlnow)
-;;   (global-set-key  "\M-ps" 'perlnow-script)
-;;   (global-set-key  "\M-pm" 'perlnow-module)
-;;   (setq perlnow-script-location (substitute-in-file-name "$HOME/bin"))
-;;   (setq perlnow-module-root (substitute-in-file-name "$HOME/lib"))
 ;; 
-
-;;; Definitions of some terms used: 
-
-;;; First of all, through out this documentation (and for some
-;;; of the code), the simplifying assumption has been made
-;;; that a perl package is a perl module is a single file,
-;;; (with extension *.pm).  This works becuase even though
-;;; technically multiple packages can occur in a single
-;;; file, that is not the standard practice.  
-
-;;; TODO - expand this
-;;; module-file-name - the file system's name for the module file, e.g. /usr/lib/perl/Double/Colon.pm
-;;; module-file-basename - name of the module file itself, sans extension: in the above example, "Colon"
-;;; module-location  - directory portion of module-file-name, e.g. /usr/lib/perl/Double/
-;;; module-name or package-name - perl's double colon separated name, e.g. "Double::Colon"
-;;; module-root - The place where perl's double-colon name space begins (e.g. /usr/lib/perl)
-;;;               Perl's @INC is a list of different module-roots. 
-;;;               [silly thought: rename module-root as inc-spot?]
-;;; staging-area - the directory created by the h2xs command for module development, 
-;;;                a "hyphenized" form of the module-name e.g. Double-Colon.
-;;;                Every staging-area contains a module-root called "lib".
-;;; h2xs-location - the place where you put your staging-areas (possibly /home/doom/dev ?)
-
-;;; Some adjectives: 
-;;;    "perlish"  - means a path including double-colons (alternate term: "colon-ized"), 
-;;; As opposed to: 
-;;;    "file-system" (or "filesys") -  which refers to a regular slash separated path.
-;;;    "full"     - means the path is included, e.g. "full-file-name".  
-
-;;; test-script   - The *.t file associated with the current module/script(?), usually 
-;;;                 something like ModuleName.t or possibly Staging-Area.t. (For a script, scriptname.t?)
-;;; test-location - place where the test script(s) are for a given module/script(?)
-;;; test-path     - search path to look for test files. Note, can include relative locations, e.g. "../t"
-
+;;  perlnow.el is intended to speed the development of perl code 
+;;  by automating some routine tasks.
+;;
+;;  See the documentation for the variable perlnow-documentation, 
+;;  and it's relatives, below.
 
 ;;; Code:
-
 (provide 'perlnow)
 (eval-when-compile
   (require 'cl))
@@ -123,47 +41,180 @@
   "Current version of package perlnow.
 Check <http://www.grin.net/~mirthless/perlnow/> for the newest.")
 
-; The require for the template.el templating system 
-; (which provides easily customizeable initial file contents) 
-; is being moved down inside the functions that need it:
-; 
-;   perlnow-script
-;   perlnow-script-using-this-module
-;   perlnow-script-general
-;   perlnow-module
-;   perlnow-module-two-questions
+(defvar perlnow-documentation t 
+ "A place to attach the documentation for the perlnow.el package.
+Also see the documentation for variables: 
+  \[perlnow-documentation-installation] 
+  \[perlnow-documentation-terminology] 
+ 
+This package is intended to speed development of perl code 
+by making it easier to jump into the development of perl code 
+when an idea strikes, and also by helping to automate 
+some routine development tasks. 
+ 
+A single perlnow command will typically prompt for a 
+location and/or name, open a file buffer with an appropriate 
+framework already inserted \(e.g. the hash-bang line, 
+comments including date and author information, a perldoc 
+outline, and so on\).  In the case of scripts the file 
+automatically becomes executable. 
+ 
+Many of the perlnow.el features require that template.el package 
+has been installed, along with some templates for perl development 
+purposes, one for scripts, another for modules.  Most likely 
+~/.templates is the place these copies of these templates 
+should be installed. 
+ 
+Primarily, perlnow.el provides the following interactive 
+functions: 
+ 
+\[perlnow-script] - for creation of new perl scripts. 
+ 
+\[perlnow-script-using-this-module] - for creation of a script 
+          that uses the module open in the current buffer. 
+ 
+\[perlnow-script-general] - fancier version that should work 
+          automatically in both of the above two cases, as well 
+          as from an open man page buffer describing a module. 
 
-; Many functions here do *not* need template.el installed to function. 
-; Briefely, the h2xs creation code, the code that guess at run-strings, 
-; the code to let you use the run-strings, including the perl-check, 
-; and the older alternate to perlnow-script, perlnow-script-simple.
+\[perlnow-script-simple] - an older, not quite deprecated form 
+          of \[perlnow-script] that has the virtue of not needing 
+          template.el to operate. 
+
+\[perlnow-module] - for creation of new modules. 
+ 
+\[perlnow-h2xs] - runs the h2xs command, to begin working on a 
+           new module for distribution, e.g. through CPAN. 
+
+\[perlnow-run-check] - does a perl syntax check on the current 
+           buffer, displaying error messages and warnings in 
+           the standard emacs style, so that the next-error 
+           command, usually bound to \"C-x \`\" \(control-x back-apostrophe\) 
+           will skip you to the location of the problem. 
+ 
+\[perlnow-run] - like the above, except that it actually tries to 
+           run the code, prompting the user for a run string for 
+           it if it has not been defined yet. 
+ 
+\[perlnow-set-run-string] - Allows the user to manually change 
+           the run-string used by perlnow-run. 
+ 
+ 
+This is a list of the functions that require template.el: 
+ 
+   \[perlnow-script]
+   \[perlnow-script-using-this-module]
+   \[perlnow-script-general]
+   \[perlnow-module]
+   \[perlnow-module-two-questions]
+ 
+Many functions here do *not* need template.el to function. 
+Briefly these are: the h2xs creation code, the code that guesses run-strings, 
+the code to let you use the run-strings, including the perl-check, 
+and the older alternate to \[perlnow-script], \[perlnow-script-simple].")
+
+(defvar perlnow-documentation-installation t
+  "Instructions on installation of the perlnow package. 
+Put the perlnow.el file into your `load-path' and something like 
+the following into your ~/.emacs:
+  \(require 'perlnow\)
+  \(global-set-key  \"\M-ps\" 'perlnow-script\)
+  \(global-set-key  \"\M-pm\" 'perlnow-module\)
+  \(setq `perlnow-script-location' \(substitute-in-file-name \"$HOME/bin\"\)\)
+  \(setq `perlnow-module-root' \(substitute-in-file-name \"$HOME/lib\"\)\)")
+
+(defvar perlnow-documentation-terminology t 
+"Definitions of some terms used here: 
+
+Through out this documentation \(and for some of the code\),
+the simplifying assumption has been made that a perl package
+is a perl module is a single file, \(with extension *.pm\).
+Even though technically multiple packages can occur in a
+single file, that is almost never done in practice.
+
+module filename: the file system's name for the module file,
+       e.g. /usr/lib/perl/Some/Module.pm
+
+module file basename: name of the module file itself, sans
+       extension: in the above example, \"Some\"
+
+module location: directory portion of module file name,
+       e.g. /usr/lib/perl/Some/
+
+module name or package name: perl's double colon separated
+       name, e.g. \"Some::Module\"
+
+module root: The place where perl's double colon name space
+       begins \(e.g. /usr/lib/perl\) Perl's @INC is a list of 
+       different module roots \(alternate term: \"inc-spot\"\).
+
+staging area: the directory created by the h2xs command for
+       module development, a hyphenized-form of the module
+       name e.g. Some-Module.  Every staging area contains
+       a module root called \"lib\".
+
+h2xs location: the place where you put your staging areas
+      \(possibly /home/doom/dev ?\)
+
+perlish path: means a module path including double colons
+       \(alternate term: \"colon-ized\"\),
+
+file system \(or \"filesys\"\) path: as opposed to \"perlish\".
+       This is the regular \'nix style slash separated path.
+
+full: usually meaning that the full path is included, 
+       e.g. \"full file name\".  
+
+test script: The *.t file associated with the current
+        module/script\(?\), usually something like
+        ModuleName.t or possibly Staging-Area.t. 
+
+test location: place where the test script\(s\) are for a
+        given module/script
+
+test path: search path to look for test files. Note, can
+       include relative locations, e.g. \"../t\", but the 
+       meaning of the dot there is not simply the current 
+       directory... See: `perlnow-test-path'.
+
+test policy: the information necessary to know where to put 
+       a newly created test file \(\( not yet implemented \)\):
+       1 - the test path dot form, e.g. \"./t\"
+       2 - the definition of dot e.g. module-file-location
+       3 - the naming style, e.g. hyphenized.")
 
 
 
 ;;;;##########################################################################
-;;;;  User Options, Variables
+;;  User Options, Variables
 ;;;;##########################################################################
 
-;;;; TODO - fix keybindings:
-;;;; DONTFORGET
-;;; What's the right way to do this shit:
-;;; "eval" doesn't work here....
+;;;; TODO DONTFORGET
+;; fix keybindings:
+;; Now I'm getting invalid modifier on this or some such. 
+;; How do you define the prefix key here?  
+;; Something funny I got to do to get it to take the =?
+;; Grep for code examples... 
 
-;; (defun perlnow-define-global-keys (mode-map-name)
-;;    "Several key assignments made to the global key map."
-;;    (define-key (eval mode-map-name) "\C-=s" 'perlnow-script)
-;;    (define-key (eval mode-map-name) "\C-=m" 'perlnow-module)
-;;    (define-key (eval mode-map-name) "\C-=h" 'perlnow-h2xs)
-;;    (define-key (eval mode-map-name) "\C-=b" 'perlutil-perlify-this-buffer)
-;;  )
+(defun perlnow-define-global-keys (mode-map)
+   "Several key assignments made to the global key map. 
+Though actually, this makes the assignment to whatever 
+mode-map is specified as an argument."
+   (define-key mode-map "\C-c=s" 'perlnow-script)
+   (define-key mode-map "\C-c=m" 'perlnow-module)
+   (define-key mode-map "\C-c=h" 'perlnow-h2xs)
+   (define-key mode-map "\C-c=b" 'perlutil-perlify-this-buffer)
+ )
 
-;; (defun perlnow-define-perl-mode-keys (mode-map-name)
-;;   "Key assignments made to the perl-mode and cperl-mode key maps."
-;;   (define-key (eval mode-map-name) "\C-=c" 'perlnow-run-check)
-;; )
+(defun perlnow-define-perl-mode-keys (mode-map)
+  "Key assignments made to the perl-mode and cperl-mode key maps.
+Though actually, this makes the assignment to whatever 
+mode-map is specified as an argument."
+  (define-key mode-map "\C-c=c" 'perlnow-run-check)
+)
 
-;; (add-hook 'perl-mode-hook '(perlnow-define-perl-mode-keys))
-;; (add-hook 'cperl-mode-hook '(perlnow-define-perl-mode-keys))
+(add-hook 'perl-mode-hook '(perlnow-define-perl-mode-keys perl-mode-map))
+(add-hook 'cperl-mode-hook '(perlnow-define-perl-mode-keys cperl-mode-map))
 
 
 ; TODO:
@@ -175,19 +226,21 @@ Check <http://www.grin.net/~mirthless/perlnow/> for the newest.")
 ; Or see if they exist, and then use them, if not, silently fall back on HOME?
 
 (defvar perlnow-script-location (getenv "HOME")
-  "The default location to stash new perl scripts")
+  "This is the default location to stash new perl scripts.")
 (setq perlnow-script-location (file-name-as-directory perlnow-script-location)) 
 
 (defvar perlnow-module-root (getenv "HOME")
-  "The default location to stash new perl modules")
+  "This is the default location to stash new perl modules.")
 (setq perlnow-module-root (file-name-as-directory perlnow-module-root))
 
 (defvar perlnow-executable-setting ?\110
-  "Pattern of user-group-all permission settings used when making a script executable")
+  "This is the pattern of user-group-all permission settings used when 
+making a script executable.")
 
 (defvar perlnow-perl-script-template 
   (substitute-in-file-name "$HOME/.templates/TEMPLATE.perlnow-pl.tpl")
-"The template.el template new perl scripts will be created with" )
+"This is the template.el template that new perl scripts will 
+be created with.")
 (put 'perlnow-perl-script-template 'risky-local-variable t)
 ;;; DEBUG only DELETE:
 ;;;(setq perlnow-perl-script-template 
@@ -195,7 +248,8 @@ Check <http://www.grin.net/~mirthless/perlnow/> for the newest.")
 
 (defvar perlnow-perl-module-template 
   (substitute-in-file-name "$HOME/.templates/TEMPLATE.perlnow-pm.tpl")
-"The template.el template new perl modules will be created with" )
+"This is the template.el template that new perl modules will 
+be created with." )
 (put 'perlnow-perl-module-template  'risky-local-variable t)
 
 ;;; DEBUG only DELETE:
@@ -203,12 +257,13 @@ Check <http://www.grin.net/~mirthless/perlnow/> for the newest.")
 ;;;  (substitute-in-file-name "$HOME/.templates/TEMPLATE.perlnow-pm.tpl"))
 
 (defvar perlnow-perl-module-name nil
-  "Used internally to pass the a module name in the perl
+  "This is used internally to pass the module name in the perl
 double-colon separated form to the template.el template for 
-perl modules. ")
+new perl modules.")
 
 (defvar perlnow-module-name-history nil
-"Records the minibuffer history for perl modules accessed by this package.")
+"This records the minibuffer history for perl modules accessed by 
+this package.")
 
 ;;;----------------------------------------------------------
 ;; Defining additional "expansions" for use in template.el templates.
@@ -277,9 +332,9 @@ perl modules. ")
 
 
 (defvar perlnow-minimum-perl-version "5.006"
-  "Used to replace template MINIMUM_PERL_VERSON with the
-minimum perl version you're planning on supporting. Note
-that perl version numbers jumped from 5.006 to 5.7.0.  As of
+  "The minimum perl version you are interested in supporting. 
+This is used to define the template expansion of MINIMUM_PERL_VERSON.
+Note that perl version numbers jumped from 5.006 to 5.7.0.  As of
 this writing, the latest is 5.8.2")
 ; Defining feature MINIMUM_PERL_VERSON to insert the above as an 
 ; an "expansion" in a template.el template: (>>>MINIMUM_PERL_VERSON<<<);
@@ -302,7 +357,7 @@ this writing, the latest is 5.8.2")
 ;;; of this choice. 
 
 (defvar perlnow-script-run-string nil 
-"The run string for perl scripts, used by \[perlnow-run]. 
+   "The run string for perl scripts, used by \[perlnow-run]. 
 Leave this set to nil unless you want to override the heuristics 
 used by \[perlnow-set-run-string] to determine the way to run 
 the current script.  This is a buffer local variable, i.e. it 
@@ -311,7 +366,7 @@ may be set differently for different files.")
 (make-variable-buffer-local 'perlnow-script-run-string)
 
 (defvar perlnow-module-run-string nil 
-"The run string for perl modules, used by \[perlnow-run]. 
+   "The run string for perl modules, used by \[perlnow-run]. 
 Leave this set to nil unless you want to override the heuristics 
 used by \[perlnow-set-run-string] to determine the way to run 
 the current script.  This is a buffer local variable, i.e. it 
@@ -320,24 +375,24 @@ may be set differently for different files.")
 (make-variable-buffer-local 'perlnow-module-run-string)
 
 (defvar perlnow-run-string nil 
-"A buffer local variable, set by \[perlnow-script-run-string] to tell 
-\[perlnow-run] how to run the code in a particular file buffer.  This should 
-not typically be set by the user directly.  See `perlnow-script-run-string' 
-and `perlnow-module-run-string' instead.")
+   "Tells \[perlnow-run] how to run the code in a particular file buffer.
+This is a buffer local variable which is set by \[perlnow-script-run-string], 
+and this should not typically be set by the user directly.  
+See `perlnow-script-run-string' and `perlnow-module-run-string' instead.")
 (put 'perlnow-run-string  'risky-local-variable t)
 (make-variable-buffer-local 'perlnow-run-string)
 
 (defvar perlnow-test-path (list "." "../t" "./t")
-"List of places to look for test scripts (*.t), typically these
- will look like paths specified as relative to the current 
-directory via \".\" or  \"..\", though rather than the actual 
-\"current\" location, they will be interpreted as relative to 
-either the module root or the module location.")
+   "List of places to look for test scripts (*.t).
+Typically these will look like paths specified as relative to 
+the current directory via \".\" or  \"..\", though rather than 
+the actual \"current\" location, they will be interpreted as 
+relative to either the module root or the module location.")
 (put 'perlnow-test-path  'risky-local-variable t)
 
 (defvar perlnow-simple-hash-bang-line "#!/usr/bin/perl -w"
-  "A typical hash bang line for perl code.  Used only 
-by the somewhat deprecated \"simple\" functions: 
+  "A typical hash bang line for perl code.  
+Used only by the somewhat deprecated \"simple\" functions: 
 \[perlnow-script-simple] \[perlnow-perlify-this-buffer-simple]")
 
 
@@ -347,11 +402,12 @@ by the somewhat deprecated \"simple\" functions:
 
 ;;;----------------------------------------------------------
 (defun perlnow-run-check ()
-  "Run a perl check on the current buffer, displaying errors
-and warnings in another window.  Afterwards, you can skip to
-the location of the next problem with \\[next-error] \n 
+  "Run a perl check on the current buffer.
+This displays errors and warnings in another window, in the 
+usual emacs style: After running this, you can skip to 
+the location of the next problem with \\[next-error]\n 
 This command is like \\[cperl-check-syntax] with one 
-less prompt \(also, it does not require mode-compile.el\)"
+less prompt \(also, it does not require mode-compile.el\)."
   (interactive)
   (save-buffer)
   (setq compile-command (format "perl -cw \'%s\'" (buffer-file-name)))
@@ -360,7 +416,8 @@ less prompt \(also, it does not require mode-compile.el\)"
    
 ;;;----------------------------------------------------------
 (defun perlnow-script (filename)
-  "Quickly jump into development of a new perl script"
+  "Quickly jump into development of a new perl script. 
+Prompts the user for the FILENAME."
   (interactive 
    (perlnow-prompt-user-for-file-to-create 
     "Name for the new perl script? " perlnow-script-location))
@@ -371,7 +428,7 @@ less prompt \(also, it does not require mode-compile.el\)"
    
 ;;;----------------------------------------------------------
 (defun perlnow-script-using-this-module (filename)
-  "Quickly jump into writing a perl script that uses the module 
+  "Quickly jump into a new script that uses the module code 
 in the currently open buffer.  If the module is not in perl's 
 search path \(@INC\), then an appropriate \"use lib\" statement 
 will be added. \n
@@ -408,12 +465,13 @@ really done\\) then this function will see the first package name."
 ;;;----------------------------------------------------------
 (defun perlnow-script-general (script-file-name)
   "General purpose command to quickly jump into coding a perl script. 
-Looks at the current buffer and tries to guess what \"use\" lines
-you might want to start coding with. If it's a perl module, or a man page 
+This prompts the user for the new SCRIPT-FILE-NAME, then 
+looks at the current buffer and tries to guess what \"use\" lines
+you might want to start coding with.  If it's a perl module, or a man page 
 documenting a perl module, it will give you a \"use\" line to include 
 that module.  If the module is not in perl's @INC array, it will also 
-insert the appropriate \"FindBin/use lib\" lines so that the script can 
-find the module. If none of that applies, you just get the usual 
+insert the appropriate \"FindBin\" & \"use lib\" lines so that the script 
+can find the module. If none of that applies, you just get the usual 
 perl script buffer.\n
 If this works well, it obviates \[perlnow-script] and 
 \[perlnow-script-using-this-module].  If it doesn't they're still there."
@@ -452,7 +510,7 @@ If this works well, it obviates \[perlnow-script] and
 
 ;;;----------------------------------------------------------
 (defun perlnow-module-found-in-INC (module-name) 
-  "Given a perl module name \(double-colon separated form\) 
+  "Given a perl MODULE-NAME \(in double-colon separated form\) 
 return the first module file location found in perl's @INC 
 array, or nil if it is not found."
 ;;; TODO That "|||" shit is cheesy.  Use "\t" or something, huh?
@@ -476,7 +534,12 @@ array, or nil if it is not found."
    
 ;;;----------------------------------------------------------
 (defun perlnow-module-two-questions (module-root module-name) 
-  "Quickly jump into development of a new perl module"
+  "Quickly jump into development of a new perl module. 
+This is an older, but simpler form that asks the user two 
+questions to get the MODULE-ROOT and the MODULE-NAME.  The 
+newer \[perlnow-module\] uses a hybrid form to get that 
+information in a single question.  This function is still provided 
+for people who don't don't agree that that's more convenient."
   (interactive 
    ; Because default-directory is the default location for (interactive "D"),
    ; I'm doing the interactive call in two stages: change 
@@ -492,7 +555,8 @@ array, or nil if it is not found."
 
 ;;;----------------------------------------------------------
 (defun perlnow-prompt-for-module-to-create (where what) 
-  "Ask the user two questions: the \"module root\" location, and the name 
+  "Used by \[perlnow-module-two-questions\] to ask the questions. 
+Asks for the WHERE, i.e. the \"module root\" location, and the WHAT, the name 
 of the perl module to create there.  Checks to see if one exists already, 
 and if so, asks for another name.  The location defaults to the current 
 `default-directory'.  Returns a two element list, location and module-name.\n
@@ -508,8 +572,12 @@ Note: This is used only by the mildly deprecated \[perlnow-module-two-questions\
 
 ;;;----------------------------------------------------------
 (defun perlnow-set-run-string ()
-  "Prompt the user for a new string that perlnow-run will
-use to run the code in the current buffer. \n
+  "Prompt the user for a new string run string for the current buffer.
+This sets the global variable `perlnow-run-string' that \[perlnow-run]
+will use to run the code in future in the current buffer. 
+Frequently, the user will use \[perlnow-run], let it run this set 
+command if need be, using this command directly is necessary to 
+change the run command later, however.  \n
 From within a program, you'd probably be better off setting the variables 
 directly, see `perlnow-script-run-string' and `perlnow-module-run-string'.\n
 
@@ -551,14 +619,17 @@ assumes it's a perl script."
 
 ;;;----------------------------------------------------------
 (defun perlnow-run (&optional runstring) ;;; is the optional okay there?
-  "Run the perl code in this file buffer using `perlnow-run-string'
-which typically will have been set by using \[perlnow-set-run-string].
-If perlnow-run-string is nil, perlnow-set-run-string is called automatically."
-  (interactive)
+  "Run the perl code in this file buffer.
+This uses `perlnow-run-string' which may have been set by using 
+\[perlnow-set-run-string]. If perlnow-run-string is nil, 
+perlnow-set-run-string is called automatically.  May be called with 
+a different RUNSTRING when used from a program."
+  (interactive
   (unless perlnow-run-string
     (perlnow-set-run-string))
+  perlnow-run-string)
 ;  (message "running with perlnow-run-string: %s" perlnow-run-string) ; debugging only  DELETE
-  (compile perlnow-run-string))
+  (compile runstring))
 
 ;;;----------------------------------------------------------
 (defun perlnow-h2xs (h2xs-location module-name) 
@@ -914,8 +985,8 @@ to specify them relative to \"here\", where \"here\" means either
 the module-file-location or the module-root \(both interpretations 
 are checked\). \n
 If this seems too complex, that's because it is, but it does make 
-it convenient to use a number of reasonable organizational schemes for 
-your test files.\n
+it convenient to use this with a number of reasonable organizational 
+schemes for your test files.\n
 Note: Relying on the exact precedence of this search should be avoided
 \(future versions may work slightly differently\)."
 ;;; Document those schemes for test file locations in detail.  Where? 
@@ -1244,6 +1315,11 @@ if possible. Used in reading in path and name of a perl module \(which
 need not exist already\), where valid name separators are \(\"/\" or \"::\"\).\n
 Makes no attempt at \"aggressive\" completion past a file-system 
 boundary Not intended for non-interactive use."
+
+
+
+;; 
+
 ;;; codename: new tabby
   (interactive)
   (let ((restrict-to-word-completion nil))
@@ -1509,7 +1585,7 @@ string, returns t if it doesn't match the list of
 uninteresting filenames patterns, otherwise nil."
 ;; TODO DONTFORGET
 ;; Don't just silently use completion-ignored-extensions or indeed 
-;; anything hardcoded in this function. Break out as a defvar  
+;; anything hardcoded in this function. Break it out as a defvar  
 ;; "perlnow-interesting-file-name-pat" or something.
 ;; Let the user define what's interesting. 
   (let ( 
@@ -1549,7 +1625,7 @@ Perl package example: given \"/home/doom/lib/Taxed::Reb\" should return
          (list directory fragment) ))
 
 ;;;==========================================================
-;;; The "simple" functions.  Older code that doesn't use template.el.
+;; The "simple" functions.  Older code that doesn't use template.el.
 ;;;==========================================================
 
 ;;;----------------------------------------------------------
@@ -1648,7 +1724,7 @@ o  Goes into cperl-mode using font-lock-mode."
 
 
 ;;;===========================================================================
-;;;  History 
+;;; History:
 ;;;===========================================================================
 
 ;; This began life as excerpts from "perlutil.el" -- which was not distributed.
@@ -1658,7 +1734,7 @@ o  Goes into cperl-mode using font-lock-mode."
 ;; will tell you about utilities that come with perl).
 
 ;; The main concept is to make it easy to quickly jump into perl development.
-;; It's first incarnation was a keyboard macro that insert the hashbang line. 
+;; It's first incarnation was a keyboard macro that inserted the hashbang line. 
 ;; Then came some elisp that could do useful things like make the new file 
 ;; executable, and insert a standard header with title, email and date. 
 ;; Then I wanted to get away from the hard-coded header, so I started 
@@ -1670,12 +1746,7 @@ o  Goes into cperl-mode using font-lock-mode."
 ;; modes; and it presumes template authors are familiar with lisp).  
 ;; I've settled on template.el as being closest to what I want 
 ;; though it's also probably more complicated than what I need, probably 
-;; distributed and I've had to kludge a work-around in an existing bug 
-;; isn't widely (which I will report someday if I can understand it well
-;; enough... like I said, excessively complicated). 
-
-;; See here for more:
-;;   /home/doom/End/Hack/Emacs/notes-perlutil
-;;   /home/doom/End/Hack/Emacs/notes-perlnow
+;; not as widely distributed. I've had to kludge a work-around in a few existing 
+;; bugs (which I will report Real Soon).
 
 ;;; perlnow.el ends here
