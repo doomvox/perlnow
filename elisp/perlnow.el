@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.74 2004/02/13 06:58:25 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.75 2004/02/13 23:14:20 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -667,7 +667,7 @@ given \"/home/doom/lib\" and \"Text::Gibberish\" would yield /home/doom/lib/Text
   (concat  module-root filename)))
 
 ;;;----------------------------------------------------------
-(defun perlnow-make-sure-file-exists()
+(defun perlnow-make-sure-file-exists ()
   "Forcibly saves the current buffer to it's associated file, 
 to make sure that the file actually exists."
   (set-buffer-modified-p t)
