@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.123 2004/02/19 03:07:19 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.124 2004/02/19 03:19:15 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1651,10 +1651,12 @@ schemes for your test files: `perlnow-tutorial-test-file-strategies'."
               (setq staging-area (perlnow-fixdir staging-area-candidate)) 
               (cond 
                ((file-regular-p (concat staging-area "Makefile"))
-                (setq water "make test")
+;;;                (setq water "make test")
+                (setq water (concat "cd " staging-area "; make test"))
                 (throw 'COLD water))
                ((file-regular-p (concat staging-area "Makefile.PL"))
-                (setq water "perl Makefile.PL; make test")
+;;;                (setq water "perl Makefile.PL; make test")
+                (setq water (concat "cd " staging-area "; perl Makefile.PL; make test"))
                 (throw 'COLD water)
                 ))))
 
