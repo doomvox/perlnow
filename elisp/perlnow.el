@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.203 2004/04/28 00:03:44 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.204 2004/04/28 00:34:39 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1152,7 +1152,7 @@ the emacs recommendations for minor-modes."
    (global-set-key "\C-c/~" 'perlnow-perlify-this-buffer-simple))
 
 ;;;==========================================================
-;;; perl script run functions
+;;; functions to run perl scripts
 
 ;;;----------------------------------------------------------
 (defun perlnow-run-check ()
@@ -2361,7 +2361,7 @@ schemes for your test files: `perlnow-documentation-test-file-strategies'."
            (setq testfile (perlnow-get-test-file-name-script)))
          (t
     ;;; TODO
-    ;;; ask user first if this is really a perl script
+    ;;; ask user first if this is really a perl script?
            (setq testfile (perlnow-get-test-file-name-script))))
    testfile))
 
@@ -2369,7 +2369,7 @@ schemes for your test files: `perlnow-documentation-test-file-strategies'."
 (defun perlnow-get-test-file-name-module ()
    "Get the test file name for the current perl module buffer.
 Used by \\[perlnow-get-test-file-name]."
-  (perlnow-get-test-file-name-module-given-policy
+  (perlnow-get-test-file-name-given-policy
     perlnow-test-policy-test-location
     perlnow-test-policy-dot-definition
     perlnow-test-policy-naming-style))
@@ -2378,23 +2378,21 @@ Used by \\[perlnow-get-test-file-name]."
 (defun perlnow-get-test-file-name-script ()
    "Get the test file name for the current perl script buffer.
 Used by \\[perlnow-get-test-file-name]."
-  (perlnow-get-test-file-name-script-given-policy
+  (
+    perlnow-get-test-file-name-given-policy  
     perlnow-test-policy-test-location
     "fileloc"
     "basename"))
 
 ;;;----------------------------------------------------------
-(defun perlnow-get-test-file-name-module-given-policy (testloc dotdef namestyle)
-   "Get the test file name for the current module buffer, given a test policy.
+(defun perlnow-get-test-file-name-given-policy (testloc dotdef namestyle)
+   "Get the test file name for the current perl buffer, given a test policy.
 This is used by \\[perlnow-get-test-file-name] and relatives.
 A test policy (see `perlnow-documentation-test-file-strategies')
 is defined by three pieces of information:
 the TESTLOC \(see `perlnow-test-policy-test-location'\)
 the DOTDEF \(see `perlnow-test-policy-dot-definition' \)
 and the NAMESTYLE \(see `perlnow-test-policy-naming-style'\)."
-;;; Mutated from: the old perlnow-guess-module-run-string
-;;; refactoring the source to use this now -- Fri Apr 23 20:10:55 2004
-
 ;;; Note: perlnow-edit-test-file docs explains a lot of what
 ;;; has to happen here. I quote:
 ;;   o Checks the test policy, looks for an existing file there.
@@ -2407,15 +2405,23 @@ and the NAMESTYLE \(see `perlnow-test-policy-naming-style'\)."
              (file-name-directory (buffer-file-name)))
            (basename
              (file-name-sans-extension (file-name-nondirectory (buffer-file-name))))
-          ; module oriented info:
-           (package-name (perlnow-get-package-name-from-module-buffer))
-           (inc-spot (perlnow-get-inc-spot package-name file-location))
-           (hyphenized-package-name (mapconcat 'identity (split-string package-name "::") "-"))
-          ; still need to determine:
+         ; module oriented info (calculated below):
+           (package-name "")
+           (inc-spot "")
+           (hyphenized-package-name "")
+          ; also still need to determine:
            (testloc-absolute "")
            (test-file-from-policy "")
            (test-file "")
            )
+
+    ; module oriented info, calculated:
+    (cond ; do only if module
+     ((setq package-name (perlnow-get-package-name-from-module-buffer))  
+           (setq inc-spot (perlnow-get-inc-spot package-name file-location))
+           (setq hyphenized-package-name (mapconcat 'identity (split-string package-name "::") "-"))
+           ))
+
      ; define testloc-absolute
      (cond ((string= dotdef "fileloc") ; might be script or module
              (setq testloc-absolute
@@ -2427,11 +2433,11 @@ and the NAMESTYLE \(see `perlnow-test-policy-naming-style'\)."
             (error
              "Invalid perlnow-test-policy-dot-definition setting, should be 'fileloc' or 'incspot'")))
      ; define test-file-from-policy
-     (cond ( (string= namestyle "hyphenized")
+     (cond ( (string= namestyle "hyphenized")  ; only with modules
                (setq test-file-from-policy
                    (concat testloc-absolute hyphenized-package-name ".t"))
              )
-           ( (string= namestyle "basename")
+           ( (string= namestyle "basename")    ; might be script or module
              (setq test-file-from-policy
                    (concat testloc-absolute basename ".t"))
              )
@@ -2440,88 +2446,17 @@ and the NAMESTYLE \(see `perlnow-test-policy-naming-style'\)."
              "Invalid perlnow-test-policy-naming-style setting, should be 'hyphenized' or 'basename'")))
 
      ;If this result is good, return it, if not, keep looking
-     ;If nothing found though, return name to be created.
-     (cond ((file-exists-p test-file-from-policy)
-             (setq test-file test-file-from-policy) ) ; Note, if test-policy finds test-file, will *not* look for redundant test files.
-           ((setq test-file (perlnow-search-through-test-path)) ) ; warns if redundant matches exist, but returns the first.  nil if none.
-           (t
+     ;If nothing found though, return this as name to be created.
+     (cond ((file-exists-p test-file-from-policy)    ; if test-policy finds test-file, does not look for redundant matches 
+             (setq test-file test-file-from-policy) ) 
+           ((setq test-file (perlnow-search-through-test-path)) ) ; warns if redundant matches exist, 
+                                                                  ; but returns the first.  nil if none.
+           (t 
               (setq test-file test-file-from-policy))
            )
      test-file))
 ;;; TODO check presumption above:
 ;;; No need to handle h2xs modules differently (want test file, not runstring)
-
-;;;----------------------------------------------------------
-(defun perlnow-get-test-file-name-script-given-policy (testloc dotdef namestyle)
-;;; TODO NOW did I need to write this fucker?  Cloned from above,
-;;; but didn't really want to have it as a separate function.
-;;; can it be folded into the module one somehow?
-;;; (Maybe it doesn't even need any modification, just *try*
-;;; that other one, see if it flies...)
-   "Get the test file name for the current script buffer, given a test policy.
-This is used by \\[perlnow-get-test-file-name] and relatives.
-A test policy \(see `perlnow-documentation-test-file-strategies'\)
-is defined by three pieces of information:
-the TESTLOC \(see `perlnow-test-policy-test-location'\)
-the DOTDEF \(see `perlnow-test-policy-dot-definition' \)
-and the NAMESTYLE \(see `perlnow-test-policy-naming-style'\)."
-
-;;; Note: perlnow-edit-test-file docs explains a lot of what
-;;; has to happen here. I quote:
-;;   o Checks the test policy, looks for an existing file there.
-;;   o *And* Searches the test path, looks for an existing file there
-;;   o   (If more than one is found it will complain).
-
-   (let* (
-         ; script oriented info:
-           (file-location
-             (file-name-directory (buffer-file-name)))
-           (basename
-             (file-name-sans-extension (file-name-nondirectory (buffer-file-name))))
-;;           ; module oriented info:
-;;            (package-name (perlnow-get-package-name-from-module-buffer))
-;;            (inc-spot (perlnow-get-inc-spot package-name file-location))
-;;            (hyphenized-package-name (mapconcat 'identity (split-string package-name "::") "-"))
-          ; need to determine:
-           (testloc-absolute "")
-           (test-file-from-policy "")
-           (test-file "")
-           )
-     ; define testloc-absolute
-     (cond ((string= dotdef "fileloc") ; might be script or module
-             (setq testloc-absolute
-                 (perlnow-expand-dots-relative-to file-location testloc)))
-;;            ((string= dotdef "incspot") ; only with modules
-;;              (setq testloc-absolute
-;;                  (perlnow-expand-dots-relative-to inc-spot testloc)))
-           (t
-            (error
-             "Invalid perlnow-test-policy-dot-definition setting? Should be 'fileloc' or 'incspot'")))
-     ; define test-file-from-policy
-     (cond
-;;            ((string= namestyle "hyphenized")
-;;                (setq test-file-from-policy
-;;                    (concat testloc-absolute hyphenized-package-name ".t"))
-;;              )
-           ( (string= namestyle "basename")
-             (setq test-file-from-policy
-                   (concat testloc-absolute basename ".t"))
-             )
-           (t
-            (error
-
-             "Invalid perlnow-test-policy-naming-style setting?  Should be 'hyphenized' or 'basename'")))
-
-     ;If this result is good, return it, if not, keep looking
-     ;If nothing found though, return name to be created.
-     (cond ((file-exists-p test-file-from-policy)
-             (setq test-file test-file-from-policy) ) ; Note, if test-policy finds test-file, will *not* look for redundant test files.
-           ((setq test-file (perlnow-search-through-test-path)) ) ; warns if redundant matches exist, but returns first.  nil if none.
-           (t
-              (setq test-file test-file-from-policy))
-           )
-     test-file))
-
 
 ;;;----------------------------------------------------------
 (defun perlnow-search-through-test-path ()
