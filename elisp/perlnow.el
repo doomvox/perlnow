@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.121 2004/02/19 03:02:11 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.122 2004/02/19 03:05:44 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1180,11 +1180,11 @@ This uses an interactively set RUNSTRING determined from
 The run string can always be changed later by running 
 \\[perlnow-set-run-string] manually."
   (interactive
-   (let (interactive-return)
+   (let (input)
    (if (eq perlnow-run-string nil)
-       (setq interactive-return (perlnow-set-run-string))
-     (setq interactive-return perlnow-run-string))
-   (list interactive-return)
+       (setq input (perlnow-set-run-string))
+     (setq input perlnow-run-string))
+   (list input)
    ))
   ; hack: make sure Makefile.PL doesn't happen repeatedly
   (if (string-match "Makefile.PL" runstring)
@@ -1212,11 +1212,11 @@ used directly always re-uses it's previous run-string as a
 default, and that's guaranteed to be wrong if you've switched 
 to a different file."
   (interactive
-   (let (interactive-return)
+   (let (input)
    (if (eq perlnow-run-string nil)
-       (setq interactive-return (perlnow-set-run-string))
-     (setq interactive-return perlnow-run-string))
-   (list interactive-return)
+       (setq input (perlnow-set-run-string))
+     (setq input perlnow-run-string))
+   (list input)
    ))
   (perldb runstring))
 
