@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.26 2004/02/06 22:05:44 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.27 2004/02/06 22:14:46 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1071,7 +1071,7 @@ uninteresting filenames patterns, otherwise nil."
                    "^\\.\\.$"
                    ))
          )
-    (unless (stringp (string))
+    (unless (stringp string)
       (error "Expected string in input"))
     (not (string-match ignore-pat string))
     ))
@@ -1162,7 +1162,8 @@ will be assumed and need not be entered \(though it may be\).
 ;     )
     )))
 
-;; TODO 
+;; DELETE 
+;; todo (trying now) 
 
 ;; Note that this works: 
 ;;    perlnow-interesting-file-name-in-cons-cell-p
@@ -1177,10 +1178,12 @@ will be assumed and need not be entered \(though it may be\).
 ;; don't pass it in.  Leave in place the later filter on alist, 
 ;; for the sake of compatibility with the emacs way of doing 
 ;; things (someone might want to apply a second filter later?)
+;; END DELETIA
 
 ;; Another TODO item: 
-;; Don't just silently use that extension filter, break-it out, 
-;; let the user define what's not interesting. 
+;; Don't just silently use that extension filter in "interesting", 
+;; break-it out, let the user define what's not interesting. 
+
 
 
 
