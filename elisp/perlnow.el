@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.170 2004/03/17 19:33:15 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.171 2004/03/17 20:29:43 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -37,7 +37,7 @@
 (eval-when-compile
   (require 'cl))
 
-(defconst perlnow-version "0.1"
+(defconst perlnow-version "0.2"
   "The version number of the installed perlnow.el package.
 Check <http://www.grin.net/~mirthless/perlnow/> for the latest.")
 
