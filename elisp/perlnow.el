@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.189 2004/04/26 19:15:38 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.190 2004/04/26 20:23:39 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1445,7 +1445,9 @@ double-colon separated package name form\)."
   (forward-line 1)   ;alternate: (next-line 1)
 
   ; Also  open the *.t file 
-  (setq h2xs-test-file (perlnow-full-path-to-h2xs-test-file h2xs-location package-name))
+;;;  (setq h2xs-test-file (perlnow-full-path-to-h2xs-test-file-older h2xs-location package-name))
+  (setq h2xs-test-file (perlnow-full-path-to-h2xs-test-file h2xs-staging-area))1
+
 ;;;  (message "h2xs-test-file: %s" h2xs-test-file) ;;; DEBUG
   (setq perlnow-associated-code h2xs-test-file) ; bufloc, used by "C-c'b"
   (perlnow-open-file-other-window 
@@ -2150,6 +2152,7 @@ this favors the earlier occurrence in the list."
 ;;;   Wouldn't string matches be simpler?
 ;;;   (string-match "\\(^.*/\\)[^/]*$" (perlnow-fixdir dir))
 ;;;   (setq one-up (match-string 1 dir))
+;;; Eh, maybe not.
   (setq location (perlnow-fixdir location))
   (let ((return
          (concat perlnow-slash
@@ -2772,7 +2775,7 @@ were \"New::Module\", this should return:
     pm-file))
 
 ;;;----------------------------------------------------------
-(defun perlnow-full-path-to-h2xs-test-file (h2xs-location package-name)
+(defun perlnow-full-path-to-h2xs-test-file-older (h2xs-location package-name)
   "Get the full path to a the test file for a module created by h2xs.
 E.g. if the H2XS-LOCATION were \"/usr/local/perldev\" and the
 PACKAGE-NAME  were \"New::Module\", it should return:
@@ -2798,6 +2801,66 @@ PACKAGE-NAME  were \"New::Module\", it should return:
            (error "Can't find h2xs test file or test location")
            ))
     test-file))
+
+
+;;;----------------------------------------------------------
+
+(defun perlnow-full-path-to-h2xs-test-file (h2xs-staging-area)
+  "Get the full path to a the test file for a module created by h2xs.
+Given the H2XS-STAGING-AREA, it looks for files located in the 
+sub-directory \"t\".  First choice is given to a test file with 
+a basename related to the module name, if that fails it looks 
+for the old-fashioned \"1.t\".  E.g. if the staging-area were 
+\"/usr/local/perldev/New-Module/\" it would look in 
+\"/usr/local/perldev/New-Module/t\" for \"New-Module.t\" or 
+\"Module.t\" or possibly \"1.t\"."
+  (let (  (module-test-location "")
+          (test-file1 "")     ; new-style, e.g.      New-Module.t
+          (test-file2 "")     ; strange beast, e.g.  Module.t
+          (test-file3 "1.t")  ; old-style numeric file name
+          (test-file "")      ; returned value
+          (basename "")
+          (basename-truncated "")
+          )
+
+    (setq module-test-location
+           (perlnow-fixdir
+            (concat h2xs-staging-area "/t/")))
+
+    ; peel off the lower level of "module-test-location", 
+    ; to get the probable base-name
+    (let (( dir (perlnow-fixdir module-test-location) ))
+      (string-match "\\(^.*/\\)\\([^/]*\\)[/]*$" dir)
+      (setq basename (match-string 2 dir)))
+    (setq test-file1 (concat module-test-location basename ".t"))
+
+    ; for the hell of it, peel off the last part 
+    ; of that name, a second try for basename (not likely)
+    (string-match "\\(^.*-\\)\\([^-]*\\)$" basename)
+    (setq basename-truncated (match-string 2 basename))
+    (setq test-file2 (concat module-test-location basename-truncated ".t"))            
+
+   ; And failing that, well try the numeric name, 1.t
+   ; And if *that* fails, we'll return the directory location 
+   ; (a feature that might be better than just returning a 
+   ; single file, eh?  Maybe should only open the h2xs test file 
+   ; when there's just one of them...  Think about that -- TODO).
+
+   (cond ( (file-exists-p test-file1)
+           (setq test-file test-file1 ) )
+         ( (file-exists-p test-file2)
+           (setq test-file test-file2 ) )
+         ( (file-exists-p test-file3)
+           (setq test-file test-file3 ) )
+         ( (file-directory-p module-test-location)
+           (setq test-file module-test-location))  ;; would that work, returning a directory?
+         (t
+          (error "Can't find h2xs test file or test location")
+          ))
+    test-file))
+
+
+
 
 ;;;----------------------------------------------------------
 (defun perlnow-blank-out-display-buffer (buffer &optional switchback)
