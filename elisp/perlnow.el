@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.188 2004/04/26 19:13:19 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.189 2004/04/26 19:15:38 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -2246,79 +2246,15 @@ schemes for your test files: `perlnow-documentation-test-file-strategies'."
           fish water        ; going fishing
           return            ; the returned run string
           )
-;;; TODO
-;;; It's possible that the following could be refactored using:
-;;;    perlnow-find-h2xs-staging-area
-;;; which finds the staging-area by looking for Makefile.PL
-;;; Trying it.  See "<===" replace with:
-;;; (if (setq staging-area perlnow-find-h2xs-staging-area)
-;;; But once that's run, there should now be no need to check for Makefile 
-;;; or Makefile.PL. 
-
 
 ; h2xs case first, 
     (cond ( (setq staging-area (perlnow-find-h2xs-staging-area)) 
             (setq return (concat "cd " staging-area "; make test"))
             )
-;;; DELETE FOLLOWING
-;;; Now replaced by above "cond" clause
-;;     (setq return
-;;           ; identify the staging-area
-;;           (catch 'COLD
-;;             (setq staging-area-candidate (perlnow-one-up inc-spot))
-;;             (setq staging-area-candidate-name
-;;                   (perlnow-lowest-level-directory-name staging-area-candidate))
-;;             (cond
-;;              ((string= staging-area-candidate-name hyphenized-package-name)
-;;               (setq staging-area (perlnow-fixdir staging-area-candidate))  ;;; <===
-;;               (cond
-;;                ((file-regular-p (concat staging-area "Makefile"))
-;;                 (setq water (concat "cd " staging-area "; make test"))
-;;                 (throw 'COLD water))
-;;                ((file-regular-p (concat staging-area "Makefile.PL"))
-;;                 (setq water (concat "cd " staging-area "; perl Makefile.PL; make test"))
-;;                 (throw 'COLD water)
-;;                 ))))
-;;; END DELETIA
-
-;;; TODO
-;;; refactor this part using the following function perlnow-get-test-file-name. 
-
           (t ; non-h2xs module
            (setq testfile (perlnow-get-test-file-name))
            (setq return (format "perl '%s'" testfile))
 
-;;; DELETE FOLOWING
-;;; using above two lines instead of the following block
-;;; Note, this old code just uses the first test file it finds, 
-;;; without complaining about duplicates. 
-;;              ; do munging of dots, deal with different possible meanings of "here"
-;;             (dolist (testloc-dotform perlnow-test-path)
-;;               (setq testloc
-;;                     (perlnow-expand-dots-relative-to module-file-location testloc-dotform))
-;;               (if (file-directory-p testloc)
-;;                   (setq test-search-list (cons testloc test-search-list)))
-;;               (setq testloc
-;;                     (perlnow-expand-dots-relative-to inc-spot testloc-dotform))
-;;               (if (file-directory-p testloc)
-;;                   (setq test-search-list (cons testloc test-search-list))))
-
-;;             (setq return
-;;                   (catch 'COLD
-;;                     ; tracking down the *.t file (if any)
-;;                     (dolist (real-place test-search-list)
-;;                       (dolist (possible-name test-file-check-list)
-;;                         (setq testfile
-;;                               (concat
-;;                                (perlnow-fixdir real-place) ;; I bet this fixdir is redundant
-;;                                possible-name))
-;;                         (if (file-regular-p testfile)
-;;                             (progn
-;;                               (setq fish
-;; ;                            (format "perl -MExtUtils::Command::MM -e \"test_harness(1, '%s')\"" testfile))
-;;                                     (format "perl '%s'" testfile))
-;;                               (throw 'COLD fish)))))))
-;;; END DELETIA 
             ))
     return))
 
