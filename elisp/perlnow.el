@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.118 2004/02/19 02:22:43 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.119 2004/02/19 02:34:28 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1281,26 +1281,29 @@ the name of the perl module to create.  Checks to see if one exists
 already, and if so, asks for another name (by doing yet another
 \\[call-interactively] of another function).  The location
 defaults to the current `default-directory'.  Returns a two
-element list, location and package-name."
+element list, h2xs-location and package-name."
   (interactive "DLocation for new h2xs structure? \nsName of new module \(e.g. New::Module\)? ")
 
-  (let ( location-in-staging-area        
+;;; TODO terminology here seems funny.  better: location-of-staging-area, or just staging-area
+;;; Use function perlnow-staging-area to get it?   Okay, just fix it:
+  (let ( staging-area        
          )
-  (setq location-in-staging-area 
-        (concat (perlnow-fixdir where)
-                (mapconcat 'identity (split-string what "::") "-")))
+  (setq staging-area (perlnow-staging-area where what))
+;        (concat (perlnow-fixdir where)
+;                (mapconcat 'identity (split-string what "::") "-")))
 
-  (while (file-exists-p location-in-staging-area)  ;;; really, directory exists
-    (setq where-and-what  ; (h2xs-location package-name)
+  (while (file-exists-p staging-area)  ; really, directory exists
+    (setq where-and-what  ; that's a list: (h2xs-location package-name)
       (call-interactively 'perlnow-prompt-for-h2xs-again))
     (setq where (car where-and-what))
     (setq what (cadr where-and-what))
 
-    (setq location-in-staging-area 
-          (concat (perlnow-fixdir where)
-                  (mapconcat 'identity (split-string what "::") "-")))
+    (setq staging-area (perlnow-staging-area where what))
+;;;    (setq location-in-staging-area 
+;;;          (concat (perlnow-fixdir where)
+;;;                  (mapconcat 'identity (split-string what "::") "-")))
     )
-    (list where what)))
+  (list where what)))
 
 ;;;----------------------------------------------------------
 (defun perlnow-prompt-for-h2xs-again (where what) 
