@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.133 2004/02/20 18:33:30 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.134 2004/02/20 19:09:10 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -38,8 +38,8 @@
   (require 'cl))
 
 (defconst perlnow-version "0.1"
-  "Current version of package perlnow.
-Check <http://www.grin.net/~mirthless/perlnow/> for the newest.")
+  "The version number of the installed perlnow.el package.
+Check <http://www.grin.net/~mirthless/perlnow/> for the latest.")
 
 (defvar perlnow-documentation t 
  "The introductary documentation to the perlnow.el package.
@@ -1962,14 +1962,9 @@ a buffer object.  This can work on a read-only buffer."
   "Determine if the INC-SPOT has been included in perl's @INC search path.
 If not given a INC-SPOT, it defaults to using the module root of the 
 current file buffer."
-;;; The issue: 
-;;; If the module root \(i.e. the beginning of the package name space 
-;;; for a given module\) is in @INC already then we won't need to 
-;;; do a \"use lib\" to access it. 
-;;; Note: 
-;;; Just checking getenv("PERL5LIB") would be close, but 
-;;; using @INC as reported by perl seems more solid, so that's 
-;;; what we do here.
+; Note: Just checking getenv("PERL5LIB") would be close, but 
+; using @INC as reported by perl seems more solid, so that's 
+; what we do here.
   (unless inc-spot
     (setq inc-spot 
           (perlnow-get-inc-spot 
@@ -2046,7 +2041,7 @@ creation."
 
   (interactive 
    (let ((initial perlnow-module-location)
-         (keymap perlnow-read-minibuffer-map)   ; Note: the keymap is key. Totally transforms read-from-minibuffer.
+         (keymap perlnow-read-minibuffer-map) ; The keymap is key: transforms read-from-minibuffer.
          (history 'perlnow-package-name-history) 
          result filename return
          )
@@ -2797,34 +2792,38 @@ wrappers."
            (work-buffer (generate-new-buffer "*perlnow-work*"))
            (def-pat  (concat 
                       "^"        ;start of line
-                      "[ \t]*"   ;optional leading white space
-                      "(def"     ;start of some def* function name
-                      "[^ \t]*?" ;end of the def* name: (un|var|custom|const)
+;;;                      "[ \t]*"   ;optional leading white space
+                      "[ ]?[ ]?"  ; allow teeny bit of leading whitespace
+                      "(def"     ;start of some function named def* 
+                      "\\(?:un\\|var\\|custom\\|const\\)" ;end of allowed def*s
+;;;                   "[^ \t]*?" ;end of the def* name: (un|var|custom|const)
                       "[ \t]+"   ;at least a little white space
                       "\\("      ;begin capture to \1
                       "[^ \t]*?" ;  symbol name: stuff that's not ws
                       "\\)"      ;end capture to \1
-                      "[ \t]+"   ;at least a little white space
+                      "\\(?:[ \t]+\\|$\\)"   ;a little white space or EOL
                       )  ;;; I *could* keep going and read in the docstring in ""
                          ;;; but then... why would I do all this in elisp? 
              )
            symbol-list
            symbol-name)
 
-           (set-buffer work-buffer)
-           (insert-file-contents codefile nil nil nil t)
-           (goto-char (point-min))
-           (unwind-protect 
-               (while (char-after)
-                 (forward-line 0) ; beg-of-line
-                 (if (looking-at def-pat) 
-                     (if (setq symbol-name (match-string 1))
-                         (setq symbol-list (cons symbol-name symbol-list))))
-                 (forward-line 1)
-                 (end-of-line)
-                 )
-             (kill-buffer work-buffer))
-           (setq symbol-list (reverse symbol-list)))
+      (message "The def-pat: %s" def-pat) ; DEBUG only DELETE
+      
+      (set-buffer work-buffer)
+      (insert-file-contents codefile nil nil nil t)
+      (goto-char (point-min))
+      (unwind-protect 
+          (while (char-after)
+            (forward-line 0) ; beg-of-line
+            (if (looking-at def-pat) 
+                (if (setq symbol-name (match-string 1))
+                    (setq symbol-list (cons symbol-name symbol-list))))
+            (forward-line 1)
+            (end-of-line)
+            )
+        (kill-buffer work-buffer))
+      (setq symbol-list (reverse symbol-list)))
     ))
 
 
