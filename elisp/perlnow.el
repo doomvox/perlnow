@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.138 2004/02/20 21:40:37 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.139 2004/02/21 00:31:01 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -40,6 +40,7 @@
 (defconst perlnow-version "0.1"
   "The version number of the installed perlnow.el package.
 Check <http://www.grin.net/~mirthless/perlnow/> for the latest.")
+
 
 (defvar perlnow-documentation t 
  "The introductary documentation to the perlnow.el package.
@@ -2619,17 +2620,131 @@ wrappers."
           (insert (concat "<PRE>\n" doc-string "</PRE></P>\n\n"))
           )))
 
+
+;;;----------------------------------------------------------
+(defun perlnow-dump-docstrings-as-html-exp (list)
+  "Given a LIST of symbol names, insert the doc strings with some HTML markup.
+This version tries to preserve links in the documentation as html links.
+And does idiot simple preservation of formatting: *all* docstrings get PRE 
+wrappers."
+;;; You know you're not confident when you use cut-and-paste version 
+;;; control in addition to RCS.
+;;; Anyway, what I'm after here is intelligent handling of refs that 
+;;; *don't* point to places inside this file. 
+
 ;;; TODO
 ;;; 
-;;; Need to dump the replace-regexps, 
-;;; Loop over string-matches,
+;;; Instead of replace-regexps, 
+;;; Loop over string-matches, so we can
 ;;; extract to a variable, 
 ;;; check to see if it's in the given list
-;;;  if not, run it through here (probably with \[] or `' restored):
+;;;  if so do html formatting
+;;;  if not:
 ;;;  (substitute-command-keys STRING)
-;;;  And use the result instead of the hyperlink. 
-;;; 
+
+;;; To start with, just worry about function references.
+
 ;;; And you know what, I don't care that much just now.
+;;; Giving up: having an argument out of range problem 
+;;; that's not yeilding to my debuggery. 
+;;; Looks like it dies on doc-strings with function refs 
+;;; right at the end, with no other material. 
+;;; (Thought maybe adjust was off? But manual tweakage was no help.)
+
+  (dolist (symbol-name list)
+    (let* ( doc-string 
+            doc-string-raw
+            (symbol-value-as-variable nil)
+          (symbol (intern-soft symbol-name)))
+          (cond ((eq symbol nil)
+                 (message "warning: bad symbol-name %s" symbol-name))
+                ((functionp symbol)
+                 (setq doc-string-raw
+                        (documentation symbol t)))
+                (t 
+                 (setq doc-string-raw
+                       (documentation-property symbol 'variable-documentation t))
+                 (setq symbol-value-as-variable 
+                       (perlnow-html-ampersand-subs (pp-to-string (eval symbol))))
+                 ))
+
+          ; Do this early (before adding any html double quotes)
+          (setq doc-string (perlnow-html-ampersand-subs doc-string-raw))
+          ; Put named anchors on every entry for refs to link to
+          (insert (format "<A NAME=\"%s\"></A>\n" symbol-name))
+          (insert (concat "<P><H3>" symbol-name ":" ))
+          (if (not (functionp symbol))
+              (insert (concat 
+                       "&nbsp;&nbsp;&nbsp;&nbsp;" 
+                       symbol-value-as-variable )))
+          (insert (concat "</h3>" "\n"))
+
+           ; turn `(.*)' into <I><A HREF="#\1">\1</A></I>  note: dot don't match line breaks (good: safer)
+           (setq doc-string 
+                 (replace-regexp-in-string "[`]\\(.*?\\)'" ; that's `(.*?)'
+                                           "<I><A HREF=\"#\\1\">\\1</A></I>" 
+                                           doc-string))
+
+          ; turn \[(.*)]  into <A HREF="#\1">\1</A>
+;          (setq doc-string 
+;                (replace-regexp-in-string "\\\\\\[\\(.*?\\)\\]" ; that's \[(.*?)]   (one hopes)
+;                                          "<A HREF=\"#\\1\">\\1</A>" 
+;                                          doc-string))
+
+           ; Fixing function refs in doc-string, either internal (become HTML jumps) 
+           ; or external (use the usual *Help* buffer style of output)
+           (let (
+                 ; define constants
+                 (func-ref-pat "\\\\\\[\\(.*?\\)\\]") ; that's \[(.*?)]   (one hopes)
+                 (open-link "<I><A HREF=\"#")
+                 (mid-link  (concat "\"" ">"))
+                 (close-link "</A></I>")
+                 ; initialize
+                 (start-search 0)
+                 ; declare
+                 symb-name ; symbol name, searched for with the find-var-ref-pat
+                 beg end ; end points of the symbol name in the doc-string
+                 tranny; either html string built up from the symbname using above constants.
+                       ; or the output from (substitute-command-keys symb-name)
+                 tranny-length ; 
+                 adjust ; length change in the doc-string after a link is swapped in
+                 )
+
+             (while (setq beg (string-match func-ref-pat doc-string start-search))
+               (setq symb-name (match-string 1 doc-string))
+               (setq end (match-end 0))
+
+               ; Is the reference internal or external?
+               (if (member symb-name list)  
+                   (setq tranny ; link form
+                         (concat open-link symb-name mid-link symb-name close-link))
+                 (setq tranny   ; usual *help* display form
+                       (substitute-command-keys symb-name)))
+
+               (setq doc-string
+                     (concat
+                      (substring doc-string 0 (- beg 1))
+                      tranny
+                      (substring doc-string (+ end 1))
+                      ))
+
+               (setq tranny-length (length tranny))
+               (setq symb-length (length symb-name))
+               (setq adjust (- tranny-length symb-length))
+;;               (setq adjust (- adjust 1)) ;;; hackery daquiri docs
+
+;;               (setq start-search (+ end adjust)))
+             ;;;debuugery:
+;;             (message "start-search: %d " start-search)
+;;             (message "length doc-string: %d " (length doc-string))
+;;;;;???             (message "adjust: %d " adjust)
+;;             (message "doc-string: %s" doc-string)
+
+               ))
+
+          (insert (concat "<PRE>\n" doc-string "</PRE></P>\n\n"))
+          )))
+
 
 
 ;;;----------------------------------------------------------
@@ -2646,16 +2761,22 @@ wrappers."
   "Runs the code that lists *all* of the perlnow doc strings."
   (interactive)
    (perlnow-dump-docstrings-as-html 
-    (perlnow-symbol-list-from-elisp-file))
+    (perlnow-symbol-list-from-elisp-file "perldoc"))
+; Experiment is no go:
+;   (perlnow-dump-docstrings-as-html-exp
+;    (perlnow-symbol-list-from-elisp-file))
   )
 
 ;;;----------------------------------------------------------
-(defun perlnow-symbol-list-from-elisp-file ()
-  "Read in the text of this elisp file, extract all def* docstrings."
+(defun perlnow-symbol-list-from-elisp-file (library)
+  "Read the elisp for the given library & extract all def* docstrings."
 ;;; Defining two patterns here, def-star-pat and def-star-pat-exp.
 ;;; The first is in use, because it actually works.
   (save-excursion
-    (let* ((codefile "/home/doom/End/Cave/Perlnow/bin/perlnow.el")
+    (let* (
+;;;         (codefile "/home/doom/End/Cave/Perlnow/bin/perlnow.el")
+;;;         (codefile (locate-library "perlnow"))
+           (codefile (locate-library library))
            (work-buffer (generate-new-buffer "*perlnow-work*"))
            (def-star-pat  
              (concat 
