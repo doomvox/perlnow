@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.116 2004/02/19 01:54:07 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.117 2004/02/19 02:07:59 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1128,9 +1128,9 @@ Note: This is all used only by the mildly deprecated \\[perlnow-module-two-quest
 This sets the global variable `perlnow-run-string' that \\[perlnow-run]
 will use to run the code in future in the current buffer. 
 Frequently, the user will prefer to use \\[perlnow-run] and let it 
-run this command if need be; however using this command directly is 
-necessary to change the run command string later. \n
-From within a program, you'd probably be better off setting the variables 
+run this indirectly command if need be; however using this command 
+directly is necessary to change the run command string later. \n
+From within a program, you'd probably be better off setting variables 
 directly, see `perlnow-script-run-string' and `perlnow-module-run-string'.\n
 
 This function uses \\\[perlnow-module-code-p] to see if the code looks like a
@@ -1139,7 +1139,7 @@ assumes it's a perl script."
 ;; And if it's not perl at all, that's your problem: the obvious
 ;; tests for perl code, like looking for the hash-bang,
 ;; aren't reliable (perl scripts need not have a hash-bang
-;; line: e.g. *.t files, windows perl...).
+;; line: e.g. *.t files, perl on windows...).
   (interactive)
    (cond
    ((perlnow-module-code-p)
@@ -1186,6 +1186,12 @@ The run string can always be changed later by running
      (setq interactive-return perlnow-run-string))
    (list interactive-return)
    ))
+  ; hack: make sure Makefile.PL doesn't happen repeatedly
+  (if (string-match "Makefile.PL" runstring)
+      (progn ; dunno which needs to be set, so set both:
+       (setq perlnow-run-string "make test")
+       (setq perlnow-module-run-string "make test")
+       ))
   (compile runstring))
 
 ;;;----------------------------------------------------------
