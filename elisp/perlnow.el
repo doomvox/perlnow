@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.87 2004/02/16 18:15:58 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.88 2004/02/16 19:44:14 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -641,7 +641,9 @@ really done\\) then this function will see the first package name."
           ) 
     (unless package-name 
       (error "%s" "This file doesn't look like a perl module (no leading package line)."))
-    
+
+    (setq perlnow-module-run-string (format "perl %s" filename))
+
     (perlnow-new-file-using-template filename perlnow-perl-script-template)
     
     ; ensure the module can be found by the script if needed, insert "use lib" line to 
@@ -1309,7 +1311,7 @@ Note: Relying on the exact precedence of this search should be avoided
                        possible-name))
                 (if (file-regular-p testfile)
                     (progn 
-                      (setq fish (concat "perl " testfile))
+                      (setq fish (format "perl %s" testfile))
                       (throw 'COLD fish)))))))
     return)) 
 
