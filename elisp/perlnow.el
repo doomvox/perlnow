@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.15 2004/02/04 06:44:59 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.16 2004/02/04 07:21:40 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -282,7 +282,7 @@ will be added. "
     (insert "\n")))
 
 ;;; TODO alternate form (or extension of this?) That creates 
-;;;      a script using a currently active documentation buffer. 
+;;;      a script from a currently active documentation buffer. 
 ;;;      (man format?  perldoc.el?)
 
 
@@ -291,9 +291,9 @@ will be added. "
   "Quickly jump into development of a new perl module"
   (interactive 
 ; Because default-directory is the default location for (interactive "D"),
-     ; I'm doing the interactive call in two stages: change 
+; I'm doing the interactive call in two stages: change 
 ; default-directory momentarily, then restore it. Uses dynamic scoping via "let".
-         ; (It's more like perl's "local" than perl's "my".)
+; (It's more like perl's "local" than perl's "my".)
   (let ((default-directory perlnow-module-root))
     (call-interactively 'perlnow-prompt-for-module-to-create)))
   (setq perlnow-perl-module-name module-name) ; global used to pass value into template
@@ -370,19 +370,17 @@ If perlnow-run-string is nil, perlnow-set-run-string is called automatically."
   (message "running with perlnow-run-string: %s" perlnow-run-string) ; debugging only  DELETE
   (compile perlnow-run-string))
 
-
 ;;;----------------------------------------------------------
 (defun perlnow-h2xs (h2xs-location module-name) 
   "Quickly jump into development of a new perl module"
   (interactive 
-;;; A typical h2xs run string:
-;;;   h2xs -AX -n Net::Acme -b 5.6.0
-; 
+; Note: A typical h2xs run string:
+;   h2xs -AX -n Net::Acme -b 5.6.0
 ; Because default-directory is the default location for (interactive "D"),
-; I'm doing the interactive call in two stages: this way can change 
-; default-directory momentarily, then restore it. Uses dynamic scoping via "let".
-; (which is more like perl's "local" than perl's "my".)
-   (let ((default-directory perlnow-module-root))
+; I'm doing the interactive call in stages: this way can change 
+; default-directory momentarily, then restore it. Uses the dynamic scoping 
+; of elisp's "let" (which is more like perl's "local" than perl's "my").
+  (let ((default-directory perlnow-module-root))
      (call-interactively 'perlnow-prompt-for-h2xs)))
 
   (let* ( (default-directory h2xs-location)
@@ -409,9 +407,54 @@ If perlnow-run-string is nil, perlnow-set-run-string is called automatically."
   (find-file 
    (perlnow-full-path-to-h2xs-module h2xs-location module-name))
  ; (delete-other-windows) 
+;;; TODO: find-file the *.t also, leave that open also.
   ))
+;;; Note: my feeling is that asking two questions for the creation of an 
+;;; h2xs structure is okay.  It helps differentiate it from perlnow-module, 
+;;; and in any case it doesn't logically lend itself to a single question 
+;;; form.  In the case of h2xs the "where" is the staging-area, 
+;;; not the module-root... there are a couple of other levels between 
+;;; the where and the what, and we might as well represent that gap as the 
+;;; gap between the two questions.
 
+;;;----------------------------------------------------------
+(defun perlnow-prompt-for-h2xs (where what) 
+  "Internal use only. Ask the user two questions: the
+location to put the h2xs structure and the name of the perl
+module to create.  Checks to see if one exists already, and
+if so, asks for another name (by doing yet another
+call-interactive of another function).  The location
+defaults to the current default-directory. Returns a two
+element list, location and module-name."
+  (interactive "DLocation for new h2xs structure? \nsName of new module \(e.g. New::Module\)? ")
 
+  (let ( location-in-staging-area        
+         )
+  (setq location-in-staging-area 
+        (concat (perlnow-fixdir where)
+                (mapconcat 'identity (split-string what "::") "-")))
+
+  (while (file-exists-p location-in-staging-area)  ;;; really, directory exists
+    (setq where-and-what  ; (h2xs-location module-name)
+      (call-interactively 'perlnow-prompt-for-h2xs-again))
+    (setq where (car where-and-what))
+    (setq what (cadr where-and-what))
+
+    (setq location-in-staging-area 
+          (concat (perlnow-fixdir where)
+                  (mapconcat 'identity (split-string what "::") "-")))
+    )
+    (list where what)))
+
+;;;----------------------------------------------------------
+(defun perlnow-prompt-for-h2xs-again (where what) 
+  "Internal use only. If the user enters an existing h2xs
+module name in \[perlnow-prompt-for-h2xs], it will do
+another chained call-interactive to this function to ask
+again with a slightly different message.  Returns a two
+element list, location and module-name."
+  (interactive "DThat exists already! Location for new h2xs structure? \nsName of new module \(e.g. New::Module\)? ")
+  (list where what))
 
 ;;;==========================================================
 ;;; Older code 
@@ -841,40 +884,6 @@ defaults to using the module root of the current file buffer."
 ;;; so we won't need to do this over and over... 
 
 
-
-;;;==========================================================
-;;; Experimental code can go below here     BOOKMARK (note: trying reg-*)
-
-
-
-;;;----------------------------------------------------------
-(defun perlnow-prompt-for-h2xs (where what) 
-  "Ask the user two questions: the location to put the h2xs structure 
-and the name of the perl module to create.  Checks to see if one exists already, 
-and if so, asks for another name.  The location defaults to the current 
-default-directory. Returns a two element list, location and module-name."
-
-  (interactive "DLocation for new h2xs structure? \nsName of new module \(e.g. New::Module\)? ")
-  (list where what))
-
-;;; TODO - Still need to add a check for already existing module:
-;;; Check for existance of the hyphenized directory in the staging-area.
-;;; Convert module name into hyphenized form, append it to the "where", 
-;;; do a file-exists-p on it, (or something)
-
-;;; Note, if we need to ask for another one, would like to
-;;; change the value of the prompt.
-
-;;; 
-;;; Note: my feeling is that asking two questions for the creation of an 
-;;; h2xs structure is okay.  It helps differentiate it from perlnow-module, 
-;;; and in any case it doesn't logically lend itself to a single question 
-;;; form.  In the case of h2xs the "where" is the staging-area, 
-;;; not the module-root... there are a couple of other levels between 
-;;; the where and the what, and we might as well represent those as the 
-;;; gap between the two questions.
-
-
 ;;;==========================================================
 ;;; The following functions are all related to the use of 
 ;;; programmed completion to implement:
@@ -985,7 +994,6 @@ and module-name, which are returned in a list."
 ;;; on it? 
 
 
-
 ;;;----------------------------------------------------------
 (defun perlnow-test-perlnow-completing-read-path-and-module-name (somestring)
   "Used to test \[perlnow-completing-read-path-and-module-name]."
@@ -1078,7 +1086,7 @@ Simple example: given \"/home/doom/lib/Stri\" should return
  \"/home/doom/lib/\" and \"Stri\"\n
 Perl package example: given \"/home/doom/lib/Taxed::Reb\" should return 
  \"/home/doom/lib/Taxed::\" and \"Reb\"\n"
-  (interactive "stest string: ") ; debug only
+  (interactive "stest string: ") ; DEBUG only DELETE
   (let* ( (pattern "^\\(.*\\(/\\|::\\)\\)\\([^/:]*$\\)" )
            directory fragment
           )
@@ -1186,6 +1194,8 @@ will be assumed and need not be entered \(though it may be\).
 ;; let the user define what's not interesting. 
 
 
+;;;==========================================================
+;;; Experimental code can go below here     BOOKMARK (note: trying reg-*)
 
 
 
