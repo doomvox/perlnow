@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.157 2004/02/24 06:12:56 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.158 2004/02/25 18:42:24 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1031,16 +1031,19 @@ assumes it's a perl script."
 ;;;----------------------------------------------------------
 (defun perlnow-script (script-name)
   "General purpose command to quickly jump into coding a perl script. 
-This prompts the user for the new SCRIPT-NAME, then 
-looks at the current buffer and tries to guess what \"use\" lines
-you might want to start coding with.  If it's a perl module, or a man page 
-documenting a perl module, it will give you a \"use\" line to include 
+This prompts the user for the new SCRIPT-NAME, and then uses 
+the current buffer to get some hints about what lines you might 
+like to have in the new script to start coding with. 
+If you've been looking at some perl module code -- or a man page 
+documenting a perl module -- it will give you a \"use\" line to include 
 that module.  If the module is not in perl's @INC array, it will also 
 insert the appropriate \"FindBin\" & \"use lib\" lines so that the script 
 can find the module. If none of that applies, you just get the usual 
 perl script buffer.\n
-If this works well, it obviates \\[perlnow-do-script] and 
-\\[perlnow-script-using-this-module].  If it doesn't they're still there."
+It's expected that the user will never need to directly call 
+\\[perlnow-do-script] or \\[perlnow-script-using-this-module],
+\(though they're still exposed as interactive functions, so they 
+can be\)."
   (interactive
    (perlnow-prompt-user-for-file-to-create 
     "Name for the new perl script? " perlnow-script-location))
@@ -1309,7 +1312,9 @@ It does three things:
 ;;;----------------------------------------------------------
 (defun perlnow-do-script (filename)
   "Quickly jump into development of a new perl script. 
-Prompts the user for the FILENAME."
+Prompts the user for the FILENAME.
+It's expected that the user will not usually run this directly. 
+See the wrapper function: \\[perlnow-script]."
   (interactive 
    (perlnow-prompt-user-for-file-to-create 
     "Name for the new perl script? " perlnow-script-location))
