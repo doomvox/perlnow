@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.21 2004/02/06 19:27:53 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.22 2004/02/06 19:40:42 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1149,13 +1149,17 @@ will be assumed and need not be entered \(though it may be\).
    ; Do a regexp search of the fragment against items in the file-list
    (dolist (file file-list)
      (if (string-match fragment-pat file)
-         (let (i length(file-list))        ; counter used in building alist below with numeric "value"
+         (let (i 1)        ; counter used in building alist below with numeric "value"
            (progn
              (setq full-file (concat path file)) ;; an absolutely necessary and simple but non-obvious step
              (setq match-alist (cons (cons full-file i) match-alist)) 
-             (setq i (- i 1))
+             (setq i (+ i 1))
              ))))
-   ; Filter that through the "predicate", *if* supplied.
+
+   ; Reverse the order of the match-alist
+   (setq match-alist (reverse match-alist))  ;; *might* not be needed. 
+
+   ; Filter that through the "predicate", *if* supplied (note, will leave gaps in the value numbers...)
    (unless (eq predicate-function-symbol nil) ; gotta be a better way. Try just: (unless predicate-function-symbol
        (setq file-list (grep-list predicate-function-symbol match-alist)))
 
