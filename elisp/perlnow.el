@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.125 2004/02/19 04:25:23 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.126 2004/02/19 17:20:34 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -733,6 +733,13 @@ Defines the PERL_MODULE_NAME expansion.")
 (defvar perlnow-package-name-history nil
 "The minibuffer history for perl modules accessed by this package.")
 
+(defvar perlnow-slash (convert-standard-filename "/")
+"A (possibly) more portable form of the file system name separator. ")
+;;; Using this instead of "/" *might* get me a little closer to 
+;;; portability to other systems (e.g. windows). Even if this works 
+;;; though, there are still other places dependencies have crept in, 
+;;; e.g. patterns that use [^/].
+
 ;;;----------------------------------------------------------
 ;; Defining additional "expansions" for use in template.el templates.
 ;; 
@@ -1070,7 +1077,7 @@ array, or nil if it is not found."
 ;  (interactive "sGimme:") ; DEBUG only DELETE
   (let* (  full return
            (module-file-tail 
-            (concat (replace-regexp-in-string "::" "/" package-name) ".pm"))
+            (concat (replace-regexp-in-string "::" perlnow-slash package-name) ".pm"))
            (perl-inc 
             (shell-command-to-string "perl -e 'foreach (@INC) {print \"$_|||\"}'" ))
            (inc-path-list (split-string perl-inc "|||"))
@@ -1339,7 +1346,7 @@ yield /home/doom/lib/Text/Gibberish.pm or in other words, the
 filesys path."
   (let ((filename 
          (concat 
-          (mapconcat 'identity (split-string package-name "::") "/")
+          (mapconcat 'identity (split-string package-name "::") perlnow-slash)
           ".pm")))
   (setq inc-spot (file-name-as-directory inc-spot)) 
   (concat  inc-spot filename)))
@@ -1534,12 +1541,12 @@ this favors the earlier occurance in the list."
 ;;;   (setq one-up (match-string 1 dir))
   (setq dir (perlnow-fixdir dir))
   (let ((return
-         (concat "/" ; TODO - write func to prepend slash only if not already there?
+         (concat perlnow-slash ; TODO - write func to prepend slash only if not already there?
                  (mapconcat 'identity 
                             (butlast 
-                             (split-string dir "/") 
+                             (split-string dir perlnow-slash) 
                              1) 
-                            "/"))))
+                            perlnow-slash))))
     (setq return (perlnow-fixdir return))
     return))
 
@@ -1582,7 +1589,7 @@ like: \"/home/doom/tmp/../bin\"."
 (defun perlnow-lowest-level-directory-name (dir)
   "Return the lowest level name from a given directory path.
 For example, given DIR: \"/usr/lib/perl/\" this returns: \"perl\"."
-  (let* ( (levels (split-string dir "/"))
+  (let* ( (levels (split-string dir perlnow-slash))
           (return (nth (- (length levels) 1) levels)) )
     return))
 
@@ -1721,11 +1728,11 @@ this returns the module root, \(which in this example is:
            (setq inc-spot nil))
           (t 
            (setq double-colon-count (- (length (split-string package-name "::")) 1))
-           (setq file-levels-list (split-string module-location "/"))
+           (setq file-levels-list (split-string module-location perlnow-slash))
            (setq inc-spot (mapconcat 'identity 
                                      (butlast file-levels-list double-colon-count)
-                                     "/"))
-           (setq inc-spot (concat "/" inc-spot)) ; kludge, must prepend a "/" 
+                                     perlnow-slash))
+           (setq inc-spot (concat perlnow-slash inc-spot)) ; kludge, must prepend a "/" 
                                                  ; (thus code breaks if not given full-path)
            ))
     inc-spot))
@@ -1788,7 +1795,7 @@ were \"New::Module\", this should return:
           (file-name-as-directory h2xs-location)
           (mapconcat 'identity (split-string package-name "::") "-")
           "/lib/"
-          (mapconcat 'identity (split-string package-name "::") "/")
+          (mapconcat 'identity (split-string package-name "::") perlnow-slash)
           ".pm")))
     module-filename))
 
@@ -1948,14 +1955,14 @@ creation."
            (read-from-minibuffer 
             "New module to create \(e.g. /tmp/dev/New::Mod\): " 
                                  initial keymap nil history nil nil))
-     (setq filename (concat (replace-regexp-in-string "::" "/" result) ".pm"))
+     (setq filename (concat (replace-regexp-in-string "::" perlnow-slash result) ".pm"))
 
      (while (file-exists-p filename)
        (setq result
              (read-from-minibuffer 
               "This name is in use, choose another \(e.g. /tmp/dev/New::Mod\): " 
                                  result keymap nil history nil nil))
-       (setq filename (concat (replace-regexp-in-string "::" "/" result) ".pm")))
+       (setq filename (concat (replace-regexp-in-string "::" perlnow-slash result) ".pm")))
 
      (setq return
            (perlnow-split-perlish-package-name-with-path-to-inc-spot-and-name result))
@@ -2008,11 +2015,7 @@ that controls whether whole name or single word completion will be used.
 This switch is the sole difference between \\[perlnow-read-minibuffer-complete\] 
 and \\[perlnow-read-minibuffer-complete-word\]."
 ;; codename: workhorse
-;;;
-;;; TODO 
-;;; I'm hardcoding "/" as the "file system" separator 
-;;; which means that this code will need to be fixed to get it 
-;;; to work on a non unix-like system.
+
   (let ( ; empty declarations:
          raw_string candidate-alist suggested-completion field-start word-separator 
          two-pieces-list perlish-path fragment fragment-pat file-system-path
@@ -2044,11 +2047,11 @@ and \\[perlnow-read-minibuffer-complete-word\]."
 
     (cond (; Are we inside the perl package namespace yet?
            (string-match "::" perlish-path) 
-            (setq file-system-path (replace-regexp-in-string "::" "/" perlish-path))  
+            (setq file-system-path (replace-regexp-in-string "::" perlnow-slash perlish-path))  
             ; swap in file system separator "/"  for perl package separators "::" 
             (setq separator "::"))
           (t
-            (setq separator "/")
+            (setq separator perlnow-slash)
             (setq file-system-path perlish-path)))
 
 ;;; (unless (file-directory-p file-system-path)
@@ -2123,7 +2126,7 @@ be bound to the \"?\" key during the minibuffer read."
          (fragment (cadr two-pieces-list))
          (fragment-pat (concat "^" fragment)) ; for getting possible filename completions
                                               ; out of a list of bare filenames (no path)
-         (file-system-path (replace-regexp-in-string "::" "/" perlish-path) )  
+         (file-system-path (replace-regexp-in-string "::" perlnow-slash perlish-path) )  
             ; unix file system separator "/" swapped in for perl package separators "::" 
          match-alist
          )
@@ -2229,10 +2232,13 @@ path using slashes for the module root name space, and
 double colons for the package name space inside of that.
 This is split into two pieces, the module root 
 and module name, which are returned as a two-element list."
+;;; TODO 
+;;; Fix portability problem here.  Note pattern [^/] can't work on 
+;;; windows, can it?
   (let* ( (pattern 
             (concat 
              "^\\(.*\\)"       ; ^(.*)    - stuff at start becomes the mod root
-             "/"               ; /        - the right-most slash, because: 
+             perlnow-slash     ; /        - the right-most slash, because: 
              "\\([^/]*\\)"     ; ([^/]*)  - mod name: everything that is not a slash up to  --
              "\\(\\.pm\\)*$"   ; (\.pm)*$ - the end (or an optional .pm extension)
              ))
