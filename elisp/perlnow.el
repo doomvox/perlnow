@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.114 2004/02/19 00:38:35 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.115 2004/02/19 01:15:42 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -2461,6 +2461,11 @@ This version tries to preserve links in the documentation as html links."
           ; Do this early (before adding any html double quotes)
           (setq doc-string (perlnow-html-ampersand-substitutions doc-string-raw))
 
+          ; Blank lines => <BR><BR> (That *don't* follow a tag)
+          (setq doc-string 
+;                (replace-regexp-in-string "[^>]^[ \t]*$" "<BR><BR>\n\n" doc-string))
+                (replace-regexp-in-string "^[ \t]*$" "<BR><BR>\n\n" doc-string))
+
           ; Put named anchors on every entry for refs to link to
           (insert (format "<A NAME=\"%s\"></A>\n" symbol-name))
 
@@ -2498,9 +2503,6 @@ This version tries to preserve links in the documentation as html links."
                 (replace-regexp-in-string indented-line-pat
                                           "\n<PRE>\\1</PRE>"
                                           doc-string))
-          ; Blank lines => <BR><BR>
-          (setq doc-string 
-                (replace-regexp-in-string "^[ \t]*$" "<BR><BR>\n\n" doc-string))
 
           (insert (concat doc-string "</P>\n\n"))
           )))
