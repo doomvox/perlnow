@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.63 2004/02/12 02:01:42 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.64 2004/02/12 02:08:59 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -226,6 +226,9 @@ and `perlnow-module-run-string' instead.")
 directory via \".\" or  \"..\", though rather than the actual 
 \"current\" location, they will be interpreted as relative to 
 either the module root or the module location.")
+
+(defvar perlnow-module-name-history nil
+"Records the minibuffer history for perl modules accessed by this package.")
 
 
 ;;;==========================================================
@@ -935,16 +938,16 @@ though this may be edited at run time."
 ;\"New::Module\" is the module-name (aka package-name).\n
 
   (interactive 
-   (let ((initial-contents perlnow-module-root)
+   (let ((initial perlnow-module-root)
          (keymap perlnow-read-minibuffer-map)  ; Note: the keymap is key. Mutates read-from-minibuffer.
-         (history   nil)   ; TODO - History can not stay "nil"
+         (history 'perlnow-module-name-history)   ; TODO - History can not stay "nil"
          result filename return
          )
 
      (setq result
            (read-from-minibuffer 
             "New module to create \\(e.g. /tmp/dev/New::Mod\\): " 
-                                 initial-contents keymap nil history nil nil))
+                                 initial keymap nil history nil nil))
      (setq filename (concat (replace-regexp-in-string "::" "/" result) ".pm"))
 
      (while (file-exists-p filename)
