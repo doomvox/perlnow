@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.165 2004/02/29 03:26:10 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.166 2004/02/29 03:43:22 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -496,11 +496,11 @@ customizable variable `perlnow-h2xs-location'
 
 \(Aside: my feeling is that asking two questions for the
 creation of an h2xs structure, vs. the one question hybrid
-form used by \[perlnow-module] is okay.  It helps
-differentiate it from \[perlnow-module], and in any case it
+form used by \\[perlnow-module] is okay.  It helps
+differentiate it from \\[perlnow-module], and in any case it
 doesn't logically lend itself to a single question form.  In
 the case of h2xs the \"where?\" is the staging-area, not the
-inc-spot.  The inc-spot is located inside a \"lib\" 
+module root.  The module root is located inside a \"lib\" 
 directory inside the staging-area, so there's a gap between 
 the \"where\" and the \"what\", and we might as well represent 
 that gap as the gap between the two questions.\)
@@ -511,15 +511,15 @@ open, one showing the module file buffer, the other showing the
 test file for the module. 
 
 One of the nice features of the h2xs style of development is
-the standard test framework.  These days this is implemented
-using Test::More, and you should familiarize yourself with
-the documentation for that.  
+the standard test framework.  This still defaults to a simple 
+\"use Test;\" though the wave of the future is probably
+Test::More.  You should familiarize yourself with
+at least one of these.
 
-If you do a \\[perlnow-run] inside of an h2xs module, 
-it should identify it as h2xs, and use \"make test\" as the 
-run string.  \(Though actually, the first time you do this, 
-it should notice that \"perl Makefile.PL\" hasn't been run 
-yet, and do that first.\).
+If you do a \\[perlnow-run] inside of an h2xs module, it will 
+identify it as h2xs, and use \"make test\" as the run string.
+\(Though actually, the first time you do this, if \"perl
+Makefile.PL\" hasn't been run yet, it should do that first.\).
 
 Next, everyone's favorite subject, \"Misc\":
  `perlnow-documentation-tutorial-4-misc'")
@@ -601,14 +601,15 @@ starts, or it might be tucked away in a directory called
 \"t\" which could be located in either of those places. 
 
 This means that there are a number of strategies you might
-choose to use for your perl modules that should work well
-with perlnow.el. \(And some of them are even reasonable. 
-And some of them are already in use in industry.  And there's 
-even some overlap between those two sets.\)
+choose to use for perl module test files that should
+work well with perlnow.el. \(And some of them are even
+reasonable.  And some of them are already in use in industry.
+And there's even some overlap between those two sets.\)
 
-An example of a good practice would be to always use the hyphenized 
-base name form, and always put test files in a subdirectory called 
-\"t\" in the same place that the \".pm\" file is located.  
+An example of a good practice would be to always use the
+hyphenized base name form, and always put test files in a
+directory called \"t\", a subdirectory of the place where
+\".pm\" file is located.
 
 So if you've got a module called \"Modular::Silliness\", which 
 is really the file: ~/perldev/lib/Modular/Silliness.pm 
@@ -623,7 +624,7 @@ If you don't like that you can use any of these schemes:
   ~/perldev/lib/Modular-Silliness.t
   ~/perldev/lib/Modular/Silliness.t
 
-The ones you probably don't want to use are these :
+The ones you probably don't want to use are these: 
   ~/perldev/lib/t/Silliness.t
   ~/perldev/lib/Silliness.t
 
@@ -709,8 +710,8 @@ minor-mode.
 
 But some perlnow commands are only needed inside of a perl code
 buffer \(e.g. \\[perlnow-run] and \\[perlnow-run-check]\)
-and could reasonably be kept local to your perl-mode \(minor
-complication: there are two of them\).
+and could reasonably be kept local to your perl-mode \(slight 
+complication: there are two perl modes\).
 
 So perhaps perlnow.el should be a combination of the two, a
 global and a local minor-mode, \(implemented in one .el
@@ -823,7 +824,7 @@ Used by \\[perlnow-module] to insert the value of
 
 \(>>>TAB<<<\)
 Experimental feature: should indent as though the tab
-key had been hit.  I suspect that you need to insert
+key had been hit.  I suspect that you need to use 
 \(>>>TAB<<<\) *after* the line of code and not before.
 
 \(>>>PNFS<<<\)
