@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.32 2004/02/07 02:42:28 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.33 2004/02/07 02:52:26 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -975,6 +975,7 @@ Returns a two element list, location and module-name."
            ; In case the following test fails, set-up the prompt for 
            ; the next loop:
            (setq current-prompt later-prompt)
+           (setq initial string)
            (not (file-exists-p module-file-name))))
      module-root-and-name-list )))
 
