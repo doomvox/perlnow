@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.113 2004/02/18 20:14:07 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.114 2004/02/19 00:38:35 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -87,7 +87,7 @@ on a new module for distribution, such as via CPAN.
 \\[perlnow-run-check] - does a perl syntax check on the
 current buffer, displaying error messages and warnings in
 the standard emacs style, so that the next-error command,
-usually bound to \"C-x \`\" \(control-x back-apostrophe\)
+\(usually bound to control-x back-apostrophe\)
 will skip you to the location of the problem.
 
 \\[perlnow-run] - like the above, except that it actually
@@ -2443,12 +2443,11 @@ functions preceeding the internally used ones.")
 
 (defun perlnow-dump-docstrings-for-symbols-as-html-preserving-links (list)
   "Given a LIST of symbol names, insert the doc strings with some HTML markup.
-This version tries to preserve links in the documentation as html links. 
-STATUS: NOT FINISHED."
-  (interactive)
+This version tries to preserve links in the documentation as html links."
   (dolist (symbol-name list)
-    (let* ( doc-string indented-line-pat 
-           doc-string-raw
+    (let* ( doc-string 
+            doc-string-raw
+            indented-line-pat 
           (symbol (intern-soft symbol-name)))
           (cond ((eq symbol nil)
                  (message "warning: bad symbol-name %s" symbol-name))
@@ -2459,7 +2458,10 @@ STATUS: NOT FINISHED."
                  (setq doc-string-raw
                        (documentation-property symbol 'variable-documentation t))))
 
-          ; Named anchors on every entry for refs to link to
+          ; Do this early (before adding any html double quotes)
+          (setq doc-string (perlnow-html-ampersand-substitutions doc-string-raw))
+
+          ; Put named anchors on every entry for refs to link to
           (insert (format "<A NAME=\"%s\"></A>\n" symbol-name))
 
           ; Using bold face to indicate a function, italics for variables
@@ -2468,7 +2470,12 @@ STATUS: NOT FINISHED."
                 (t
                  (insert (concat "<P><I>" symbol-name "</I>" ":<BR>\n"))))
 
-          (setq doc-string (perlnow-html-ampersand-substitutions doc-string-raw))
+           ; turn `(.*)'  into <I><A HREF="#\1">\1</A></I>  - note: dot don't match line breaks (good: safer)
+           (setq doc-string 
+                 (replace-regexp-in-string "[`]\\(.*?\\)'" ; that's `(.*?)'
+                                           "<I><A HREF=\"#\\1\">\\1</A></I>" 
+                                           doc-string))
+
 
           ; turn \[(.*)]  into <A HREF="#\1">\1</A>
           (setq doc-string 
@@ -2476,44 +2483,30 @@ STATUS: NOT FINISHED."
                                           "<A HREF=\"#\\1\">\\1</A>" 
                                           doc-string))
 
-          ; turn `(.*)'  into <I><A HREF="#\1">\1</A></I>  - note: dot don't match line breaks
-          (setq doc-string 
-                (replace-regexp-in-string "`\\(.*?\\)']" ; that's `(.*?)'
-                                          "<I><A HREF=\"#\\1\">\\1</A></I>" 
-                                          doc-string))
-
           (setq indented-line-pat 
                 (concat 
-                 ("\n"   ; start of line, in multi-line matching
+                  "^"    ; start of line (bol *not* bos)
                   "\\("  ; begin capture to \1  
-                  "\\([ ][ ]+\\|\t\\)"  ; indent: 3 spaces or a tab (captures to \2) 
+                  "\\(?:[ ][ ]+\\|\t\\)"  ; indent: 3 spaces or a tab (non-capturing)
                   ".*?"  ; stuff
                   "\\)"  ; end of capture to \1
-                  "\n"   ; end of line
+                  "$"    ; eol *not* eos!
                   ))
 
           ; Put <PRE> wrapper around indented lines.
           (setq doc-string 
                 (replace-regexp-in-string indented-line-pat
-                                          "<PRE>\\1</PRE>"
+                                          "\n<PRE>\\1</PRE>"
                                           doc-string))
           ; Blank lines => <BR><BR>
           (setq doc-string 
-                (replace-regexp-in-string "^[ \t]*$" "<BR><BR>" doc-string))
-
-;          ; <PRE> if some lines have leading whitespace, else just <P>:
-;          (cond ((string-match "\n[ \t][ \t]+" doc-string)
-;                 (insert (concat "<PRE>" doc-string "</PRE></P>\n\n")))
-;                (t
-;                 (replace-regexp-in-string "^[ \t]*$" "<BR><BR>" doc-string)
-;                 (insert (concat doc-string "</P>\n\n")))
+                (replace-regexp-in-string "^[ \t]*$" "<BR><BR>\n\n" doc-string))
 
           (insert (concat doc-string "</P>\n\n"))
           )))
+;;; perlnow-dump-docstrings-for-symbols-as-html-preserving-links:
 ;;; Getting close to slick.
 ;;; TODO
-;;; (0)
-;;; Forgot to handle the quoted variable references: `perlnow-script-run-string'
 ;;; (1) 
 ;;;  List all perlnow-blah, subtract off my list of "important" ones, add the remainder. 
 ;;;  (Make it impossible to forget to add one to the list.)
