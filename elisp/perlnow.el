@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.128 2004/02/19 17:46:12 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.129 2004/02/19 22:29:30 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1695,15 +1695,82 @@ schemes for your test files: `perlnow-tutorial-test-file-strategies'."
 ;;;----------------------------------------------------------
 (defun perlnow-guess-script-run-string ()
   "Returns a good guess for `perlnow-script-run-string'."
-;;# TODO DONTFORGET
-;;# check for hash bang:
-;;#   Pass through at least *some* elements of hash-bang, e.g. -T (why not all?)
+
+  (let ( run-line 
+        (filename (buffer-file-name)) 
+        staging-area)
+  ;;# check for hash bang:
+  (cond ((setq run-line (perlnow-hashbang))
+          ;;;   Just pass through the hash-bang, e.g. to preserve -T 
+         )
+        ((string-match "\.t$"  filename) ; it's a test file
+          (if (setq staging-area perlnow-find-h2xs-staging-area))
+              (setq run-line (concat "cd " staging-area "; " "make test"))
+            (setq run-line
+             (format "perl \"-MExtUtils::Command::MM\" -e \"test_harness(1, %s)\"" testfile)
+             )
+            )
+         )
+
+        ); end cond
+  (setq perlnow-script-run-string run-line)
+  ))
+
+;;; Having some *what if there's no Makefile yet?* conundrums again.
+
+
 ;;# check buffer-file-name, if extension .t
 ;;#   If a .t is it in an h2xs structure?  "make test"
 ;;#   Otherwise: (format "perl \"-MExtUtils::Command::MM\" -e \"test_harness(1, %s)\"" testfile)
-  (setq perlnow-script-run-string 
-        (format "perl %s" (buffer-file-name)))
-)
+
+;;  (setq perlnow-script-run-string 
+;;        (format "perl %s" (buffer-file-name)))
+;;
+;;  ))
+
+;;;----------------------------------------------------------
+(defun perlnow-find-h2xs-staging-area
+  "Determines if the current file buffer located in an h2xs tree.
+Should return the path to the current h2xs staging area, or nil 
+if it's not found.  The staging area is located by searching upwards 
+from the present location for a place with a \"lib\" and/or \"t\"
+*and* a \"Makefile.PL\"."
+;; Two cases I definitely want to cover:
+;;   ~/perldev/Horror-Grossout/lib/Horror/Grossout.pm
+;;   ~/perldev/Horror-Grossout/t/Horror-Grossout.t
+;;
+;; Simple, relatively general method: 
+;; Crawl up from file location, until "t" and/or "lib" is found. 
+;; Is there a Makefile.PL next to them?
+
+;;; TODO - 
+;;; This could be enhanced to optionally check if there's a Makefile 
+;;; with the Makefile.PL.  What to do with that result? 
+
+  (let* ((filename (buffer-file-name)) 
+          ; some directory-files arguments:
+          (full-names nil)
+          (nosort t) 
+          (pattern "^[ltM]") ; pre-screen listing for interesting results only
+          dir       ; candidate directory under examination
+          file-list ; file listing of the candidate directory (pre-screened)
+          return)
+
+    (setq dir (perlnow-fixdir (file-name-directory filename)))
+    (setq return
+          (catch 'ICE
+            (while (> (length dir) > 1)
+
+              (setq file-list (directory-files dir full-names pattern nosort))
+              (dolist (file file-list) 
+                (if (or (string= file "lib") (string= file "t")) ; we're here! 
+                    ; start scan again: "Makefile.PL" might be before or after lib or t
+                    (dolist (file file-list) 
+                      (if (string= file "Makefile.PL") ; we found it!
+                          (throw 'ICE dir)))))
+              (setq dir (perlnow-one-up dir)))
+            (setq return nil))) ; run the gauntlet without success, then return nil
+    return))
 
 
 ;;;----------------------------------------------------------
@@ -2213,7 +2280,7 @@ are sequential integers."
 
 
 ;;;----------------------------------------------------------
-(defun perlnow-list-directory-as-alist (file-system-path pattern)
+(defun perlnow-list-directories-as-alist (file-system-path pattern)
   "Generate a directory-only alist from the given FILE-SYSTEM-PATH.
 Returns an alist of the file names that match the given PATTERN, *and*
 which also pass the \\[perlnow-interesting-file-name-p]
@@ -2476,7 +2543,7 @@ It does three things:
                                  "perlnow-read-minibuffer-completion-help"
                                  "perlnow-remove-pm-extensions-from-alist"
                                  "perlnow-list-directories-and-modules-as-alist"
-                                 "perlnow-list-directory-as-alist"
+                                 "perlnow-list-directories-as-alist"
                                  "perlnow-split-perlish-package-name-with-path-to-inc-spot-and-name"
                                  "perlnow-interesting-file-name-p"
                                  "perlnow-split-module-path-to-dir-and-tail"
