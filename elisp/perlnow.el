@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.209 2004/11/12 07:42:06 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.210 2004/11/12 07:52:09 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -866,6 +866,7 @@ Defines the PERL_MODULE_NAME expansion.")
 ; Using this instead of "/", as a stab at portability (e.g. for windows).
 ; But even if this helps, there are still other places
 ; dependencies have crept in, e.g. patterns that use [^/].
+; (And what about a root of "/" vs "C:\" ?)
 
 ;;;----------------------------------------------------------
 ;; Defining additional "expansions" for use in template.el templates.
@@ -2813,6 +2814,7 @@ for the old-fashioned \"1.t\".  E.g. if the staging-area were
     ; to get the probable base-name
     (let ((dir h2xs-staging-area))
 ;      (string-match "\\(^.*/\\)\\([^/]*\\)[/]*$" dir)
+      ;;; TODO - regexp has unix slash dependency
       (string-match "\\(^.*/\\)\\([^/]*\\)/$" dir)
       (setq basename (match-string 2 dir))
       (unless basename 
@@ -3199,6 +3201,7 @@ This is split into two pieces, the module root
 and module name, which are returned as a two-element list."
 ;;; TODO
 ;;; Fix any portability problem here.  Can pattern [^/] work on windows?
+;;; Why not build it up using perlnow-slash? 
   (let* ( (pattern
             (concat
              "^\\(.*\\)"       ; ^(.*)    - stuff at start becomes the mod root
@@ -3254,6 +3257,8 @@ Simple example: given the STRING \"/home/doom/lib/Stri\" should return
  \"/home/doom/lib/\" and \"Stri\"\n
 Perl package example: given \"/home/doom/lib/Taxed::Reb\" should return
  \"/home/doom/lib/Taxed::\" and \"Reb\"\n"
+;;; TODO - fix unix file separator depencency here 
+;;;        (build up with perlnow-slash?)
   (let* ( (pattern "^\\(.*\\(/\\|::\\)\\)\\([^/:]*$\\)" )
            directory fragment
           )
