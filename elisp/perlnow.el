@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.4 2004/01/26 00:18:42 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.5 2004/01/27 21:11:21 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -32,10 +32,11 @@
 ; The main idea is to automate the routine tasks when you
 ; begin work on a new file of perl code.  A single perlnow
 ; command will typically prompt for a location and a name,
-; open a file buffer with an appropriate frame-work inserted
-; (e.g. the hash-bang line, comments including date and author
-; information, a perldoc outline, and so on). In the case of
-; scripts the file will automatically become executable.
+; open a file buffer with an appropriate framework already
+; inserted (e.g. the hash-bang line, comments including date
+; and author information, a perldoc outline, and so on). In
+; the case of scripts the file will automatically become
+; executable.
 
 ; To function properly, it requires that template.el has been 
 ; installed, along with two templates for perl development 
@@ -56,7 +57,7 @@
 ;            buffer, displaying error messages and warnings in  
 ;            the standard emacs style, so that the next-error 
 ;            command, usually bound to "C-x `" (control-x back-apostrophe)
-;            will skip you to the location of the problem. 
+ ;            will skip you to the location of the problem. 
 
 ;; Put this file into your load-path and the following into your ~/.emacs:
 ;;   (require 'perlnow)
@@ -72,7 +73,7 @@
 (eval-when-compile
   (require 'cl))
 
-(require 'template)  ; templating system: easily customizeable initial file contents
+(require 'template) ; templating system: easily customizeable initial file contents
 
 
 
@@ -82,18 +83,18 @@
 
 ;;;; TODO - fix keybindings:
 
-; I'm grabbing "Alt p" as the perlnow prefix, but using the
-; cperl-mode-map and perl-mode-map since perlnow doesn't
-; have a map of it's own since it's not a mode.  
+ ; I'm grabbing "Alt p" as the perlnow prefix, but using the
+    ; cperl-mode-map and perl-mode-map since perlnow doesn't
+           ; have a map of it's own since it's not a mode.  
 
-; Is Alt-p okay? (It *and* Alt-n are undefined by default, 
+ ; Is Alt-p okay? (It *and* Alt-n are undefined by default, 
 ; but that suggests some intent to use them as customizeable 
-; navigation bindings) 
+                                     ; navigation bindings) 
 
-; Also need global bindings for "perlnow-script" and 
+       ; Also need global bindings for "perlnow-script" and 
 ; "perlnow-module": want them to jump in to perl programming 
 ; fast.  Probably can't rightly do global settings by default 
-; though. 
+                                        ; though. 
 
 (add-hook 'cperl-mode-hook
           '(lambda ()
@@ -109,32 +110,32 @@
              (define-key cperl-mode-map "\M-pc" 'perlnow-run-check)
              ))
 
-   ; TODO:
-   ; on the following two, I'm currently using HOME environment variable for
-   ; a default location, though it's expected this will be overriden with a
-   ; .emacs setting.  Maybe it would be better to default to something else,
-   ; like ~/bin and ~/lib, but in that case would have to make sure they
-   ; exist and create them otherwise. 
-   ; Or see if they exist, and then use them, if not, silently fall back on HOME?
+                                        ; TODO:
+; on the following two, I'm currently using HOME environment variable for
+; a default location, though it's expected this will be overriden with a
+; .emacs setting.  Maybe it would be better to default to something else,
+; like ~/bin and ~/lib, but in that case would have to make sure they
+                         ; exist and create them otherwise. 
+; Or see if they exist, and then use them, if not, silently fall back on HOME?
 
 (defvar perlnow-script-location (getenv "HOME")
-    "The default location to stash new perl scripts")
+  "The default location to stash new perl scripts")
 (setq perlnow-script-location (file-name-as-directory perlnow-script-location)) 
 
 (defvar perlnow-module-location (getenv "HOME")
-    "The default location to stash new perl modules")
+  "The default location to stash new perl modules")
 (setq perlnow-module-location (file-name-as-directory perlnow-module-location)) 
 
 (defvar perlnow-executable-setting ?\110
-   "Pattern of user-group-all permission settings used when making a script executable")
+  "Pattern of user-group-all permission settings used when making a script executable")
 
-(defvar perlnow-perl-script-template (substitute-in-file-name "$HOME/.templates/TEMPLATE.perl.tpl"))
-   "The template.el template new perl scripts will be created with" )
+(defvar perlnow-perl-script-template (substitute-in-file-name "$HOME/.templates/TEMPLATE.perl.tpl")
+"The template.el template new perl scripts will be created with" )
 ;;; DELETE:
 ;;; (setq perlnow-perl-script-template (substitute-in-file-name "$HOME/.templates/TEMPLATE.perl.tpl"))
 
-(defvar perlnow-perl-module-template (substitute-in-file-name "$HOME/.templates/TEMPLATE.pm.tpl"))
-   "The template.el template new perl modules will be created with" )
+(defvar perlnow-perl-module-template (substitute-in-file-name "$HOME/.templates/TEMPLATE.pm.tpl")
+"The template.el template new perl modules will be created with" )
 ;;; DELETE:
 ;;; (setq perlnow-perl-module-template (substitute-in-file-name "$HOME/.templates/TEMPLATE.pm.tpl"))
 
@@ -145,9 +146,9 @@ the perl double-colon separated form to the module template ")
 
 ;;; template.el feature PERL_MODULE_NAME for the perlnow-module function. 
 (setq template-expansion-alist 
-        (cons 
-          '("PERL_MODULE_NAME" (insert perlnow-perl-module-name) )
-          template-expansion-alist))
+      (cons 
+      '("PERL_MODULE_NAME" (insert perlnow-perl-module-name) )
+      template-expansion-alist))
 
 (defvar perlnow-minimum-perl-version "5.006"
   "Used to replace template MINIMUM_PERL_VERSON with the
@@ -155,11 +156,11 @@ minimum perl version you're planning on supporting. Note
 that perl version numbers jumped from 5.006 to 5.7.0.  As of
 this writing, the latest is 5.8.2 ((CHECK)) ")
 ; Defining template.el feature MINIMUM_PERL_VERSON to be used like: 
-;   use (>>>MINIMUM_PERL_VERSON<<<);
+                        ;   use (>>>MINIMUM_PERL_VERSON<<<);
 (setq template-expansion-alist 
-        (cons 
-          '("MINIMUM_PERL_VERSON" (insert perlnow-minimum-perl-version))
-          template-expansion-alist))
+      (cons 
+      '("MINIMUM_PERL_VERSON" (insert perlnow-minimum-perl-version))
+      template-expansion-alist))
 
 ;;; DELETE ME
 ;;; Eval this to erase effects of the above two settings:
@@ -178,53 +179,48 @@ this writing, the latest is 5.8.2 ((CHECK)) ")
   (message "compile-command: %s" compile-command)
   (compile compile-command) )
 
-; Note: this is very similar to cperl-check-syntax, but 
-; (1) doesn't require mode-compile.el 
+    ; Note: this is very similar to cperl-check-syntax, but 
+                      ; (1) doesn't require mode-compile.el 
 ; (2) doesn't have an inane prompt for arguments that don't matter
-
-;;;
 
 (defun perlnow-script (filename)
   "Quickly jump into development of a new perl script"
   (interactive 
-     (perlnow-prompt-user-for-file-to-create 
-       "Name for the new perl script? " perlnow-script-location))
-   (perlnow-new-file-using-template filename perlnow-perl-script-template)
-   (perlnow-change-mode-to-executable)
-   )
-
-;;; 
+  (perlnow-prompt-user-for-file-to-create 
+   "Name for the new perl script? " perlnow-script-location))
+  (perlnow-new-file-using-template filename perlnow-perl-script-template)
+  (perlnow-change-mode-to-executable))
 
 (defun perlnow-script-using-this-module (filename)
   "Quickly jump into writing a perl script that uses the module 
 in the currently open buffer"
   (interactive 
-    (perlnow-prompt-user-for-file-to-create 
-      "Name for the new perl script? " perlnow-script-location))
+  (perlnow-prompt-user-for-file-to-create 
+   "Name for the new perl script? " perlnow-script-location))
   (let (package-name
         (module-filename (buffer-file-name))) 
-    ;;; read the package name out of the current module file buffer:
-    (save-excursion 
-      (let ((comment-line-pat "^[ \t]*$\\|^[ \t]*#") 
-            (package-line-pat "^[ \t]*package \\(.*\\)[ \t]*;"))
-        (goto-char (point-min))
-        (while (looking-at comment-line-pat) (forward-line 1))
-        (if (looking-at package-line-pat)
-            (setq package-name (match-string 1))
-          (error "%s" "No leading package line: This file doesn't look like a perl module"))))
+;;; read the package name out of the current module file buffer:
+  (save-excursion 
+    (let ((comment-line-pat "^[ \t]*$\\|^[ \t]*#") 
+          (package-line-pat "^[ \t]*package \\(.*\\)[ \t]*;"))
+      (goto-char (point-min))
+      (while (looking-at comment-line-pat) (forward-line 1))
+      (if (looking-at package-line-pat)
+          (setq package-name (match-string 1))
+        (error "%s" "No leading package line: This file doesn't look like a perl module"))))
         ;;; create new script file buffer using template
-        (perlnow-new-file-using-template filename perlnow-perl-script-template)
-        ;;; insert the lib path tweaks to ensure the module can be found by the script
-        (let ((relative-path
-               (file-relative-name module-filename (file-name-directory filename))
-               ))
-          (insert "use FindBin qw\($Bin\);\n")
-          (insert "use lib \(\"$Bin/")
-          (insert relative-path)
-          (insert "\");\n"))
+  (perlnow-new-file-using-template filename perlnow-perl-script-template)
+;;; insert the lib path tweaks to ensure the module can be found by the script
+  (let ((relative-path
+         (file-relative-name module-filename (file-name-directory filename))
+         ))
+    (insert "use FindBin qw\($Bin\);\n")
+    (insert "use lib \(\"$Bin/")
+    (insert relative-path)
+    (insert "\");\n"))
         ;;; insert the "use Some::Module;" line
-        (insert (format "use %s;" package-name)) ;;; and maybe a qw() list? 
-        (insert "\n")))
+  (insert (format "use %s;" package-name)) ;;; and maybe a qw() list? 
+  (insert "\n")))
 
 ;;; Question: is there something intelligent that could be done 
 ;;; with EXPORT_OK to provide a menu of options here? 
@@ -253,15 +249,15 @@ in the currently open buffer"
 (defun perlnow-module (module-location module-name) 
   "Quickly jump into development of a new perl module"
   (interactive 
-     ; Because default-directory is the default location for (interactive "D"),
+; Because default-directory is the default location for (interactive "D"),
      ; I'm doing the interactive call in two stages: change 
-     ; default-directory momentarily, then restore it. Uses dynamic scoping via "let".
-     ; (It's more like perl's "local" than perl's "my".)
-        (let ((default-directory perlnow-module-location))
-          (call-interactively 'perlnow-prompt-for-module-to-create)))
-   (setq perlnow-perl-module-name module-name) ; global used to pass value into template
-   (let ( (filename (perlnow-full-path-to-module module-location module-name)) )
-     (perlnow-new-file-using-template filename perlnow-perl-module-template)))
+; default-directory momentarily, then restore it. Uses dynamic scoping via "let".
+         ; (It's more like perl's "local" than perl's "my".)
+  (let ((default-directory perlnow-module-location))
+    (call-interactively 'perlnow-prompt-for-module-to-create)))
+  (setq perlnow-perl-module-name module-name) ; global used to pass value into template
+  (let ( (filename (perlnow-full-path-to-module module-location module-name)) )
+  (perlnow-new-file-using-template filename perlnow-perl-module-template)))
 
 
 (defun perlnow-prompt-for-module-to-create (where what) 
@@ -272,10 +268,10 @@ Returns a two element list, location and module-name."
   (interactive "DLocation for new module?  \nsName of new module \(e.g. New::Module\)? ")
   (let* ((filename (perlnow-full-path-to-module where what))
          (dirname (convert-standard-filename (file-name-directory filename))))
-    (while (file-exists-p filename)
-       (setq what 
+  (while (file-exists-p filename)
+    (setq what 
           (read-from-minibuffer "That module name is already in use. Please choose another: " what))
-       (setq filename (perlnow-full-path-to-module where what)))
+    (setq filename (perlnow-full-path-to-module where what)))
   (list where what)))
 
 (defun perlnow-full-path-to-module (module-location module-name)
@@ -284,9 +280,9 @@ given \"/home/doom/lib\" and \"Text::Gibberish\" would yield /home/doom/lib/Text
   (let ((filename 
          (concat 
           (mapconcat 'identity (split-string module-name "::") "/")
-            ".pm")))
-    (setq module-location (file-name-as-directory module-location)) 
-     (concat  module-location filename)))
+          ".pm")))
+  (setq module-location (file-name-as-directory module-location)) 
+  (concat  module-location filename)))
 
 
 ;;;==========================================================
@@ -312,26 +308,26 @@ given \"/home/doom/lib\" and \"Text::Gibberish\" would yield /home/doom/lib/Text
   "Forcibly saves the current buffer to it's associated file, 
 to make sure that the file actually exists."
 ; inserting and deleting a space to make sure it's considered "modified" 
-; and in need of saving. 
-; TODO (TEST): should probably just do this:
+                                   ; and in need of saving. 
+                ; TODO (TEST): should probably just do this:
   (set-buffer-modified-p t)
-;  (insert " ") 
-;  (delete-backward-char 1) 
+                                        ;  (insert " ") 
+                                ;  (delete-backward-char 1) 
   (save-buffer))
 
 (defun perlnow-change-mode-to-executable ()
-   "Makes the file associated with the current buffer executable"
-  ; Need to make sure the file really exists before we chmod it
-  ; so we save it, but to make sure that happens it has to be "modified":
+  "Makes the file associated with the current buffer executable"
+; Need to make sure the file really exists before we chmod it
+; so we save it, but to make sure that happens it has to be "modified":
   (perlnow-make-sure-file-exists)
   (let* ((all-but-execute-mask ?\666)
-        (filename (buffer-file-name))
-        (file-permissions (file-modes filename))
-        (new-file-permissions 
-         (+ (logand file-permissions all-but-execute-mask) perlnow-executable-setting)
-               ))
-;  (setq file-permissions (file-modes filename))
-;  (setq new-file-permissions 
+         (filename (buffer-file-name))
+         (file-permissions (file-modes filename))
+         (new-file-permissions 
+          (+ (logand file-permissions all-but-execute-mask) perlnow-executable-setting)
+          ))
+            ;  (setq file-permissions (file-modes filename))
+                              ;  (setq new-file-permissions 
 ;    (+ (logand file-permissions all-but-execute-mask) perlnow-executable-setting))
   (set-file-modes filename new-file-permissions)))
 
@@ -341,16 +337,16 @@ to make sure that the file actually exists."
 check to see if one exists already, and if so, ask for another name.  
 Returns full file name with path."
   (let ( filename )
-    (setq default-location (file-name-as-directory default-location)) 
-    (while (progn 
-             (setq filename 
-                   (expand-file-name
-                   (read-file-name ask-mess default-location)))
-             (setq ask-mess 
-                   "That name is already in use, please use another name: " )
-             (file-exists-p filename)))
-      (list filename)
-      ))
+  (setq default-location (file-name-as-directory default-location)) 
+  (while (progn 
+           (setq filename 
+                 (expand-file-name
+                  (read-file-name ask-mess default-location)))
+           (setq ask-mess 
+                 "That name is already in use, please use another name: " )
+           (file-exists-p filename)))
+  (list filename)
+  ))
 
 (defun perlnow-new-file-using-template (filename template)
   "Given filename and template, does the actual creation of
@@ -358,67 +354,101 @@ the file and associated buffer using the template"
 
 ;;; Because of a bug in template.el, when using template-new-file 
 ;;; non-interactively, we must set the global "template-file" here:
-    (setq template-file (template-split-filename filename)) 
-    (template-new-file filename template)
-    (write-file filename))
+  (setq template-file (template-split-filename filename)) 
+  (template-new-file filename template)
+  (write-file filename))
 
 
 (defun perlnow-script-p ()
   "Determine if the buffer looks like a perl script by looking for the 
 hash-bang line at the top."
   (save-excursion 
-    (let (
-          (hash-bang-line-pat "^[ \t]*#!.*perl\\b") ; note, presumes an explicit "perl"
-          pee)
-      (goto-char (point-min))
-      (if (looking-at hash-bang-line-pat) 
-          (setq pee 't)
-        (setq pee 'nil))
-      pee)))
+  (let (
+        (hash-bang-line-pat "^[ \t]*#!.*perl\\b") ; note, presumes an explicit "perl"
+        pee)
+    (goto-char (point-min))
+    (if (looking-at hash-bang-line-pat) 
+        (setq pee 't)
+      (setq pee 'nil))
+    pee)))
 
-(defvar perlnow-script-run-string "" "Default run string for perl scripts")
-(defvar perlnow-module-run-string "" "Default run string for perl modules")
+(defun perlnow-module-p ()
+  "Determine if the buffer looks like a perl module by looking for the 
+package line near the top."
+  (save-excursion 
+  (let ((package-line-pat "^[ \t]*package\\b") 
+        (comment-line-pat "^[ \t]*$\\|^[ \t]*#")
+        pee)
+    (goto-char (point-min))
+    (while (looking-at comment-line-pat) (forward-line 1))
+    (if (looking-at package-line-pat) 
+        (setq pee 't)
+      (setq pee 'nil))
+    pee)))
+
+(defvar perlnow-script-run-string nil "Default run string for perl scripts")
+(defvar perlnow-module-run-string nil "Default run string for perl modules")
+;(setq perlnow-script-run-string nil)
+;(setq perlnow-module-run-string nil)
 
 (defun perlnow-set-run-string ()
-  "Prompt the user for a new string that perlnow-run will use to 
-run this code. \n Do not use this from within a program: instead set the
-variables directly, see perlnow-script-run-string and perlnow-module-run-string."
+  "Prompt the user for a new string that perlnow-run will
+use to run the code in the current buffer.\n Do not use this
+from within a program: instead set the variables directly,
+see perlnow-script-run-string and perlnow-module-run-string."
   (interactive)
-   ;;; move the following up inside of interactive?  But then
-   ;;; it would need to return the run string, and there should
-   ;;; be an alternative way of passing in the run string to be
-   ;;; set when not running this interactively, and none of
-   ;;; that is actually good for anything.
-   ;;; 
-   ;;; TODO: change from (if to (cond, use (perlnow-module-p on 
-   ;;; second body form, have a third fall-through: 
-   ;;; error "this doesn't look like perl".
-    (if (perlnow-script-p) 
-        (progn ; this is a script
-          (if (string= perlnow-script-run-string "")
-              (make-local-variable 'perlnow-script-run-string)
-            (setq perlnow-script-run-string 
-                  (format "perl %s" (buffer-file-name))))
-          (setq compile-command
-                (read-from-minibuffer 
-                 "Set the run string for this script: " 
-                 perlnow-script-run-string)))
-      (progn ; else if: this is a module
-        (if (string= perlnow-module-run-string "")
-            (make-local-variable 'perlnow-module-run-string)
-          (setq perlnow-module-run-string 
-                (format "cd %s; make test" 
-                        (file-name-directory (buffer-file-name)))))
-        (setq compile-command
-              (read-from-minibuffer 
-               "Set the run string for this module: " 
-               perlnow-module-run-string)))))
 
-(defun perlnow-run (&optional runstring)  ;;; is the optional okay there?
+;;; move the following up inside of interactive?  But then
+;;; it would need to return the run string, and there should
+;;; be an alternative way of passing in the run string to be
+;;; set when not running this interactively, and none of
+;;; that is actually good for anything.
+
+;;; TODO: consider what slips through the cracks: *.t files 
+;;;       have no hashbang line.
+;;;       Ditto windows perl files (I think).
+;;; Use a "perl -c" (or something like it?) as part of a heuristic 
+;;; to identify a perl script?  (Could just presume that if it ain't 
+;;; a module it's a script... actually, that's not bad)
+
+   (cond
+   ((perlnow-script-p)
+    (make-local-variable 'perlnow-script-run-string)
+    ; set-up intelligent default run string 
+    (unless perlnow-script-run-string 
+      (progn
+        (setq perlnow-script-run-string 
+            (format "perl %s" (buffer-file-name)))))
+    ; ask user how to run this script (use as default next time)
+    (setq perlnow-script-run-string 
+          (read-from-minibuffer 
+           "Set the run string for this script: " 
+           perlnow-script-run-string))
+    ; tell emacs to do it that way
+    (setq compile-command perlnow-script-run-string))
+   ((perlnow-module-p)
+    (make-local-variable 'perlnow-module-run-string)
+    (unless perlnow-module-run-string
+      (progn
+      ; set-up reasonable default string  ;;; TODO actually not that good
+      (setq perlnow-module-run-string 
+            (format "cd %s; make test" 
+                    (file-name-directory (buffer-file-name))))
+      ; ask user for a better one (use as default next time)
+      (setq perlnow-module-run-string
+          (read-from-minibuffer 
+           "Set the run string for this module: " 
+           perlnow-module-run-string))
+      ; tell emacs how to do it
+      (setq compile-command perlnow-module-run-string))
+   (t
+    (message "It's not clear that this is perl code."))))))
+
+(defun perlnow-run (&optional runstring) ;;; is the optional okay there?
   "Run the perl code using the either perlnow-script-run-string or 
 perlnow-module-run-string, as appropriate"
   (interactive)
-  (message "compile-command: %s" compile-command); debugging only
+  (message "compile-command: %s" compile-command) ; debugging only  DELETE
   (compile compile-command))
 
 
@@ -426,37 +456,66 @@ perlnow-module-run-string, as appropriate"
 ;;; Experimental code can go here     BOOKMARK (note: trying reg-*)
 
 
-(defun perlnow-module-p ()
-  "Determine if the buffer looks like a perl module by looking for the 
-package line near the top."
-;;; NEEDS TESTING 
-  (save-excursion 
-    (let ((package-line-pat "^[ \t]*package\\b") 
-          (comment-line-pat "^[ \t]*$\\|^[ \t]*#")
-          pee)
-      (goto-char (point-min))
-      (while (looking-at comment-line-pat) (forward-line 1))
-      (if (looking-at package-line-pat) 
-          (setq pee 't)
-        (setq pee 'nil))
-      pee)))
+;;; I don't know *when* this code is going to be called yet... bottoms up.
+
+(defun perlnow-define-module-run-string ()
+  "Methods to try to determine the perlnow-module-run-string:
+\(1\) Use an existing module run string if it's been defined.  
+    (The buffer-local default should be \"nil\"... hm, currently it's
+    empty string.)
+\(2\)
+ Look up one level above the module-root, check the name of
+    this location, if it's a hyphenized form of the module name, 
+    you found the perl package staging-area. 
+\(3\) \(a\) If there's a Makefile in the staging-area use \"make test\".
+    \(b\) If there's a Makefile.PL there, use \"perl Makefile.PL\" first. 
+\(4\) If there's a subdir named \"t\" one-level up from the module root, 
+    run any *.t files there as perl
+\(5\) If all else fails, prompt the user.
+\n
+Directly sets the perlnow-module-run-string for the current buffer, 
+and also returns this value, or 'nil.
+\n 
+Note: in writing your own code, consider that it may be simpler 
+to just set the variables directly, see perlnow-script-run-string and
+perlnow-module-run-string."
+  (interactive) ;;; maybe just for debugging.  DELETE
+  (cond
+   ((perlnow-module-p)
+       (message "looks like a module, all right."))
+   ((perlnow-script-p)
+       (message "This looks like a perl script."))
+   (t
+    (message "It is not clear that this is perl code.")) )
+)
+
+;;;
+;;; (I could add more rules, but this much alone is annoying enough to have to document.)
+;
+;;; Point (4) implies a *list* of shell commands to run, doesn't it? 
+;;; Have code do a listp on the "run-string" to see what it really is?
+;;; Could punt, and write it as an external file /tmp/New-Module-test-02383.sh
+;;; Or could punter and just drop point (4) for now.
+
+
+
 
 (defun perlnow-perlversion-old-to-new (oldver)
   "Converts old form of perl version \(e.g. 5.006\) into the new form 
 \(i.e 5.6.0\), suitable for use as the -b parameter of h2xs"
 ;;;   (interactive "sinput old-syle perl version number, e.g. 5.006: ")  ; for debugging only
-   (let ( (old-version-pat "^\\([0-9]\\)\\.\\([0-9][0-9][0-9]\\)$")
-           major
-           mantissa 
-           minor1)
+  (let ( (old-version-pat "^\\([0-9]\\)\\.\\([0-9][0-9][0-9]\\)$")
+         major
+         mantissa 
+         minor1)
 ;;;     (message "pattern: %s" old-version-pat) ; debug
-        (if (string-match old-version-pat oldver)
-            (progn 
-              (setq major (match-string 1 oldver)) 
-              (setq mantissa (match-string 2 oldver)))
-          (error "Does not look like an old-style perl version: %s" oldver))
-        (setq minor1 (substring mantissa 2))
-        (concat major "." minor1 "." "0")))
+  (if (string-match old-version-pat oldver)
+      (progn 
+        (setq major (match-string 1 oldver)) 
+        (setq mantissa (match-string 2 oldver)))
+    (error "Does not look like an old-style perl version: %s" oldver))
+  (setq minor1 (substring mantissa 2))
+  (concat major "." minor1 "." "0")))
 
 
 ;;; h2xs -AX -n Net::Acme -b 5.6.0
@@ -464,40 +523,38 @@ package line near the top."
 (defun perlnow-h2xs (h2xs-location module-name) 
   "Quickly jump into development of a new perl module"
   (interactive 
-     ; Because default-directory is the default location for (interactive "D"),
-     ; I'm doing the interactive call in two stages: this way can change 
-     ; default-directory momentarily, then restore it. Uses dynamic scoping via "let".
-     ; (It's more like perl's "local" than perl's "my".)
-        (let ((default-directory perlnow-module-location))
-          (call-interactively 'perlnow-prompt-for-h2xs)))
+; Because default-directory is the default location for (interactive "D"),
+; I'm doing the interactive call in two stages: this way can change 
+; default-directory momentarily, then restore it. Uses dynamic scoping via "let".
+; (which is more like perl's "local" than perl's "my".)
+  (let ((default-directory perlnow-module-location))
+    (call-interactively 'perlnow-prompt-for-h2xs)))
 
-   (let* ( (default-directory h2xs-location)
-           (display-buffer (get-buffer-create "*perlnow-h2xs*"))
-           )
-;;; Still needs to bring *perlnow-h2xs* to the fore 
+  (let* ( (default-directory h2xs-location)
+          (display-buffer (get-buffer-create "*perlnow-h2xs*")) )
 
-;  (delete-other-windows) 
-;  (split-window-vertically -7) ; Expected size of output from h2xs is 6 lines
-;  (other-window)    ;? 
-;  (switch-buffer display-buffer) ; ?
+  ;Bring the *perlnow-h2xs* display window to the fore (bottom window of the frame)
+  (delete-other-windows) 
+  (split-window-vertically -12)       ; Expected size of output from h2xs is 6 lines
+  (other-window 1)                    ; with some re-centering, could trim this "-12".
+  (switch-to-buffer display-buffer) 
 
-     (perlnow-blank-out-display-buffer display-buffer)
+  (perlnow-blank-out-display-buffer display-buffer)
+  (other-window 1)
 
-      (call-process "h2xs"
-                    nil
-                    display-buffer   ; must be buffer object?
-                    nil
-                     "-AX"
-                     (concat "-n" module-name)
-                     (concat "-b" 
-                             (perlnow-perlversion-old-to-new perlnow-minimum-perl-version)))
+  (call-process "h2xs"
+                nil
+                display-buffer      ; must be buffer object?
+                nil
+                "-AX"
+                (concat "-n" module-name)
+                (concat "-b" 
+                        (perlnow-perlversion-old-to-new perlnow-minimum-perl-version)))
 
-        (find-file 
-         (perlnow-full-path-to-h2xs-module h2xs-location module-name))
-;        (delete-other-windows) 
-
-      ); end let*
-   ); end defun 
+  (find-file 
+   (perlnow-full-path-to-h2xs-module h2xs-location module-name))
+ ; (delete-other-windows) 
+  ))
 
 (defun perlnow-full-path-to-h2xs-module (h2xs-location module-name)
   "Get the path to a module created by h2xs.  E.g. if the
@@ -505,41 +562,49 @@ h2xs-location were \"/usr/local/perldev\" and the module were
 \"New::Module\", it should return: 
 \"/usr/local/perldev/New-Module/lib/New/Module.pm\""
   (let ((module-filename 
-             (concat 
-              (file-name-as-directory h2xs-location)
-              (mapconcat 'identity (split-string module-name "::") "-")
-              "lib/"
-              (mapconcat 'identity (split-string module-name "::") "/")
-              ".pm")))))
+         (concat 
+          (file-name-as-directory h2xs-location)
+          (mapconcat 'identity (split-string module-name "::") "-")
+          "/lib/"
+          (mapconcat 'identity (split-string module-name "::") "/")
+          ".pm")))
+    (message "h2xs module file is %s"  module-filename)
+    module-filename))
 
 (defun perlnow-blank-out-display-buffer (buffer)
   "Clear out a temporary display buffer, i.e. one whose 
 name begins with an asterix.  Create it if it doesn't exist.
-Returns the buffer object.  Argument can be a string or a buffer."
-  (interactive "b") ; just for debuggery
-;  (interactive "s") ;   ;;; TRY WITH STRING INPUT NOW
+Returns the buffer object.  Argument can be a string or a buffer. 
+This can work on a read-only buffer."
+;;; TODO - this looks like it should be converted to cond
+; DELETE
+; just for debuggery:
+;   (interactive "Bgimme a buffy: ")                     
+;   (interactive "stype in a buffer name carefully: ") 
+; END DELETIA
 
   (let ((original-buff (buffer-name))
-         original-read-only-status)
+        original-read-only-status)
 
-    ; Buffer argument may be string or buffer object
-    (if (char-or-string-p buffer)  ; stringp better ? would a char work?
-        (setq buffer (get-buffer-create buffer)))
+  ; Buffer argument may be string or buffer object
+  (if (char-or-string-p buffer) ; stringp better ? would a char work?
+      (setq buffer (get-buffer-create buffer)))
 
-    (if (not (string= "*" (substring (buffer-name buffer) 0 1)))
-        (error "Will not blank out a buffer that does not begin with \"*\""))
+  (if (not (string= "*" (substring (buffer-name buffer) 0 1)))
+      (error "Will not blank out a buffer that does not begin with \"*\""))
 
-    (if (buffer-live-p buffer) 
-        (progn
-          (switch-to-buffer buffer)
-          (setq original-read-only-status buffer-read-only)
-          (setq buffer-read-only nil) ; make sure buffer is writeable
-          (mark-whole-buffer)
-          (delete-region (mark) (point))
-          (setq buffer-read-only original-read-only-status) ; make it read-only if we found it that way
-          (switch-to-buffer original-buff))
-      (get-buffer-create buffer))  ; have a feeling this is redundant (maybe not)
-    ))
+  (if (buffer-live-p buffer) 
+      (progn
+        (set-buffer buffer)
+        (setq original-read-only-status buffer-read-only)
+        (setq buffer-read-only nil) ; make sure buffer is writeable
+        (mark-whole-buffer)
+        (delete-region (mark) (point))
+        (setq buffer-read-only original-read-only-status) ; make it read-only if we found it that way
+        )
+    (get-buffer-create buffer)
+
+  )))
 
 
    
@@ -550,7 +615,13 @@ and if so, asks for another name.  The location defaults to the current
 default-directory. Returns a two element list, location and module-name."
 
   (interactive "DLocation for new h2xs structure? \nsName of new module \(e.g. New::Module\)? ")
-  
+  (list where what))
+;;; TODO - Still need to check for already existing module. 
+
+;;; TODO - would like to allow more varied types of input. 
+;;;        Why not:  /home/perl/modev/New::Module ?
+
+;;; DELETE   
 ;;; check for existance of what?  The directory?  Then you need to convert the module 
 ;;; name into the directory name (I think '::' -> '-'), and append that to where. 
 
@@ -560,12 +631,12 @@ default-directory. Returns a two element list, location and module-name."
 
 ;  (let* ((filename (perlnow-full-path-to-module where what))
 ;         (dirname (convert-standard-filename (file-name-directory filename))))
-;    (while (file-exists-p filename)
-;       (setq what 
+                        ;    (while (file-exists-p filename)
+                                        ;       (setq what 
 ;          (read-from-minibuffer "That module name is already in use. Please choose another: " what))
 ;       (setq filename (perlnow-full-path-to-module where what)))
+;;; END DELETIA
 
-  (list where what))
 
 
 
@@ -576,7 +647,7 @@ default-directory. Returns a two element list, location and module-name."
 ;;;  History 
 ;;;===========================================================================
 
-;; This began life as excerpts from "perlutil.el" (not distributed).  
+;; This began life as excerpts from "perlutil.el" -- which was not distributed.
 ;; It was time to clean-up some cruft now that I was settling on  
 ;; using template.el templating, and I wanted to do a package re-name in any case 
 ;; ("perlutil" already means something else in the perl world, "man perlutil" 
