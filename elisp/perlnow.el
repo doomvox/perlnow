@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.130 2004/02/19 23:17:11 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.131 2004/02/20 00:21:10 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -694,12 +694,13 @@ Not to mention: \(scroll-bar-mode -1\) and \(tool-bar-mode -1\).")
 
 
 ; TODO:
-; on the following two, I'm currently using HOME environment variable for
-; a default location, though it's expected this will be overriden with a
-; .emacs setting.  Maybe it would be better to default to something else,
-; like ~/bin and ~/lib, but in that case would have to make sure they
-; exist and maybe create them otherwise. 
-; Or see if they exist, and then use them, if not, silently fall back on HOME?
+; on the following three locations, I'm currently using HOME
+; environment variable for a default location, though it's
+; expected this will be overriden with a .emacs setting.
+; Maybe it would be better to default to something else, possibly:
+;   ~/bin  ~/lib
+; Maybe, see if they exist, and then use them, if not, silently fall 
+; back on HOME?
 
 (defcustom perlnow-script-location (file-name-as-directory (getenv "HOME"))
   "This is the default location to stash new perl scripts.")
@@ -730,13 +731,11 @@ Defines the PERL_MODULE_NAME expansion.")
 (defvar perlnow-package-name-history nil
 "The minibuffer history for perl modules accessed by this package.")
 
-(defvar perlnow-slash (convert-standard-filename "/")
-"A (possibly) more portable form of the file system name separator. ")
-;;; Using this instead of "/" *might* get me a little closer to 
-;;; portability to other systems (e.g. windows). Even if this works 
-;;; though, there are still other places dependencies have crept in, 
-;;; e.g. patterns that use [^/].
-;;; (Um... why not defconstant?)
+(defconst perlnow-slash (convert-standard-filename "/")
+"A \(possibly\) more portable form of the file system name separator. ")
+; Using this instead of "/", as a stab at portability (e.g. for windows). 
+; But even if this helps, there are still other places
+; dependencies have crept in, e.g. patterns that use [^/].
 
 ;;;----------------------------------------------------------
 ;; Defining additional "expansions" for use in template.el templates.
@@ -1071,14 +1070,12 @@ If this works well, it obviates \\[perlnow-do-script] and
   "Given a perl PACKAGE-NAME \(in double-colon separated form\) 
 return the first module file location found in perl's @INC 
 array, or nil if it is not found."
-;;; TODO That "|||" shit is cheesy.  Use "\t" or something, huh?
-;  (interactive "sGimme:") ; DEBUG only DELETE
   (let* (  full return
            (module-file-tail 
             (concat (replace-regexp-in-string "::" perlnow-slash package-name) ".pm"))
            (perl-inc 
-            (shell-command-to-string "perl -e 'foreach (@INC) {print \"$_|||\"}'" ))
-           (inc-path-list (split-string perl-inc "|||"))
+            (shell-command-to-string "perl -e 'foreach (@INC) {print \"$_\t\"}'" ))
+           (inc-path-list (split-string perl-inc "\t"))
            )
     (setq return
      (catch 'TANTRUM
@@ -1086,7 +1083,6 @@ array, or nil if it is not found."
          (setq full (concat (perlnow-fixdir inc-path) module-file-tail))
          (if (file-exists-p full)
              (throw 'TANTRUM full)))))
-;    (message "Ret: %s" return) ; DEBUG only DELETE
     return))
 
    
@@ -1534,12 +1530,13 @@ this favors the earlier occurance in the list."
 ;;;----------------------------------------------------------
 (defun perlnow-one-up (dir)
   "Get an absolute path to the location one above the given location."
-;;; TODO - Wouldn't string matches be simpler? 
+;;; TODO refactoring:
+;;;   Wouldn't string matches be simpler? 
 ;;;   (string-match "\\(^.*/\\)[^/]*$" (perlnow-fixdir dir))
 ;;;   (setq one-up (match-string 1 dir))
   (setq dir (perlnow-fixdir dir))
   (let ((return
-         (concat perlnow-slash ; TODO - write func to prepend slash only if not already there?
+         (concat perlnow-slash 
                  (mapconcat 'identity 
                             (butlast 
                              (split-string dir perlnow-slash) 
@@ -1707,11 +1704,11 @@ schemes for your test files: `perlnow-tutorial-test-file-strategies'."
            ; That's all: just pass through the hash-bang string, e.g. to preserve -T 
            )
         ( (string-match "\.t$"  filename) ; it's a test file
-          (if (setq staging-area perlnow-find-h2xs-staging-area))
+          (if (setq staging-area (perlnow-find-h2xs-staging-area))
               (setq run-line (concat "cd " staging-area "; " "make test"))
-            ((setq run-line
-               (format "perl \"-MExtUtils::Command::MM\" -e \"test_harness(1, %s)\"" filename)
-             )))
+            (setq run-line
+               (format "perl \"-MExtUtils::Command::MM\" -e \"test_harness(1, %s)\"" filename))
+             ))
         (t ; When all else fails, just feed it to perl and hope for the best
          (setq run-line (format "perl %s" filename))
           ))
@@ -1747,7 +1744,7 @@ schemes for your test files: `perlnow-tutorial-test-file-strategies'."
 ;;; END DELETIA
 
 ;;;----------------------------------------------------------
-(defun perlnow-find-h2xs-staging-area
+(defun perlnow-find-h2xs-staging-area ()
   "Determines if the current file buffer located in an h2xs tree.
 Should return the path to the current h2xs staging area, or nil 
 if it's not found.  The staging area is located by searching upwards 
@@ -1777,7 +1774,7 @@ from the present location for a place with a \"lib\" and/or \"t\"
     (setq dir (perlnow-fixdir (file-name-directory filename)))
     (setq return
           (catch 'ICE
-            (while (> (length dir) > 1)
+            (while (> (length dir) 1)
 
               (setq file-list (directory-files dir full-names pattern nosort))
               (dolist (file file-list) 
@@ -1806,7 +1803,7 @@ Returns nil if there is none."
                            "\\(.*\\)$"
                            )) )
       (goto-char (point-min)) ; Presume the hash bang, if any, is the first line (no blanks or comments)
-      (looking-at hash-bang-line-pat) ; why not just string-match?
+      (looking-at hash-bang-pat) ; why not just string-match?
       (setq return
             (match-string 1))
       )))
@@ -1973,7 +1970,6 @@ current file buffer."
 ;;; Just checking getenv("PERL5LIB") would be close, but 
 ;;; using @INC as reported by perl seems more solid, so that's 
 ;;; what we do here.
-;;; TODO That "|||" shit is cheesy.  Use "\t" or something, huh?
   (unless inc-spot
     (setq inc-spot 
           (perlnow-get-inc-spot 
@@ -1981,8 +1977,8 @@ current file buffer."
            (file-name-directory (buffer-file-name)))))
 
     (let* (
-      (perl-inc (shell-command-to-string "perl -e 'foreach (@INC) {print \"$_|||\"}'" ))
-      (inc-path-list (split-string perl-inc "|||"))
+      (perl-inc (shell-command-to-string "perl -e 'foreach (@INC) {print \"$_\t\"}'" ))
+      (inc-path-list (split-string perl-inc "\t"))
       return )
       (setq return 
             (catch 'UP
@@ -1992,7 +1988,7 @@ current file buffer."
       return))
 ;;; TODO
 ;;; Consider loading a lisp structure with @INC once early on, 
-;;; so we won't need to do the above over and over... 
+;;; so we won't need to do the above repeatedly
 
 ;;;==========================================================
 ;;; The following block of code is used by perlnow-module:
@@ -2337,8 +2333,7 @@ double colons for the package name space inside of that.
 This is split into two pieces, the module root 
 and module name, which are returned as a two-element list."
 ;;; TODO 
-;;; Fix portability problem here.  Note pattern [^/] can't work on 
-;;; windows, can it?
+;;; Fix any portability problem here.  Can pattern [^/] work on windows?
   (let* ( (pattern 
             (concat 
              "^\\(.*\\)"       ; ^(.*)    - stuff at start becomes the mod root
@@ -2359,7 +2354,7 @@ and module name, which are returned as a two-element list."
 
 ;;;----------------------------------------------------------
 (defun perlnow-interesting-file-name-p (string)
-  "Should given file or directory name be regarded as interesting?
+  "Is the given file \(or directory name\) be interesting?
 Takes a bare filename (sans path) as the STRING 
 argument and returns t if it doesn't match the list of
 uninteresting filenames patterns, otherwise nil."
@@ -2570,6 +2565,7 @@ It does three things:
 Variables first, followed by functions with user-accessible interactive 
 functions preceeding the internally used ones.")
 
+;;;----------------------------------------------------------
 (defun perlnow-dump-docstrings-for-symbols (list)
   "Given a LIST of symbol names, dump their documentation strings."
   (dolist (symbol-name list)
@@ -2584,6 +2580,7 @@ functions preceeding the internally used ones.")
                  (insert (documentation-property symbol 'variable-documentation)))))))
 
 
+;;;----------------------------------------------------------
 (defun perlnow-dump-docstrings-for-symbols-as-html (list)
   "Given a LIST of symbol names, insert the doc strings with some HTML markup."
   (dolist (symbol-name list)
@@ -2607,6 +2604,7 @@ functions preceeding the internally used ones.")
                  (insert (concat doc-string "</P>\n\n"))))
           )))
 
+;;;----------------------------------------------------------
 (defun perlnow-dump-docstrings-for-symbols-as-html-preserving-links (list)
   "Given a LIST of symbol names, insert the doc strings with some HTML markup.
 This version tries to preserve links in the documentation as html links."
@@ -2678,6 +2676,12 @@ This version tries to preserve links in the documentation as html links."
 ;;; (1) 
 ;;;  List all perlnow-blah, subtract off my list of "important" ones, add the remainder. 
 ;;;  (Make it impossible to forget to add one to the list.)
+;;;  Simpler (and more general): 
+;;;  Given a .el filename, read it in as text, scan for all symbol definitons, 
+;;;  list the docstrings in the order they're defined in the file.
+;;;  I think the idea would be to do it like that, 
+;;;  but allow over ride by a list given as an argument.
+
 ;;; (2) 
 ;;; If a \[blah] is *not* a perlnow-* (best would be to check the list to see if it's there)
 ;;; Then, run it through the emacs filter: 
@@ -2693,6 +2697,62 @@ This version tries to preserve links in the documentation as html links."
 ;;;  E.g. sort symbol names, group by the second term, check the size, do they 
 ;;;  all fit on one page?  If not, try grouping by the third term...
 
+;;; Want other output formats, of course.  
+;;; texinfo.  Maybe XML, if that'll get me to other formats...
+
+;;Wasn't able to get smart formatting above working well (too many breaks after </PRE>, 
+;;breaks mysteriously disappearing: blank lines not identified as blank, etc.)
+;; So let's PRE *everything* (original idea of PREing on a docstring level whenever 
+;; there were indents was semi-workable, but *looked* really funny in the html.)
+
+;;;----------------------------------------------------------
+(defun perlnow-dump-docstrings-for-symbols-as-html-preserving-links-with-idiot-formatting (list)
+  "Given a LIST of symbol names, insert the doc strings with some HTML markup.
+This version tries to preserve links in the documentation as html links.
+And does idiot simple preservation of formatting: *all* docstrings get PRE 
+wrappers."
+  (dolist (symbol-name list)
+    (let* ( doc-string 
+            doc-string-raw
+          (symbol (intern-soft symbol-name)))
+          (cond ((eq symbol nil)
+                 (message "warning: bad symbol-name %s" symbol-name))
+                ((functionp symbol)
+                 (setq doc-string-raw
+                        (documentation symbol t)))
+                (t 
+                 (setq doc-string-raw
+                       (documentation-property symbol 'variable-documentation t))))
+
+          ; Do this early (before adding any html double quotes)
+          (setq doc-string (perlnow-html-ampersand-substitutions doc-string-raw))
+
+          ; Put named anchors on every entry for refs to link to
+          (insert (format "<A NAME=\"%s\"></A>\n" symbol-name))
+
+          ; Using bold face to indicate a function, italics for variables
+          (cond ((functionp symbol)
+                 (insert (concat "<P><B>" symbol-name "</B>" ":<BR>\n")))
+                (t
+                 (insert (concat "<P><I>" symbol-name "</I>" ":<BR>\n"))))
+
+           ; turn `(.*)' into <I><A HREF="#\1">\1</A></I>  note: dot don't match line breaks (good: safer)
+           (setq doc-string 
+                 (replace-regexp-in-string "[`]\\(.*?\\)'" ; that's `(.*?)'
+                                           "<I><A HREF=\"#\\1\">\\1</A></I>" 
+                                           doc-string))
+
+          ; turn \[(.*)]  into <A HREF="#\1">\1</A>
+          (setq doc-string 
+                (replace-regexp-in-string "\\\\\\[\\(.*?\\)\\]" ; that's \[(.*?)]   (one hopes)
+                                          "<A HREF=\"#\\1\">\\1</A>" 
+                                          doc-string))
+
+          (insert (concat "<PRE>\n" doc-string "</PRE></P>\n\n"))
+          )))
+
+
+;;;----------------------------------------------------------
 (defun perlnow-html-ampersand-substitutions (string)
   "Do common html ampersand code substitutions to use this string safely in html."
   (setq string (replace-regexp-in-string "&"   "&amp;"  string))
@@ -2702,6 +2762,7 @@ This version tries to preserve links in the documentation as html links."
  ;;;  (setq string (replace-regexp-in-string "" "" string))
   )
 
+;;;----------------------------------------------------------
 (defun perlnow-do-docstrings-insertion ()
   "Runs the code that lists *all* of the perlnow doc strings."
   (interactive)
@@ -2709,3 +2770,5 @@ This version tries to preserve links in the documentation as html links."
 ;   (perlnow-dump-docstrings-for-symbols-as-html perlnow-symbol-list)
   (perlnow-dump-docstrings-for-symbols-as-html-preserving-links perlnow-symbol-list)
   )
+
+;;;==========================================================
