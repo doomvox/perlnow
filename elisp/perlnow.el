@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.88 2004/02/16 19:44:14 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.89 2004/02/16 21:38:59 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -379,10 +379,9 @@ is not in your @INC search path, it will also add the
 necessary \"FindBin/use lib\" magic to make sure that the 
 script will be able to find the module. 
 
-((script-using should set the runstring for the module!  
-TODO DONTFORGET))
-
-
+If you skip back to the original module buffer, and do a \\[perlnow-run], 
+you'll notice that the script you just created has become the default 
+for the way the code in the mdoule gets run. 
 
 ")
 
@@ -642,7 +641,15 @@ really done\\) then this function will see the first package name."
     (unless package-name 
       (error "%s" "This file doesn't look like a perl module (no leading package line)."))
 
+    ; We expect to use the new script to run the code in this module, so make it the default.
     (setq perlnow-module-run-string (format "perl %s" filename))
+
+    (perlnow-sub-name-to-kill-ring)
+
+    ; force a two window display, existing module and new script
+    (delete-other-windows) 
+    (split-window-vertically)
+    (other-window 1)
 
     (perlnow-new-file-using-template filename perlnow-perl-script-template)
     
@@ -659,6 +666,31 @@ really done\\) then this function will see the first package name."
     (insert (format "use %s;" package-name)) ;;; and maybe a qw() list? 
     (insert "\n")))
    
+;;;----------------------------------------------------------
+(defun perlnow-sub-name-to-kill-ring ()
+  "Pushes the name of the current perl sub on to the kill-ring.
+This is intended to be run inside an open buffer of perl code. 
+It tries to find the name of the current perl sub \(the one that 
+the cursor is inside of\) and pushes it onto the kill-ring, ready 
+to be yanked later.  Used by \\[perlnow-script-using-this-module]."
+  (interactive) ; DEBUG only DELETE
+  (save-excursion
+    ; in case the cursor is *on top* of the keyword "sub", go forward a little.
+    (forward-word 1) 
+    (forward-char)
+    (unless (re-search-backward "^[ \t]*sub " nil t)
+      (error "Unable to find sub beginning"))
+    ; jump to start of name
+    (forward-word 1) 
+    (forward-char)
+    (let ((beg (point)))
+      (unless (re-search-forward "[ \\\\(\\{]" nil t)
+        (error "Unable to find sub name end"))
+      (backward-word 1)
+      (forward-word 1) 
+      (copy-region-as-kill beg (point))
+      )))
+
 
 ;;;----------------------------------------------------------
 (defun perlnow-script-general (script-file-name)
