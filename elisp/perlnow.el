@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.129 2004/02/19 22:29:30 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.130 2004/02/19 23:17:11 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1646,6 +1646,10 @@ schemes for your test files: `perlnow-tutorial-test-file-strategies'."
           fish water        ; going fishing
           return            ; the returned run string 
           ) 
+;;; TODO
+;;; It's possible that the following could be refactored using:
+;;;    perlnow-find-h2xs-staging-area
+;;; This identifies the staging-area by looking for Makefile.PL
 
     (setq return 
           (catch 'COLD
@@ -1657,11 +1661,9 @@ schemes for your test files: `perlnow-tutorial-test-file-strategies'."
               (setq staging-area (perlnow-fixdir staging-area-candidate)) 
               (cond 
                ((file-regular-p (concat staging-area "Makefile"))
-;;;                (setq water "make test")
                 (setq water (concat "cd " staging-area "; make test"))
                 (throw 'COLD water))
                ((file-regular-p (concat staging-area "Makefile.PL"))
-;;;                (setq water "perl Makefile.PL; make test")
                 (setq water (concat "cd " staging-area "; perl Makefile.PL; make test"))
                 (throw 'COLD water)
                 ))))
@@ -1695,30 +1697,45 @@ schemes for your test files: `perlnow-tutorial-test-file-strategies'."
 ;;;----------------------------------------------------------
 (defun perlnow-guess-script-run-string ()
   "Returns a good guess for `perlnow-script-run-string'."
-
+;;; Presumption is that this won't be called if we're in a module, 
+;;; so there's no point in testing that again.  
   (let ( run-line 
         (filename (buffer-file-name)) 
         staging-area)
   ;;# check for hash bang:
-  (cond ((setq run-line (perlnow-hashbang))
-          ;;;   Just pass through the hash-bang, e.g. to preserve -T 
-         )
-        ((string-match "\.t$"  filename) ; it's a test file
+  (cond ( (setq run-line (perlnow-hashbang))
+           ; That's all: just pass through the hash-bang string, e.g. to preserve -T 
+           )
+        ( (string-match "\.t$"  filename) ; it's a test file
           (if (setq staging-area perlnow-find-h2xs-staging-area))
               (setq run-line (concat "cd " staging-area "; " "make test"))
-            (setq run-line
-             (format "perl \"-MExtUtils::Command::MM\" -e \"test_harness(1, %s)\"" testfile)
-             )
-            )
-         )
+            ((setq run-line
+               (format "perl \"-MExtUtils::Command::MM\" -e \"test_harness(1, %s)\"" filename)
+             )))
+        (t ; When all else fails, just feed it to perl and hope for the best
+         (setq run-line (format "perl %s" filename))
+          ))
+  (setq perlnow-script-run-string run-line)))
 
-        ); end cond
-  (setq perlnow-script-run-string run-line)
-  ))
-
+;;; TODO
 ;;; Having some *what if there's no Makefile yet?* conundrums again.
+;;; Here's the deal: 
+;;; (1) if you create it with perlnow-h2xs, that runs "perl Makefile.PL"
+;;; (2) If you *haven't* used the perlnow command, maybe you should also be responsible 
+;;; for manually running "perl Makefile.PL" yourself also. 
+;;; (3) The code to run a module does check and runs a Makefile.PL step if need be.
+;;; (4) This particular code is solely to run scripts, and the "make test" biz here 
+;;;     comes up only if you do the odd thing of using perlnow-run inside a *.t file.
+;;; (5) I could add another check, and stick in a "perl Makefile.PL" step in front 
+;;;     of the make test in that case, but I dislike just leaving it there (potentially 
+;;;     will keep getting run when there's no need). 
+;;; (6) Further, I don't *really* like the idea of checking for it's presence and 
+;;;     deleting it later, (e.g in the perlnow-run command), though this may be an 
+;;;     irrational revulsion to minor fugliness. 
+;;; So, if I ever over come this revulsion, maybe I'll dork out this function to 
+;;; cover this minor case.  Note to brain, stop thinking about this now.  Really, it's okay.
 
-
+;;; DELETE 
 ;;# check buffer-file-name, if extension .t
 ;;#   If a .t is it in an h2xs structure?  "make test"
 ;;#   Otherwise: (format "perl \"-MExtUtils::Command::MM\" -e \"test_harness(1, %s)\"" testfile)
@@ -1727,6 +1744,7 @@ schemes for your test files: `perlnow-tutorial-test-file-strategies'."
 ;;        (format "perl %s" (buffer-file-name)))
 ;;
 ;;  ))
+;;; END DELETIA
 
 ;;;----------------------------------------------------------
 (defun perlnow-find-h2xs-staging-area
