@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.96 2004/02/17 19:44:12 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.97 2004/02/17 20:19:00 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -133,7 +133,7 @@ your ~/.emacs:
   \(global-set-key  \"\M-pm\" 'perlnow-module\)
   \(setq `perlnow-script-location' 
       \(substitute-in-file-name \"$HOME/bin\"\)\)
-  \(setq `perlnow-module-root' 
+  \(setq `perlnow-module-location' 
       \(substitute-in-file-name \"$HOME/lib\"\)\)\n
   
   \(setq `perlnow-h2xs-location'' 
@@ -176,11 +176,11 @@ of this more portable. ")
 (defvar perlnow-documentation-terminology t 
 "Definitions of some terms used here: 
 
-Through out this documentation \(and for some of the code\),
-the simplifying assumption has been made that a perl package
-is a perl module is a single file, \(with extension *.pm\).
-Even though technically multiple packages can occur in a
-single file, that is almost never done in practice.
+This documentation \(and some of the code\), makes the
+simplifying assumption that a perl package is a perl module
+is a single file, \(with extension *.pm\).  Even though
+technically multiple packages can occur in a single file,
+that is almost never done in practice.
 
 module filename: the file system's name for the module file,
        e.g. /usr/lib/perl/Some/Module.pm
@@ -188,24 +188,25 @@ module filename: the file system's name for the module file,
 module file basename: name of the module file itself, sans
        extension: in the above example, \"Module\"
 
-module location: directory portion of module file name,
+module file location: directory portion of module file name,
        e.g. /usr/lib/perl/Some/
 
 module name or package name: perl's double colon separated
        name, e.g. \"Some::Module\"
 
-module root: The place where perl's double package space
-       begins \(e.g. /usr/lib/perl\) Perl's @INC is a list of 
-       different module roots \(alternate term: \"inc-spot\"\).
+inc spot: The name I use for a place where perl's double package 
+       space begins \(e.g. /usr/lib/perl\), because perl's @INC 
+       is a list of different such \"inc spots\"  \(alternate term:
+       \"module root\" or \"package root\"\).
 
 staging area: the directory created by the h2xs command for
        module development, a hyphenized-form of the module
        name e.g. Some-Module.  Every staging area contains
-       a module root called \"lib\".
+       a module root \(or \"inc spot\") called \"lib\".
 
 h2xs location: the place where you put your staging areas
 
-perlish path: means a module path including double colons
+perlish path: this means a module path including double colons
        \(alternate term: \"colon-ized\"\),
 
 file system \(or \"filesys\"\) path: as opposed to \"perlish\".
@@ -229,7 +230,7 @@ test path: search path to look for test files. Note, can
 test policy: the information necessary to know where to put 
        a newly created test file \(\( not yet implemented \)\):
        1 - the test path dot form, e.g. \"./t\"
-       2 - the definition of dot e.g. module-file-location vs. module-root
+       2 - the definition of dot e.g. module-file-location vs. inc-spot
        3 - the naming style, e.g. hyphenized vs. base.")
 
 (defvar perlnow-documentation-tutorial t
@@ -413,7 +414,7 @@ you've got some use for it.
 But remember in order for that sub to be accessible, you
 might need to do something like add that sub name to the
 module's EXPORT_TAGS list, and then add it to the \"use
-<module-name>\" line inside the script.
+<package-name>\" line inside the script.
 
 Currently the perlnow.el package is a little light on
 features to smooth/sleaze your way past those obstacles \(we
@@ -455,7 +456,7 @@ form used by \[perlnow-module] is okay.  It helps
 differentiate it from \[perlnow-module], and in any case it
 doesn't logically lend itself to a single question form.  In
 the case of h2xs the \"where?\" is the staging-area, not the
-module-root.  The module-root is located inside a \"lib\" 
+inc-spot.  The inc-spot is located inside a \"lib\" 
 directory inside the staging-area, so there's a gap between 
 the \"where\" and the \"what\", and we might as well represent 
 that gap as the gap between the two questions.\)
@@ -494,7 +495,7 @@ struck by the urge to try it out in a script.  If so you
 should know that the \\[perlnow-script-general] command is
 smart enough \(*knock* *knock*\) to pick out the module name
 from a man page buffer. This should kick you into a script 
-template with the \"use <module-name>\" line already filled in.
+template with the \"use <package-name>\" line already filled in.
 
 \(By the way, the perldoc.el package looks like a promising
 alternative to running \\[man], but it seems to just act as
@@ -602,11 +603,11 @@ policy\" in `perlnow-documentation-terminology'.")
   "This is the default location to stash new perl scripts.")
 (setq perlnow-script-location (file-name-as-directory perlnow-script-location)) 
 
-(defcustom perlnow-module-root (getenv "HOME")
+(defcustom perlnow-module-location (getenv "HOME")
   "This is the default location to stash new perl modules.")
-(setq perlnow-module-root (file-name-as-directory perlnow-module-root))
+(setq perlnow-module-location (file-name-as-directory perlnow-module-location))
 
-(defcustom perlnow-h2xs-location perlnow-module-root 
+(defcustom perlnow-h2xs-location perlnow-module-location 
   "This is the default location to do h2xs development of CPAN bound modules.")
 
 (defcustom perlnow-executable-setting ?\110
@@ -622,11 +623,11 @@ policy\" in `perlnow-documentation-terminology'.")
 "The template that new perl modules will be created with.")
 (put 'perlnow-perl-module-template  'risky-local-variable t)
 
-(defvar perlnow-perl-module-name nil
+(defvar perlnow-perl-package-name nil
   "Used internally to pass the module name to the new module template.
 Defines the PERL_MODULE_NAME expansion.")
 
-(defvar perlnow-module-name-history nil
+(defvar perlnow-package-name-history nil
 "The minibuffer history for perl modules accessed by this package.")
 
 ;;;----------------------------------------------------------
@@ -690,7 +691,7 @@ defined expansions.")
 
 (setq template-expansion-alist 
       (cons 
-      '("PERL_MODULE_NAME" (insert perlnow-perl-module-name) )
+      '("PERL_MODULE_NAME" (insert perlnow-perl-package-name) )
       template-expansion-alist))
 
 (setq template-expansion-alist 
@@ -816,7 +817,7 @@ Prompts the user for the FILENAME."
    (perlnow-prompt-user-for-file-to-create 
     "Name for the new perl script? " perlnow-script-location))
   (require 'template) 
-  (perlnow-new-file-using-template filename perlnow-perl-script-template)
+  (perlnow-create-with-template filename perlnow-perl-script-template)
   (perlnow-change-mode-to-executable))
    
    
@@ -834,18 +835,18 @@ really done\\) then this function will see the first package name."
   (require 'template) 
   (let* ( (module-filename (buffer-file-name))
           (module-location (file-name-directory module-filename))
-          (package-name (perlnow-get-module-name-from-module-buffer)) 
-          (module-root (perlnow-get-module-root package-name module-location))
+          (package-name (perlnow-get-package-name-from-module-buffer)) 
+          (inc-spot (perlnow-get-inc-spot package-name module-location))
           ) 
     (unless package-name 
       (error "%s" "This file doesn't look like a perl module (no leading package line)."))
 
-    (perlnow-do-script-from-module scriptname package-name module-root)))
+    (perlnow-do-script-from-module scriptname package-name inc-spot)))
 
 ;;;----------------------------------------------------------
-(defun perlnow-do-script-from-module (script-name package-name module-root 
+(defun perlnow-do-script-from-module (script-name package-name inc-spot 
   "Does the work of creating a script from a module-buffer. 
-Takes arguments SCRIPT-NAME PACKAGE-NAME MODULE-ROOT, 
+Takes arguments SCRIPT-NAME PACKAGE-NAME INC-SPOT, 
 which are all explained in `perlnow-documentation-terminology'.
 Used by the old \\[perlnow-script-using-this-module], and the 
 newer \\[perlnow-script-general].  Always returns t, but someday 
@@ -861,12 +862,12 @@ it might return nil for failure."
     (split-window-vertically)
     (other-window 1)
 
-    (perlnow-new-file-using-template script-name perlnow-perl-script-template)
+    (perlnow-create-with-template script-name perlnow-perl-script-template)
     
     ; ensure the module can be found by the script if needed, insert "use lib" line
-    (unless (perlnow-module-root-in-INC-p module-root)
+    (unless (perlnow-inc-spot-in-INC-p inc-spot)
       (let ((relative-path
-             (file-relative-name module-root (file-name-directory script-name))
+             (file-relative-name inc-spot (file-name-directory script-name))
              ))
         (insert "use FindBin qw\($Bin\);\n")
         (insert "use lib \(\"$Bin/")
@@ -910,9 +911,9 @@ Used by \\[perlnow-script-using-this-module]."
 
 
 ;;;----------------------------------------------------------
-(defun perlnow-script-general (script-file-name)
+(defun perlnow-script-general (script-name)
   "General purpose command to quickly jump into coding a perl script. 
-This prompts the user for the new SCRIPT-FILE-NAME, then 
+This prompts the user for the new SCRIPT-NAME, then 
 looks at the current buffer and tries to guess what \"use\" lines
 you might want to start coding with.  If it's a perl module, or a man page 
 documenting a perl module, it will give you a \"use\" line to include 
@@ -928,21 +929,21 @@ If this works well, it obviates \\[perlnow-script] and
   (require 'template) 
   (let ( module-filename module-location package-name ) 
     (cond 
-     ((setq package-name (perlnow-get-module-name))
-      (setq perlnow-perl-module-name package-name) ; global used to pass value into template
+     ((setq package-name (perlnow-get-package-name))
+      (setq perlnow-perl-package-name package-name) ; global used to pass value into template
       (cond
           ((setq module-filename (perlnow-module-found-in-INC package-name))
-            (perlnow-new-file-using-template script-file-name perlnow-perl-script-template)
+            (perlnow-create-with-template script-name perlnow-perl-script-template)
              ; insert the "use Some::Module;" line
             (insert (format "use %s;\n" package-name)) ;;; and maybe a qw() list? 
            )
           ((perlnow-module-p)
             (setq module-filename (buffer-file-name))
-            (perlnow-new-file-using-template script-file-name perlnow-perl-script-template)
+            (perlnow-create-with-template script-name perlnow-perl-script-template)
             (setq module-location (file-name-directory module-filename))
             ; insert "use lib" line to ensure the module can be found by the script
             (let ((relative-path
-                (file-relative-name module-filename (file-name-directory script-file-name))))
+                (file-relative-name module-filename (file-name-directory script-name))))
                (insert
                 (concat "use FindBin qw\($Bin\);\n"
                         "use lib \(\"$Bin/"
@@ -952,19 +953,19 @@ If this works well, it obviates \\[perlnow-script] and
              (insert (format "use %s;\n" package-name)) ;;; and maybe a qw() list? 
           ))
           (t
-           (perlnow-script script-file-name)
+           (perlnow-script script-name)
            ))))))
 
 ;;;----------------------------------------------------------
-(defun perlnow-module-found-in-INC (module-name) 
-  "Given a perl MODULE-NAME \(in double-colon separated form\) 
+(defun perlnow-module-found-in-INC (package-name) 
+  "Given a perl PACKAGE-NAME \(in double-colon separated form\) 
 return the first module file location found in perl's @INC 
 array, or nil if it is not found."
 ;;; TODO That "|||" shit is cheesy.  Use "\t" or something, huh?
 ;  (interactive "sGimme:") ; DEBUG only DELETE
   (let* (  full return
            (module-file-tail 
-            (concat (replace-regexp-in-string "::" "/" module-name) ".pm"))
+            (concat (replace-regexp-in-string "::" "/" package-name) ".pm"))
            (perl-inc 
             (shell-command-to-string "perl -e 'foreach (@INC) {print \"$_|||\"}'" ))
            (inc-path-list (split-string perl-inc "|||"))
@@ -980,10 +981,10 @@ array, or nil if it is not found."
 
    
 ;;;----------------------------------------------------------
-(defun perlnow-module-two-questions (module-root module-name) 
+(defun perlnow-module-two-questions (inc-spot package-name) 
   "Quickly jump into development of a new perl module. 
 This is an older, but simpler form that asks the user two 
-questions to get the MODULE-ROOT and the MODULE-NAME.  The 
+questions to get the INC-SPOT and the PACKAGE-NAME.  The 
 newer \\[perlnow-module\] uses a hybrid form to get that 
 information in a single question.  This function is still provided 
 for people who don't don't agree that that's more convenient."
@@ -992,12 +993,12 @@ for people who don't don't agree that that's more convenient."
    ; I'm doing the interactive call in two stages: change 
    ; default-directory momentarily, then restore it. Uses dynamic scoping via "let".
    ; (It's more like perl's "local" than perl's "my".)
-   (let ((default-directory perlnow-module-root))
+   (let ((default-directory perlnow-module-location))
      (call-interactively 'perlnow-prompt-for-module-to-create)))
   (require 'template) 
-  (setq perlnow-perl-module-name module-name) ; global used to pass value into template
-  (let ( (filename (perlnow-full-path-to-module module-root module-name)) )
-    (perlnow-new-file-using-template filename perlnow-perl-module-template)))
+  (setq perlnow-perl-package-name package-name) ; global used to pass value into template
+  (let ( (filename (perlnow-full-path-to-module inc-spot package-name)) )
+    (perlnow-create-with-template filename perlnow-perl-module-template)))
    
 
 ;;;----------------------------------------------------------
@@ -1006,7 +1007,7 @@ for people who don't don't agree that that's more convenient."
 Asks for the WHERE, i.e. the \"module root\" location, and the WHAT, the name 
 of the perl module to create there.  Checks to see if one exists already, 
 and if so, asks for another name.  The location defaults to the current 
-`default-directory'.  Returns a two element list, location and module-name.\n
+`default-directory'.  Returns a two element list, location and package-name.\n
 Note: This is all used only by the mildly deprecated \\[perlnow-module-two-questions\]."
   (interactive "DLocation for new module?  \nsName of new module \(e.g. New::Module\)? ")
   (let* ((filename (perlnow-full-path-to-module where what))
@@ -1110,10 +1111,10 @@ to a different file."
   (perldb runstring))
 
 ;;;----------------------------------------------------------
-(defun perlnow-h2xs (h2xs-location module-name) 
+(defun perlnow-h2xs (h2xs-location package-name) 
   "To quickly jump into development of a new perl CPAN module.
 Asks two questions, prompting for the H2XS-LOCATION  \(the place where 
-h2xs will create the \"staging area\"\) and the MODULE-NAME \(in perl's 
+h2xs will create the \"staging area\"\) and the PACKAGE-NAME \(in perl's 
 double-colon separated package name form\)."
   (interactive 
 ; Because default-directory is the default location for (interactive "D"),
@@ -1141,12 +1142,12 @@ double-colon separated package name form\)."
                 display-buffer      ; must be buffer object?
                 nil
                 "-AX"
-                (concat "-n" module-name)
+                (concat "-n" package-name)
                 (concat "-b" 
                         (perlnow-perlversion-old-to-new perlnow-minimum-perl-version)))
 
   (find-file 
-   (perlnow-full-path-to-h2xs-module h2xs-location module-name))
+   (perlnow-full-path-to-h2xs-module h2xs-location package-name))
   (search-forward "# Preloaded methods go here.")
   (forward-line 1)   ;alternate: (next-line 1)
 
@@ -1154,7 +1155,7 @@ double-colon separated package name form\)."
   ; would break for older *.t style names, e.g. 1.t. TODO  Generalize?
   (other-window 1)
   (find-file
-   (perlnow-full-path-to-h2xs-test-file h2xs-location module-name))
+   (perlnow-full-path-to-h2xs-test-file h2xs-location package-name))
   (search-forward "BEGIN { plan tests => 1")
   (other-window 1)
   ))
@@ -1168,7 +1169,7 @@ the name of the perl module to create.  Checks to see if one exists
 already, and if so, asks for another name (by doing yet another
 \\[call-interactively] of another function).  The location
 defaults to the current `default-directory'.  Returns a two
-element list, location and module-name."
+element list, location and package-name."
   (interactive "DLocation for new h2xs structure? \nsName of new module \(e.g. New::Module\)? ")
 
   (let ( location-in-staging-area        
@@ -1178,7 +1179,7 @@ element list, location and module-name."
                 (mapconcat 'identity (split-string what "::") "-")))
 
   (while (file-exists-p location-in-staging-area)  ;;; really, directory exists
-    (setq where-and-what  ; (h2xs-location module-name)
+    (setq where-and-what  ; (h2xs-location package-name)
       (call-interactively 'perlnow-prompt-for-h2xs-again))
     (setq where (car where-and-what))
     (setq what (cadr where-and-what))
@@ -1195,7 +1196,7 @@ element list, location and module-name."
 If the user enters an existing h2xs module name in 
 \\[perlnow-prompt-for-h2xs], it will do another chained \\[call-interactively]
 to this function to ask again for WHERE and WHAT with a slightly 
-different message.  Returns a two element list, location and module-name."
+different message.  Returns a two element list, location and package-name."
   (interactive "DThat exists already! Location for new h2xs structure? \nsName of new module \(e.g. New::Module\)? ")
   (list where what))
 
@@ -1214,17 +1215,17 @@ Used by the template.el expansion PNFS."
                  ) ?\ )))
 
 ;;;----------------------------------------------------------
-(defun perlnow-full-path-to-module (module-root module-name)
-  "Piece together a MODULE-ROOT and a MODULE-NAME into a full file name.
+(defun perlnow-full-path-to-module (inc-spot package-name)
+  "Piece together a INC-SPOT and a PACKAGE-NAME into a full file name.
 Given \"/home/doom/lib\" and the perl-style \"Text::Gibberish\" would 
 yield /home/doom/lib/Text/Gibberish.pm or in other words, the 
 filesys path."
   (let ((filename 
          (concat 
-          (mapconcat 'identity (split-string module-name "::") "/")
+          (mapconcat 'identity (split-string package-name "::") "/")
           ".pm")))
-  (setq module-root (file-name-as-directory module-root)) 
-  (concat  module-root filename)))
+  (setq inc-spot (file-name-as-directory inc-spot)) 
+  (concat  inc-spot filename)))
 
 ;;;----------------------------------------------------------
 (defun perlnow-make-sure-file-exists ()
@@ -1267,7 +1268,7 @@ with path."
 
   
 ;;;----------------------------------------------------------
-(defun perlnow-new-file-using-template (filename template)
+(defun perlnow-create-with-template (filename template)
   "Create a new file with a template.el template.
 Given FILENAME and TEMPLATE this does the actual creation of
 the file and associated buffer using the template.  As a 
@@ -1311,7 +1312,7 @@ This looks for the package line near the top."
     (looking-at package-line-pat) )))
 
 ;;;----------------------------------------------------------
-(defun perlnow-get-module-name-from-module-buffer () 
+(defun perlnow-get-package-name-from-module-buffer () 
   "Get the module name from the package line.
 This will be in perl's double colon separated form, or it will
 return nil if none is found."
@@ -1327,16 +1328,16 @@ return nil if none is found."
     return)))
 
 ;;;----------------------------------------------------------
-(defun perlnow-get-module-name () 
+(defun perlnow-get-package-name () 
   "Return the module name  \(in perl's double colon separated form\)
 from either a module buffer or a Man page showing the perldoc for it, 
 or nil if none is found"
 ;  (interactive) ; DEBUG only, DELETE
   (let (return)
     (cond 
-     ((setq return (perlnow-get-module-name-from-module-buffer))
+     ((setq return (perlnow-get-package-name-from-module-buffer))
        )
-     ((setq return (perlnow-get-module-name-from-man))
+     ((setq return (perlnow-get-package-name-from-man))
        )
      (t
       (setq return nil)
@@ -1345,7 +1346,7 @@ or nil if none is found"
     return))
 
 ;;;----------------------------------------------------------
-(defun perlnow-get-module-name-from-man ()
+(defun perlnow-get-package-name-from-man ()
   "Return the module name from a man page buffer displaying the perldoc.
 If not a man page buffer, returns nil.  It tries several methods of 
 scraping the module name from the man page buffer, and returns 
@@ -1476,7 +1477,7 @@ For example if the module were named New::Module, the test file
 could be New-Module.t or Module.t.  It searches the paths in 
 `perlnow-test-path', which uses a familiar dot notation \(\".\" \"..\"\) 
 to specify them relative to \"here\", where \"here\" means either 
-the module-file-location or the module-root \(both interpretations 
+the module-file-location or the inc-spot \(both interpretations 
 are checked\). \n
 If this seems too complex, that's because it is, but it does make 
 it convenient to use this with a number of reasonable organizational 
@@ -1497,20 +1498,20 @@ schemes for your test files: `perlnow-tutorial-test-file-strategies'."
 
   (unless (perlnow-module-p) 
     (error "This buffer does not look like a perl module (no \"package\" line)"))
-  (let* ( (module-name (perlnow-get-module-name-from-module-buffer))
+  (let* ( (package-name (perlnow-get-package-name-from-module-buffer))
           (module-file-location 
             (file-name-directory (buffer-file-name)))
-          (module-root 
-            (perlnow-get-module-root module-name module-file-location ))
-          (hyphenized-module-name 
-            (mapconcat 'identity (split-string module-name "::") "-"))
+          (inc-spot 
+            (perlnow-get-inc-spot package-name module-file-location ))
+          (hyphenized-package-name 
+            (mapconcat 'identity (split-string package-name "::") "-"))
           (module-file-basename 
             (file-name-sans-extension (file-name-nondirectory (buffer-file-name))))
 
           ;;; TODO - Consider exposing a this list to users in some form,
           ;;;        via a defvar or something
           ; This is a listing of possible names for the test file:
-          (test-file-check-list (list (concat hyphenized-module-name ".t")
+          (test-file-check-list (list (concat hyphenized-package-name ".t")
                                       (concat module-file-basename ".t")
                                       ))
 
@@ -1525,11 +1526,11 @@ schemes for your test files: `perlnow-tutorial-test-file-strategies'."
 
     (setq return 
           (catch 'COLD
-            (setq staging-area-candidate (perlnow-one-up module-root))
+            (setq staging-area-candidate (perlnow-one-up inc-spot))
             (setq staging-area-candidate-name 
                   (perlnow-lowest-level-directory-name staging-area-candidate))
             (cond
-             ((string= staging-area-candidate-name hyphenized-module-name)
+             ((string= staging-area-candidate-name hyphenized-package-name)
               (setq staging-area (perlnow-fixdir staging-area-candidate)) 
               (cond 
                ((file-regular-p (concat staging-area "Makefile"))
@@ -1547,7 +1548,7 @@ schemes for your test files: `perlnow-tutorial-test-file-strategies'."
               (if (file-directory-p testloc) 
                   (setq test-search-list (cons testloc test-search-list)))
               (setq testloc 
-                    (perlnow-expand-dots-relative-to module-root testloc-dotform))
+                    (perlnow-expand-dots-relative-to inc-spot testloc-dotform))
               (if (file-directory-p testloc) 
                   (setq test-search-list (cons testloc test-search-list))))
 
@@ -1580,7 +1581,7 @@ schemes for your test files: `perlnow-tutorial-test-file-strategies'."
 )
 
 ;;;----------------------------------------------------------
-(defun perlnow-get-module-root (package-name module-location)
+(defun perlnow-get-inc-spot (package-name module-location)
   "Determine the module root, the place where the package namespace begins.
 Given the PACKAGE-NAME \(e.g. \"New::Module\", and the MODULE-LOCATION 
 \(as an absolute path, e.g. \"/home/doom/perldev/Punk/Skunk/New/Module.pm\"\), 
@@ -1590,19 +1591,19 @@ this returns the module root, \(in our example,
 ;;  /home/doom/perldev/Punk/Skunk/New/Module.pm 
 ;;  /home/doom/perldev/Punk/Skunk/New/              => number of levels:  7
 ;;                                New::Module       => double-colon-count: 1
-;;  /home/doom/perldev/Punk/Skunk/                  The desired module-root
+;;  /home/doom/perldev/Punk/Skunk/                  The desired inc-spot
 ;;
   (let (double-colon-count  ; count of '::' separators
         file-levels-list    ; list of directories in the path
-        module-root)        ; 
+        inc-spot)        ; 
     (setq double-colon-count (- (length (split-string package-name "::")) 1))
     (setq file-levels-list (split-string module-location "/"))
-    (setq module-root (mapconcat 'identity 
+    (setq inc-spot (mapconcat 'identity 
                                  (butlast file-levels-list double-colon-count)
                                  "/"))
-    (setq module-root (concat "/" module-root)) ; kludge, must prepend a "/" 
+    (setq inc-spot (concat "/" inc-spot)) ; kludge, must prepend a "/" 
                                                 ; (thus code breaks if not given full-path)
-    module-root))
+    inc-spot))
 
 
 ;;;----------------------------------------------------------
@@ -1624,36 +1625,36 @@ which is more suitable for use as the -b parameter of h2xs."
 
 
 ;;;----------------------------------------------------------
-(defun perlnow-full-path-to-h2xs-module (h2xs-location module-name)
+(defun perlnow-full-path-to-h2xs-module (h2xs-location package-name)
   "Get the full path to a module created by h2xs.  
-E.g. if the H2XS-LOCATION were \"/usr/local/perldev\" and the MODULE-NAME
+E.g. if the H2XS-LOCATION were \"/usr/local/perldev\" and the PACKAGE-NAME
 were \"New::Module\", this should return: 
 \"/usr/local/perldev/New-Module/lib/New/Module.pm\""
   (let ((module-filename 
          (concat 
           (file-name-as-directory h2xs-location)
-          (mapconcat 'identity (split-string module-name "::") "-")
+          (mapconcat 'identity (split-string package-name "::") "-")
           "/lib/"
-          (mapconcat 'identity (split-string module-name "::") "/")
+          (mapconcat 'identity (split-string package-name "::") "/")
           ".pm")))
     module-filename))
 
 ;;;----------------------------------------------------------
-(defun perlnow-full-path-to-h2xs-test-file (h2xs-location module-name)
+(defun perlnow-full-path-to-h2xs-test-file (h2xs-location package-name)
   "Get the full path to a the test file for a module created by h2xs.  
 E.g. if the H2XS-LOCATION were \"/usr/local/perldev\" and the 
-MODULE-NAME  were \"New::Module\", it should return: 
+PACKAGE-NAME  were \"New::Module\", it should return: 
 \"/usr/local/perldev/New-Module/t/New-Module.t\""
   (let* ( return 
          (module-test-location
           (concat 
            (file-name-as-directory h2xs-location)
-           (mapconcat 'identity (split-string module-name "::") "-")
+           (mapconcat 'identity (split-string package-name "::") "-")
            "/t/"))
          (module-filename
           (concat 
            module-test-location
-           (mapconcat 'identity (split-string module-name "::") "-")
+           (mapconcat 'identity (split-string package-name "::") "-")
            ".t")))
     (cond ((file-exists-p module-filename) 
            (setq return module-filename))
@@ -1696,9 +1697,9 @@ a buffer object.  This can work on a read-only buffer."
   )))
 
 ;;;----------------------------------------------------------
-(defun perlnow-module-root-in-INC-p (&optional module-root)
-  "Determine if the MODULE-ROOT has been included in perl's @INC search path.
-If not given a MODULE-ROOT, it defaults to using the module root of the 
+(defun perlnow-inc-spot-in-INC-p (&optional inc-spot)
+  "Determine if the INC-SPOT has been included in perl's @INC search path.
+If not given a INC-SPOT, it defaults to using the module root of the 
 current file buffer."
 ;;; The issue: 
 ;;; If the module root \(i.e. the beginning of the package name space 
@@ -1709,10 +1710,10 @@ current file buffer."
 ;;; using @INC as reported by perl seems more solid, so that's 
 ;;; what we do here.
 ;;; TODO That "|||" shit is cheesy.  Use "\t" or something, huh?
-  (unless module-root
-    (setq module-root 
-          (perlnow-get-module-root 
-           (perlnow-get-module-name-from-module-buffer)
+  (unless inc-spot
+    (setq inc-spot 
+          (perlnow-get-inc-spot 
+           (perlnow-get-package-name-from-module-buffer)
            (file-name-directory (buffer-file-name)))))
 
     (let* (
@@ -1722,7 +1723,7 @@ current file buffer."
       (setq return 
             (catch 'UP
               (dolist (path inc-path-list)
-                (if (string= path module-root)
+                (if (string= path inc-spot)
                     (throw 'UP t)))))
       return))
 ;;; TODO
@@ -1762,19 +1763,19 @@ current file buffer."
 
 
 ;;;----------------------------------------------------------
-(defun perlnow-module (module-root module-name) 
+(defun perlnow-module (inc-spot package-name) 
   "Quickly jump into development of a new perl module.
-In interactive use, gets the path MODULE-ROOT and MODULE-NAME 
+In interactive use, gets the path INC-SPOT and PACKAGE-NAME 
 with a single question, asking for an answer in a hybrid form 
 like so:
    /home/hacker/perldev/lib/New::Module
-This uses the file-system separator  \"/\" for the MODULE-ROOT 
+This uses the file-system separator  \"/\" for the INC-SPOT 
 location and then the perl package name-space separator \"::\" 
-for the module-name.  The \".pm\" extension is assumed 
+for the package-name.  The \".pm\" extension is assumed 
 and need not be entered. \n
 If the module exists already, this will ask for another name. 
 The location for the new module defaults to the global 
-`perlnow-module-root'. This may be edited at run time."
+`perlnow-module-location'. This may be edited at run time."
 ;;; Formerly named: perlnow-prompt-for-new-module-in-one-step
 
 ;;; TODO DONTFORGET maybe add following to docs
@@ -1790,13 +1791,13 @@ The location for the new module defaults to the global
 
 ;An example of typical input might be: \n
 ;   /usr/local/lib/perl/New::Module\n
-;Where \"/usr/local/lib/perl/\" is the module-root and 
-;\"New::Module\" is the module-name (aka package-name).\n
+;Where \"/usr/local/lib/perl/\" is the inc-spot and 
+;\"New::Module\" is the package-name (aka package-name).\n
 
   (interactive 
-   (let ((initial perlnow-module-root)
+   (let ((initial perlnow-module-location)
          (keymap perlnow-read-minibuffer-map)   ; Note: the keymap is key. Totally transforms read-from-minibuffer.
-         (history 'perlnow-module-name-history) 
+         (history 'perlnow-package-name-history) 
          result filename return
          )
 
@@ -1814,12 +1815,12 @@ The location for the new module defaults to the global
        (setq filename (concat (replace-regexp-in-string "::" "/" result) ".pm")))
 
      (setq return
-           (perlnow-split-perlish-module-name-with-path-to-module-root-and-name result))
+           (perlnow-split-perlish-package-name-with-path-to-inc-spot-and-name result))
      return))
   (require 'template) 
-  (setq perlnow-perl-module-name module-name) ; global used to pass value into template
-  (let ( (filename (perlnow-full-path-to-module module-root module-name)) )
-    (perlnow-new-file-using-template filename perlnow-perl-module-template)))
+  (setq perlnow-perl-package-name package-name) ; global used to pass value into template
+  (let ( (filename (perlnow-full-path-to-module inc-spot package-name)) )
+    (perlnow-create-with-template filename perlnow-perl-module-template)))
 
 
 ;;;----------------------------------------------------------
@@ -2073,7 +2074,7 @@ it only lists directories."
 
 
 ;;;----------------------------------------------------------
-(defun perlnow-split-perlish-module-name-with-path-to-module-root-and-name (string)
+(defun perlnow-split-perlish-package-name-with-path-to-inc-spot-and-name (string)
   "Split the hybrid form of a module path into the two components.
 Input STRING is expected to be a hybrid file system
 path using slashes for the module root name space, and
@@ -2087,15 +2088,15 @@ and module name, which are returned as a two-element list."
              "\\([^/]*\\)"     ; ([^/]*)  - mod name: everything that is not a slash up to  --
              "\\(\\.pm\\)*$"   ; (\.pm)*$ - the end (or an optional .pm extension)
              ))
-           module-root 
-           module-name
+           inc-spot 
+           package-name
           )
          (cond ((string-match pattern string)
-                (setq module-root (match-string 1 string))
-                (setq module-name (match-string 2 string)) ) ; note: does not include any .pm
+                (setq inc-spot (match-string 1 string))
+                (setq package-name (match-string 2 string)) ) ; note: does not include any .pm
                (t
                 (message "match failed: could not separate into module root and name.") )) 
-         (list module-root module-name) ))
+         (list inc-spot package-name) ))
 
 
 ;;;----------------------------------------------------------
@@ -2237,12 +2238,12 @@ It does three things:
                                  "perlnow-documentation-installation"
                                  "perlnow-documentation-terminology"
                                  "perlnow-script-location"
-                                 "perlnow-module-root"
+                                 "perlnow-module-location"
                                  "perlnow-executable-setting"
                                  "perlnow-perl-script-template"
                                  "perlnow-perl-module-template"
-                                 "perlnow-perl-module-name"
-                                 "perlnow-module-name-history"
+                                 "perlnow-perl-package-name"
+                                 "perlnow-package-name-history"
                                  "perlnow-documentation-template-expansions"
                                  "perlnow-minimum-perl-version"
                                  "perlnow-script-run-string"
@@ -2263,18 +2264,18 @@ It does three things:
                                  "perlnow-h2xs"
                                  "perlnow-script-simple"
                                  "perlnow-perlify-this-buffer-simple"
-                                 "perlnow-get-module-name"
+                                 "perlnow-get-package-name"
                                  "perlnow-insert-spaces-the-length-of-this-string"
                                  "perlnow-full-path-to-module"
                                  "perlnow-make-sure-file-exists"
                                  "perlnow-change-mode-to-executable"
                                  "perlnow-prompt-user-for-file-to-create"
-                                 "perlnow-new-file-using-template"
+                                 "perlnow-create-with-template"
                                  "perlnow-nix-script-p"
                                  "perlnow-script-p"
                                  "perlnow-module-p"
-                                 "perlnow-get-module-name-from-module-buffer"
-                                 "perlnow-get-module-name-from-man"
+                                 "perlnow-get-package-name-from-module-buffer"
+                                 "perlnow-get-package-name-from-man"
                                  "perlnow-vote-on-candidates"
                                  "perlnow-prompt-for-h2xs"
                                  "perlnow-prompt-for-h2xs-again"
@@ -2283,14 +2284,14 @@ It does three things:
                                  "perlnow-expand-dots-relative-to"
                                  "perlnow-lowest-level-directory-name"
                                  "perlnow-guess-module-run-string"
-                                 "perlnow-get-module-root"
+                                 "perlnow-get-inc-spot"
                                  "perlnow-perlversion-old-to-new"
                                  "perlnow-full-path-to-h2xs-module"
                                  "perlnow-full-path-to-h2xs-test-file"
                                  "perlnow-blank-out-display-buffer"
                                  "perlnow-module-found-in-INC"
                                  "perlnow-prompt-for-module-to-create"
-                                 "perlnow-module-root-in-INC-p"
+                                 "perlnow-inc-spot-in-INC-p"
                                  "perlnow-read-minibuffer-complete"
                                  "perlnow-read-minibuffer-complete-word"
                                  "perlnow-read-minibuffer-workhorse"
@@ -2298,7 +2299,7 @@ It does three things:
                                  "perlnow-remove-pm-extensions-from-alist"
                                  "perlnow-list-directories-and-modules-as-alist"
                                  "perlnow-list-directory-as-alist"
-                                 "perlnow-split-perlish-module-name-with-path-to-module-root-and-name"
+                                 "perlnow-split-perlish-package-name-with-path-to-inc-spot-and-name"
                                  "perlnow-interesting-file-name-p"
                                  "perlnow-split-module-path-to-dir-and-tail"
                                  )
