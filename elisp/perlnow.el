@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.202 2004/04/27 23:48:20 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.203 2004/04/28 00:03:44 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -153,6 +153,20 @@ Add something like the following to your ~/.emacs file:
    \(require 'template\)
    \(template-initialize\)
    \(require 'perlnow\)
+
+  \(setq `perlnow-script-location'
+      \(substitute-in-file-name \"$HOME/bin\"\)\)
+  \(setq `perlnow-pm-location'
+      \(substitute-in-file-name \"$HOME/lib\"\)\)\n
+  \(setq `perlnow-h2xs-location''
+      \(substitute-in-file-name \"$HOME/perldev\"\)\)\n
+
+   \(perlnow-define-standard-keymappings\)
+
+If you prefer, that last function can be broken out into 
+individual definitions like so \(this would make it easier 
+for you to modify them to suit yourself\):
+
    \(global-set-key \"\\C-c/s\" 'perlnow-script\)
    \(global-set-key \"\\C-c/m\" 'perlnow-module\)
    \(global-set-key \"\\C-c/o\" 'perlnow-object-module\)
@@ -167,12 +181,6 @@ Add something like the following to your ~/.emacs file:
    \(global-set-key \"\\C-c/b\" 'perlnow-back-to-code\)
    \(global-set-key \"\\C-c/~\" 'perlnow-perlify-this-buffer-simple\)
 
-  \(setq `perlnow-script-location'
-      \(substitute-in-file-name \"$HOME/bin\"\)\)
-  \(setq `perlnow-pm-location'
-      \(substitute-in-file-name \"$HOME/lib\"\)\)\n
-  \(setq `perlnow-h2xs-location''
-      \(substitute-in-file-name \"$HOME/perldev\"\)\)\n
 
 Some suggestions on key assignments:
 
@@ -186,8 +194,9 @@ because it's unshifted and on the opposite side from the
 \"c\" \(on most keyboards\) .
 
 You, on the other hand, are free to do whatever you want in
-your .emacs, and I would suggest assigning the commands you
-like to function keys.  Some possibilities:
+your .emacs, and you might prefer other assignments, such 
+as using function keys for frequently used commands.  
+Some possibilities:
 
   \(global-set-key [f4] 'perlnow-script\)
 
@@ -1111,6 +1120,36 @@ Used only by the somewhat deprecated \"simple\" functions:
 ;;;==========================================================
 ;;; User Commands
 ;;;==========================================================
+
+;;;==========================================================
+;;; set-up functions
+
+;;;----------------------------------------------------------
+(defun perlnow-define-standard-keymappings ()
+  "Quickly define some recommended keymappings for perlnow functions.
+By default, perlnow.el makes no changes to the users keymappings.
+I'm of the opinion that the emacs keymappings are too crowded for 
+it to be possible to do this intelligently without causing annoyance.
+As a comprompise, this function is provided to make it easy for you 
+to adopt my recommended keymappings in you like, but they're not forced 
+on you.  Note, these all use the \"C-c/\" prefix, in compliance with 
+the emacs recommendations for minor-modes."
+; TODO - Would be even better if it looked for and warned 
+; about possible collisions... 
+  (interactive)
+   (global-set-key "\C-c/s" 'perlnow-script)
+   (global-set-key "\C-c/m" 'perlnow-module)
+   (global-set-key "\C-c/o" 'perlnow-object-module)
+   (global-set-key "\C-c/h" 'perlnow-h2xs)
+   (global-set-key "\C-c/c" 'perlnow-run-check)
+   (global-set-key "\C-c/r" 'perlnow-run)
+   (global-set-key "\C-c/a" 'perlnow-alt-run)
+   (global-set-key "\C-c/d" 'perlnow-perldb)
+   (global-set-key "\C-c/R" 'perlnow-set-run-string)
+   (global-set-key "\C-c/A" 'perlnow-set-alt-run-string)
+   (global-set-key "\C-c/t" 'perlnow-edit-test-file)
+   (global-set-key "\C-c/b" 'perlnow-back-to-code)
+   (global-set-key "\C-c/~" 'perlnow-perlify-this-buffer-simple))
 
 ;;;==========================================================
 ;;; perl script run functions
