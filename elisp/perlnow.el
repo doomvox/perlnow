@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.204 2004/04/28 00:34:39 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.205 2004/04/28 23:28:53 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1723,6 +1723,7 @@ The test policy is defined by this trio of variables:
            30
            perlnow-perl-test-module-template )
         (save-buffer)
+        (funcall (perlnow-lookup-preferred-perl-mode))
         (if new-file-p
             ;;; Uses (>>>9<<<) in the template to get it in the right place
             ;;; TODO - would it be better to use global(s) to pass to a new expansion?
@@ -1737,13 +1738,14 @@ The test policy is defined by this trio of variables:
          testfile
          30
          perlnow-perl-test-script-template)
+      (funcall (perlnow-lookup-preferred-perl-mode))
       (save-buffer))
      (t
       (let ((extension (perlnow-file-extension (buffer-file-name))))
         (cond ((string= extension "t") 
                (message "Perlnow error: You're already inside of a test file.")
-                ;;; TODO - What, can't create a test file for a test file? 
-                ;;;        "Before writing a test file, I *always* write a test file for it first!"
+                ;;; TODO - You mean, you can't create a test file for a test file? 
+                ;;;   Before writing a test, I *always* write a test for it first!
                )
               (t
                (message "This doesn't look like a perl buffer. Perlnow can't edit it's test file.")
@@ -2502,7 +2504,6 @@ Will warn if there appear to be redundant possible testfiles."
                      (mapconcat 'identity (split-string package-name "::") "-"))
                    ))
 
-
            ;;; TODO - Consider exposing a this list to users in some form,
            ;;;        via a defvar or something
            ; This is a listing of possible names for the test file:
@@ -2555,6 +2556,34 @@ Will warn if there appear to be redundant possible testfiles."
            (message "List appears to have negative length. Huh?")
            ))
     ))
+
+;;;----------------------------------------------------------
+(defun perlnow-assoc-regexp (pattern alist &optional default) 
+  "Return first value from ALIST with key that matches PATTERN."
+    (assoc-default pattern alist 'string-match default))
+
+;;;----------------------------------------------------------
+(defun perlnow-lookup-preferred-perl-mode () 
+  "Look-up which perl mode the user prefers.
+Examines the alists `interpreter-mode-alist' and 
+`auto-mode-alist' to see if perl-mode, 
+cperl-mode \(or perhaps something else entirely?\) 
+has been chosen as the default to work on perl code."
+  (interactive)
+  (let* ( (default "cperl-mode")
+          (mode default)
+          (interpreter-rule "perl") ; should match perl or perl5
+          (auto-rule "\[[pP][pP]\]\[[Llm][Llm][Llm]\]") ; regexp to match a regexp containing: [pP][Llm]
+         )  
+      (cond ((setq mode 
+              (perlnow-assoc-regexp interpreter-rule interpreter-mode-alist default))
+             )
+            ((setq mode 
+              (perlnow-assoc-regexp auto-rule auto-mode-alist default))
+              )  
+            (t 
+             (setq mode default)))
+      mode))
 
 ;;;==========================================================
 ;;; The end of perlnow-edit-test-file family of functions
