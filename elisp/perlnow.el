@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.131 2004/02/20 00:21:10 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.132 2004/02/20 00:46:15 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -2730,11 +2730,14 @@ wrappers."
           ; Put named anchors on every entry for refs to link to
           (insert (format "<A NAME=\"%s\"></A>\n" symbol-name))
 
-          ; Using bold face to indicate a function, italics for variables
-          (cond ((functionp symbol)
-                 (insert (concat "<P><B>" symbol-name "</B>" ":<BR>\n")))
-                (t
-                 (insert (concat "<P><I>" symbol-name "</I>" ":<BR>\n"))))
+;;; skip this, italics on the headings look stupid:
+;;           ; Using bold face to indicate a function, italics for variables
+;;           (cond ((functionp symbol)
+;;                  (insert (concat "<P><B>" symbol-name "</B>" ":<BR>\n")))
+;;                 (t
+;;                  (insert (concat "<P><I>" symbol-name "</I>" ":<BR>\n"))))
+
+          (insert (concat "<P><H3>" symbol-name ":" "</h3>" "\n"))
 
            ; turn `(.*)' into <I><A HREF="#\1">\1</A></I>  note: dot don't match line breaks (good: safer)
            (setq doc-string 
@@ -2750,6 +2753,18 @@ wrappers."
 
           (insert (concat "<PRE>\n" doc-string "</PRE></P>\n\n"))
           )))
+
+;;; TODO
+;;; 
+;;; Need to dump the replace-regexps, 
+;;; Loop over string-matches,
+;;; extract to a variable, 
+;;; check to see if it's in the given list
+;;;  if not, run it through here (probably with \[] or `' restored):
+;;;  (substitute-command-keys STRING)
+;;;  And use the result instead of the hyperlink. 
+;;; 
+;;; And you know what, I don't care that much just now.
 
 
 ;;;----------------------------------------------------------
@@ -2768,7 +2783,8 @@ wrappers."
   (interactive)
 ;  (perlnow-dump-docstrings-for-symbols perlnow-symbol-list)
 ;   (perlnow-dump-docstrings-for-symbols-as-html perlnow-symbol-list)
-  (perlnow-dump-docstrings-for-symbols-as-html-preserving-links perlnow-symbol-list)
+;  (perlnow-dump-docstrings-for-symbols-as-html-preserving-links perlnow-symbol-list)
+   (perlnow-dump-docstrings-for-symbols-as-html-preserving-links-with-idiot-formatting perlnow-symbol-list)
   )
 
 ;;;==========================================================
