@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.183 2004/04/23 01:31:10 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.184 2004/04/23 01:51:11 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1039,11 +1039,11 @@ See `perlnow-script-alt-run-string' and `perlnow-module-alt-run-string' instead.
 (put 'perlnow-alt-run-string  'risky-local-variable t)
 (make-variable-buffer-local 'perlnow-alt-run-string)
 
-(defvar perlnow-associated-code-buffer nil
+(defvar perlnow-associated-code nil
   "Associated code for the current buffer (presumably a test file).
 Used by \\[perlnow-back-to-code].")
-(put 'perlnow-associated-code-buffer  'risky-local-variable t)
-(make-variable-buffer-local 'perlnow-associated-code-buffer)
+(put 'perlnow-associated-code  'risky-local-variable t)
+(make-variable-buffer-local 'perlnow-associated-code)
 
 (defcustom perlnow-test-path (list "." "../t" "./t")
    "List of places to look for test scripts.
@@ -1569,9 +1569,11 @@ It does three things:
 ;;;----------------------------------------------------------
 ;;; TODO
 ;;; Someday, break out the testfile extension ".t" as a settable
-;;; variable.  Use ".test" or whatever, if you want.
+;;; variable, so you can use ".test" or whatever, if you want.
 ;;; Note: watch the handling of the h2xs case, which *always* uses *.t,
-;;; whatever might be used otherwise.
+;;; whatever might be used otherwise.  Similarly, would want searches 
+;;; for test codes to use either the user preference *or* the standard. 
+;;; Which suggests that it should be a list of allowed test file extentions... 
 
 (defun perlnow-edit-test-file (testfile)
    "Find \(or create\) an appropriate TESTFILE for the current perl code.
@@ -1600,10 +1602,12 @@ The test policy is defined by this trio of variables:
 
   ; set some buffer-local variables before we go any where
   (setq perlnow-run-string (concat "perl " testfile))
+  (setq perlnow-associated-code testfile)
 
   (let (package-name new-file-p original-code)
     (setq new-file-p (not (file-exists-p testfile)))
-    (setq original-code (current-buffer))
+    (setq original-code (buffer-file-name))
+
     (cond                               
      ; if module
      ((setq package-name (perlnow-get-package-name-from-module-buffer))  
@@ -1644,25 +1648,23 @@ The test policy is defined by this trio of variables:
               (t
                (message "This doesn't look like a perl buffer. Perlnow can't edit it's test file.")
                )))))
-    (setq perlnow-associated-code-buffer original-code)))
+    (setq perlnow-associated-code original-code)))
 
 
 ;;;----------------------------------------------------------
-;; TODO bleh, (1) this *assumes* the buffer is going to 
-;; still be open (hasn't been killed), 
-;; ;; get the *file* not the buffer, use find-file, eh?
-;; (2) and it will ends up with a doubled display if 
-;; the buffer is *already* displayed.  
+;; TODO
+;; This ends up with a doubled display if 
+;; the buffer is *already* displayed.  Would be 
+;; better to switch windows if it there's an already 
+;; active window.
 (defun perlnow-back-to-code ()
   "Return to the code that this testfile is for.
 Experimental feature.  Functionality may change."
   (interactive)
-;Uses variable:
-;    perlnow-associated-code-buffer
-
-  ;; want the interactive form, because this isn't a temporary switch.
-  ;;(set-buffer perlnow-associated-code-buffer)
-  (switch-to-buffer perlnow-associated-code-buffer))
+; Uses buffer-local variable:
+;    perlnow-associated-code
+; set by perlnow-edit-test-file, etc.
+  (find-file perlnow-associated-code))
 
 
 ;;;==========================================================
@@ -2247,6 +2249,10 @@ schemes for your test files: `perlnow-documentation-test-file-strategies'."
                       (throw 'COLD fish)))))))
     return))
 
+;;;==========================================================
+;;; The following functions are used by perlnow-edit-test-file 
+;;; and it's relatives.
+;;;==========================================================
 ;;;----------------------------------------------------------
 (defun perlnow-get-test-file-name ()
   "Looks for the test file for the current perl code buffer."
@@ -2517,8 +2523,9 @@ Will warn if there appear to be redundant possible testfiles."
            ))
     ))
 
-
-;;; NOTE End of current development Tue Apr 20 00:30:48 2004
+;;;==========================================================
+;;; The end of perlnow-edit-test-file family of functions
+;;;==========================================================
 
 ;;;----------------------------------------------------------
 (defun perlnow-guess-script-run-string ()
