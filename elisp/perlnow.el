@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.64 2004/02/12 02:08:59 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.65 2004/02/12 02:47:57 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -307,7 +307,7 @@ will be added. "
    
    
 ;;;----------------------------------------------------------
-(defun perlnow-module (module-root module-name) 
+(defun perlnow-module-two-questions (module-root module-name) 
   "Quickly jump into development of a new perl module"
   (interactive 
    ; Because default-directory is the default location for (interactive "D"),
@@ -605,7 +605,9 @@ double colon separated form\), or nil if there is none"
    )))
 
 ;;; TODO
-;;; Theory about how to improve perlnow-script-using-this-module.
+;;; FEATURE:
+;;; want to improve perlnow-script-using-this-module
+;;; so that it can work from a perldoc/man buffer as well as a code buffer.
 ;;; Adding capability to "perlnow-get-module-name" would do it: 
 ;;; if there's no package line, start looking elsewhere for 
 ;;; the module name.  
@@ -614,11 +616,15 @@ double colon separated form\), or nil if there is none"
 ;;;      This         "NAME[ \t\n]*\([^ \t]*\)[ \t]"
 ;;;      would load   (match-string 1)  
 ;;;    (2) optionally, see if that Name is also present in the buffer name.
-
+;;;    (3) a double-colon in the candidate name would clinch it, but is not required.
 
 ;;;----------------------------------------------------------
 (defun perlnow-one-up (dir)
   "Gets an absolute path to the location one above the given location"
+;;; TODO - Wouldn't string matches be simpler? 
+;;;   (string-match "\\(^.*/\\)[^/]*$" (perlnow-fixdir dir))
+;;;   (setq one-up (match-string 1 dir))
+
 ;  (interactive "Dgimme a dir: ") ; DEBUG only DELETE
   (setq dir (perlnow-fixdir dir))
   (let ((return
@@ -718,29 +724,29 @@ Note: Relying on the exact precedence of this search should be avoided
 ;;                                   ; ("1.t") ;;; current thought: just let h2xs Makefile handle this
 ;;                                    ))
 
+          ;;; TODO - Consider exposing a proto of this list (somehow) to users,
+          ;;;        via a defvar or something
+          ; This is a listing of possible names for the test file:
           (test-file-check-list (list (concat hyphenized-module-name ".t")
                                       (concat module-file-basename ".t")
-                                      )) ; note, h2xs testfiles need not be included in this list.
+                                      )) ; note, h2xs test files need not be included in this list.
 
-;; TODO - document these better (rename?), or close up the white space. 
-          staging-area
-          maybe-staging-area      ; staging-area-candidate ?
-          maybe-staging-area-name ; staging-area-candidate-name ?
-          testloc
-          test-search-list       
-          testfile
-          water                  ; use when going fishing
-          fish                   ; similar 
-          result                 ; the returned run string 
+          staging-area             ; The location of an h2xs-style dev structure 
+          staging-area-candidate staging-area-candidate-name 
+          test-search-list  ; A listing of possible absolute locations
+                            ;to look for the test file, built up from relative locations in perlnow-test-path
+          testloc testfile  
+          water fish        ; going fishing
+          return            ; the returned run string 
           ) 
 
-    (setq result 
+    (setq return 
           (catch 'COLD
-            (setq maybe-staging-area (perlnow-one-up module-root))
-            (setq maybe-staging-area-name (perlnow-lowest-level-directory-name maybe-staging-area))
+            (setq staging-area-candidate (perlnow-one-up module-root))
+            (setq staging-area-candidate-name (perlnow-lowest-level-directory-name staging-area-candidate))
             (cond
-             ((string= maybe-staging-area-name hyphenized-module-name)
-              (setq staging-area maybe-staging-area) 
+             ((string= staging-area-candidate-name hyphenized-module-name)
+              (setq staging-area staging-area-candidate) 
               (cond 
                ((file-regular-p (concat (perlnow-fixdir staging-area) "Makefile"))
                 (setq water "make test")
@@ -772,7 +778,7 @@ Note: Relying on the exact precedence of this search should be avoided
                     (progn 
                       (setq fish (concat "perl " testfile))
                       (throw 'COLD fish)))))))
-    result)) 
+    return)) 
 
 ;;;----------------------------------------------------------
 (defun perlnow-get-module-root (package-name module-location)
@@ -886,10 +892,9 @@ defaults to using the module root of the current file buffer."
                 (if (string= path module-root)
                     (throw 'UP t)))))
       return))
-
 ;;; TODO
 ;;; Consider loading a lisp structure with @INC once early on, 
-;;; so we won't need to do this over and over... 
+;;; so we won't need to do the above over and over... 
 
 ;;;==========================================================
 ;;; Implementing 
@@ -901,7 +906,7 @@ defaults to using the module root of the current file buffer."
 ;;; directly.
 ;;;==========================================================
 
-;;; perlnow-prompt-for-new-module-in-one-step
+
 
 ;;; BOOKMARK
 
@@ -910,7 +915,7 @@ defaults to using the module root of the current file buffer."
 ; be re-named once it's finished.  The two question form might 
 ; be retained, perhaps mildly deprecated, so it'll need to be 
 ; renamed as well.
-(defun perlnow-module-one-step (module-root module-name) 
+(defun perlnow-module (module-root module-name) 
   "Quickly jump into development of a new perl module 
 When used interactively, gets path and module-name with a single 
 question, asking for an answer in a hybrid form like so:
@@ -922,7 +927,10 @@ and need not be entered. \n
 If the module exists already, this will ask for another name. 
 The location defaults to the global \[perlnow-module-root\], 
 though this may be edited at run time."
+;;; Formerly named: perlnow-prompt-for-new-module-in-one-step
+
 ;;; TODO more explication?
+
 ;;; The use must be careful to switch to double-colon separators 
 ;;; in the right place, to tell perlnow where the division is 
 ;;; in the namespaces. 
