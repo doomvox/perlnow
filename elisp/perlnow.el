@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.75 2004/02/13 23:14:20 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.76 2004/02/14 01:09:03 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -118,6 +118,10 @@
 (provide 'perlnow)
 (eval-when-compile
   (require 'cl))
+
+(defconst perlnow-version "0.1"
+  "Current version of package perlnow.
+Check <http://www.grin.net/~mirthless/perlnow/> for the newest.")
 
 ; The require for the template.el templating system 
 ; (which provides easily customizeable initial file contents) 
