@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.155 2004/02/24 05:01:44 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.156 2004/02/24 05:09:24 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -142,7 +142,7 @@ Add something like the following to your ~/.emacs file:
    \(global-set-key \"\\C-c's\" 'perlnow-script\)
    \(global-set-key \"\\C-c'm\" 'perlnow-module\)
    \(global-set-key \"\\C-c'h\" 'perlnow-h2xs\)
-   \(global-set-key \"\\C-c'=\" 'perlnow-run-check\)
+   \(global-set-key \"\\C-c'c\" 'perlnow-run-check\)
    \(global-set-key \"\\C-c'r\" 'perlnow-run\)
    \(global-set-key \"\\C-c'd\" 'perlnow-perldb\)
    \(global-set-key \"\\C-c'u\" 'perlnow-set-run-string\)
