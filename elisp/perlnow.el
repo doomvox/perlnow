@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.62 2004/02/12 01:40:32 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.63 2004/02/12 02:01:42 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -354,7 +354,7 @@ assumes it's a perl script."
      (unless perlnow-module-run-string 
        (progn
          (setq perlnow-module-run-string 
-               (perlnow-choose-module-run-string))))
+               (perlnow-guess-module-run-string))))
      ; ask user how to run this module (use as default next time)
      (setq perlnow-module-run-string 
            (read-from-minibuffer 
@@ -674,7 +674,7 @@ e.g. Given: \"/usr/lib/perl/\" Returns: \"perl\" "
     return))
 
 ;;;----------------------------------------------------------
-(defun perlnow-choose-module-run-string ()
+(defun perlnow-guess-module-run-string ()
   "Returns a good guess for an appropriate perlnow-module-run-string. 
 First looks for the Makefile \(or Makefile.PL\) of an h2xs set-up.
 Failing that it looks for a nearby test file which, for example, 
@@ -688,14 +688,16 @@ it convenient to use a number of reasonable organizational schemes for
 test files.\n
 Note: Relying on the exact precedence of this search should be avoided
 \(future versions may work slightly differently\)."
-
 ;;; Document those schemes for test file locations in detail.  Where? 
 ;;; TODO:
 ;;; o  Will also at some point want a "perlnow-edit-test-file-for-this-module".
 ;;; Maybe this code should be revamped (sigh), prefer code that returns test file name?
 ;;; o  Still another want would be "perlnow-create-test-file-for-module" which would need 
 ;;; to read policy from somewhere, to know where to put it and what to call it. 
-  (interactive) ;;; DEBUG only DELETE
+;;; My pick for policy: if inside of an h2xs structure, put in the appropriate "t", 
+;;; otherwise... put in parallel?  (Possibly, create a local t for it.)
+;
+;  (interactive) ;;; DEBUG only DELETE
   (unless (perlnow-module-p) 
     (error "This buffer does not look like a perl module (no \"package\" line)."))
   (let* ( (module-name (perlnow-get-module-name))
@@ -715,11 +717,12 @@ Note: Relying on the exact precedence of this search should be avoided
 
           (test-file-check-list (list (concat hyphenized-module-name ".t")
                                       (concat module-file-basename ".t")
-                                      ))
+                                      )) ; note, h2xs testfiles need not be included in this list.
 
+;; TODO - document these better (rename?), or close up the white space. 
           staging-area
-          maybe-staging-area
-          maybe-staging-area-name
+          maybe-staging-area      ; staging-area-candidate ?
+          maybe-staging-area-name ; staging-area-candidate-name ?
           testloc
           test-search-list       
           testfile
@@ -931,12 +934,9 @@ though this may be edited at run time."
 ;Where \"/usr/local/lib/perl/\" is the module-root and 
 ;\"New::Module\" is the module-name (aka package-name).\n
 
-;;; TODO test this
-;;; If the module exists already, this will ask for another name. 
-
   (interactive 
    (let ((initial-contents perlnow-module-root)
-         (keymap perlnow-read-minibuffer-map) 
+         (keymap perlnow-read-minibuffer-map)  ; Note: the keymap is key. Mutates read-from-minibuffer.
          (history   nil)   ; TODO - History can not stay "nil"
          result filename return
          )
@@ -955,37 +955,12 @@ though this may be edited at run time."
        (setq filename (concat (replace-regexp-in-string "::" "/" result) ".pm")))
 
      (setq return
-           (perlnow-split-module-file-name-to-module-root-and-name result))
+           (perlnow-split-perlish-module-name-with-path-to-module-root-and-name result))
      return))
 
   (setq perlnow-perl-module-name module-name) ; global used to pass value into template
   (let ( (filename (perlnow-full-path-to-module module-root module-name)) )
     (perlnow-new-file-using-template filename perlnow-perl-module-template)))
-
-
-;;;----------------------------------------------------------
-;;; DELETE - test routine
-(defun readem ()
-  "and weep, most likely"
-;;; TODO 
-;;; Getting near time to export this technique to perlnow-get-module-name-whatchamacallit
-;;; or whatever 
-  (interactive)
-  (let (
-        (init   nil) ; 
-        (keymap perlnow-read-minibuffer-map) ; Can feed it a keymap!  
-        (read   nil) ; 
-        (hist   nil) ; 
-        (def    nil) ; 
-        (iim    nil) ; 
-         result
-        )
-  (setq result
-        (read-from-minibuffer "Give it to me: " 
-                              init keymap read hist def iim))
-  (message "result: %s" result)
-   ))
-;;; END DELETIA
 
 
 ;;;----------------------------------------------------------
@@ -1163,9 +1138,8 @@ be bound to the \"?\" key during the minibuffer read."
 (defun perlnow-remove-pm-extensions-from-alist (alist)
   "Go through an alist of file names and values, removing the 
 pm extension from the end of any file names in which it appears."
-;Note that this actually throws away the value and generates a new 
-;one. Not expected to matter."
-
+;Note that this actually throws away the numeric value and generates 
+;a new one: I don't expect that this matters."
   (let (name new-alist (i (length alist)) )
     (dolist (pair alist)
       (setq name (car pair))
@@ -1247,16 +1221,13 @@ the values associated with them in the alist are sequential numbers"
 
 
 ;;;----------------------------------------------------------
-;;; TODO this needs a better name
-(defun perlnow-split-module-file-name-to-module-root-and-name (string)
-  "Input is expected to be a hybrid file system
+(defun perlnow-split-perlish-module-name-with-path-to-module-root-and-name (string)
+  "Input string is expected to be a hybrid file system
 path using slashes for the module root name space, and
 double colons for the package name space inside of that. \n
-\(TODO - maybe this should be discussed up top, define 
-terminology for it.\)\n
 This input is split into two pieces, the module-root 
 and module-name, which are returned in a list."
-  (interactive "stest string: ") ; DEBUG only DELETE
+;  (interactive "stest string: ") ; DEBUG only DELETE
   (let* ( (pattern 
             (concat 
              "^\\(.*\\)"       ; ^(.*)    - stuff at start becomes the mod root
