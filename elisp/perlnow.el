@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.144 2004/02/21 10:36:19 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.145 2004/02/21 11:28:42 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -751,6 +751,10 @@ current date.
 
 The perlnow custom expansions: 
 
+\(>>>EMAIL_DOT_EMACS<<<\)
+This inserts the users email address as determined from 
+their .emacs setting of the variable `user-mail-address'.
+
 \(>>>PERL_MODULE_NAME<<<\)
 becomes the perl module name \(in double-colon
 separated form\) when used by \\[perlnow-module]
@@ -800,6 +804,11 @@ defined expansions.")
 (setq template-expansion-alist 
       (cons 
       '("PERL_MODULE_NAME" (insert perlnow-perl-package-name) )
+      template-expansion-alist))
+
+(setq template-expansion-alist 
+      (cons 
+      '("EMAIL_DOT_EMACS" (insert user-mail-address) )
       template-expansion-alist))
 
 (setq template-expansion-alist 
