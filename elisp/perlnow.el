@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.1 2004/01/17 09:10:34 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.2 2004/01/19 07:15:19 doom Exp root $
 ;; Keywords: 
 ;; X-URL: not distributed yet
 
@@ -44,6 +44,18 @@
 (require 'template)  ; templating system: easily customizeable initial file contents
 
 
+;;;==========================================================
+;;; Macros
+;;;==========================================================
+
+(defmacro perlnow-require-trailing-slash (path)
+  "Appends a slash to the end of string in variable, 
+unless one is there already"
+;;; TODO - if this needs to add a / it returns 't: 
+;;;        would prefer it always return path 
+   `(or (string-equal "/" (substring ,path (- (length ,path) 1)))
+        (setq ,path (concat ,path "/"))))
+
 ;;;;##########################################################################
 ;;;;  User Options, Variables
 ;;;;##########################################################################
@@ -76,57 +88,48 @@
              ))
 
    ; TODO:
-   ; on the following two, I'm currently using HOME
-   ; environment variable for a default location, though
-   ; it's expected this will be overriden with a .emacs
-   ; setting.  Maybe it would be better to default to
-   ; something else, like ~/bin and ~/lib, but in that case
-   ; would have to make sure they exist and create them
-   ; otherwise.
+   ; on the following two, I'm currently using HOME environment variable for
+   ; a default location, though it's expected this will be overriden with a
+   ; .emacs setting.  Maybe it would be better to default to something else,
+   ; like ~/bin and ~/lib, but in that case would have to make sure they
+   ; exist and create them otherwise.
 
 (defvar perlnow-script-location (getenv "HOME")
     "The default location to stash new perl scripts")
+(perlnow-require-trailing-slash perlnow-script-location)
 
 (defvar perlnow-module-location (getenv "HOME")
     "The default location to stash new perl modules")
-
+(perlnow-require-trailing-slash perlnow-module-location)
 
 (defvar perlnow-executable-setting ?\110
    "Pattern of user-group-all permission settings used when making a script executable")
 
-(defvar perlnow-perl-script-template (concat (getenv "HOME") "/.templates/TEMPLATE-perl.tpl")
+;;; TODO simplify with $HOME and that function that expands it:
+(defvar perlnow-perl-script-template (concat (getenv "HOME") "/.templates/TEMPLATE.perl.tpl")
    "The template.el template new perl scripts will be created with" )
-;;; (setq perlnow-perl-script-template (concat (getenv "HOME") "/.templates/TEMPLATE-perl.tpl"))
+;;; (setq perlnow-perl-script-template (concat (getenv "HOME") "/.templates/TEMPLATE.perl.tpl"))
 
-(defvar perlnow-perl-module-template (concat (getenv "HOME") "/.templates/TEMPLATE-pm.tpl")
+;;; TODO simplify with $HOME and that function that expands it:
+(defvar perlnow-perl-module-template (concat (getenv "HOME") "/.templates/TEMPLATE.pm.tpl")
    "The template.el template new perl modules will be created with" )
+;;; (setq perlnow-perl-module-template (concat (getenv "HOME") "/.templates/TEMPLATE.pm.tpl"))
 
 (defvar perlnow-perl-module-name 'nil
   "Used internally to pass the new full module name in
-double-colon separated form to the perl module template ")
+the perl double-colon separated form to the module template ")
 ;;; TODO - Look for a way to do this without a global variable
 
 ;;; Adding template feature PERL_MODULE_NAME for the perlnow-module function. 
-;;; TODO - FIX something wrong with the syntax here? Single-Quote out of place maybe: "'(insert"
 (setq template-expansion-alist 
         (cons 
-          '("PERL_MODULE_NAME" . '(insert perlnow-perl-module-name) )
+          '("PERL_MODULE_NAME" (insert perlnow-perl-module-name) )
           template-expansion-alist))
-;;;
+
+;;; DELETE ME
 ;;; Eval this to erase effects of the above:
 ;;; (setq template-expansion-alist 'nil)
-
-;;;==========================================================
-;;; Macros
-;;;==========================================================
-
-(defmacro perlnow-require-trailing-slash (path)
-  "Appends a slash to the end of string in variable, 
-unless one is there already"
-;;; TODO - if this needs to add a / it returns 't: 
-;;;        would prefer it always return path 
-   `(or (string-equal "/" (substring ,path (- (length ,path) 1)))
-        (setq ,path (concat ,path "/"))))
+;;; END DELETIA
 
 ;;;==========================================================
 ;;; User Commands
@@ -140,16 +143,16 @@ unless one is there already"
   (message "compile-command: %s" compile-command)
   (compile compile-command) )
 
+;;;
+
 (defun perlnow-script (filename)
   "Quickly jump into development of a new perl script"
   (interactive 
      (perlnow-prompt-user-for-file-to-create 
        "Name for the new perl script? " perlnow-script-location))
-
-   (perlnow-create-file-using-template filename perlnow-perl-script-template)
-
-   (perlnow-make-executable)
-   (perlnow-set-modes-for-perl))
+   (perlnow-new-file-using-template filename perlnow-perl-script-template)
+   (perlnow-change-mode-to-executable)
+   (perlnow-set-emacs-modes-for-perl))
 
 ;;; 
 
@@ -159,10 +162,8 @@ in the currently open buffer"
   (interactive 
     (perlnow-prompt-user-for-file-to-create 
       "Name for the new perl script? " perlnow-script-location))
-
   (let (package-name
         (module-filename (buffer-file-name))) 
-
     ;;; read the package name out of the initial module file buffer:
     (save-excursion 
       (let ((comment-line-pat "^[ 	]*$\\|^[ 	]*#")
@@ -172,11 +173,9 @@ in the currently open buffer"
         (if (looking-at package-line-pat)
             (setq package-name (match-string 1))
           (error "%s" "No leading package line: This file doesn't look like a perl module"))))
-        (message package-name)  ;;; for debugging purposes
-
+;;; DELETE        (message package-name)  ;;; for debugging purposes
         ;;; create new script file buffer using template
-        (perlnow-create-file-using-template filename perlnow-perl-script-template)
-
+        (perlnow-new-file-using-template filename perlnow-perl-script-template)
         ;;; insert the lib path tweaks to ensure the module can be found by the script
         (let ((relative-path
                (file-relative-name module-filename (file-name-directory filename))
@@ -184,15 +183,14 @@ in the currently open buffer"
           (insert "use FindBin qw\($Bin\);\n")
           (insert "use lib \(\"$Bin/")
           (insert relative-path)
-          (insert "\");"))
-
+          (insert "\");\n"))
         ;;; insert the "use Some::Module;" line
         (insert (format "use %s;" package-name)) ;;; and maybe a qw() list? 
         (insert "\n")))
 ;;; Question: is there something intelligent that could be done 
 ;;; with EXPORT_OK to provide a menu of options here? 
 ;;; Should you qw() *all* of them (maybe except for :all) and let user delete?
-p
+
 ;;; Maybe someday: check first PERL5LIB and don't add FindBin jazz if module 
 ;;; is already findable.  Easy enough: (getenv "PERL5LIB") Search through result 
 ;;; for matching (file-name-directory module-name).
@@ -211,71 +209,40 @@ p
 ;;; *for* you.
 
 
-;;;  BOOKMARK 
-;;; TODO: STEP ONE: Just diagram this shit.  Why so many layers of function 
-;;;    calls? 
+;;; BOOKMARK -- This is very close, but there's an error somewhere, maybe in:
+;;; perlnow-new-file-using-template
 
 (defun perlnow-module (module-location module-name) 
   "Quickly jump into development of a new perl module"
   (interactive 
-     (perlnow-prompt-user-for-module-to-create (perlnow-module-location))
+     ; save and restore default-directory (using let dynamic scoping magic)
+        (let* ((default-directory perlnow-module-location))
+          (call-interactively 'perlnow-prompt-user-for-module-to-create)))
+
+   ;;; DELETE ME  - look at *Messages* make sure this looks right.
+   (message "default directory has returned to:%s" default-directory)
+   ;;; END DELETIA
 
    (setq perlnow-perl-module-name module-name) ; global used to pass value into template
 
-   (let ((filename (perlnow-full-file-name module-location module-name) ))
-     (perlnow-create-file-using-template filename perlnow-perl-module-template))
-   (perlnow-make-executable)
-   (perlnow-set-modes-for-perl)))
+   (let ( (filename (perlnow-full-file-name module-location module-name)) )
+     (perlnow-new-file-using-template filename perlnow-perl-module-template))
+;;;   (perlnow-change-mode-to-executable) ; this is a module, idjit
+   (perlnow-set-emacs-modes-for-perl))
 
-;;; (TODO - Maybe move these down to the Internal section when they're finished)
 
-(defun perlnow-prompt-user-for-module-to-create (default-location) 
+(defun perlnow-prompt-user-for-module-to-create (where what) 
   "Ask the user two questions: the location and the name of the perl 
 module to create, check to see if one exists already, and if so, 
 ask for another name.  Returns a two element list, location and module-name."
-
-; save current directory (save-excursion?)
-; change current directory to the default location (so D use it)
-; Call function to ask: Where should the module go? 
-; Call function to ask: What is the name of the module? 
-
-  (perlnow-require-trailing-slash default-location)
-;;; TODO Look into the right way to undo the change to default-directory 
-;;; later... use a "let" to set it? (Does that work without lexicals?)
-;;; Just save the value and restore later?  At least that's guaranteed to work.
-  (setq default-directory default-location)
-  (let ((where (call-interactively 'perlnow-ask-where))
-        (what  (call-interactively 'perlnow-ask-what)))
-        (list where what)))
-
-(defun perlnow-prompt-user-for-module-to-create-stage-two (where what)
-   "Doing this in two stages, because interactive \"D\" uses the 
-default-directory as it's default, so that has to be set *before* 
-calling interactive \"D\""
-;;; Trying to piece together ask-where and ask-what into one routine.
-;;;  BOOKMARK - TEST THIS
-
   (interactive "D:Where? \ns:What? ")
   (list where what))
-  
-(defun perlnow-ask-where (where)
-  (interactive "D:Where? ")
-  (message where))
-
-(defun perlnow-ask-what (what)
-  (interactive "s:What? ")
-  (message what))
-
-(defun perlnow-test (where what)
-  (interactive (perlnow-prompt-user-for-module-to-create "/home/doom/tmp"))
-  (message "where: %s, what: %s" where what))
-
-;;; TODO - Above works but should be cleaned up.  
-;;;   (1)  Possible for one defun to do a ask-where-and-what? 
-;;;        Note, need to return two values. (Better prompts, too, explain 
-;;;        need to use perl's internal module name form, Blah::Bleh not Blah/Bleh.pm)
+;;;  TODO 
+;;;   (1)  Better prompt messages, huh?
 ;;;   (2)  Note, as written directory must exist, *but* subdirs implied by the 
-;;;        module name (e.g. "Blah") might need to be created.  Do that. 
+;;;        module name (e.g. "Blah" in "Blah::Bleh") might need to be created.  
+;;;        Where should that happen?
+
 
 (defun perlnow-full-file-name (module-location module-name)
   "Piece together a location and a perl-style module name into a full file name: 
@@ -287,14 +254,6 @@ given \"/home/doom/lib\" and \"Text::Gibberish\" would yield /home/doom/lib/Text
      (perlnow-require-trailing-slash module-location)
      (concat  module-location filename)))
 
-(defun perlnow-anothertest () 
-  (interactive)
-  (message "full file name: %s" (perlnow-full-file-name "/home/doom/lib/" "HaHa")))
-
-
-
-
-
 
 ;;;==========================================================
 ;;; Older code 
@@ -302,7 +261,10 @@ given \"/home/doom/lib\" and \"Text::Gibberish\" would yield /home/doom/lib/Text
 
 ;;; Maybe: include the old perlutil-* routines. 
 ;;; Detect if template.el is installed, and if not, 
-;;; fall back on using these?  
+;;; fall back on using these (instant gratification principle... 
+;;; try and do something useful, even if the installation isn't 
+;;; quite right... but notify somehow that there's a problem to 
+;;; be fixed). 
 
 ;;;   (defun perlutil-perlnow ()
 ;;;   (defun perlutil-perlify-this-buffer ()
@@ -312,33 +274,47 @@ given \"/home/doom/lib\" and \"Text::Gibberish\" would yield /home/doom/lib/Text
 ;;; Internally used functions 
 ;;;==========================================================
 
-(defun perlnow-make-executable ()
+;;; DELETE ME
+(defun perlnow-make-executable()
+ "Function that doesn't exist any more, though edebug doen't 
+seem to know that."
+ 'nil)
+;;; END DELETIA
+
+(defun perlnow-make-sure-file-exists()
+  "Forcibly saves the current buffer to it's associated file, 
+to make sure that the file actually exists."
+  (insert " ") 
+  (delete-backward-char 1) 
+  (save-buffer))
+
+(defun perlnow-change-mode-to-executable ()
    "Makes the file associated with the current buffer executable"
+  ; Need to make sure the file really exists before we chmod it
+  ; so we save it, but to make sure that happens it has to be "modified":
+  (perlnow-make-sure-file-exists)
+  (let* ((all-but-execute-mask ?\666)
+        (filename (buffer-file-name))
+        (file-permissions (file-modes filename))
+        (new-file-permissions 
+         (+ (logand file-permissions all-but-execute-mask) perlnow-executable-setting)
+               ))
+;  (setq file-permissions (file-modes filename))
+;  (setq new-file-permissions 
+;    (+ (logand file-permissions all-but-execute-mask) perlnow-executable-setting))
+  (set-file-modes filename new-file-permissions)))
 
-  ; Save first, to try to make sure the file really exists before
-  ; we change the protections on it ((better ways?))
-  (save-buffer)
 
-  (let ((all-but-execute-mask ?\666)
-        (file-permissions)
-        (new-file-permissions))
-
-  (setq file-permissions (file-modes (buffer-file-name)))
-  (setq new-file-permissions 
-    (+ (logand file-permissions all-but-execute-mask) perlnow-executable-setting))
-  (set-file-modes (buffer-file-name) new-file-permissions)))
-
-
-(defun perlnow-set-modes-for-perl ()
+(defun perlnow-set-emacs-modes-for-perl ()
    "set modes for perl code display "
-   ; Changes a (presumeably newly created) file buffer to 
+   ; Changes a (presumeably newly created) file buffer to emacs 
    ; modes suitable for displaying perl code: cperl-mode with font-lock-mode. 
    ; Yes, this is presumptious:
    ; The Emacs Way would probably be to look at interpreter-mode-alist
    ; and infer from that what the user would prefer.   (Unless there's 
    ; some general command you can run that'll check that alist for you 
    ; and figure it's perl from the hashbang line or the *.pm (or .pl?)
-   (cperl-mode)  
+   (cperl-mode)
   ; Turn on font-lock-mode, (if not on already) Why not "if
   ; *not* font-lock"?  Because this works. Dunno why.
   (if (font-lock-mode) (font-lock-mode)) )
@@ -349,7 +325,6 @@ given \"/home/doom/lib\" and \"Text::Gibberish\" would yield /home/doom/lib/Text
 check to see if one exists already, and if so, ask for another name.  
 Returns full file name with path."
 ;;; TODO - add feature to check if intervening directories exist and create them if needed
-
   (let ( filename )
     (perlnow-require-trailing-slash default-location) ;;; would rather do this just once.
     (while (progn 
@@ -359,16 +334,24 @@ Returns full file name with path."
              (setq ask-mess 
                    "That name is already in use, please use another name: " )
              (file-exists-p filename)))
-      (message filename) ;;; CHECK: must be better way to get it to return filename (eval?)
+      (list filename)
       ))
 
-(defun perlnow-create-file-using-template (filename template)
+(defun perlnow-new-file-using-template (filename template)
   "Given filename and template, does the actual creation of
 the file and associated buffer using the template"
+
 ;;; Because of a bug in template.el, when using template-new-file 
 ;;; non-interactively, we must set the global "template-file" here:
     (setq template-file (template-split-filename filename)) 
-    (template-new-file filename template))
+    (template-new-file filename template)
+    (write-file filename))
+
+
+;;;==========================================================
+;;; Experimental code can go here     BOOKMARK (note: trying reg-*)
+
+
 
 ;;;===========================================================================
 ;;;  History 
@@ -376,7 +359,7 @@ the file and associated buffer using the template"
 
 ;; This began life as excerpts from "perlutil.el" (not distributed).  
 ;; It was time to clean-up some cruft now that I was settling on  
-;; using template.el templating, and I wanted to do a re-name in anycase 
+;; using template.el templating, and I wanted to do a package re-name in any case 
 ;; ("perlutil" already means something else in the perl world, "man perlutil" 
 ;; will tell you about utilities that come with perl).
 
@@ -386,15 +369,16 @@ the file and associated buffer using the template"
 ;; executable, and insert a standard header with title, email and date. 
 ;; Then I wanted to get away from the hard-coded header, so I started 
 ;; experimenting with templating systems -- following the golden (silver? 
-;; well, at least tin) rule: "though shalt not invent yet another templating 
+;; tin?) rule: "though shalt not invent yet another templating 
 ;; system" I started looking at the various existing lisp packages.  
-;; The tempo.el packaged had some promise, but also some problems and it's largely
+;; The tempo.el package had some promise, but also some problems and it's largely
 ;; designed for other things (heavily interactive uses, like writing new major 
-;; modes).  I've settled on template.el as being closest to what I want 
-;; though it's more complicated than what I need, probably isn't widely 
+;; modes; and it presumes template authors are familiar with lisp).  
+;; I've settled on template.el as being closest to what I want 
+;; though it's also probably more complicated than what I need, probably 
 ;; distributed and I've had to kludge a work-around in an existing bug 
-;; (which I will report someday if I can understand it well enough... 
-;; like I said, excessively complicated). 
+;; isn't widely (which I will report someday if I can understand it well
+;; enough... like I said, excessively complicated). 
 
 ;; See here for more:
 ;;   /home/doom/End/Hack/Emacs/notes-perlutil
