@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.190 2004/04/26 20:23:39 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.191 2004/04/26 21:05:47 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1412,12 +1412,13 @@ double-colon separated package name form\)."
           (h2xs-module-file "")
           (h2xs-test-file   "")
           (h2xs-staging-area "")
+          (window-size 14)
           )
 
     (setq display-buffer (get-buffer-create "*perlnow-h2xs*")) 
 
   ;Bring the *perlnow-h2xs* display window to the fore (bottom window of the frame)
-  (perlnow-show-buffer-other-window display-buffer -14 t)
+  (perlnow-show-buffer-other-window display-buffer (- window-size) t)
 
   (perlnow-blank-out-display-buffer display-buffer t)
 
@@ -1433,7 +1434,7 @@ double-colon separated package name form\)."
                         (perlnow-perlversion-old-to-new perlnow-minimum-perl-version)))
     )
 
-;;; TODO -- This method isn't working:
+;;; TODO -- This way isn't working:
 ;;  (perlnow-process-Makefile.PL h2xs-location package-name)
 ;;; Doing it like this instead:
   (setq h2xs-staging-area (perlnow-staging-area h2xs-location package-name))
@@ -1445,14 +1446,12 @@ double-colon separated package name form\)."
   (forward-line 1)   ;alternate: (next-line 1)
 
   ; Also  open the *.t file 
-;;;  (setq h2xs-test-file (perlnow-full-path-to-h2xs-test-file-older h2xs-location package-name))
   (setq h2xs-test-file (perlnow-full-path-to-h2xs-test-file h2xs-staging-area))1
 
-;;;  (message "h2xs-test-file: %s" h2xs-test-file) ;;; DEBUG
   (setq perlnow-associated-code h2xs-test-file) ; bufloc, used by "C-c'b"
   (perlnow-open-file-other-window 
-    h2xs-test-file 
-    -14)  ; same number of lines as above.  No template, No switchback.
+      h2xs-test-file 
+      window-size)  ; same number of lines as above.  Note: leaving args template and switchback nil.
   (search-forward "BEGIN { plan tests => 1")
   (setq perlnow-associated-code h2xs-module-file) ; bufloc, used by "C-c'b"
   (other-window 1)
@@ -1635,9 +1634,9 @@ The test policy is defined by this trio of variables:
               )
         (setq perlnow-perl-package-name package-name) ; global to pass value to template
         (perlnow-open-file-other-window 
-         testfile
-         -30
-         perlnow-perl-test-module-template )
+           testfile
+           30
+           perlnow-perl-test-module-template )
         (save-buffer)
         (if new-file-p
             ;;; Uses (>>>9<<<) in the template to get it in the right place
@@ -1650,9 +1649,9 @@ The test policy is defined by this trio of variables:
      ((perlnow-script-p) 
       (setq perlnow-perl-script-name (buffer-file-name)) ; global to pass value to template
       (perlnow-open-file-other-window 
-       testfile
-       -30
-       perlnow-perl-test-script-template)
+         testfile
+         30
+         perlnow-perl-test-script-template)
       (save-buffer))
      (t
       (let ((extension (perlnow-file-extension (buffer-file-name))))
@@ -1710,30 +1709,27 @@ Experimental feature.  Functionality may change."
 ;;; to show a new window alongside the existing current window, I close 
 ;;; all others and just display the two of them.  Would be better to use 
 ;;; smarter handling that would leave others open if there's enough room.
-;;; 
+;;; Question: could both both functions be fused together?  
+
 ;;; TODO refactor -
 ;;;    look for occurances of delete-other-windows, replace with these functions
 ;;; if possible. 
 ;;;----------------------------------------------------------
 (defun perlnow-open-file-other-window (file &optional numblines template switchback)
-  "Utility to open file in another window, leaving current visible.
-Options: NUMBLINES, negative integer controlling the number of lines 
-in the new window, defaults to -20; TEMPLATE a template.el template to 
-be used in creating a new file buffer.  If SWITCHBACK is true, the cursor 
-is left in the original window, not the new one."
+  "Utility to open file in another window, leaving current
+visible.  Options: NUMBLINES, the number of lines in the new
+window (defaults to half of frame height); TEMPLATE a
+template.el template to be used in creating a new file
+buffer.  If SWITCHBACK is true, the cursor is left in the
+original window, not the new one."
 ;;; TODO - 
 ;;; Inelegant interface: *requires* NUMBLINES if you want to feed it a TEMPLATE
-;;; Also: you typically want to feed a negative number for NUMBLINES, what does it mean exactly?
-
-;;; TODO - numblines should default to half window height ("<===")
-;; Height of the current frame:
-;;   (screen-height)
-;; Integer division by 2? 
-
 
   (unless numblines
-    (setq numblines -20)) ;;; <===
+    (setq numblines (- (/ (screen-height) 2) 1) )) ; new window defaults to half of frame height
+
   (delete-other-windows)
+  (setq numblines (- numblines))
   (split-window-vertically numblines) ; Number of lines to display
   (other-window 1)
 
@@ -1752,19 +1748,19 @@ is left in the original window, not the new one."
         (other-window 1))
     ))
 
-
 ;;;----------------------------------------------------------
 (defun perlnow-show-buffer-other-window (buffer &optional numblines switchback)
-  "Utility to open BUFFER in another window, leaving current visible.
-Options: NUMBLINES, negative integer controlling the number of lines 
-in the new window, defaults to -20; TEMPLATE a template.el template to 
-be used in creating a new file buffer.  If SWITCHBACK is true, the cursor 
-is left in the original window, not the new one."
+  "Utility to open BUFFER in another window, leaving current
+visible.  Options: NUMBLINES, the number number of lines in
+the new window, defaults to half window height; TEMPLATE a
+template.el template to be used in creating a new file
+buffer.  If SWITCHBACK is true, the cursor is left in the
+original window, not the new one."
 ;;; TODO check if true:
 ;;; Argument BUFFER can be a string or a buffer object.
 
   (unless numblines
-    (setq numblines -20))  ;;; TODO - default to half window height
+    (setq numblines (/ (screen-height) 2) )) ; new window defaults to half of frame height
 
   (delete-other-windows)
   (split-window-vertically numblines) ; Number of lines to display
@@ -2775,13 +2771,15 @@ were \"New::Module\", this should return:
     pm-file))
 
 ;;;----------------------------------------------------------
+;;; 
+;;; DELETE FOLOWING
 (defun perlnow-full-path-to-h2xs-test-file-older (h2xs-location package-name)
   "Get the full path to a the test file for a module created by h2xs.
 E.g. if the H2XS-LOCATION were \"/usr/local/perldev\" and the
 PACKAGE-NAME  were \"New::Module\", it should return:
-\"/usr/local/perldev/New-Module/t/New-Module.t\""
-  ;;; TODO - generalize to work with older test file naming style.
-  ;;; Currently, this presumes the modern naming style, won't find older names, e.g. 1.t. 
+\"/usr/local/perldev/New-Module/t/New-Module.t\" 
+This is an older, deprecated version, not currently in use.
+Probably won't work as well for older versions of h2xs."
   (let* ( return
          (module-test-location
           (concat
@@ -2801,10 +2799,9 @@ PACKAGE-NAME  were \"New::Module\", it should return:
            (error "Can't find h2xs test file or test location")
            ))
     test-file))
-
+;;; END DELETIA
 
 ;;;----------------------------------------------------------
-
 (defun perlnow-full-path-to-h2xs-test-file (h2xs-staging-area)
   "Get the full path to a the test file for a module created by h2xs.
 Given the H2XS-STAGING-AREA, it looks for files located in the 
@@ -2823,15 +2820,20 @@ for the old-fashioned \"1.t\".  E.g. if the staging-area were
           (basename-truncated "")
           )
 
-    (setq module-test-location
-           (perlnow-fixdir
-            (concat h2xs-staging-area "/t/")))
+    (setq h2xs-staging-area (perlnow-fixdir h2xs-staging-area))
 
-    ; peel off the lower level of "module-test-location", 
+    (setq module-test-location
+            (concat h2xs-staging-area "t/"))
+
+    ; peel off the lower level of "h2xs-staging-area", 
     ; to get the probable base-name
-    (let (( dir (perlnow-fixdir module-test-location) ))
-      (string-match "\\(^.*/\\)\\([^/]*\\)[/]*$" dir)
-      (setq basename (match-string 2 dir)))
+    (let ((dir h2xs-staging-area))
+;      (string-match "\\(^.*/\\)\\([^/]*\\)[/]*$" dir)
+      (string-match "\\(^.*/\\)\\([^/]*\\)/$" dir)
+      (setq basename (match-string 2 dir))
+      (unless basename 
+        (message "warning: blank basename found in perlnow-full-path-to-h2xs-test-file"))
+      )
     (setq test-file1 (concat module-test-location basename ".t"))
 
     ; for the hell of it, peel off the last part 
@@ -2844,7 +2846,7 @@ for the old-fashioned \"1.t\".  E.g. if the staging-area were
    ; And if *that* fails, we'll return the directory location 
    ; (a feature that might be better than just returning a 
    ; single file, eh?  Maybe should only open the h2xs test file 
-   ; when there's just one of them...  Think about that -- TODO).
+   ; when there's only one there...  Think about that -- TODO).
 
    (cond ( (file-exists-p test-file1)
            (setq test-file test-file1 ) )
@@ -2858,9 +2860,6 @@ for the old-fashioned \"1.t\".  E.g. if the staging-area were
           (error "Can't find h2xs test file or test location")
           ))
     test-file))
-
-
-
 
 ;;;----------------------------------------------------------
 (defun perlnow-blank-out-display-buffer (buffer &optional switchback)
