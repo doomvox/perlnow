@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.160 2004/02/26 20:21:24 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.161 2004/02/26 20:27:15 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -717,7 +717,14 @@ might create a perlscript in the location displayed in a current dired
 buffer.  So does that imply yet another sub-local-minor-mode?  
 
 Eh, I've punted on this for now.  It doesn't help that the Emacs Ref 
-Manual is a little light on examples of how to do global minor-modes.")
+Manual is a little light on examples of how to do global minor-modes.
+
+In general, it's not entirely clear to me how minor-modes are supposed
+to play together nicely.  The segment of the keymap available for
+minor-mode usage is pretty small \(C-c [punctuation], and not *all*
+punctuation either\).  I would think you could easily run into situations 
+where the order in which you load minor-modes would change the keymappings
+you end up with.")
 
 
 
