@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.196 2004/04/27 00:50:36 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.197 2004/04/27 01:02:22 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1448,13 +1448,10 @@ double-colon separated package name form\)."
   ; Also  open the *.t file 
   (setq h2xs-test-file (perlnow-full-path-to-h2xs-test-file h2xs-staging-area))
 
-;;; These two lines now inside of perlnow-open-file-other-window:                  ;;; DELETE
-;;;=1>  (setq perlnow-associated-code h2xs-test-file) ; bufloc, used by "C-c'b"    ;;; DELETE
   (perlnow-open-file-other-window 
       h2xs-test-file 
       window-size)  ; same number of lines as above.  Note: leaving args template and switchback nil.
   (search-forward "BEGIN { plan tests => 1")
-;;;=2>  (setq perlnow-associated-code h2xs-module-file) ; bufloc, used by "C-c'b"  ;;; DELETE
 
   (other-window 1)
   ))
@@ -2720,37 +2717,6 @@ which is more suitable for use as the -b parameter of h2xs."
           (perlnow-fixdir h2xs-location)
           (mapconcat 'identity (split-string package-name "::") "-")))))
     staging-area))
-
-;; ;;;----------------------------------------------------------
-;; (defun perlnow-process-Makefile.PL (h2xs-location package-name)
-;;   "Create Makefile from Makefile.PL in an h2xs set-up.
-;; Uses H2XS-LOCATION and PACKAGE-NAME to find the current staging-area
-;; and do a \"perl Makefile.PL\" there, to create a Makefile.
-;; NOTE: not currently in use.  call-process doesn't see default-directory 
-;; as advertised."
-;; ;;; TODO - get this working, or delete it.  Using this instead:
-;; ;;;   perlnow-run-perl-makefile-pl-if-needed
-
-;;   (let ( (h2xs-staging-area
-;;            (perlnow-staging-area h2xs-location package-name))
-;;          (display-buffer (get-buffer-create "*perlnow-h2xs*")) )
-
-;; ;;;    (perlnow-blank-out-display-buffer display-buffer)
-
-;;     (set-buffer display-buffer)
-;;     (insert "Trying to generate Makefile from Makefile.PL\n")
-;;     (let ( (default-directory h2xs-staging-area) )
-;;       (message "dd: %s" default-directory)
-;;       (call-process "perl"
-;;                     nil
-;;                     display-buffer
-;;                     nil
-;;                     "Makefile.PL"
-;;                     ))))
-;; ;; Double-checking the documentation for call-process in the elisp ref manual: 
-;; ;;   The subprocess gets its current directory from the value of
-;; ;;`default-directory' (*note File Name Expansion::).
-;; ;; Ah: but that's a buffer-local variable.... maybe that's it?  Nope.
 
 ;;;----------------------------------------------------------
 (defun perlnow-full-path-to-h2xs-module (h2xs-location package-name)
