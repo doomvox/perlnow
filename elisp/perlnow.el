@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.51 2004/02/11 03:24:09 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.52 2004/02/11 05:59:24 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1112,41 +1112,6 @@ the values associated with them in the alist are sequential numbers"
   ; Reverse the order of the match-alist
   (setq match-alist (reverse match-alist))  ;; maybe this isn't needed, but cargo cult programming is fun
   ))
-
-
-(defun perlnow-recursive-list-directory-as-alist (path pattern)
-  "Gets a recursive directory listing from the given path, and returns an alist of the items 
-that match the given pattern, and which also pass the \[perlnow-interesting-file-name-p] 
-test. These are full file names including the path, and the values 
-associated with them are sequential numbers"
-;;; Giving up on this: NOT USED
-   (let ( file-list
-          full-file
-          match-alist
-          find-command
-          raw-listing
-          (i 1) )  ; counter used to build alist with numeric value
-;;; Getting a recursive file-list
-;;; Note this automatically applies "pattern", how about the "interesting"
-;;; criteria?  Combine it with the given pattern?  Eh, screw it, do it later.
-;;; ((well... you could put it in the chain as a grep filter))
-     (setq find-command
-           (concat 
-             "find " path " -name '" (shell-quote-argument fragment) "*' -print" " 2>/dev/null "))
-     (setq raw-listing
-           (shell-command-to-string find-command))
-     (setq file-list
-           (split-string raw-listing "[\n\r]+"))
-     (dolist (full-file file-list)
-       (if (perlnow-interesting-file-name-p full-file)
-       (progn
-         (setq match-alist (cons (cons full-file i) match-alist)) 
-         (setq i (+ i 1))
-         )))
-  ; Reverse the order of the match-alist
-  (setq match-alist (reverse match-alist))  ;; *might* not be needed. 
-  ))
-
 
 
 ;;;----------------------------------------------------------
