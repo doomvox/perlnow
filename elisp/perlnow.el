@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.99 2004/02/17 23:49:22 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.100 2004/02/18 00:26:14 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -2266,6 +2266,11 @@ It does three things:
 ;;; These are just quick hacks.  (I expect that before I
 ;;; finished a more general set of tools I'd discover that
 ;;; someone else has written them already.)
+;;; TODO check that.
+;;; Consider spinning off a general package, that extracts help strings
+;;; and converts it into (a) html (b) texinfo
+;;; In absence of my "symbol-list", could generate one following the 
+;;; order of definition in the file.  
 
 (defvar perlnow-symbol-list (list 
                                  "perlnow-documentation"
@@ -2378,6 +2383,57 @@ functions preceeding the internally used ones.")
                  (insert (concat doc-string "</P>\n\n"))))
           )))
 
+(defun perlnow-dump-docstrings-for-symbols-as-html-preserving-links (list)
+  "Given a LIST of symbol names, insert the doc strings with some HTML markup.
+This version tries to preserve links in the documentation as html links. 
+STATUS: NOT FINISHED."
+  (interactive)
+  (dolist (symbol-name list)
+    (insert (format "<A NAME=\"%s\"></A>\n" symbol-name))
+    (insert (concat "<P><B>" symbol-name "</B>" ":<BR>\n"))
+    (let ( doc-string
+           doc-string-raw
+          (symbol (intern-soft symbol-name)))
+          (cond ((eq symbol nil)
+                 (message "warning: bad symbol-name %s" symbol-name))
+                ((functionp symbol)
+                 (setq doc-string-raw
+                        (documentation symbol t)))
+                (t 
+                 (setq doc-string-raw
+                       (documentation-property symbol 'variable-documentation t))))
+
+          (setq doc-string (perlnow-html-ampersand-substitutions doc-string-raw))
+
+          ; turn \[(.*)]  into <A HREF="#\1">\1</A>
+          (setq doc-string 
+                (replace-regexp-in-string "\\\\\\[\\(.*\\)\\]" ; that's \[(.*)]   (one hopes)
+                                          "<A HREF=\"#\\1\">\\1</A>" 
+                                          doc-string))
+
+          ; <PRE> if some lines have leading whitespace, else just <P>:
+          (cond ((string-match "\n[ \t][ \t]+" doc-string)
+                 (insert (concat "<PRE>" doc-string "</PRE></P>\n\n")))
+                (t
+                 (replace-regexp-in-string "^[ \t]*$" "<BR><BR>" doc-string)
+                 (insert (concat doc-string "</P>\n\n"))))
+          )))
+;;; Getting close to slick.
+;;; TODO
+;;; (1) 
+;;;  List all perlnow-blah, subtract off my list of "important" ones, add the remainder. 
+;;;  (Make it impossible to forget to add one to the list.)
+;;; (2) 
+;;; If a \[blah] is *not* a perlnow-* (best would be to check the list to see if it's there)
+;;; Then, run it through the emacs filter: 
+;;;    (substitute-command-keys STRING)
+;;;    Substitute key descriptions for command names in STRING.
+;;; (3) 
+;;; Append a TOC of the entire list, as an appendix.  (Too long to lead with).
+;;; (4) 
+;;; Prepend boiler plate, explaining what the fuck it is? 
+;;; Better: create a special purpose template.el template.
+;;; Have the code create the html file, then do this fancy doctring insert at point. 
 
 (defun perlnow-html-ampersand-substitutions (string)
   "Do common html ampersand code substitutions to use this string safely in html."
@@ -2392,7 +2448,8 @@ functions preceeding the internally used ones.")
   "Runs the code that lists *all* of the perlnow doc strings."
   (interactive)
 ;  (perlnow-dump-docstrings-for-symbols perlnow-symbol-list)
-  (perlnow-dump-docstrings-for-symbols-as-html perlnow-symbol-list)
+;   (perlnow-dump-docstrings-for-symbols-as-html perlnow-symbol-list)
+  (perlnow-dump-docstrings-for-symbols-as-html-preserving-links perlnow-symbol-list)
   )
 
 
