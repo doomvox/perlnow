@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.179 2004/04/19 20:57:23 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.180 2004/04/19 22:13:03 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -350,17 +350,19 @@ It looks like your binding is: \\[next-error]
 
 But as cool as \\[perlnow-run-check] is, you could skip it if
 you like, and go straight to \\[perlnow-run], which will
-\(most likely\) then ask you how you want to run the script.
-The default command line is just \"perl <scriptname>\";
-but you can append whatever arguments and re-directs you
-like.  Once a run-string is defined for that file buffer
-it will stop asking you this question, though you can change
-the run string later at any time with \\[perlnow-set-run-string].
+\(the first time through\) then ask you how you want to 
+run the script. The default command line is just 
+\"perl <scriptname>\"; but you can append whatever 
+arguments and re-directs you like.  Once a run-string 
+is defined for that file buffer it will stop asking you 
+this question, though you can change the run string later 
+at any time with \\[perlnow-set-run-string].
 
-Every time you do a \\[perlnow-run] it behaves much like doing a 
-\\[perlnow-run-check]: any problems will be reported in another 
-buffer, once again letting you do the \\[next-error] trick to 
-jump to where you need to be.
+Every time you do a \\[perlnow-run] it behaves much like
+doing a \\[perlnow-run-check]: any problems will be reported
+in another buffer \(mixed in with the output from the
+program\), once again letting you do the \\[next-error]
+trick to jump to where you need to be.
 
 By the way, you might notice I've said nothing about
 stopping to do a \"chmod u+x\" to make the script
@@ -430,7 +432,7 @@ for the module name.
 Note that one of the advantages of the \\[perlnow-run-check]
 command for doing syntax checks is that it works on module
 code just as well as on scripts: you don't need to have a
-method of running the module to work on the syntactical bugs.
+method of running the module to clean up the syntactical bugs.
 
 If you do a \\[perlnow-run] it will \(a\) perform an elaborate 
 search to try and find a test file for the module then \(b\) ask 
@@ -445,11 +447,11 @@ module.
 take a look at `perlnow-documentation-test-file-strategies'\)
 
 Anyway, \\[perlnow-script] will create a file with a script
-template inserted that already has a simple \"use <module
-name>\" line filled in.  If the module is not in your @INC
-search path, it will also add the necessary \"FindBin/use lib\"
-magic to make sure that the script will be able to find the
-module.
+template inserted that already has a simple 
+\"use <module name>\" line filled in.  If the module is not 
+in your @INC search path, it will also add the necessary 
+\"FindBin/use lib\" magic to make sure that the script will 
+be able to find the module.
 
 If you skip back to the original module buffer, and do a \\[perlnow-run], 
 you'll notice that the script you just created has become the default 
@@ -457,8 +459,8 @@ for the way the code in the module gets run.
 
 Another little gimmick hidden away here, is that you should find
 that the name of whatever perl \"sub\" the cursor happened to
-have been near has been pushed on to the kill-ring.  You can do
-a \\[yank] if you've got some use for it.
+have been near has been pushed on to the kill-ring.  You can just 
+do a \\[yank] if you've got some use for it.
 
 But remember in order for that sub to be accessible, you
 might need to do some chores like add the sub name to the
@@ -577,8 +579,32 @@ little hard for template.el to spot that you're creating
 one.  Though if you can get into the habit of doing a
 \\[template-new-file] instead of \\[find-file], and don't
 mind selecting the correct template after you enter the file
-name then you're pretty much there.")
+name then you're pretty much there.
 
+Misc topic 3 - the \"alternative\" way of running a script: 
+
+With version 0.3, perlnow.el now includes a way to 
+have easy access to two different ways of running some code.  
+In addition to the commands \\[perlnow-run] and  
+\\[set-perlnow-run-string] commands there are now
+\\[perlnow-alt-run] and \\[set-perlnow-alt-run-string].
+The \"alt-run\" commands behave identically to the \"run\"
+commands, but they use a different buffer-local variable 
+to store the run string.  The developer can then do 
+things like use the \\[perlnow-alt-run] command to run 
+a general regression test for an entire module, but 
+use \\[perlnow-run] to run a small test that just exercises 
+whatever feature is currently under development.  
+It's often useful to have a simple, fast-running test 
+that you use frequently, and a more through battery 
+of tests which can take a few minutes to run because 
+you don't use it as often. 
+
+Note that if you need to switch between more than two 
+run strings, there's always the minibuffer \"history\" 
+features:  \\[previous-history-element] and 
+\\[next-history-element] which in-context, you will 
+typically find bound to Alt-p and Alt-n.")
 
 
 (defvar perlnow-documentation-test-file-strategies t
@@ -734,7 +760,7 @@ minor-modes.
 
 In general, it's not entirely clear to me how minor-modes are supposed
 to play together nicely.  The segment of the keymap available for
-minor-mode usage is pretty small \(C-c [punctuation], and not *any*
+minor-mode usage is pretty small \(C-c [punctuation], and not just any
 punctuation either\).  I would think you could easily run into situations 
 where the order in which you load minor-modes would change the keymappings
 you end up with.
@@ -748,7 +774,7 @@ navigation.  On the other hand, *most* of the places that \"M-p\" is
 defined are not places that you'd probably want to issue a perlnow 
 command -- the one exception I can think of is in a *shell* buffer, so 
 you might want to be daring and experiment with grabbing Alt-p for your 
-own use. ")
+own use.")
 
 
 
