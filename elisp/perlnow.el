@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.6 2004/01/27 23:22:44 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.7 2004/01/28 19:54:46 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -248,7 +248,7 @@ in the currently open buffer"
 ;;; *for* you.
 
 
-(defun perlnow-module (module-location module-name) 
+(defun perlnow-module (module-root module-name) 
   "Quickly jump into development of a new perl module"
   (interactive 
 ; Because default-directory is the default location for (interactive "D"),
@@ -258,15 +258,15 @@ in the currently open buffer"
   (let ((default-directory perlnow-module-root))
     (call-interactively 'perlnow-prompt-for-module-to-create)))
   (setq perlnow-perl-module-name module-name) ; global used to pass value into template
-  (let ( (filename (perlnow-full-path-to-module module-location module-name)) )
+  (let ( (filename (perlnow-full-path-to-module module-root module-name)) )
   (perlnow-new-file-using-template filename perlnow-perl-module-template)))
 
 
 (defun perlnow-prompt-for-module-to-create (where what) 
-  "Ask the user two questions: the location and the name of the perl 
-module to create, check to see if one exists already, and if so, 
-ask for another name.  The location defaults to the current default-directory.
-Returns a two element list, location and module-name."
+  "Ask the user two questions: the \"module root\" location, and the name 
+of the perl module to create there.  Checks to see if one exists already, 
+and if so, asks for another name ((TODO-check that)).  The location defaults to the current 
+`default-directory'.  Returns a two element list, location and module-name."
   (interactive "DLocation for new module?  \nsName of new module \(e.g. New::Module\)? ")
   (let* ((filename (perlnow-full-path-to-module where what))
          (dirname (convert-standard-filename (file-name-directory filename))))
@@ -277,15 +277,15 @@ Returns a two element list, location and module-name."
   (list where what)))
 
 
-(defun perlnow-full-path-to-module (module-location module-name)
+(defun perlnow-full-path-to-module (module-root module-name)
   "Piece together a location and a perl-style module name into a full file name: 
 given \"/home/doom/lib\" and \"Text::Gibberish\" would yield /home/doom/lib/Text/Gibberish.pm"
   (let ((filename 
          (concat 
           (mapconcat 'identity (split-string module-name "::") "/")
           ".pm")))
-  (setq module-location (file-name-as-directory module-location)) 
-  (concat  module-location filename)))
+  (setq module-root (file-name-as-directory module-root)) 
+  (concat  module-root filename)))
 
 
 ;;;==========================================================
@@ -391,6 +391,19 @@ package line near the top."
       (setq pee 'nil))
     pee)))
 
+;;; TODO - need an alternate (perhaps a replacement?) version of this that returns 
+;;; the module-name.  NEEDS TESTING BADLY
+(defun perlnow-get-module-name () 
+  "Return the module name from the package line, or nil if there is none"
+  (save-excursion 
+  (let ((package-line-pat "^[ \t]*package[ \t]*\\(.*\\)[ \t;]")  ;;; got to add (Mod::Name) to this pat
+        (comment-line-pat "^[ \t]*$\\|^[ \t]*#")
+        pee)
+    (goto-char (point-min))
+    (while (looking-at comment-line-pat) (forward-line 1))
+    (if (looking-at package-line-pat) 
+        (match-string 1)
+      (nil)))))
 
 (defvar perlnow-script-run-string nil "Default run string for perl scripts")
 (defvar perlnow-module-run-string nil "Default run string for perl modules")
@@ -402,31 +415,32 @@ package line near the top."
 use to run the code in the current buffer.  Sets the `compile-command'.\n
 Don't use this from within a program: instead set the variables 
 directly, see `perlnow-script-run-string', `perlnow-module-run-string'
-and `compile-command'."
+and `compile-command'.\n
+
+This function uses \\[perlnow-module-p] to see if the code looks like a
+module (i.e. does it have a package line), otherwise it 
+assumes it's a perl script.  If it's not perl at all,
+that's your problem: the obvious tests for perl code, 
+like looking for the hash-bang, aren't reliable (perl
+code need not have a hash-bang line: e.g. *.t files,
+windows perl...)."
   (interactive)
-
-;;; TODO: Imagine working like this:
-
-;;; Uses \\[perlnow-module-p] to see if this looks like a
-;;; module (i.e. does it have a package line), otherwise
-;;; assumes it's a perl script.  If it's not perl at all,
-;;; that's your problem; the obvious tests for perl code
-;;; like looking for the hash-bang aren't reliable (perl
-;;; code need not have a hash-bang line, e.g. *.t files,
-;;; windows perl...).
-
-; So it's going to be something like: 
-;   (cond
-;   ((perlnow-module-p)
-;    (make-local-variable 'perlnow-module-run-string)
-;    (setq  XXXX (perlnow-choose-module-run-string)
-;
-; Eh, you know, this is lookin silly.  Merge this 
-; with perlnow-choose-module-run-string below? 
-
-
    (cond
-   ((perlnow-script-p)
+   ((perlnow-module-p)
+    (make-local-variable 'perlnow-module-run-string)
+    ; set-up a decent default value
+    (unless perlnow-module-run-string 
+      (progn
+        (setq perlnow-module-run-string 
+              (perlnow-choose-module-run-string))))
+    ; ask user how to run this module (use as default next time)
+    (setq perlnow-module-run-string 
+          (read-from-minibuffer 
+           "Set the run string for this module: " 
+           perlnow-module-run-string))
+    ; tell emacs how to do it
+    (setq compile-command perlnow-module-run-string))
+   (t  ;if not a module, just assume it's a script.  Old way was this (unreliable) test:  ((perlnow-script-p)
     (make-local-variable 'perlnow-script-run-string)
     ; set-up intelligent default run string 
     (unless perlnow-script-run-string 
@@ -439,25 +453,9 @@ and `compile-command'."
            "Set the run string for this script: " 
            perlnow-script-run-string))
     ; tell emacs to do it that way
-    (setq compile-command perlnow-script-run-string))
-   ((perlnow-module-p)
-    (make-local-variable 'perlnow-module-run-string)
-    (unless perlnow-module-run-string
-      (progn
-      ; set-up reasonable default string  ;;; TODO actually not that good
-      (setq perlnow-module-run-string 
-            (format "cd %s; make test" 
-                    (file-name-directory (buffer-file-name))))
-      ; ask user for a better one (use as default next time)
-      (setq perlnow-module-run-string
-          (read-from-minibuffer 
-           "Set the run string for this module: " 
-           perlnow-module-run-string))
-      ; tell emacs how to do it
-      (setq compile-command perlnow-module-run-string))
-   (t
-    (message "It's not clear that this is perl code."))))))
+    (setq compile-command perlnow-script-run-string))))
 
+;;; confirm that "compile-command" is buffer local
 (defun perlnow-run (&optional runstring) ;;; is the optional okay there?
   "Run the perl code using the either perlnow-script-run-string or 
 perlnow-module-run-string, as appropriate"
@@ -469,44 +467,63 @@ perlnow-module-run-string, as appropriate"
 ;;;==========================================================
 ;;; Experimental code can go here     BOOKMARK (note: trying reg-*)
 
-
-;;; I don't know *when* this code is going to be called yet... bottoms up.
-;;; Duh... look up hack: perlnow-set-run-string.  
-
 (defun perlnow-choose-module-run-string ()
   "Returns a good guess for an appropriate perlnow-module-run-string, determined like so:
-\(1\) Uses an existing module run string if it's been defined.  
-\(2\) Looks up one level above the module-root, checks the name of
+\(1\) Looks up one level above the module-root, checks the name of
     this location, if it's the hyphenized form of the module name, 
     then that's the perl package staging-area. 
     \(a\) If there's a Makefile in the staging-area then use \"make test\".
     \(b\) If there's a Makefile.PL there, then do a \"perl Makefile.PL\" first. 
-\(3\) If there's a subdir named \"t\" one-level up from the module root, 
-    run any *.t files there as perl
-\(4\) If all else fails, prompt the user. \n
-Directly sets the perlnow-module-run-string for the current buffer, 
-and also returns this value, or 'nil. \n 
-Note: from within a program it may be simpler to just set
-the variables directly, see `perlnow-script-run-string' and
-`perlnow-module-run-string'."
+\(2\) If there's a subdir named \"t\" one-level up from the module root, 
+    run any *.t files there as perl\n"
   (interactive) ;;; maybe just for debugging.  DELETE
-  (cond
-;   ((perlnow-module-p)
-;       (message "looks like a module, all right."))
-;   ((perlnow-script-p)
-;       (message "This looks like a perl script."))
-   (t
-    (message "Nothing worked.")) )
-)
+  (let* ( (module-name (perlnow-get-module-name))
+          (module-file-location (file-name-directory (buffer-file-name)))
+          (module-root (perlnow-get-module-root module-name module-file-location ))
+  
+;;; BOOKMARK ;;; 
 
-;;;
-;;; (I could add more rules, but this much alone is annoying enough to have to document.)
-;
-;;; Point (3) implies a *list* of shell commands to run, doesn't it? 
+
+         )))
+;;; Point (2) implies a *list* of shell commands to run, doesn't it? 
 ;;; Have code do a listp on the "run-string" to see what it really is?
 ;;; Could punt, and write it as an external file /tmp/New-Module-test-02383.sh
-;;; Or could punter and just drop point (3) for now.  Except, it could also 
+;;; Or could punter and just drop point (2) for now.  Except, it could also 
 ;;; be used on (2b)...
+
+;;; TODO do this kind of stuff in the docs, where ever they may go.
+;;; Definitions: 
+;;; TODO - check perl definitions, e.g. precise distinction between package and module.
+;;; module-file-name - the file system's name for the module file, e.g. /usr/lib/perl/Double/Colon.pm
+;;; module-location  - directory portion of module-file-name, e.g. /usr/lib/perl/Double/
+;;; module-name or package-name - perl's double colon separated name, e.g. "Double::Colon"
+;;; module-root - The place where perl's double-colon name space begins (e.g. /usr/lib/perl)
+;;;               The PERL5LIB environment variable is a list of different module-roots. 
+;;; staging-area - the directory created by the h2xs command for module development, 
+;;;                a "hyphenized" form of the module-name e.g. Double-Colon
+;;; h2xs-location - the place where you put your staging-areas (possibly /home/doom/dev ?)
+
+
+(defun perlnow-get-module-root (package-name module-location)
+  "Given the module file location and the package name, determine module-root"
+;  (interactive "sPackage Name: \nsModule Location: ") ;;; DEBUG only DELETE
+;;; WORKS well enough.  TODO Cleanup names (function and variables)
+  (let (double-colon-count file-levels)
+    (setq double-colon-count (length (split-string package-name "::")))
+    (setq file-levels (split-string module-location "/"))
+    (setq module-root (mapconcat 'identity 
+                                 (butlast file-levels double-colon-count)
+                                 "/"))
+    (setq module-root (concat "/" module-root)) ; kludge, prepends a "/" 
+                                                ; (code will break if not given full-path)
+    (message "Module root: %s" module-root)))
+
+  ;;; Example: 
+  ;;;  /home/doom/Testes/Junk/Punk/Skunk/New/Module.pm 
+  ;;;  /home/doom/Testes/Junk/Punk/Skunk/New/          => number of levels:  7
+  ;;;                                    New::Module   => double-colon-count: 1
+  ;;;  /home/doom/Testes/Junk/Punk/Skunk/                 The desired module-root
+
 
 
 
@@ -630,6 +647,10 @@ default-directory. Returns a two element list, location and module-name."
 
 ;;; TODO - would like to allow more varied types of input. 
 ;;;        Why not:  /home/perl/modev/New::Module ?
+;;;        or even:  /home/perl/modev/New::Module.pm
+;;;  Unfortunately that this can't be made to work: 
+;;;        /home/perl/modev/New/Module.pm
+;;;  (no way to pick out the module-root reliably).
 
 ;;; DELETE   
 ;;; check for existance of what?  The directory?  Then you need to convert the module 
