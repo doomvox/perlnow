@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.79 2004/02/14 21:13:07 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.80 2004/02/14 21:32:05 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -652,18 +652,41 @@ assumes it's a perl script."
 ;;;----------------------------------------------------------
 (defun perlnow-run (runstring) 
   "Run the perl code in this file buffer.
-This uses `perlnow-run-string' which may have been set by using 
+This uses an interactively set RUNSTRING determined from 
+`perlnow-run-string' which may have been set by using 
 \[perlnow-set-run-string]. If `perlnow-run-string' is nil, 
 \[perlnow-set-run-string] is called automatically.\n
-When used from a program it may be called with a different RUNSTRING 
-that overrides the `perlnow-run-string' \(though it would make more 
-sense to just run the /[compile] command yourself\)."
+The run string can always be changed later by running 
+\[perlnow-set-run-string] manually."
   (interactive
   (unless perlnow-run-string
     (perlnow-set-run-string))
   perlnow-run-string)
-;  (message "perlnow-run using: %s" runstring) ; debugging only  DELETE
   (compile runstring))
+
+;;;----------------------------------------------------------
+
+(defun perlnow-perldb (runstring) 
+  "Runs the perl debugger on the code in this file buffer.
+This uses an interactively set RUNSTRING determined from 
+`perlnow-run-string' which may have been set by using 
+\[perlnow-set-run-string]. If `perlnow-run-string' is nil, 
+\[perlnow-set-run-string] is called automatically. 
+It can always be changed later by running \[perlnow-set-run-string] 
+manually. \n
+There's a major advantage that this command has over running 
+\[perldb] directly: you can have different `perlnow-run-string'
+settings for different file buffers \(i.e. it is a buffer local 
+variable\).  Unfortunately \(as of this writing\) \[perldb] 
+used directly always re-uses it's previous run-string as a 
+default, and that's guaranteed to be wrong if you've switched 
+to a different file."
+  (interactive
+  (unless perlnow-run-string
+    (perlnow-set-run-string))
+  perlnow-run-string)
+;  (message "perlnow-perldb using: %s" runstring) ; debugging only  DELETE
+  (perldb runstring))
 
 ;;;----------------------------------------------------------
 (defun perlnow-h2xs (h2xs-location module-name) 
