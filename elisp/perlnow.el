@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.49 2004/02/10 23:47:56 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.50 2004/02/11 02:58:40 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -952,17 +952,6 @@ reading in the name of a perl module name \(which need not
 exist already\), where valid name separators are \(\"/\" or \"::\"\).
 Takes a single logical argument that controls whether whole name 
 or single word completion will be used. "
-;;; single word completion is not implemented yet:
-
-;;; TODO 
-;;; (if restrict-to-word-completion  then:
-;;; Take the suggested-completion, subtract off 
-;;; the existing "fragment", then peel off "^\w*"
-;;; (however emacs likes you to do that).  And discard the rest. 
-
-;;; Note: with the old fragment subtracted you can skip the
-;;; final blank/concat...  and just do an insert of the new
-;;; portion.
 
 ;;; TODO 
 ;;; I'm hardcoding "/" as the "file system" separator 
@@ -975,6 +964,7 @@ or single word completion will be used. "
          field-start 
          two-pieces-list perlish-path fragment fragment-pat file-system-path
          lastchar returned new-portion new-portion-first-word result
+         word-separator
           ; assignments, setq's in all but name:
          (raw_string (buffer-string))
          (end-of-prompt-pat ": ")
@@ -1032,17 +1022,17 @@ or single word completion will be used. "
          (setq new-portion (substring suggested-completion (match-end 0)))
          (if restrict-to-word-completion  ; for "spacey" 
              (progn ; peel off word from the new-portion of suggested-completion
-               (string-match "\\(^\\w*\\)\\(\\W\\)" new-portion)
+               (string-match "\\(^\\w*\\)\\(\\W\\|$\\)" new-portion)
                (setq new-portion-first-word
                      (match-string 1 new-portion))
-               (setq separator ; change "separator" to next non-word character
+               (setq word-separator ; save next non-word character as a "separator" 
                      (match-string 2 new-portion))
 
                 ;When new-portion-first-word is empty, we know 
                 ;that what's next in line is a non-word character:
                 ;so we append the non-word separator
                (if (string= new-portion-first-word "")
-                   (setq new-portion (concat new-portion separator))
+                   (setq new-portion word-separator)
                  (setq new-portion new-portion-first-word))))
 
 ;;;      (delete-region (+ 1 field-start) (point-max)) ; blank minibuffer 
