@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.122 2004/02/19 03:05:44 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.123 2004/02/19 03:07:19 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1186,12 +1186,13 @@ The run string can always be changed later by running
      (setq input perlnow-run-string))
    (list input)
    ))
-  ; hack: make sure Makefile.PL doesn't happen repeatedly
-  (if (string-match "Makefile.PL" runstring)
-      (progn ; dunno which needs to be set, so set both:
-       (setq perlnow-run-string "make test")
-       (setq perlnow-module-run-string "make test")
-       ))
+;; Play with out this for now (maybe not needed?)
+;;  ; hack: make sure Makefile.PL doesn't happen repeatedly
+;;  (if (string-match "Makefile.PL" runstring)
+;;      (progn ; dunno which needs to be set, so set both:
+;;       (setq perlnow-run-string "make test")
+;;       (setq perlnow-module-run-string "make test")
+;;       ))
   (compile runstring))
 
 ;;;----------------------------------------------------------
