@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.137 2004/02/20 21:32:36 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.138 2004/02/20 21:40:37 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -2481,10 +2481,8 @@ It does three things:
 ;;; finished a more general set of tools I'd discover that
 ;;; someone else has written them already.)
 ;;; 
-;;; Consider spinning off a general package, that extracts help strings
-;;; and converts it into (a) html (b) texinfo
-;;; In absence of my "symbol-list", could generate one following the 
-;;; order of definition in the file.  
+;;; But consider spinning off a general package, that extracts 
+;;; help strings and converts it into (a) html (b) texinfo (c) xml
 
 (defvar perlnow-symbol-list (list 
                                  "perlnow-documentation"
@@ -2561,147 +2559,19 @@ Variables first, followed by functions with user-accessible interactive
 functions preceeding the internally used ones.")
 
 ;;;----------------------------------------------------------
-(defun perlnow-dump-docstrings-for-symbols (list)
-  "Given a LIST of symbol names, dump their documentation strings."
-  (dolist (symbol-name list)
-    (insert (concat symbol-name ":\n"))
-    (let ((symbol (intern-soft symbol-name)))
-          (cond ((eq symbol nil)
-                 (message "warning: bad symbol-name %s" symbol-name))
-                ((functionp symbol)
-                 (insert (documentation symbol))
-                 (insert "\n\n"))
-                (t 
-                 (insert (documentation-property symbol 'variable-documentation)))))))
-
-
-;;;----------------------------------------------------------
-(defun perlnow-dump-docstrings-for-symbols-as-html (list)
-  "Given a LIST of symbol names, insert the doc strings with some HTML markup."
-  (dolist (symbol-name list)
-    (insert (concat "<P><B>" symbol-name "</B>" ":<BR>\n"))
-    (let ( doc-string
-          (symbol (intern-soft symbol-name)))
-          (cond ((eq symbol nil)
-                 (message "warning: bad symbol-name %s" symbol-name))
-                ((functionp symbol)
-                 (setq doc-string
-                        (documentation symbol)))
-                (t 
-                 (setq doc-string 
-                       (documentation-property symbol 'variable-documentation))))
-          (setq doc-string (perlnow-html-ampersand-subs doc-string))
-          ; <PRE> if some lines have leading whitespace, else just <P>:
-          (cond ((string-match "\n[ \t][ \t]+" doc-string)
-                 (insert (concat "<PRE>" doc-string "</PRE></P>\n\n")))
-                (t
-                 (replace-regexp-in-string "^[ \t]*$" "<BR><BR>" doc-string)
-                 (insert (concat doc-string "</P>\n\n"))))
-          )))
-
-;;;----------------------------------------------------------
-(defun perlnow-dump-docstrings-for-symbols-as-html-preserving-links (list)
-  "Given a LIST of symbol names, insert the doc strings with some HTML markup.
-This version tries to preserve links in the documentation as html links."
-  (dolist (symbol-name list)
-    (let* ( doc-string 
-            doc-string-raw
-            indented-line-pat 
-          (symbol (intern-soft symbol-name)))
-          (cond ((eq symbol nil)
-                 (message "warning: bad symbol-name %s" symbol-name))
-                ((functionp symbol)
-                 (setq doc-string-raw
-                        (documentation symbol t)))
-                (t 
-                 (setq doc-string-raw
-                       (documentation-property symbol 'variable-documentation t))))
-
-          ; Do this early (before adding any html double quotes)
-          (setq doc-string (perlnow-html-ampersand-subs doc-string-raw))
-
-          ; Blank lines => <BR><BR> (That *don't* follow a tag)
-          (setq doc-string 
-;                (replace-regexp-in-string "[^>]^[ \t]*$" "<BR><BR>\n\n" doc-string))
-                (replace-regexp-in-string "^[ \t]*$" "<BR><BR>\n\n" doc-string))
-
-          ; Put named anchors on every entry for refs to link to
-          (insert (format "<A NAME=\"%s\"></A>\n" symbol-name))
-
-          ; Using bold face to indicate a function, italics for variables
-          (cond ((functionp symbol)
-                 (insert (concat "<P><B>" symbol-name "</B>" ":<BR>\n")))
-                (t
-                 (insert (concat "<P><I>" symbol-name "</I>" ":<BR>\n"))))
-
-           ; turn `(.*)'  into <I><A HREF="#\1">\1</A></I>  - note: dot don't match line breaks (good: safer)
-           (setq doc-string 
-                 (replace-regexp-in-string "[`]\\(.*?\\)'" ; that's `(.*?)'
-                                           "<I><A HREF=\"#\\1\">\\1</A></I>" 
-                                           doc-string))
-
-
-          ; turn \[(.*)]  into <A HREF="#\1">\1</A>
-          (setq doc-string 
-                (replace-regexp-in-string "\\\\\\[\\(.*?\\)\\]" ; that's \[(.*?)]   (one hopes)
-                                          "<A HREF=\"#\\1\">\\1</A>" 
-                                          doc-string))
-
-          (setq indented-line-pat 
-                (concat 
-                  "^"    ; start of line (bol *not* bos)
-                  "\\("  ; begin capture to \1  
-                  "\\(?:[ ][ ]+\\|\t\\)"  ; indent: 3 spaces or a tab (non-capturing)
-                  ".*?"  ; stuff
-                  "\\)"  ; end of capture to \1
-                  "$"    ; eol *not* eos!
-                  ))
-
-          ; Put <PRE> wrapper around indented lines.
-          (setq doc-string 
-                (replace-regexp-in-string indented-line-pat
-                                          "\n<PRE>\\1</PRE>"
-                                          doc-string))
-
-          (insert (concat doc-string "</P>\n\n"))
-          )))
-;;; perlnow-dump-docstrings-for-symbols-as-html-preserving-links:
-;;; Getting close to slick.
-;;; TODO
-;;; (1) 
-;;;  List all perlnow-blah, subtract off my list of "important" ones, add the remainder. 
-;;;  (Make it impossible to forget to add one to the list.)
-;;;  Simpler (and more general): 
-;;;  Given a .el filename, read it in as text, scan for all symbol definitons, 
-;;;  list the docstrings in the order they're defined in the file.
-;;;  I think the idea would be to do it like that, 
-;;;  but allow over ride by a list given as an argument.
 
 ;;; (2) 
 ;;; If a \[blah] is *not* a perlnow-* (best would be to check the list to see if it's there)
 ;;; Then, run it through the emacs filter: 
 ;;;    (substitute-command-keys STRING)
 ;;;    Substitute key descriptions for command names in STRING.
-;;; (3) 
-;;; Append a TOC of the entire list, as an appendix.  (Too long to lead with).
-;;; (4) 
-;;; Prepend boiler plate, explaining what the fuck it is? 
-;;; Better: create a special purpose template.el template.
-;;; Have the code create the html file, then do this fancy doctring insert at point. 
-;;; (5) Heuristics to split into multiple HTML pages? 
-;;;  E.g. sort symbol names, group by the second term, check the size, do they 
-;;;  all fit on one page?  If not, try grouping by the third term...
+
 
 ;;; Want other output formats, of course.  
 ;;; texinfo.  Maybe XML, if that'll get me to other formats...
 
-;;Wasn't able to get smart formatting above working well (too many breaks after </PRE>, 
-;;breaks mysteriously disappearing: blank lines not identified as blank, etc.)
-;; So let's PRE *everything* (original idea of PREing on a docstring level whenever 
-;; there were indents was semi-workable, but *looked* really funny in the html.)
-
 ;;;----------------------------------------------------------
-(defun perlnow-dump-docstrings-for-symbols-as-html-preserving-links-with-idiot-formatting (list)
+(defun perlnow-dump-docstrings-as-html (list)
   "Given a LIST of symbol names, insert the doc strings with some HTML markup.
 This version tries to preserve links in the documentation as html links.
 And does idiot simple preservation of formatting: *all* docstrings get PRE 
@@ -2725,18 +2595,14 @@ wrappers."
 
           ; Do this early (before adding any html double quotes)
           (setq doc-string (perlnow-html-ampersand-subs doc-string-raw))
-
           ; Put named anchors on every entry for refs to link to
           (insert (format "<A NAME=\"%s\"></A>\n" symbol-name))
-
           (insert (concat "<P><H3>" symbol-name ":" ))
-
           (if (not (functionp symbol))
-;;;              (insert (concat "       " "<I>" symbol-value-as-variable "</I>")))
-              (insert (concat "&nbsp;&nbsp;&nbsp;" symbol-value-as-variable )))
-
+              (insert (concat 
+                       "&nbsp;&nbsp;&nbsp;&nbsp;" 
+                       symbol-value-as-variable )))
           (insert (concat "</h3>" "\n"))
-
 
            ; turn `(.*)' into <I><A HREF="#\1">\1</A></I>  note: dot don't match line breaks (good: safer)
            (setq doc-string 
@@ -2773,18 +2639,13 @@ wrappers."
   (setq string (replace-regexp-in-string "\""  "&quot;" string))
   (setq string (replace-regexp-in-string ">"   "&gt;"   string))
   (setq string (replace-regexp-in-string "<"   "&lt;"   string))
- ;;;  (setq string (replace-regexp-in-string "" "" string))
   )
 
 ;;;----------------------------------------------------------
 (defun perlnow-do-docstrings-insertion ()
   "Runs the code that lists *all* of the perlnow doc strings."
   (interactive)
-;  (perlnow-dump-docstrings-for-symbols perlnow-symbol-list)
-;   (perlnow-dump-docstrings-for-symbols-as-html perlnow-symbol-list)
-;  (perlnow-dump-docstrings-for-symbols-as-html-preserving-links perlnow-symbol-list)
-;   (perlnow-dump-docstrings-for-symbols-as-html-preserving-links-with-idiot-formatting perlnow-symbol-list)
-   (perlnow-dump-docstrings-for-symbols-as-html-preserving-links-with-idiot-formatting 
+   (perlnow-dump-docstrings-as-html 
     (perlnow-symbol-list-from-elisp-file))
   )
 
