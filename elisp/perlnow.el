@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.60 2004/02/12 01:32:55 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.61 2004/02/12 01:38:32 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -943,7 +943,7 @@ though this may be edited at run time."
 
      (setq result
            (read-from-minibuffer 
-            "New module to create \\(e.g. /tmp/dev/New::Mod\\):)" 
+            "New module to create \\(e.g. /tmp/dev/New::Mod\\): " 
                                  initial-contents keymap nil history nil nil))
      (setq filename (concat (replace-regexp-in-string "::" "/" result) ".pm"))
 
