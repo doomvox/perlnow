@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.41 2004/02/10 08:35:12 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.42 2004/02/10 08:40:08 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -930,22 +930,9 @@ defaults to using the module root of the current file buffer."
 ;;; then tabby and spacey become simple wrappers.
 
 ;;; TODO 
-;;; If you enter something that doesn't match anything and try and do completion, 
-;;; the part that doesn't match gets erased.  Minimally: it should not get erased.
-;;; ((FIXED))
-
-;;; TODO 
 ;;; Ideally it should report [No completion] or something, 
 ;;; which means that " [blah]" stuff should be detected and ignored 
 ;;; in the input here.  (low priority)
-
-;;; TODO 
-;;; Possibly, completion should not add a ".pm" if double-colons are in use in front 
-;;; of it.  ((FIXED))
-
-;;; TODO 
-;;; Shouldn't go appending separators after an obvious completion, like a ".pm".
-;;; ((FIXED))
 
 ;;; TODO 
 ;;; Consider restricting matches to directories and *.pm names?
@@ -971,7 +958,7 @@ defaults to using the module root of the current file buffer."
          )
 
          (string-match end-of-prompt-pat raw_string)
-         (setq field-start (match-end 0))
+         (setq field-start (match-end 0)) ; also used later to blank minibuffer
          (setq minibuffer-string (substring raw_string field-start))
 
          ; No single trailing colons allowed: silently double them up
@@ -1005,7 +992,6 @@ defaults to using the module root of the current file buffer."
                 )
                (t
                  (setq suggested-completion returned)))
-               
          ; yeah, checking this *again* is inelegant, but WTH
          (if (string-match pm-extension-pat suggested-completion)
              (setq suggested-completion (substring suggested-completion 0 (match-beginning 0) )))
@@ -1015,8 +1001,8 @@ defaults to using the module root of the current file buffer."
          (if (string= result minibuffer-string) ; if there's no change from the input value, go into help
              (perlnow-read-minibuffer-completion-help))
 
-         (delete-region (+ 1 field-start) (point-max))
-         (insert result)
+         (delete-region (+ 1 field-start) (point-max)) ; blank minibuffer 
+         (insert result) 
          ))
 
 (defun perlnow-read-minibuffer-complete-word ()
@@ -1059,11 +1045,6 @@ defaults to using the module root of the current file buffer."
 
 (defun perlnow-read-minibuffer-completion-help ()
   "huh"
-;;; For come reason, nothing is ever display in the *Completions* buffer, 
-;;; when I know there should be about four items with a test of /home/doom/tmp/Te
-;;; (redundant stuff is ndone here and there, but I no care. )
-;;; Tried it with this line commented out, without any luck:
-;;;    (setq full-file (concat perlish-path file)) ;; an absolutely necessary and simple but non-obvious step
   (interactive)
   (let* (
          (raw_string (buffer-string))
