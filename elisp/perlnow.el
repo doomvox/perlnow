@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.28 2004/02/06 22:23:49 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.29 2004/02/06 22:31:17 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -238,18 +238,17 @@ command is like \\[cperl-check-syntax] with one less prompt
   (setq compile-command (format "perl -cw \'%s\'" (buffer-file-name)))
   (message "compile-command: %s" compile-command)
   (compile compile-command) )
-
-
+   
 ;;;----------------------------------------------------------
 (defun perlnow-script (filename)
   "Quickly jump into development of a new perl script"
   (interactive 
-  (perlnow-prompt-user-for-file-to-create 
-   "Name for the new perl script? " perlnow-script-location))
+   (perlnow-prompt-user-for-file-to-create 
+    "Name for the new perl script? " perlnow-script-location))
   (perlnow-new-file-using-template filename perlnow-perl-script-template)
   (perlnow-change-mode-to-executable))
-
-
+   
+   
 ;;;----------------------------------------------------------
 (defun perlnow-script-using-this-module (filename)
   "Quickly jump into writing a perl script that uses the module 
@@ -257,8 +256,8 @@ in the currently open buffer.  If the module is not in perl's
 search path \(@INC\), then an appropriate \"use lib\" statement 
 will be added. "
   (interactive 
-    (perlnow-prompt-user-for-file-to-create 
-      "Name for the new perl script? " perlnow-script-location))
+   (perlnow-prompt-user-for-file-to-create 
+    "Name for the new perl script? " perlnow-script-location))
   (let* ( (module-filename (buffer-file-name))
           (module-location (file-name-directory module-filename))
           (package-name (perlnow-get-module-name)) 
@@ -266,46 +265,46 @@ will be added. "
           ) 
     (unless package-name 
       (error "%s" "This file doesn't look like a perl module (no leading package line)."))
-
+    
     (perlnow-new-file-using-template filename perlnow-perl-script-template)
-
-    ; insert the use lib tweak to ensure the module can be found by the script
+    
+    ; ensure the module can be found by the script if needed, insert "use lib" line to 
     (unless (module-root-in-INC-p module-root)
-        (let ((relative-path
-               (file-relative-name module-filename (file-name-directory filename))
-               ))
-          (insert "use FindBin qw\($Bin\);\n")
-          (insert "use lib \(\"$Bin/")
-          (insert relative-path)
-          (insert "\");\n")))
+      (let ((relative-path
+             (file-relative-name module-filename (file-name-directory filename))
+             ))
+        (insert "use FindBin qw\($Bin\);\n")
+        (insert "use lib \(\"$Bin/")
+        (insert relative-path)
+        (insert "\");\n")))
     ; insert the "use Some::Module;" line
     (insert (format "use %s;" package-name)) ;;; and maybe a qw() list? 
     (insert "\n")))
-
-;;; TODO alternate form (or extension of this?) That creates 
-;;;      a script from a currently active documentation buffer. 
-;;;      (man format?  perldoc.el?)
-;;; See notes on perlnow-get-module-name. Fix that to get 
-;;; package name from man page? 
-;;; *But* this is only part of the story.  Need actual installed location 
-;;; of module to do FindBin/use lib trick.  (buffer-file-name) 
-;;; wouldn't do it.  Punt for now.
-
-
+   
+   ;;; TODO alternate form (or extension of this?) That creates 
+   ;;;      a script from a currently active documentation buffer. 
+   ;;;      (man format?  perldoc.el?)
+   ;;; See notes on perlnow-get-module-name. Fix that to get 
+   ;;; package name from man page? 
+   ;;; *But* this is only part of the story.  Need actual installed location 
+   ;;; of module to do FindBin/use lib trick.  (buffer-file-name) 
+   ;;; wouldn't do it.  Punt for now.
+   
+   
 ;;;----------------------------------------------------------
 (defun perlnow-module (module-root module-name) 
   "Quickly jump into development of a new perl module"
   (interactive 
-; Because default-directory is the default location for (interactive "D"),
-; I'm doing the interactive call in two stages: change 
-; default-directory momentarily, then restore it. Uses dynamic scoping via "let".
-; (It's more like perl's "local" than perl's "my".)
-  (let ((default-directory perlnow-module-root))
-    (call-interactively 'perlnow-prompt-for-module-to-create)))
+   ; Because default-directory is the default location for (interactive "D"),
+   ; I'm doing the interactive call in two stages: change 
+   ; default-directory momentarily, then restore it. Uses dynamic scoping via "let".
+   ; (It's more like perl's "local" than perl's "my".)
+   (let ((default-directory perlnow-module-root))
+     (call-interactively 'perlnow-prompt-for-module-to-create)))
   (setq perlnow-perl-module-name module-name) ; global used to pass value into template
   (let ( (filename (perlnow-full-path-to-module module-root module-name)) )
-  (perlnow-new-file-using-template filename perlnow-perl-module-template)))
-
+    (perlnow-new-file-using-template filename perlnow-perl-module-template)))
+   
 
 ;;;----------------------------------------------------------
 (defun perlnow-prompt-for-module-to-create (where what) 
@@ -1116,8 +1115,8 @@ will be assumed and need not be entered \(though it may be\).
            (perlnow-split-perl-module-path-to-dir-and-tail minibuffer-string))
          (path     (car two-pieces-list))
          (fragment (cadr two-pieces-list))
-         (fragment-pat (concat "^" fragment)) ; grepping filename out of a 
-                                              ; list of bare filenames
+         (fragment-pat (concat "^" fragment)) ; for getting possible filename completions
+                                              ; out of a list of bare filenames (no path)
          (munged-path (replace-regexp-in-string "::" "/" path) )  
             ; unix file system separator "/" swapped in for perl package separators "::" 
          match-list   ; list of files sans path 
@@ -1128,9 +1127,12 @@ will be assumed and need not be entered \(though it may be\).
    ; Get a directory listing
    (setq file-list (directory-files munged-path))
    ; Do a regexp search of the fragment against items in the file-list
-   (let ((i 1))        ; counter used in building alist below with numeric "value"
+   (let ((i 1))  ; counter used to build alist with numeric value
      (dolist (file file-list)
-       (if (and (string-match fragment-pat file) (perlnow-interesting-file-name-p file))
+       (if (and 
+            (string-match fragment-pat file) 
+            (perlnow-interesting-file-name-p file))
+
            (progn
              (setq full-file (concat path file)) ;; an absolutely necessary and simple but non-obvious step
              (setq match-alist (cons (cons full-file i) match-alist)) 
