@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.53 2004/02/11 06:30:33 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.54 2004/02/11 07:55:06 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -1085,22 +1085,14 @@ which also pass the \[perlnow-interesting-file-name-p] test. \n
 These are simple file names that do not include the path, 
 and the values associated with them in the returned alist 
 are sequential integers."
-
-;;; Do *two* directory-files, one matching only "\\.pm$" pattern, 
-;;; Another that gets filtered through file-directory-p, then 
-;;; glue the two lists together (append?)
-
-;;; For extra credit, strip the .pm on the files. 
-
+;;; And for extra credit it also strips the .pm on the file names
+;;; TODO
+;;; Completion has trouble understanding when it's done, now: 
+;;; wants to append "/" or ":" after the Blah[.pm] name.
 ;;; TODO 
-;;; Restricted matches to directories and *.pm names?
-;;; Need to roll your own directory list code (I think)
-
-;;; Perhaps (but probably not) combine this with a roll-your-own "try-completions".
-
-;;; TODO 
-;;; Help should not display ".pm" on module names.  
-
+;;; Getting single ":" added, that *don't* get doubled...
+;;; Then you get file not found, because the ":" won't get 
+;;; internall transformed to "/".
    (let* ( 
           match-alist
           ; directory-files directory &optional full-name match-regexp nosort
@@ -1112,14 +1104,14 @@ are sequential integers."
           (i 1)  ; counter to build alist with numeric value
           )
      (dolist (file file-list)
-       (cond ((file-directory-p file)
-               (setq match-alist (cons (cons file i) match-alist)) 
-               (setq i (+ i 1)))
-             ((and (string-match "\\(.*\\)\\.pm$" file)
-                   (perlnow-interesting-file-name-p file))
-               (setq base-name (match-string 1 file))
-               (setq match-alist (cons (cons base-name i) match-alist))
-               (setq i (+ i 1)))))
+       (if (perlnow-interesting-file-name-p file)
+           (cond ((file-directory-p (concat file-system-path file))
+                   (setq match-alist (cons (cons file i) match-alist))
+                   (setq i (+ i 1)))
+                 ((string-match "^\\(.*\\)\\.pm$" file)
+                   (setq base-name (match-string 1 file))
+                   (setq match-alist (cons (cons base-name i) match-alist))
+                   (setq i (+ i 1))))))
   ; Reverse the order of the match-alist to get values counting up starting from 1
   (setq match-alist (reverse match-alist))  ;; maybe this isn't needed, but cargo cult programming is fun
   ))
