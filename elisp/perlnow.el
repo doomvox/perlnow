@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.33 2004/02/07 02:52:26 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.34 2004/02/07 02:57:22 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -930,7 +930,7 @@ where perl's package namespace begins.  The \".pm\"
 extension will be assumed and need not be entered \(though
 it may be\).  An example of typical input might be: \n
    /usr/local/lib/perl/New::Module\n
-Where \"/usr/local/lib/perl/\" is the staging-area and 
+Where \"/usr/local/lib/perl/\" is the module-root and 
 \"New::Module\" is the module-name (aka package-name).\n
 If the module exists already, this will ask for another name. 
 The location defaults to the current `default-directory'.  [***TODO - zat okay?***]
@@ -975,8 +975,8 @@ Returns a two element list, location and module-name."
            ; In case the following test fails, set-up the prompt for 
            ; the next loop:
            (setq current-prompt later-prompt)
-           (setq initial string)
-           (not (file-exists-p module-file-name))))
+           (setq initial string) ; perhaps a silly notion, that.
+           (file-exists-p module-file-name)))
      module-root-and-name-list )))
 
 ;;;----------------------------------------------------------
