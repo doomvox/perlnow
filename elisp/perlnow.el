@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.2 2004/01/19 07:15:19 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.3 2004/01/19 09:27:59 doom Exp root $
 ;; Keywords: 
 ;; X-URL: not distributed yet
 
@@ -26,13 +26,12 @@
 ;;; Commentary:
 
 ;; 
-
 ;; Put this file into your load-path and the following into your ~/.emacs:
 ;;   (require 'perlnow)
 ;;   (global-set-key  "\M-ps" 'perlnow-script)
 ;;   (global-set-key  "\M-pm" 'perlnow-module)
-;;   (setq perlnow-script-location (concat (getenv("HOME") "/bin"))) ; ~/bin
-;;   (setq perlnow-module-location (concat (getenv("HOME") "/lib"))) ; ~/lib
+;;   (setq perlnow-script-location (substitute-in-file-name "$HOME/bin"))
+;;   (setq perlnow-module-location (substitute-in-file-name "$HOME/lib"))
 ;; 
 
 ;;; Code:
@@ -51,10 +50,11 @@
 (defmacro perlnow-require-trailing-slash (path)
   "Appends a slash to the end of string in variable, 
 unless one is there already"
-;;; TODO - if this needs to add a / it returns 't: 
-;;;        would prefer it always return path 
    `(or (string-equal "/" (substring ,path (- (length ,path) 1)))
         (setq ,path (concat ,path "/"))))
+;;; TODO - it turns out that this existing function does this already: 
+;;; (setq slashed-dirname (file-name-as-directory dirname)) 
+
 
 ;;;;##########################################################################
 ;;;;  User Options, Variables
@@ -92,7 +92,8 @@ unless one is there already"
    ; a default location, though it's expected this will be overriden with a
    ; .emacs setting.  Maybe it would be better to default to something else,
    ; like ~/bin and ~/lib, but in that case would have to make sure they
-   ; exist and create them otherwise.
+   ; exist and create them otherwise. 
+   ; Or see if they exist, and then use them, if not, silently fall back on HOME?
 
 (defvar perlnow-script-location (getenv "HOME")
     "The default location to stash new perl scripts")
@@ -105,15 +106,15 @@ unless one is there already"
 (defvar perlnow-executable-setting ?\110
    "Pattern of user-group-all permission settings used when making a script executable")
 
-;;; TODO simplify with $HOME and that function that expands it:
-(defvar perlnow-perl-script-template (concat (getenv "HOME") "/.templates/TEMPLATE.perl.tpl")
+(defvar perlnow-perl-script-template (substitute-in-file-name "$HOME/.templates/TEMPLATE.perl.tpl"))
    "The template.el template new perl scripts will be created with" )
-;;; (setq perlnow-perl-script-template (concat (getenv "HOME") "/.templates/TEMPLATE.perl.tpl"))
+;;; DELETE:
+;;; (setq perlnow-perl-script-template (substitute-in-file-name "$HOME/.templates/TEMPLATE.perl.tpl"))
 
-;;; TODO simplify with $HOME and that function that expands it:
-(defvar perlnow-perl-module-template (concat (getenv "HOME") "/.templates/TEMPLATE.pm.tpl")
+(defvar perlnow-perl-module-template (substitute-in-file-name "$HOME/.templates/TEMPLATE.pm.tpl"))
    "The template.el template new perl modules will be created with" )
-;;; (setq perlnow-perl-module-template (concat (getenv "HOME") "/.templates/TEMPLATE.pm.tpl"))
+;;; DELETE:
+;;; (setq perlnow-perl-module-template (substitute-in-file-name "$HOME/.templates/TEMPLATE.pm.tpl"))
 
 (defvar perlnow-perl-module-name 'nil
   "Used internally to pass the new full module name in
@@ -173,7 +174,6 @@ in the currently open buffer"
         (if (looking-at package-line-pat)
             (setq package-name (match-string 1))
           (error "%s" "No leading package line: This file doesn't look like a perl module"))))
-;;; DELETE        (message package-name)  ;;; for debugging purposes
         ;;; create new script file buffer using template
         (perlnow-new-file-using-template filename perlnow-perl-script-template)
         ;;; insert the lib path tweaks to ensure the module can be found by the script
@@ -217,34 +217,47 @@ in the currently open buffer"
   (interactive 
      ; save and restore default-directory (using let dynamic scoping magic)
         (let* ((default-directory perlnow-module-location))
-          (call-interactively 'perlnow-prompt-user-for-module-to-create)))
+          (call-interactively 'perlnow-prompt-for-module-to-create)))
 
    ;;; DELETE ME  - look at *Messages* make sure this looks right.
    (message "default directory has returned to:%s" default-directory)
    ;;; END DELETIA
 
    (setq perlnow-perl-module-name module-name) ; global used to pass value into template
-
-   (let ( (filename (perlnow-full-file-name module-location module-name)) )
+   (let ( (filename (perlnow-full-path-to-module module-location module-name)) )
+     
      (perlnow-new-file-using-template filename perlnow-perl-module-template))
-;;;   (perlnow-change-mode-to-executable) ; this is a module, idjit
    (perlnow-set-emacs-modes-for-perl))
 
 
-(defun perlnow-prompt-user-for-module-to-create (where what) 
+(defun perlnow-prompt-for-module-to-create (where what) 
   "Ask the user two questions: the location and the name of the perl 
 module to create, check to see if one exists already, and if so, 
-ask for another name.  Returns a two element list, location and module-name."
-  (interactive "D:Where? \ns:What? ")
+ask for another name.  The location defaults to the current default-directory.
+Returns a two element list, location and module-name."
+  (interactive "D:Location for new module? \ns:Name of new module \(perl-style, e.g. Blah::Bleh\)? ")
+  
+  (let* ((filename (perlnow-full-path-to-module where what))
+         (dirname (convert-standard-filename (file-name-directory filename))))
+; DELETE
+; For some reason this carefully crafted code is not necessary: 
+; something else is prompting for directory creation, if needed. 
+; 
+;    (if (not (file-exists-p dirname)) ; check existance of directory. 
+;        (if (y-or-n-p (format "Path %s not found. Create it?" dirname))
+;           (make-directory dirname 't)
+;         (error "Some part of path %s doesn't exist, can't create module." dirname)))
+;    (if (not (file-accessible-directory-p dirname)) 
+;        (error "Permissions problem on location %s, can't create module." dirname))
+; END DELETE
+    )
   (list where what))
-;;;  TODO 
-;;;   (1)  Better prompt messages, huh?
-;;;   (2)  Note, as written directory must exist, *but* subdirs implied by the 
-;;;        module name (e.g. "Blah" in "Blah::Bleh") might need to be created.  
-;;;        Where should that happen?
 
+;;; TODO - o  needs testing
+;;;        o  consider returning "filename" also, to avoid piecing it together again later 
+;;;           (but efficiency tweaks are low priority)
 
-(defun perlnow-full-file-name (module-location module-name)
+(defun perlnow-full-path-to-module (module-location module-name)
   "Piece together a location and a perl-style module name into a full file name: 
 given \"/home/doom/lib\" and \"Text::Gibberish\" would yield /home/doom/lib/Text/Gibberish.pm"
   (let ((filename 
@@ -273,13 +286,6 @@ given \"/home/doom/lib\" and \"Text::Gibberish\" would yield /home/doom/lib/Text
 ;;;==========================================================
 ;;; Internally used functions 
 ;;;==========================================================
-
-;;; DELETE ME
-(defun perlnow-make-executable()
- "Function that doesn't exist any more, though edebug doen't 
-seem to know that."
- 'nil)
-;;; END DELETIA
 
 (defun perlnow-make-sure-file-exists()
   "Forcibly saves the current buffer to it's associated file, 
@@ -350,6 +356,31 @@ the file and associated buffer using the template"
 
 ;;;==========================================================
 ;;; Experimental code can go here     BOOKMARK (note: trying reg-*)
+
+(defun stoopid () 
+  "Stoopid!"
+  (interactive)
+  (let ( (name1 "/usr/lib/emacs/site-lisp/perlnow.el")
+         (name2 "/usr/lib/emacs/site-lisp")
+         (name3 "/home/doom/tmp/Grossmiller/Fook")
+         (name4 "/tmp/no-way-in-hell")
+         (name5 "/home/doom/tmp")
+         )
+
+     (if (file-exists-p name5)
+         (message "file-exists pee: %s" name5))
+
+    (if (not (file-exists-p name3))
+        (message "here we is, no %s is there?" name3))
+    ))
+;    
+;(file-accessible-directory-p dirname) ; makes sure you can write to directory 
+;(file-directory-p filename)           ; makes sure file is a directory
+;
+;(file-exists-p filename)    ; does this return 't for a directory? (Yes can check dir exist with this)
+;(file-readable-p filename)
+;(file-writeable-p filename)
+
 
 
 
