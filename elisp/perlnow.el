@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.70 2004/02/13 00:20:51 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.71 2004/02/13 01:33:03 doom Exp root $
 ;; Keywords: 
 ;; X-URL: http://www.grin.net/~mirthless/perlnow/
 
@@ -103,7 +103,7 @@
 
 ;;; Some adjectives: 
 ;;;    "perlish"  - means a path including double-colons (alternate term: "colon-ized"), 
-;;;                 As opposed to: 
+;;; As opposed to: 
 ;;;    "file-system" (or "filesys") -  which refers to a regular slash separated path.
 ;;;    "full"     - means the path is included, e.g. "full-file-name".  
 
@@ -517,10 +517,16 @@ If perlnow-run-string is nil, perlnow-set-run-string is called automatically."
 
   (find-file 
    (perlnow-full-path-to-h2xs-module h2xs-location module-name))
-;;;  Skip to just after text: "# Preloaded methods go here."
+  (search-forward "# Preloaded methods go here.")
+  (forward-line 1)   ;alternate: (next-line 1)
 
- ; (delete-other-windows) 
-;;; TODO: find-file the *.t also, leave that open that in a buffer too
+  ; Also open the *.t file (note, this presumes the modern naming style)
+  ; would break for older *.t style names, e.g. 1.t. TODO  Generalize?
+  (other-window 1)
+  (find-file
+   (perlnow-full-path-to-h2xs-test-file h2xs-location module-name))
+  (search-forward "BEGIN { plan tests => 1")
+  (other-window 1)
   ))
 ;;; Note: my feeling is that asking two questions for the creation of an 
 ;;; h2xs structure is okay.  It helps differentiate it from perlnow-module, 
@@ -922,7 +928,34 @@ h2xs-location were \"/usr/local/perldev\" and the module were
           "/lib/"
           (mapconcat 'identity (split-string module-name "::") "/")
           ".pm")))
-    (message "h2xs module file is %s"  module-filename)
+    (message "h2xs module file is %s"  module-filename) ; DELETE ?
+    module-filename))
+
+;;;----------------------------------------------------------
+(defun perlnow-full-path-to-h2xs-test-file (h2xs-location module-name)
+  "Get the path to a the test file for a module created by h2xs.  
+E.g. if the h2xs-location were \"/usr/local/perldev\" and the 
+module  were \"New::Module\", it should return: 
+\"/usr/local/perldev/New-Module/t/New-Module.t\""
+  (let* ( return 
+         (module-test-location
+          (concat 
+           (file-name-as-directory h2xs-location)
+           (mapconcat 'identity (split-string module-name "::") "-")
+           "/t/"))
+         (module-filename
+          (concat 
+           module-test-location
+           (mapconcat 'identity (split-string module-name "::") "-")
+           ".t")))
+    (cond ((file-exists-p module-filename) 
+           (setq return module-filename))
+          ((file-directory-p module-test-location) 
+           (dired module-test-location))
+           (t 
+           (error "Can't find h2xs test file or test location")
+           ))
+    (message "h2xs test file is %s"  module-filename)  ; DELETE ?
     module-filename))
 
 ;;;----------------------------------------------------------
