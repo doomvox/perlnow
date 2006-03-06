@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.211 2005/03/29 23:09:13 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.212 2006/03/06 08:42:21 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -181,17 +181,14 @@ for you to modify them to suit yourself\):
    \(global-set-key \"\\C-c/b\" 'perlnow-back-to-code\)
    \(global-set-key \"\\C-c/~\" 'perlnow-perlify-this-buffer-simple\)
 
-
 Some suggestions on key assignments:
 
-Here I'm using the odd prefix \"control-c slash\",
-simply because while the perlnow.el package is not a
-minor-mode, it has some aspects in common with them \(and
-maybe it's on it's way to becoming one\).  The C-c
-<punctuation> bindings are the only places in the keymap 
-allocated for minor modes. The slash was choosen
-because it's unshifted and on the opposite side from the 
-\"c\" \(on most keyboards\) .
+Here I'm using the odd prefix \"control-c slash\", simply
+because while the perlnow.el package is not a minor-mode, it has
+some aspects in common with them. The C-c <punctuation> bindings
+are the only places in the keymap allocated for minor modes. The
+slash was choosen because it's unshifted and on the opposite
+side from the \"c\" \(on most keyboards\).
 
 You, on the other hand, are free to do whatever you want in
 your .emacs, and you might prefer other assignments, such 
@@ -204,7 +201,18 @@ Some possibilities:
           '\(lambda \(\)
              \(define-key cperl-mode-map [f1] 'perlnow-perl-check\) \)\)
 
-Note: perlnow.el was developed using GNU emacs 21.1 running
+By the way, if you go looking for a good prefix of your own to
+attach \"perl\" stuff, consider that \"C-x p\" is used by the
+p4.el package \(a front-end to the proprietary perforce version
+control system, and you should be aware that \"M-p\" is used in
+many contexts for \"history\" navigation.  On the other hand,
+*most* of the places that \"M-p\" is defined are not places that
+you'd probably want to issue a perlnow command -- the one
+exception I can think of is in a *shell* buffer, so you might
+want to be daring and experiment with grabbing Alt-p for your own
+use.
+
+Caveats: perlnow.el was developed using GNU emacs 21.1 running
 on a linux box \(or GNU/Linux, if you prefer\).  I've
 avoided using constructs that I know won't work with earlier
 versions of emacs, and I don't know of any reason it
@@ -278,7 +286,7 @@ TEST LOCATION: place where the test script\(s\) are for
 a given module.
 
 TEST PATH: search path to look for test files. Note, can
-include relative locations, e.g. \"./t\", but the the dot
+include relative locations, e.g. \"./t\", but the dot
 there shouldn't be taken as simply the current
 directory... See: `perlnow-test-path'.
 
@@ -319,7 +327,7 @@ longer than a dozen lines.
 Currently perlnow-script tends to want to put all of your
 new scripts in one place, the `perlnow-script-location' that
 you've defined for it.  You can, of course, choose a
-different place to put a script at creation time, the
+different place to put a script at creation time: the
 default is inserted into the minibuffer so that you can use
 it as a starting point to edit into some new location.
 Similarly you've also got access to the minibuffer history
@@ -768,14 +776,14 @@ complication: there are two perl modes\).
 
 So perhaps perlnow.el should be a combination of the two, a
 global and a local minor-mode, \(implemented in one .el
-package?\).
+package?  Or should it be split into two packages?\).
 
 Further, it's possible that I might add some other commands that should
 be local to still *other* modes, for example a perlnow-script-from-dired
-might create a perlscript in the location displayed in a current dired
+might create a perl script in the location displayed in a current dired
 buffer.  So does that imply yet another sub-local-minor-mode?
 
-Eh, I've punted on this for now.  It doesn't help that the Emacs Lisp
+Eh. I've punted on this for now.  It doesn't help that the Emacs Lisp
 Reference Manual is a little light on examples of how to do global
 minor-modes.
 
@@ -784,18 +792,7 @@ to play together nicely.  The segment of the keymap available for
 minor-mode usage is pretty small \(C-c [punctuation], and not just any
 punctuation either\).  I would think you could easily run into situations
 where the order in which you load minor-modes would change the keymappings
-you end up with.
-
-By the way, if you go looking for a good prefix of your own to attach
-\"perl\" stuff like the perlnow commands, consider that \"C-x p\" is
-used by the p4.el package \(a front-end to the perforce version control
-package -- which is proprietary, but still widely used\), and you
-should be aware that \"M-p\" is used in many contexts for \"history\"
-navigation.  On the other hand, *most* of the places that \"M-p\" is
-defined are not places that you'd probably want to issue a perlnow
-command -- the one exception I can think of is in a *shell* buffer, so
-you might want to be daring and experiment with grabbing Alt-p for your
-own use.")
+you end up with.")
 
 
 
@@ -1002,7 +999,7 @@ this writing, the latest is 5.8.2")
 ;;; (2) I can't think of a case where the user would be annoyed at
 ;;; me depriving them of this choice.
 
-;;; TODO refactor - I intensely dislike have separate module and
+;;; TODO refactor - I intensely dislike having separate module and
 ;;;    script runstrings variables (both of which are almost
 ;;;    certainly nil) and the one actual run-string.
 ;;;    This is a problem multiplied by two now with the alt-run-string.
@@ -1037,7 +1034,7 @@ See `perlnow-script-run-string' and `perlnow-module-run-string' instead.")
 ;;; the "run-string": having both allows for
 ;;; having two separate concurrently defined ways of running the
 ;;; the perl code in the current buffer.  The heuristics for
-;;; guessing what string to use remain identical.
+;;; guessing what run string to use remain identical.
 
 (defvar perlnow-script-alt-run-string nil
    "The alternative run string for perl scripts, used by \\[perlnow-alt-run].
@@ -1127,15 +1124,19 @@ Used only by the somewhat deprecated \"simple\" functions:
 
 ;;;----------------------------------------------------------
 (defun perlnow-define-standard-keymappings ()
-  "Quickly define some recommended keymappings for perlnow functions.
-By default, perlnow.el makes no changes to the users keymappings.
-I'm of the opinion that the emacs keymappings are too crowded for 
-it to be possible to do this intelligently without causing annoyance.
-As a comprompise, this function is provided to make it easy for you 
-to adopt my recommended keymappings in you like, but they're not forced 
-on you.  Note, these all use the \"C-c/\" prefix, in compliance with 
-the emacs recommendations for minor-modes."
-; TODO - Would be even better if it looked for and warned 
+  "Quickly define some recommended keymappings for perlnow
+functions.  By default, perlnow.el makes no changes to the users
+keymappings, because the emacs keymap is too crowded for it to be
+possible to do this intelligently without causing annoyance.  As
+a comprompise, this function is provided to make it easy for you
+to adopt my recommended keymappings in you like, but they're not
+forced on you.  Note: these all use the \"C-c/\" prefix.  A few 
+mappings are provided for useful functions that are defined 
+outside of the perlnow.el package: cperl-perldoc-at-point, 
+comment-region and narrow-to-defun."
+; TODO - Take the standard prefix as an argument?
+; then the user can choose "\C-c/" or "\C-c/"
+; TODO - Would be even cooler if it looked for and warned 
 ; about possible collisions... 
   (interactive)
    (global-set-key "\C-c/s" 'perlnow-script)
@@ -1150,7 +1151,10 @@ the emacs recommendations for minor-modes."
    (global-set-key "\C-c/A" 'perlnow-set-alt-run-string)
    (global-set-key "\C-c/t" 'perlnow-edit-test-file)
    (global-set-key "\C-c/b" 'perlnow-back-to-code)
-   (global-set-key "\C-c/~" 'perlnow-perlify-this-buffer-simple))
+   (global-set-key "\C-c/~" 'perlnow-perlify-this-buffer-simple)
+   (global-set-key "\C-c/1" 'cperl-perldoc-at-point)
+   (global-set-key "\C-c/#" 'comment-region)
+   (global-set-key "\C-c/N" 'narrow-to-defun))
 
 ;;;==========================================================
 ;;; functions to run perl scripts
@@ -1300,10 +1304,10 @@ module (i.e. does it have a package line), otherwise it
 assumes it's a perl script.  The heuristics for setting a default 
 \"alt\"-run string are identical to those used for setting the 
 `perlnow-run-string'."
-;;; perlnow-set-alt-run-string was originally a 
-;;; copy and paste of perlnow-set-run-string
-;;; with the word "run" changed to "alt-run".
-;;; However, it uses the same old functions:
+;;; perlnow-set-alt-run-string was (at least originally)
+;;; a copy and paste of perlnow-set-run-string
+;;; with the word "run" changed to "alt-run",
+;;; except in these two cases:
 ;;;    perlnow-guess-script-run-string
 ;;;    perlnow-guess-module-run-string
   (interactive)
@@ -1461,6 +1465,8 @@ The location for the new module defaults to the global
            (read-from-minibuffer
             "New OOP module to create \(e.g. /tmp/dev/New::Mod\): "
                                  initial keymap nil history nil nil))
+
+     ;;; TODO: check 'result', if it has a .pm file already, strip it first.
      (setq filename (concat (replace-regexp-in-string "::" perlnow-slash result) ".pm"))
 
      (while (file-exists-p filename)
@@ -1468,6 +1474,7 @@ The location for the new module defaults to the global
              (read-from-minibuffer
               "This name is in use, choose another \(e.g. /tmp/dev/New::Mod\): "
                                  result keymap nil history nil nil))
+     ;;; TODO: check 'result', if it has a .pm file already, strip it first.
        (setq filename (concat (replace-regexp-in-string "::" perlnow-slash result) ".pm")))
 
      (setq return
@@ -1669,14 +1676,6 @@ It does three things:
   (message "buffer is now perlified"))
 
 ;;;----------------------------------------------------------
-;;; TODO
-;;; Someday, break out the testfile extension ".t" as a settable
-;;; variable, so you can use ".test" or whatever, if you want.
-;;; Note: watch the handling of the h2xs case, which *always* uses *.t,
-;;; whatever might be used otherwise.  Similarly, would want searches 
-;;; for test codes to use either the user preference *or* the standard. 
-;;; Which suggests that it should be a list of allowed test file extentions... 
-
 (defun perlnow-edit-test-file (testfile)
    "Find \(or create\) an appropriate TESTFILE for the current perl code.
 This command follows this process:
@@ -1812,7 +1811,7 @@ original window, not the new one."
 ;;; Inelegant interface: *requires* NUMBLINES if you want to feed it a TEMPLATE
 
   ; before you open, point at where you're going to be from here
-  (setq perlnow-associated-code file)    ; bufloc, used by "C-c'b"
+  (setq perlnow-associated-code file)    ; bufloc, used by "C-c/b"
   ; and save name of what we're looking at
   (setq original-file-displayed (buffer-file-name)) ; Doesn't work if just a buffer without file...
 
@@ -1838,7 +1837,7 @@ original window, not the new one."
              (find-file file))))
 
     ; after opening, point back from new place to where we were
-    (setq perlnow-associated-code original-file-displayed) ; bufloc, used by "C-c'b"
+    (setq perlnow-associated-code original-file-displayed) ; bufloc, used by "C-c/b"
 
     (if switchback 
         (other-window 1))
