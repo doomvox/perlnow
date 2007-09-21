@@ -5,7 +5,7 @@
 ;; Copyright 2004 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.212 2006/03/06 08:42:21 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.213 2007/09/20 23:01:42 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -163,8 +163,8 @@ Add something like the following to your ~/.emacs file:
 
    \(perlnow-define-standard-keymappings\)
 
-If you prefer, that last function can be broken out into 
-individual definitions like so \(this would make it easier 
+If you prefer, that last function can be broken out into
+individual definitions like so \(this would make it easier
 for you to modify them to suit yourself\):
 
    \(global-set-key \"\\C-c/s\" 'perlnow-script\)
@@ -191,8 +191,8 @@ slash was choosen because it's unshifted and on the opposite
 side from the \"c\" \(on most keyboards\).
 
 You, on the other hand, are free to do whatever you want in
-your .emacs, and you might prefer other assignments, such 
-as using function keys for frequently used commands.  
+your .emacs, and you might prefer other assignments, such
+as using function keys for frequently used commands.
 Some possibilities:
 
   \(global-set-key [f4] 'perlnow-script\)
@@ -414,7 +414,7 @@ The next subject, developing perl modules:
 is similar to script development:
   `perlnow-documentation-tutorial-1-script-development'
 
-You have your choice of three ways of beginning work 
+You have your choice of three ways of beginning work
 on a new module:
 
 For proceedural modules:       \\[perlnow-module]
@@ -473,8 +473,8 @@ won't have either, yet.  So before doing that
 \\[perlnow-run], you have your choice of \\[perlnow-script]
 or if you *are* a test-first-code-later fanatic,
 \\[perlnow-edit-test-file].  Both will get you started on
-writing a script that uses the module.  Both of them 
-will create files with a \"use <module name>\" line filled in.  
+writing a script that uses the module.  Both of them
+will create files with a \"use <module name>\" line filled in.
 If the module is not in your @INC search path, it will also
 add the necessary \"FindBin/use lib\" magic to make sure
 that the script will be able to find the module.
@@ -623,7 +623,7 @@ use \\[perlnow-run] to run a small test that just exercises
 whatever feature is currently under development.
 It's often useful to have a simple, fast-running test
 that you use frequently, and a more through battery
-of tests on which you can allow a run time of several 
+of tests on which you can allow a run time of several
 minutes because you don't use it as often.
 
 Note that if you need to switch between more than two
@@ -636,7 +636,7 @@ typically find bound to Alt-p and Alt-n.")
 (defvar perlnow-documentation-test-file-strategies t
   "As mentioned in a few other places, the \\[perlnow-run]
 and \\[set-perlnow-run-string] commands try to find
-appropriate test files for perl code buffers.  
+appropriate test files for perl code buffers.
 There's a relatively elaborate search path for this.  Here's
 a quick description of what it looks for before giving up
 and prompting the user \(but please, avoid relying on the
@@ -696,8 +696,8 @@ Note that perlnow \(at least currently\) does not care if you're
 consistent about this choice, but for your own sanity you should
 probably pick a standard way of doing it and stick to it.
 
-However, there is now (as of version 0.3) a \\[perlnow-edit-test-file] 
-command that will create a new test file if one does not already exist.  
+However, there is now (as of version 0.3) a \\[perlnow-edit-test-file]
+command that will create a new test file if one does not already exist.
 The user defineable \"test policy\" dictates where these new
 test files will go.  See \"test policy\" in
 `perlnow-documentation-terminology'.")
@@ -889,8 +889,8 @@ function.
 
 \(>>>PERL_SCRIPT_NAME<<<\)
 becomes the perl script name of the previous
-current buffer.  Used in creating test scripts 
-that need to refer to the current script. 
+current buffer.  Used in creating test scripts
+that need to refer to the current script.
 
 \(>>>MINIMUM_PERL_VERSION<<<\)
 The minimum perl version you usually support.  Gets used in
@@ -1130,14 +1130,14 @@ keymappings, because the emacs keymap is too crowded for it to be
 possible to do this intelligently without causing annoyance.  As
 a comprompise, this function is provided to make it easy for you
 to adopt my recommended keymappings in you like, but they're not
-forced on you.  Note: these all use the \"C-c/\" prefix.  A few 
-mappings are provided for useful functions that are defined 
-outside of the perlnow.el package: cperl-perldoc-at-point, 
+forced on you.  Note: these all use the \"C-c/\" prefix.  A few
+mappings are provided for useful functions that are defined
+outside of the perlnow.el package: cperl-perldoc-at-point,
 comment-region and narrow-to-defun."
 ; TODO - Take the standard prefix as an argument?
 ; then the user can choose "\C-c/" or "\C-c/"
-; TODO - Would be even cooler if it looked for and warned 
-; about possible collisions... 
+; TODO - Would be even cooler if it looked for and warned
+; about possible collisions...
   (interactive)
    (global-set-key "\C-c/s" 'perlnow-script)
    (global-set-key "\C-c/m" 'perlnow-module)
@@ -1268,11 +1268,11 @@ assumes it's a perl script."
      ; tell perlnow-run how to do it
      (setq perlnow-run-string perlnow-module-run-string))
    (t  ;;  assume it's a script since it's not a module.
-;;; TODO - would be better to do a script-p, set a runstring based on that, 
-;;; and then have a fall through section that tries to verify if it's some 
-;;; sort of test script ("use Test"?), and otherwise either fail with warning, 
-;;; or prompt the user ask them what they think they're doing. 
-;;; Ah, another way out: run a perl -c on the buffer, and if it fails, 
+;;; TODO - would be better to do a script-p, set a runstring based on that,
+;;; and then have a fall through section that tries to verify if it's some
+;;; sort of test script ("use Test"?), and otherwise either fail with warning,
+;;; or prompt the user ask them what they think they're doing.
+;;; Ah, another way out: run a perl -c on the buffer, and if it fails,
 ;;; tell the user it ain't passing perl check (is it even perl code?).
 
      ; set-up intelligent default run string
@@ -1301,8 +1301,8 @@ From within a program, it's probably best to set some variables
 directly, see `perlnow-script-alt-run-string' and `perlnow-module-alt-run-string'.\n
 This function uses \\\[perlnow-module-code-p] to see if the code looks like a
 module (i.e. does it have a package line), otherwise it
-assumes it's a perl script.  The heuristics for setting a default 
-\"alt\"-run string are identical to those used for setting the 
+assumes it's a perl script.  The heuristics for setting a default
+\"alt\"-run string are identical to those used for setting the
 `perlnow-run-string'."
 ;;; perlnow-set-alt-run-string was (at least originally)
 ;;; a copy and paste of perlnow-set-run-string
@@ -1448,10 +1448,10 @@ In interactive use, gets the path INC-SPOT and PACKAGE-NAME
 with a single question, asking for an answer in a hybrid form
 like so:
    /home/hacker/perldev/lib/New::Module
-This works much like \\[perlnow-module], except that it uses 
+This works much like \\[perlnow-module], except that it uses
 a different template.\n
 The location for the new module defaults to the global
-`perlnow-pm-location'."  
+`perlnow-pm-location'."
 ;;; Mutated from perlnow-module
 
   (interactive
@@ -1512,14 +1512,14 @@ double-colon separated package name form\)."
           (window-size 14)
           )
 
-    (setq display-buffer (get-buffer-create "*perlnow-h2xs*")) 
+    (setq display-buffer (get-buffer-create "*perlnow-h2xs*"))
 
    ;Bring the *perlnow-h2xs* display window to the fore (bottom window of the frame)
    (perlnow-show-buffer-other-window display-buffer window-size t)
 
    (perlnow-blank-out-display-buffer display-buffer t)
 
-   (let ((default-directory h2xs-location)) 
+   (let ((default-directory h2xs-location))
      ; A typical h2xs run string:  h2xs -AX -n Net::Acme -b 5.6.0
      (call-process "h2xs"
                 nil
@@ -1537,13 +1537,13 @@ double-colon separated package name form\)."
   (setq h2xs-module-file (perlnow-full-path-to-h2xs-module h2xs-location package-name))
   (find-file h2xs-module-file)
   (search-forward "# Preloaded methods go here.")
-  (forward-line 1)   
+  (forward-line 1)
 
-  ; Also  open the *.t file 
+  ; Also  open the *.t file
   (setq h2xs-test-file (perlnow-full-path-to-h2xs-test-file h2xs-staging-area))
 
-  (perlnow-open-file-other-window 
-      h2xs-test-file 
+  (perlnow-open-file-other-window
+      h2xs-test-file
       window-size)  ; same number of lines as above.  Note: leaving args template and switchback nil.
   (funcall (perlnow-lookup-preferred-perl-mode))
   (search-forward "BEGIN { plan tests => 1")
@@ -1681,7 +1681,7 @@ It does three things:
 This command follows this process:
   o Uses the given testfile (if run non-interactively).
   o Checks if the code looks like a module or a script:
-    Scripts have a modified test policy: always use naming style 
+    Scripts have a modified test policy: always use naming style
     \"basename\", and dot-def \"fileloc\".
   o Look for an existing file in place dictated by test policy.
   o If not, Searches the test path, looks for an existing file there
@@ -1689,13 +1689,13 @@ This command follows this process:
   o If no existing file is found, creates one as determined by the
     test policy.
   o Finally, the run string for the current buffer is set so that
-    it will run this test.  
+    it will run this test.
 The test policy is defined by this trio of variables:
 `perlnow-test-policy-test-location', e.g. \".\", \"./t\", \"../t\", etc.
 `perlnow-test-policy-dot-definition' i.e.  \"fileloc\" or \"incspot\"
 `perlnow-test-policy-naming-style'   i.e. \"hyphenized\"or \"basename\"."
 
-; Remember the *runstring* is a bit different for 
+; Remember the *runstring* is a bit different for
 ; an h2xs module than a regular module.
 
   (interactive
@@ -1709,9 +1709,9 @@ The test policy is defined by this trio of variables:
     (setq new-file-p (not (file-exists-p testfile)))
     (setq original-code (buffer-file-name))
 
-    (cond                               
+    (cond
      ; if module
-     ((setq package-name (perlnow-get-package-name-from-module-buffer))  
+     ((setq package-name (perlnow-get-package-name-from-module-buffer))
       ; define module inc-spot now, before opening test file buffer
       (let* ( (pm-file (buffer-file-name))
               (pm-location (file-name-directory pm-file))
@@ -1719,7 +1719,7 @@ The test policy is defined by this trio of variables:
               (inc-spot (perlnow-get-inc-spot package-name pm-location))
               )
         (setq perlnow-perl-package-name package-name) ; global to pass value to template
-        (perlnow-open-file-other-window 
+        (perlnow-open-file-other-window
            testfile
            30
            perlnow-perl-test-module-template )
@@ -1733,9 +1733,9 @@ The test policy is defined by this trio of variables:
               (perlnow-endow-script-with-access-to inc-spot)))
         ))
      ; if script
-     ((perlnow-script-p) 
+     ((perlnow-script-p)
       (setq perlnow-perl-script-name (buffer-file-name)) ; global to pass value to template
-      (perlnow-open-file-other-window 
+      (perlnow-open-file-other-window
          testfile
          30
          perlnow-perl-test-script-template)
@@ -1743,9 +1743,9 @@ The test policy is defined by this trio of variables:
       (save-buffer))
      (t
       (let ((extension (perlnow-file-extension (buffer-file-name))))
-        (cond ((string= extension "t") 
+        (cond ((string= extension "t")
                (message "Perlnow error: You're already inside of a test file.")
-                ;;; TODO - You mean, you can't create a test file for a test file? 
+                ;;; TODO - You mean, you can't create a test file for a test file?
                 ;;;   Before writing a test, I *always* write a test for it first!
                )
               (t
@@ -1756,9 +1756,9 @@ The test policy is defined by this trio of variables:
 
 ;;;----------------------------------------------------------
 ;; TODO
-;; This ends up with a doubled display if 
-;; the buffer is *already* displayed.  Would be 
-;; better to switch windows if it there's an already 
+;; This ends up with a doubled display if
+;; the buffer is *already* displayed.  Would be
+;; better to switch windows if it there's an already
 ;; active window.
 (defun perlnow-back-to-code ()
   "Return to the code that this testfile is for.
@@ -1776,28 +1776,28 @@ Experimental feature.  Functionality may change."
 
 ;;;----------------------------------------------------------
 (defun perlnow-file-extension (filename)
-  "Returns the file extension of the given FILENAME. 
+  "Returns the file extension of the given FILENAME.
 \(I bet one of these has never been written before, eh?\)"
   (let (just_file_name basename extension)
      (setq just_file_name
-           (file-name-sans-versions 
-            (file-name-nondirectory 
+           (file-name-sans-versions
+            (file-name-nondirectory
              filename)))
      (setq basename (file-name-sans-extension just_file_name))
      (setq extension (substring just_file_name (+ 1 (length basename))))))
 
 
 ;;;----------------------------------------------------------
-;;;TODO 
+;;;TODO
 ;;; The following functions:
 ;;;    perlnow-open-file-other-window
 ;;;    perlnow-show-buffer-other-window
 ;;; exist as centralized locations for my current crude window management methods,
-;;; so that they can be improved at a later date.  Currently when I want 
-;;; to show a new window alongside the existing current window, I close 
-;;; all others and just display the two of them.  Would be better to use 
+;;; so that they can be improved at a later date.  Currently when I want
+;;; to show a new window alongside the existing current window, I close
+;;; all others and just display the two of them.  Would be better to use
 ;;; smarter handling that would leave others open if there's enough room.
-;;; Question: could both both functions be fused together?  
+;;; Question: could both both functions be fused together?
 
 ;;;----------------------------------------------------------
 (defun perlnow-open-file-other-window (file &optional numblines template switchback)
@@ -1807,7 +1807,7 @@ window (defaults to half of frame height); TEMPLATE a
 template.el template to be used in creating a new file
 buffer.  If SWITCHBACK is true, the cursor is left in the
 original window, not the new one."
-;;; TODO - 
+;;; TODO -
 ;;; Inelegant interface: *requires* NUMBLINES if you want to feed it a TEMPLATE
 
   ; before you open, point at where you're going to be from here
@@ -1839,7 +1839,7 @@ original window, not the new one."
     ; after opening, point back from new place to where we were
     (setq perlnow-associated-code original-file-displayed) ; bufloc, used by "C-c/b"
 
-    (if switchback 
+    (if switchback
         (other-window 1))
     ))
 
@@ -1862,7 +1862,7 @@ original window, not the new one."
   (other-window 1)
   (switch-to-buffer buffer)
 
-  (if switchback 
+  (if switchback
       (other-window 1))
     )
 
@@ -1886,14 +1886,14 @@ See the wrapper function: \\[perlnow-script]."
 Takes arguments SCRIPT-NAME PACKAGE-NAME INC-SPOT,
 which are all explained in `perlnow-documentation-terminology'.
 If INC-SPOT is nil, it skips adding the FindBin/use lib lines.
-Used by \\[perlnow-script] as well as the older 
-\\[perlnow-script-using-this-module]. 
+Used by \\[perlnow-script] as well as the older
+\\[perlnow-script-using-this-module].
 Currently always returns t, but future versions may return nil for failure."
-; Presumption: if inc-spot is nil, then we got here from a man page buffer, 
-; and we can assume the module is installed (or the man page most 
-; likely wouldn't be there), hence we can skip the 
+; Presumption: if inc-spot is nil, then we got here from a man page buffer,
+; and we can assume the module is installed (or the man page most
+; likely wouldn't be there), hence we can skip the
 ;       (perlnow-endow-script-with-access-to inc-spot)
-;;; TODO - would be a good idea to check if we can find the module, 
+;;; TODO - would be a good idea to check if we can find the module,
 ;;;        and warn if not.
 
     ; Make the script we're creating the the default
@@ -1902,7 +1902,7 @@ Currently always returns t, but future versions may return nil for failure."
     (perlnow-sub-name-to-kill-ring)
 
     ; module currently displayed, now want to open script, display in paralel
-      (perlnow-open-file-other-window 
+      (perlnow-open-file-other-window
          script-name
          nil
          perlnow-perl-script-template)
@@ -2144,7 +2144,7 @@ This looks for the package line near the top."
 This will be in perl's double colon separated form, or it will
 return nil if none is found."
   (save-excursion
-  (let ((package-line-pat "^[ \t]*package[ \t]*\\(.*\\)[ \t;]") ;; captures "Module::Name"
+  (let ((package-line-pat "^[ \t]*package[ \t]+\\(.*?\\)[ \t;]") ;; captures "Module::Name"
         (comment-line-pat "^[ \t]*$\\|^[ \t]*#")
          return)
     (goto-char (point-min))
@@ -2339,8 +2339,8 @@ schemes for your test files: `perlnow-documentation-test-file-strategies'."
           return            ; the returned run string
           )
 
-; h2xs case first, 
-    (cond ( (setq staging-area (perlnow-find-h2xs-staging-area)) 
+; h2xs case first,
+    (cond ( (setq staging-area (perlnow-find-h2xs-staging-area))
             (setq return (concat "cd " staging-area "; make test"))
             )
           (t ; non-h2xs module
@@ -2351,7 +2351,7 @@ schemes for your test files: `perlnow-documentation-test-file-strategies'."
     return))
 
 ;;;==========================================================
-;;; The following functions are used by perlnow-edit-test-file 
+;;; The following functions are used by perlnow-edit-test-file
 ;;; and it's relatives.
 ;;;==========================================================
 ;;;----------------------------------------------------------
@@ -2382,7 +2382,7 @@ Used by \\[perlnow-get-test-file-name]."
    "Get the test file name for the current perl script buffer.
 Used by \\[perlnow-get-test-file-name]."
   (
-    perlnow-get-test-file-name-given-policy  
+    perlnow-get-test-file-name-given-policy
     perlnow-test-policy-test-location
     "fileloc"
     "basename"))
@@ -2420,7 +2420,7 @@ and the NAMESTYLE \(see `perlnow-test-policy-naming-style'\)."
 
     ; module oriented info, calculated:
     (cond ; do only if module
-     ((setq package-name (perlnow-get-package-name-from-module-buffer))  
+     ((setq package-name (perlnow-get-package-name-from-module-buffer))
            (setq inc-spot (perlnow-get-inc-spot package-name file-location))
            (setq hyphenized-package-name (mapconcat 'identity (split-string package-name "::") "-"))
            ))
@@ -2450,11 +2450,11 @@ and the NAMESTYLE \(see `perlnow-test-policy-naming-style'\)."
 
      ;If this result is good, return it, if not, keep looking
      ;If nothing found though, return this as name to be created.
-     (cond ((file-exists-p test-file-from-policy)    ; if test-policy finds test-file, does not look for redundant matches 
-             (setq test-file test-file-from-policy) ) 
-           ((setq test-file (perlnow-search-through-test-path)) ) ; warns if redundant matches exist, 
+     (cond ((file-exists-p test-file-from-policy)    ; if test-policy finds test-file, does not look for redundant matches
+             (setq test-file test-file-from-policy) )
+           ((setq test-file (perlnow-search-through-test-path)) ) ; warns if redundant matches exist,
                                                                   ; but returns the first.  nil if none.
-           (t 
+           (t
               (setq test-file test-file-from-policy))
            )
      test-file))
@@ -2473,7 +2473,7 @@ Will warn if there appear to be redundant possible testfiles."
            (test-search-list ())  ; A listing of possible absolute locations to look for the test file,
                                   ; built up from relative locations in perlnow-test-path
            testloc   ; a location to be searched for test files
-           testfile  ; a possible testfile to check for existance 
+           testfile  ; a possible testfile to check for existance
 
            fish-list ; list of "catches" that look like appropriate test files
            return            ; the returned run string
@@ -2486,7 +2486,7 @@ Will warn if there appear to be redundant possible testfiles."
            test-file-check-list
            )
 
-          ;;; This block of code was c&p from above, and ported outside of 
+          ;;; This block of code was c&p from above, and ported outside of
           ;;; the let* to allow for cond usage.  Fugliness, eh?
           ;;; TODO - routine that probes for all possible info like this
           ;;; you could want, and stashes it in a data structure like an alist
@@ -2501,7 +2501,7 @@ Will warn if there appear to be redundant possible testfiles."
           ; module oriented info:
            (cond ( (setq package-name (perlnow-get-package-name-from-module-buffer))
                    (setq inc-spot (perlnow-get-inc-spot package-name file-location))
-                   (setq hyphenized-package-name 
+                   (setq hyphenized-package-name
                      (mapconcat 'identity (split-string package-name "::") "-"))
                    ))
 
@@ -2559,30 +2559,30 @@ Will warn if there appear to be redundant possible testfiles."
     ))
 
 ;;;----------------------------------------------------------
-(defun perlnow-assoc-regexp (pattern alist &optional default) 
+(defun perlnow-assoc-regexp (pattern alist &optional default)
   "Return first value from ALIST with key that matches PATTERN."
     (assoc-default pattern alist 'string-match default))
 
 ;;;----------------------------------------------------------
-(defun perlnow-lookup-preferred-perl-mode () 
+(defun perlnow-lookup-preferred-perl-mode ()
   "Look-up which perl mode the user prefers.
-Examines the alists `interpreter-mode-alist' and 
-`auto-mode-alist' to see if perl-mode, 
-cperl-mode \(or perhaps something else entirely?\) 
+Examines the alists `interpreter-mode-alist' and
+`auto-mode-alist' to see if perl-mode,
+cperl-mode \(or perhaps something else entirely?\)
 has been chosen as the default to work on perl code."
   (interactive)
   (let* ( (default "cperl-mode")
           (mode default)
           (interpreter-rule "perl") ; should match perl or perl5
           (auto-rule "\[[pP][pP]\]\[[Llm][Llm][Llm]\]") ; regexp to match a regexp containing: [pP][Llm]
-         )  
-      (cond ((setq mode 
+         )
+      (cond ((setq mode
               (perlnow-assoc-regexp interpreter-rule interpreter-mode-alist default))
              )
-            ((setq mode 
+            ((setq mode
               (perlnow-assoc-regexp auto-rule auto-mode-alist default))
-              )  
-            (t 
+              )
+            (t
              (setq mode default)))
       mode))
 
@@ -2620,7 +2620,7 @@ has been chosen as the default to work on perl code."
   "Determines if the current file buffer is located in an h2xs tree.
 Should return the path to the current h2xs staging area, or nil
 if it's not found.  The staging area is located by searching upwards
-from the location of the buffer's associated file for a place 
+from the location of the buffer's associated file for a place
 with a \"lib\" and/or \"t\" *and* a \"Makefile.PL\"."
 ;; Two cases I definitely want to cover:
 ;;   ~/perldev/Horror-Grossout/lib/Horror/Grossout.pm
@@ -2653,7 +2653,7 @@ with a \"lib\" and/or \"t\" *and* a \"Makefile.PL\"."
                           (throw 'ICE dir)))))
               (setq dir (perlnow-one-up dir)))
             (setq return nil))) ; ran the gauntlet without success, so return nil
-    (if return ; skip if nothing found (and dir is "/"). 
+    (if return ; skip if nothing found (and dir is "/").
         (perlnow-run-perl-makefile-pl-if-needed dir))
     return))
 
@@ -2661,7 +2661,7 @@ with a \"lib\" and/or \"t\" *and* a \"Makefile.PL\"."
 (defun perlnow-run-perl-makefile-pl-if-needed (h2xs-staging-area)
   "Given a H2XS-STAGING-AREA in an h2xs tree, runs \"perl Makefile.PL\" if needed.
 This looks to see if there's a Makefile there, and if not,
-runs the \"perl Makefile.PL\" command to generate it. 
+runs the \"perl Makefile.PL\" command to generate it.
 Output is appended to the *perlnow-h2xs* window."
 ;;; Note, this *presumes* that you're inside an h2xs-staging-area, it does not check.
 
@@ -2669,18 +2669,18 @@ Output is appended to the *perlnow-h2xs* window."
 
     (cond ( (not (file-regular-p (concat h2xs-staging-area "Makefile")))
 
-;;; This method does it in a *compile* window: 
+;;; This method does it in a *compile* window:
 ;;;      (let ((run-command ""))
 ;;;                (setq run-command (concat "cd " h2xs-staging-area "; perl Makefile.PL;"))
 ;;;                (compile run-command))
-;;; 
+;;;
 ;;; This does it in a *perlnow-h2xs* window:
 
             (setq display-buffer (get-buffer-create "*perlnow-h2xs*"))
 
 ;;; Decided *not* to blank out the buffer first, let output follow h2xs output
 ;;;    (perlnow-blank-out-display-buffer display-buffer)
-            
+
             (set-buffer display-buffer)
             (insert "Trying to generate Makefile from Makefile.PL\n")
             (let ( (default-directory h2xs-staging-area) )
@@ -2788,12 +2788,12 @@ were \"New::Module\", this should return:
 ;;;----------------------------------------------------------
 (defun perlnow-full-path-to-h2xs-test-file (h2xs-staging-area)
   "Get the full path to a the test file for a module created by h2xs.
-Given the H2XS-STAGING-AREA, it looks for files located in the 
-sub-directory \"t\".  First choice is given to a test file with 
-a basename related to the module name, if that fails it looks 
-for the old-fashioned \"1.t\".  E.g. if the staging-area were 
-\"/usr/local/perldev/New-Module/\" it would look in 
-\"/usr/local/perldev/New-Module/t\" for \"New-Module.t\" or 
+Given the H2XS-STAGING-AREA, it looks for files located in the
+sub-directory \"t\".  First choice is given to a test file with
+a basename related to the module name, if that fails it looks
+for the old-fashioned \"1.t\".  E.g. if the staging-area were
+\"/usr/local/perldev/New-Module/\" it would look in
+\"/usr/local/perldev/New-Module/t\" for \"New-Module.t\" or
 \"Module.t\" or possibly \"1.t\"."
   (let (  (module-test-location "")
           (test-file1 "")     ; new-style, e.g.      New-Module.t
@@ -2809,28 +2809,28 @@ for the old-fashioned \"1.t\".  E.g. if the staging-area were
     (setq module-test-location
             (concat h2xs-staging-area "t/"))
 
-    ; peel off the lower level of "h2xs-staging-area", 
+    ; peel off the lower level of "h2xs-staging-area",
     ; to get the probable base-name
     (let ((dir h2xs-staging-area))
 ;      (string-match "\\(^.*/\\)\\([^/]*\\)[/]*$" dir)
       ;;; TODO - regexp has unix slash dependency
       (string-match "\\(^.*/\\)\\([^/]*\\)/$" dir)
       (setq basename (match-string 2 dir))
-      (unless basename 
+      (unless basename
         (message "warning: blank basename found in perlnow-full-path-to-h2xs-test-file"))
       )
     (setq test-file1 (concat module-test-location basename ".t"))
 
-    ; for the hell of it, peel off the last part 
+    ; for the hell of it, peel off the last part
     ; of that name, a second try for basename (not likely)
     (string-match "\\(^.*-\\)\\([^-]*\\)$" basename)
     (setq basename-truncated (match-string 2 basename))
-    (setq test-file2 (concat module-test-location basename-truncated ".t"))            
+    (setq test-file2 (concat module-test-location basename-truncated ".t"))
 
    ; And failing that, well try the numeric name, 1.t
-   ; And if *that* fails, we'll return the directory location 
-   ; (a feature that might be better than just returning a 
-   ; single file, eh?  Maybe should only open the h2xs test file 
+   ; And if *that* fails, we'll return the directory location
+   ; (a feature that might be better than just returning a
+   ; single file, eh?  Maybe should only open the h2xs test file
    ; when there's only one there...  Think about that -- TODO).
 
    (cond ( (file-exists-p test-file1)
@@ -3200,7 +3200,7 @@ This is split into two pieces, the module root
 and module name, which are returned as a two-element list."
 ;;; TODO
 ;;; Fix any portability problem here.  Can pattern [^/] work on windows?
-;;; Why not build it up using perlnow-slash? 
+;;; Why not build it up using perlnow-slash?
   (let* ( (pattern
             (concat
              "^\\(.*\\)"       ; ^(.*)    - stuff at start becomes the mod root
@@ -3256,7 +3256,7 @@ Simple example: given the STRING \"/home/doom/lib/Stri\" should return
  \"/home/doom/lib/\" and \"Stri\"\n
 Perl package example: given \"/home/doom/lib/Taxed::Reb\" should return
  \"/home/doom/lib/Taxed::\" and \"Reb\"\n"
-;;; TODO - fix unix file separator depencency here 
+;;; TODO - fix unix file separator depencency here
 ;;;        (build up with perlnow-slash?)
   (let* ( (pattern "^\\(.*\\(/\\|::\\)\\)\\([^/:]*$\\)" )
            directory fragment
