@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.215 2009/08/14 00:50:49 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.216 2009/08/14 00:53:18 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -866,7 +866,7 @@ Defines the PERL_MODULE_NAME expansion.")
 ; dependencies have crept in, e.g. patterns that use [^/].
 ; (And what about a root of "/" vs "C:\" ?)
 
-;;;----------------------------------------------------------
+
 ;; Defining additional "expansions" for use in template.el templates.
 ;;
 (defvar perlnow-documentation-template-expansions t
@@ -995,7 +995,7 @@ this writing, the latest is 5.8.2")
 ;;; DEBUG note: eval this to erase effects of the above two settings:
 ;;; (setq template-expansion-alist 'nil)
 
-;;;----------------------------------------------------------
+
 ;;; I am following my instinct and using make-variable-buffer-local
 ;;; to force the following to always be buffer-local, despite the
 ;;; admonition in the emacs lisp ref.
@@ -1127,7 +1127,7 @@ Used only by the somewhat deprecated \"simple\" functions:
 ;;;==========================================================
 ;;; set-up functions
 
-;;;----------------------------------------------------------
+
 (defun perlnow-define-standard-keymappings ()
   "Quickly define some recommended keymappings for perlnow
 functions.  By default, perlnow.el makes no changes to the users
@@ -1164,7 +1164,7 @@ comment-region and narrow-to-defun."
 ;;;==========================================================
 ;;; functions to run perl scripts
 
-;;;----------------------------------------------------------
+
 (defun perlnow-run-check ()
   "Run a perl check on the current buffer.
 This displays errors and warnings in another window, in the
@@ -1178,7 +1178,7 @@ less prompt \(also, it does not require mode-compile.el\)."
   (message "compile-command: %s" compile-command)
   (compile compile-command) )
 
-;;;----------------------------------------------------------
+
 (defun perlnow-run (runstring)
   "Run the perl code in this file buffer.
 This uses an interactively set RUNSTRING determined from
@@ -1196,7 +1196,7 @@ The run string can always be changed later by running
    ))
   (compile runstring))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-alt-run (altrunstring)
   "Run the perl code in this file buffer.
 This uses an interractively set ALTRUNSTRING determined
@@ -1214,7 +1214,7 @@ The alt run string can always be changed later by running
    ))
   (perlnow-run altrunstring)) ; Note: uses perlnow-run rather than running compile directly
 
-;;;----------------------------------------------------------
+
 (defun perlnow-perldb (runstring)
   "Run the perl debugger on the code in this file buffer.
 This uses an interactively set RUNSTRING determined from
@@ -1241,7 +1241,7 @@ to a different file."
          (replace-regexp-in-string "/perl " "/perl -d" runstring)))
     (perldb modified-runstring)))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-set-run-string ()
   "Prompt the user for a new run string for the current buffer.
 This sets the global variable `perlnow-run-string' that \\[perlnow-run]
@@ -1296,7 +1296,7 @@ assumes it's a perl script."
      ; tell perlnow-run to do it that way
      (setq perlnow-run-string perlnow-script-run-string))))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-set-alt-run-string ()
   "Prompt the user for a new alternative run string for the current buffer.
 This sets the global variable `perlnow-alt-run-string' that \\[perlnow-alt-run]
@@ -1351,7 +1351,7 @@ assumes it's a perl script.  The heuristics for setting a default
 ;;;==========================================================
 ;;; user level creation functions (script, module, h2xs...)
 
-;;;----------------------------------------------------------
+
 (defun perlnow-script (script-name)
   "General purpose command to quickly jump into coding a perl script.
 This prompts the user for the new SCRIPT-NAME, and then uses
@@ -1397,7 +1397,7 @@ can be\)."
 ;;;         ; given colon-ized, returns first pm found, or nil if none
 
 
-;;;----------------------------------------------------------
+
 (defun perlnow-module (inc-spot package-name)
   "Quickly jump into development of a new perl module.
 In interactive use, gets the path INC-SPOT and PACKAGE-NAME
@@ -1447,7 +1447,7 @@ creation."
     (perlnow-create-with-template filename perlnow-perl-module-template)))
 
 
-;;;----------------------------------------------------------
+
 (defun perlnow-object-module (inc-spot package-name)
   "Quickly jump into development of a new perl OOP module.
 In interactive use, gets the path INC-SPOT and PACKAGE-NAME
@@ -1487,7 +1487,7 @@ The location for the new module defaults to the global
     (perlnow-create-with-template filename perlnow-perl-object-module-template)))
 
 
-;;;----------------------------------------------------------
+
 (defun perlnow-h2xs (h2xs-location package-name)
   "To quickly jump into development of a new perl CPAN module.
 Asks two questions, prompting for the H2XS-LOCATION  \(the place where
@@ -1542,7 +1542,7 @@ double-colon separated package name form\)."
 ;;;==========================================================
 ;;; Older (if not quite deprecated) user level creation commands
 
-;;;----------------------------------------------------------
+
 (defun perlnow-script-using-this-module (script)
   "Jump quickly into a new SCRIPT that uses the current module code.
 If the module is not in perl's search path \(@INC\), then an
@@ -1565,7 +1565,7 @@ package name."
     (perlnow-do-script-from-module script package-name inc-spot)))
 
 
-;;;----------------------------------------------------------
+
 (defun perlnow-module-two-questions (inc-spot package-name)
   "Quickly jump into development of a new perl module.
 This is an older, but simpler form that asks the user two
@@ -1589,7 +1589,7 @@ for people who don't don't agree that that's more convenient."
 ;; The "simple" functions.  Older code that doesn't use template.el.
 ;;;==========================================================
 
-;;;----------------------------------------------------------
+
 (defun perlnow-script-simple ()
   "Quickly jump into development of a new perl script.
 This is a simple, though inflexible form of \\[perlnow-script].
@@ -1611,7 +1611,7 @@ One advantage: it does not require the template.el package."
   ; Insert the hashbang, a simple header, and make the file executable:
   (perlnow-perlify-this-buffer-simple))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-perlify-this-buffer-simple ()
   "Turn the current buffer into perl window \(without template.el\).
 This is a simple, but inflexible, command that doesn't
@@ -1663,7 +1663,7 @@ It does three things:
   (set-file-modes (buffer-file-name) perlutil-new-file-permissions))
   (message "buffer is now perlified"))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-edit-test-file (testfile)
    "Find \(or create\) an appropriate TESTFILE for the current perl code.
 This command follows this process:
@@ -1737,7 +1737,7 @@ The test policy is defined by this trio of variables:
     (setq perlnow-associated-code original-code)))
 
 
-;;;----------------------------------------------------------
+
 ;; TODO
 ;; This ends up with a doubled display if
 ;; the buffer is *already* displayed.  Would be
@@ -1757,7 +1757,7 @@ Experimental feature.  Functionality may change."
 ;;; Internally used functions
 ;;;==========================================================
 
-;;;----------------------------------------------------------
+
 (defun perlnow-file-extension (filename)
   "Returns the file extension of the given FILENAME.
 \(I bet one of these has never been written before, eh?\)"
@@ -1770,7 +1770,7 @@ Experimental feature.  Functionality may change."
      (setq extension (substring just_file_name (+ 1 (length basename))))))
 
 
-;;;----------------------------------------------------------
+
 ;;;TODO
 ;;; The following functions:
 ;;;    perlnow-open-file-other-window
@@ -1782,7 +1782,7 @@ Experimental feature.  Functionality may change."
 ;;; smarter handling that would leave others open if there's enough room.
 ;;; Question: could both both functions be fused together?
 
-;;;----------------------------------------------------------
+
 (defun perlnow-open-file-other-window (file &optional numblines template switchback)
   "Utility to open file in another window, leaving current
 visible.  Options: NUMBLINES, the number of lines in the new
@@ -1820,7 +1820,7 @@ original window, not the new one."
         (other-window 1))
     ))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-show-buffer-other-window (buffer &optional numblines switchback)
   "Utility to open BUFFER in another window, leaving current
 visible.  Options: NUMBLINES, the number number of lines in
@@ -1840,7 +1840,7 @@ original window, not the new one."
       (other-window 1))
     )
 
-;;;----------------------------------------------------------
+
 (defun perlnow-do-script (filename)
   "Quickly jump into development of a new perl script.
 Prompts the user for the FILENAME.
@@ -1854,7 +1854,7 @@ See the wrapper function: \\[perlnow-script]."
   (perlnow-change-mode-to-executable))
 
 
-;;;----------------------------------------------------------
+
 (defun perlnow-do-script-from-module (script-name package-name &optional inc-spot)
   "Does the work of creating a script from a module-buffer.
 Takes arguments SCRIPT-NAME PACKAGE-NAME INC-SPOT,
@@ -1886,7 +1886,7 @@ Currently always returns t, but future versions may return nil for failure."
     (insert "\n")
   t)
 
-;;;----------------------------------------------------------
+
 (defun perlnow-endow-script-with-access-to (location)
   "Insert appropriate \"use lib\" line so script will see given LOCATION."
   (unless (perlnow-inc-spot-in-INC-p location)
@@ -1899,7 +1899,7 @@ Currently always returns t, but future versions may return nil for failure."
       (insert "\");\n"))))
 
 
-;;;----------------------------------------------------------
+
 (defun perlnow-prompt-for-module-to-create (where what)
   "Internally used by \\[perlnow-module-two-questions\] to ask the two questions.
 Asks for the WHERE, i.e. the \"module root\" location, and the WHAT, the name
@@ -1917,7 +1917,7 @@ Note: This is all used only by the mildly deprecated \\[perlnow-module-two-quest
   (list where what)))
 
 
-;;;----------------------------------------------------------
+
 (defun perlnow-prompt-for-h2xs (where what)
   "For Internal use only: ask the two questions for \\[perlnow-h2xs].
 The WHERE is location to put the h2xs structure and the WHAT is
@@ -1939,7 +1939,7 @@ element list, h2xs-location and package-name."
     )
   (list where what)))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-prompt-for-h2xs-again (where what)
   "For internal use only: the \"ask again\" for \\[perlnow-h2xs\].
 If the user enters an existing h2xs module name in
@@ -1949,7 +1949,7 @@ different message.  Returns a two element list, location and package-name."
   (interactive "DThat exists already! Location for new h2xs structure? \nsName of new module \(e.g. New::Module\)? ")
   (list where what))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-sub-name-to-kill-ring ()
   "Pushes the name of the current perl sub on to the `kill-ring'.
 This is intended to be run inside an open buffer of perl code.
@@ -1981,7 +1981,7 @@ Used by \\[perlnow-script-using-this-module]."
               ))))
   return))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-module-found-in-INC (package-name)
   "Given a perl PACKAGE-NAME \(in double-colon separated form\)
 return the first module file location found in perl's @INC
@@ -2001,7 +2001,7 @@ array, or nil if it is not found."
              (throw 'TANTRUM full)))))
     return))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-insert-spaces-the-length-of-this-string (string)
   "Insert as many spaces as characters in the given STRING.
 Used by the template.el expansion PNFS."
@@ -2010,7 +2010,7 @@ Used by the template.el expansion PNFS."
                  (file-name-nondirectory string)
                  ) ?\ )))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-full-path-to-module (inc-spot package-name)
   "Piece together a INC-SPOT and a PACKAGE-NAME into a full file name.
 Given \"/home/doom/lib\" and the perl-style \"Text::Gibberish\" would
@@ -2023,14 +2023,14 @@ filesys path."
   (setq inc-spot (file-name-as-directory inc-spot))
   (concat  inc-spot filename)))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-make-sure-file-exists ()
   "Forcibly save the current buffer to it's associated file.
 This is to make sure that the file actually exists."
   (set-buffer-modified-p t)
   (save-buffer))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-change-mode-to-executable ()
   "Make the file associated with the current buffer executable."
   (perlnow-make-sure-file-exists)
@@ -2043,7 +2043,7 @@ This is to make sure that the file actually exists."
   (set-file-modes filename new-file-permissions)))
 
 
-;;;----------------------------------------------------------
+
 (defun perlnow-prompt-user-for-file-to-create (ask-mess default-location)
   "Ask for the name of the file to create.
 Check to see if one exists already, and if so, ask for another name.
@@ -2063,7 +2063,7 @@ with path."
   ))
 
 
-;;;----------------------------------------------------------
+
 (defun perlnow-create-with-template (filename template)
   "Create a new file with a template.el template.
 Given FILENAME and TEMPLATE this does the actual creation of
@@ -2075,7 +2075,7 @@ side-effect, it sets the global `template-file' here."
   (template-new-file filename template)
   (write-file filename))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-nix-script-p ()
   "Determine if the buffer looks like a 'nix style executable script.
 Looks for the hash-bang line at the top."
@@ -2085,7 +2085,7 @@ Looks for the hash-bang line at the top."
     (looking-at hash-bang-line-pat)
     )))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-script-p ()
   "Determine if the buffer looks like a perl script.
 Looks for the hash-bang line at the top.  Note: this is probably not
@@ -2096,7 +2096,7 @@ e.g. test files \(*.t\) or scripts on non-unix-like systems."
     (goto-char (point-min))
     (looking-at hash-bang-line-pat))))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-module-code-p ()
   "Determine if the buffer looks like a perl module.
 This looks for the package line near the top."
@@ -2107,7 +2107,7 @@ This looks for the package line near the top."
     (while (looking-at comment-line-pat) (forward-line 1))
     (looking-at package-line-pat) )))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-get-package-name-from-module-buffer ()
   "Get the module name from the package line.
 This will be in perl's double colon separated form, or it will
@@ -2124,7 +2124,7 @@ return nil if none is found."
     (set-text-properties 0 (length return) nil return) ; remove all text properties
     return)))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-get-package-name ()
   "Return the module name  \(in perl's double colon separated form\)
 from either a module buffer or a Man page showing the perldoc for it,
@@ -2142,7 +2142,7 @@ away that info."
       ))
     return))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-get-package-name-from-man ()
   "Return the module name from a man page buffer displaying the perldoc.
 If not a man page buffer, returns nil.  It tries several methods of
@@ -2173,7 +2173,7 @@ it's best guess."
        (t
         (setq return nil))))))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-vote-on-candidates (candidate-list)
   "Pick the most commonly occuring string from a list of strings.
 The list should be given as the argument CANDIDATE-LIST,
@@ -2200,7 +2200,7 @@ this favors the earlier occurrence in the list."
              ))
     high_scorer)))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-one-up (location)
   "Get an absolute path to the location one above the given LOCATION."
 ;;; TODO refactoring:
@@ -2219,7 +2219,7 @@ this favors the earlier occurrence in the list."
     (setq return (perlnow-fixdir return))
     return))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-fixdir (dir)
   "Fixes the DIR.
 This does the many cool and groovy elispy things that are a
@@ -2234,7 +2234,7 @@ will be a thing of the far distant galactic past."
     (expand-file-name dir)))))
     return))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-expand-dots-relative-to (dot_means given_path)
   "Using the dot definition DOT_MEANS, expand the GIVEN_PATH.
 Given a directory path that leads with  \".\" or \"..\"
@@ -2254,7 +2254,7 @@ like: \"/home/doom/tmp/../bin\"."
    (setq newpath (perlnow-fixdir newpath))
    newpath))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-lowest-level-directory-name (dir)
   "Return the lowest level name from a given directory path.
 For example, given DIR: \"/usr/lib/perl/\" this returns: \"perl\"."
@@ -2262,7 +2262,7 @@ For example, given DIR: \"/usr/lib/perl/\" this returns: \"perl\"."
           (return (nth (- (length levels) 1) levels)) )
     return))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-guess-module-run-string ()
   "Return a good guess for an appropriate `perlnow-module-run-string'.
 First looks for the Makefile \(or Makefile.PL\) of an h2xs set-up.
@@ -2316,7 +2316,7 @@ schemes for your test files: `perlnow-documentation-test-file-strategies'."
 ;;; The following functions are used by perlnow-edit-test-file
 ;;; and it's relatives.
 ;;;==========================================================
-;;;----------------------------------------------------------
+
 (defun perlnow-get-test-file-name ()
   "Looks for the test file for the current perl code buffer."
    (let (testfile)
@@ -2330,7 +2330,7 @@ schemes for your test files: `perlnow-documentation-test-file-strategies'."
            (setq testfile (perlnow-get-test-file-name-script))))
    testfile))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-get-test-file-name-module ()
    "Get the test file name for the current perl module buffer.
 Used by \\[perlnow-get-test-file-name]."
@@ -2339,7 +2339,7 @@ Used by \\[perlnow-get-test-file-name]."
     perlnow-test-policy-dot-definition
     perlnow-test-policy-naming-style))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-get-test-file-name-script ()
    "Get the test file name for the current perl script buffer.
 Used by \\[perlnow-get-test-file-name]."
@@ -2349,7 +2349,7 @@ Used by \\[perlnow-get-test-file-name]."
     "fileloc"
     "basename"))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-get-test-file-name-given-policy (testloc dotdef namestyle)
    "Get the test file name for the current perl buffer, given a test policy.
 This is used by \\[perlnow-get-test-file-name] and relatives.
@@ -2419,7 +2419,7 @@ and the NAMESTYLE \(see `perlnow-test-policy-naming-style'\)."
 ;;; TODO check presumption above:
 ;;; No need to handle h2xs modules differently (want test file, not runstring)
 
-;;;----------------------------------------------------------
+
 (defun perlnow-search-through-test-path ()
   "Searches the test path for test files for the current code buffer.
 Returns a single string the full-path and name of (one) test file found.
@@ -2506,12 +2506,12 @@ Will warn if there appear to be redundant possible testfiles."
            ))
     ))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-assoc-regexp (pattern alist &optional default)
   "Return first value from ALIST with key that matches PATTERN."
     (assoc-default pattern alist 'string-match default))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-lookup-preferred-perl-mode ()
   "Look-up which perl mode the user prefers.
 Examines the alists `interpreter-mode-alist' and
@@ -2538,7 +2538,7 @@ has been chosen as the default to work on perl code."
 ;;; The end of perlnow-edit-test-file family of functions
 ;;;==========================================================
 
-;;;----------------------------------------------------------
+
 (defun perlnow-guess-script-run-string ()
   "Return a good guess for `perlnow-script-run-string'."
 ;;; Presumption is that this won't be called if we're in a module,
@@ -2563,7 +2563,7 @@ has been chosen as the default to work on perl code."
           ))
   (setq perlnow-script-run-string run-line)))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-find-h2xs-staging-area ()
   "Determines if the current file buffer is located in an h2xs tree.
 Should return the path to the current h2xs staging area, or nil
@@ -2605,7 +2605,7 @@ with a \"lib\" and/or \"t\" *and* a \"Makefile.PL\"."
         (perlnow-run-perl-makefile-pl-if-needed dir))
     return))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-run-perl-makefile-pl-if-needed (h2xs-staging-area)
   "Given a H2XS-STAGING-AREA in an h2xs tree, runs \"perl Makefile.PL\" if needed.
 This looks to see if there's a Makefile there, and if not,
@@ -2634,7 +2634,7 @@ Output is appended to the *perlnow-h2xs* window."
                             "Makefile.PL"
                             ))))))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-hashbang ()
   "What is the hash bang line for this file buffer?
 Returns nil if there is none."
@@ -2654,7 +2654,7 @@ Returns nil if there is none."
             (match-string 1))
       )))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-get-inc-spot (package-name pm-location)
   "Determine the module root, the place where the package namespace begins.
 Given the PACKAGE-NAME \(e.g. \"New::Module\"\),
@@ -2685,7 +2685,7 @@ this returns the module root, \(which in this example is:
     inc-spot))
 
 
-;;;----------------------------------------------------------
+
 (defun perlnow-perlversion-old-to-new (given-version)
   "Convert old form of perl version into the new form.
 For example, an GIVEN-VERSION might be 5.006 for which the new is 5.6.0
@@ -2714,7 +2714,7 @@ passes it through unchanged."
      )
     ))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-staging-area (h2xs-location package-name)
   "Return path to h2xs module staging area for H2XS-LOCATION & PACKAGE-NAME."
   (let ((staging-area
@@ -2724,7 +2724,7 @@ passes it through unchanged."
           (mapconcat 'identity (split-string package-name "::") "-")))))
     staging-area))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-full-path-to-h2xs-module (h2xs-location package-name)
   "Get the full path to a module created by h2xs.
 E.g. if the H2XS-LOCATION were \"/usr/local/perldev\" and the PACKAGE-NAME
@@ -2739,7 +2739,7 @@ were \"New::Module\", this should return:
           ".pm")))
     pm-file))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-full-path-to-h2xs-test-file (h2xs-staging-area)
   "Get the full path to a the test file for a module created by h2xs.
 Given the H2XS-STAGING-AREA, it looks for files located in the
@@ -2794,7 +2794,7 @@ for the old-fashioned \"1.t\".  E.g. if the staging-area were
           ))
     test-file))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-blank-out-display-buffer (buffer &optional switchback)
   "Clear out a temporary display BUFFER.
 Erase the contents of a buffer, though only if it matches
@@ -2825,7 +2825,7 @@ a buffer object.  This can work on a read-only buffer."
    (set-buffer buffer))
   (setq default-directory original-default-directory)))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-inc-spot-in-INC-p (&optional inc-spot)
   "Determine if the INC-SPOT has been included in perl's @INC search path.
 If not given a INC-SPOT, it defaults to using the module root of the
@@ -2866,7 +2866,7 @@ current file buffer.  Used by \\[perlnow-do-script-from-module]."
 ;;;
 ;;;==========================================================
 
-;;;----------------------------------------------------------
+
 (defvar perlnow-read-minibuffer-map
    (let ((map (make-sparse-keymap)))
      (define-key map "?"       'perlnow-read-minibuffer-completion-help)
@@ -2887,7 +2887,7 @@ current file buffer.  Used by \\[perlnow-do-script-from-module]."
 ;;;     (define-key map [next] 'next-history-element)
 ;;;     (define-key map [prior] 'previous-history-element)
 
-;;;----------------------------------------------------------
+
 (defun perlnow-read-minibuffer-complete ()
   "Does automatic completion of up to an entire directory or file name.
 Used in reading in path and name of a perl module \(which
@@ -2903,7 +2903,7 @@ a file-system name separator boundary."
         (perlnow-read-minibuffer-workhorse restrict-to-word-completion)
     ))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-read-minibuffer-complete-word ()
   "Does automatic completion only up to the end of the next \"word\".
 As opposed to an entire directory or file name as
@@ -2916,7 +2916,7 @@ exist already\), where valid name separators are \(\"/\" or \"::\"\)."
     (perlnow-read-minibuffer-workhorse restrict-to-word-completion)
   ))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-read-minibuffer-workhorse (restrict-to-word-completion)
   "Does the actual work of auto-completion when reading a perl module name.
 This is for reading a module path and name in hybrid form, ala
@@ -3000,7 +3000,7 @@ and \\[perlnow-read-minibuffer-complete-word\]."
     ))
 
 
-;;;----------------------------------------------------------
+
 (defun perlnow-read-minibuffer-completion-help ()
    "Show the available completions when reading in path & name of a module.
 Most likely this will be called by \\\[perlnow-read-minibuffer-complete-word]
@@ -3033,7 +3033,7 @@ be bound to the \"?\" key during the minibuffer read."
        ))
     ))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-remove-pm-extensions-from-alist (alist)
   "Remove the pm extension from the names in the ALIST of file names and values.
 Currently this throws away the numeric value and re-numbers the names in the
@@ -3049,7 +3049,7 @@ alist in order."
    (setq new-alist (reverse new-alist))
    ))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-list-directories-and-modules-as-alist (file-system-path pattern)
   "Generate directory listing alist relevant to perl module creation.
 Get a directory listing from the given FILE-SYSTEM-PATH, and return
@@ -3086,7 +3086,7 @@ are sequential integers."
   ))
 
 
-;;;----------------------------------------------------------
+
 (defun perlnow-list-directories-as-alist (file-system-path pattern)
   "Generate a directory-only alist from the given FILE-SYSTEM-PATH.
 Returns an alist of the file names that match the given PATTERN, *and*
@@ -3117,7 +3117,7 @@ it only lists directories."
   ))
 
 
-;;;----------------------------------------------------------
+
 (defun perlnow-split-perlish-package-name-with-path-to-inc-spot-and-name (string)
   "Split the hybrid form of a module path into the two components.
 Input STRING is expected to be a hybrid file system
@@ -3146,7 +3146,7 @@ and module name, which are returned as a two-element list."
          (list inc-spot package-name) ))
 
 
-;;;----------------------------------------------------------
+
 (defun perlnow-interesting-file-name-p (string)
   "Is the given file \(or directory name\) be interesting?
 Takes a bare filename (sans path) as the STRING
@@ -3173,7 +3173,7 @@ uninteresting filenames patterns, otherwise nil."
     (not (string-match ignore-pat string))
     ))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-split-module-path-to-dir-and-tail (string)
   "Split a file system path into directory and trailing name fragment.
 Allows for the use of perl's double-colon package
@@ -3208,7 +3208,7 @@ Perl package example: given \"/home/doom/lib/Taxed::Reb\" should return
 ;;; help strings and converts it into (a) html (b) texinfo (c) xml
 
 
-;;;----------------------------------------------------------
+
 (defun perlnow-self-extract-help-to-html ()
   "Extracts the help doctrings from this file to html.
 A wrapper around \[perlnow-generate-html-doc-from-docstrings],
@@ -3221,7 +3221,7 @@ that gives it a hard-coded filename"
     (perlnow-generate-html-doc-from-docstrings html-file)))
 
 
-;;;----------------------------------------------------------
+
 
 
 (defvar perlnow-help-docs-title ""
@@ -3240,7 +3240,7 @@ template.el expansion")
 ; (>>>title<<<) programmatically.  It insists on an interactive
 ; response.
 
-;;;----------------------------------------------------------
+
 (defun perlnow-generate-html-doc-from-docstrings (html-file)
   "Create the HTML-FILE, and fills it with doctrings from this file."
   (interactive "FName of html help file to create: ")
@@ -3262,7 +3262,7 @@ template.el expansion")
 ;;; Maybe kill the buffer?
     ))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-insert-docstrings-from-elisp ()
   "List *all* of the perlnow doc strings in html form.
 Presumes you've got an html framework open that you want to
@@ -3274,7 +3274,7 @@ and \\[perlnow-dump-docstrings-as-html]."
     (perlnow-symbol-list-from-elisp-file "perlnow"))
   )
 
-;;;----------------------------------------------------------
+
 (defun perlnow-symbol-list-from-elisp-file (library)
   "Read the elisp for the given LIBRARY & extract all def* docstrings."
   (save-excursion
@@ -3311,7 +3311,7 @@ and \\[perlnow-dump-docstrings-as-html]."
     ))
 
 
-;;;----------------------------------------------------------
+
 (defun perlnow-html-ampersand-subs (string)
   "Do common html ampersand code substitutions to use this STRING safely in html."
   (setq string (replace-regexp-in-string "&"   "&amp;"  string))
@@ -3320,7 +3320,7 @@ and \\[perlnow-dump-docstrings-as-html]."
   (setq string (replace-regexp-in-string "<"   "&lt;"   string))
   )
 
-;;;----------------------------------------------------------
+
 (defun perlnow-dump-docstrings-as-html (list)
   "Given a LIST of symbol names, insert the doc strings with some HTML markup.
 Preserves links in the documentation as html links: any
@@ -3367,7 +3367,7 @@ the current buffer, does not generate html header or footer."
           (insert (concat "<PRE>\n" doc-string "</PRE></P>\n\n"))
           )))
 
-;;;----------------------------------------------------------
+
 (defun perlnow-htmlicize-function-references (doc-string internal-symbols)
   "Transform function references in a DOC-STRING into html form.
 Requires a list of INTERNAL-SYMBOLS, to identify whether a function
@@ -3415,7 +3415,7 @@ Internally used by perlnow-dump-docstrings-as-html-exp."
       ))
   doc-string)
 
-;;;----------------------------------------------------------
+
 (defun perlnow-htmlicize-variable-references (doc-string internal-symbols)
   "Transform variable references in a DOC-STRING into html form.
 Requires a list of INTERNAL-SYMBOLS, to identify whether a function
