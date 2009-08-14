@@ -2,12 +2,15 @@
 
 ;;; Emacs extensions to speed development of perl code.
 
-;; Copyright 2004 Joseph Brenner
+;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.213 2007/09/20 23:01:42 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.214 2009/08/14 00:41:21 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
+
+;; Other Authors:
+;; Quinn Weaver - bug fixes   (( TODO email address ))
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -133,17 +136,16 @@ Briefly these are:
 
 Put the perlnow.el file somewhere that's included in your `load-path'.
 
-Also install template.el if at all possible, because
-many \(but not all\) features of this package depend on
-template.el.  The latest version can be found at:
+Also install template.el if at all possible, because many
+features of this package depend on template.el.  The latest
+version can be found at:
 
    http://sourceforge.net/project/showfiles.php?group_id=47369
 
-In addition, you'll need some custom perl-oriented
-template.el templates that come with perlnow.el.  Most
-likely these templates should go in your ~/.templates,
-\(note they end with: '.tpl'\).  If you've somehow obtained
-the perlnow.el file without the associated templates,
+You'll need some custom perl-oriented template.el templates that
+come with perlnow.el.  Most likely these templates should go in
+~/.templates, \(note they end with: '.tpl'\).  If you've somehow
+obtained the perlnow.el file without the associated templates,
 you can look for copies of them here:
 
    http://obsidianrook.com/perlnow/
@@ -181,19 +183,17 @@ for you to modify them to suit yourself\):
    \(global-set-key \"\\C-c/b\" 'perlnow-back-to-code\)
    \(global-set-key \"\\C-c/~\" 'perlnow-perlify-this-buffer-simple\)
 
-Some suggestions on key assignments:
-
-Here I'm using the odd prefix \"control-c slash\", simply
-because while the perlnow.el package is not a minor-mode, it has
-some aspects in common with them. The C-c <punctuation> bindings
-are the only places in the keymap allocated for minor modes. The
-slash was choosen because it's unshifted and on the opposite
-side from the \"c\" \(on most keyboards\).
+Above, the odd prefix \"control-c slash\" has been used because
+the C-c <punctuation> bindings are the only places in the keymap
+allocated for minor modes, and while the perlnow.el package is
+not a minor-mode, it has some aspects in common with them.  The
+slash was choosen because it's unshifted and on the opposite side
+from the \"c\" \(on typical keyboards\).
 
 You, on the other hand, are free to do whatever you want in
 your .emacs, and you might prefer other assignments, such
 as using function keys for frequently used commands.
-Some possibilities:
+Some examples:
 
   \(global-set-key [f4] 'perlnow-script\)
 
@@ -201,16 +201,11 @@ Some possibilities:
           '\(lambda \(\)
              \(define-key cperl-mode-map [f1] 'perlnow-perl-check\) \)\)
 
-By the way, if you go looking for a good prefix of your own to
-attach \"perl\" stuff, consider that \"C-x p\" is used by the
-p4.el package \(a front-end to the proprietary perforce version
-control system, and you should be aware that \"M-p\" is used in
-many contexts for \"history\" navigation.  On the other hand,
-*most* of the places that \"M-p\" is defined are not places that
-you'd probably want to issue a perlnow command -- the one
-exception I can think of is in a *shell* buffer, so you might
-want to be daring and experiment with grabbing Alt-p for your own
-use.
+When looking for a good prefix to attach \"perl\" stuff, consider
+that \"C-x p\" is used by the p4.el package \(a front-end to the
+proprietary perforce version control system\), and you should be
+aware that \"M-p\" is used in many contexts for \"history\"
+navigation.
 
 Caveats: perlnow.el was developed using GNU emacs 21.1 running
 on a linux box \(or GNU/Linux, if you prefer\).  I've
@@ -226,10 +221,10 @@ ways to make future versions more portable.")
 (defvar perlnow-documentation-terminology t
   "Definitions of some terms used here:
 
-Note: I make the simplifying assumption that a perl package
-is a perl module is a single file, \(with extension *.pm\).
-Even though technically multiple packages can occur in a
-single file, that is not done often in practice.
+Note: perlnow uses the simplifying assumption that a perl
+package is a perl module is a single file, \(with extension
+*.pm\).  While technically multiple packages can be contained in
+a single file, that is not done often in practice.
 
 Why is there such a mess of terminology below?
 Because there's a file system name space and a module name space:
@@ -287,8 +282,8 @@ a given module.
 
 TEST PATH: search path to look for test files. Note, can
 include relative locations, e.g. \"./t\", but the dot
-there shouldn't be taken as simply the current
-directory... See: `perlnow-test-path'.
+shouldn't be taken as the current directory.
+See: `perlnow-test-path'.
 
 TEST POLICY: the information necessary to know where to
 put a newly created test file and what to call it:
@@ -297,8 +292,7 @@ put a newly created test file and what to call it:
 3 - the naming style, e.g. hyphenized vs. base.")
 
 (defvar perlnow-documentation-tutorial t
-  "Well, first you install it: `perlnow-documentation-installation'.
-Then what?
+  "First, see: `perlnow-documentation-installation'.
 
 Depending on how you configure things, you should then have
 easy access (perhaps as easy as a single keystroke of a
@@ -341,7 +335,7 @@ and \\[next-history-element]. Typically these are bound to
 Alt-p and Alt-n.\)
 
 But every time you use \\[perlnow-script] it's going to try
-and put it in the same default location, so \(a\) try and
+to put it in the same default location, so \(a\) try and
 pick a good default, and \(b\) think about changing it on
 the fly if you're going to do a lot of work in a different
 place.  You can use \\[set-variable] to set
@@ -396,13 +390,12 @@ your .emacs:
   \\(add-hook 'after-save-hook
     'executable-make-buffer-file-executable-if-script-p\\)
 
-When you run into a problem nasty enough to want to use the
-debugger, I suggest using \\[perlnow-perldb], rather than
-\\[perldb] directly.  The perlnow wrapper uses the
-`perlnow-run-string' you've defined, which will be different
-for each script.  If you use the perldb command directly,
-you'll notice that the default is just however you ran it
-last.  If you're switching back and forth between working on
+Should you want to use the perl debugger, I suggest using
+\\[perlnow-perldb], rather than \\[perldb] directly.  The perlnow
+wrapper uses the `perlnow-run-string' you've defined, which will
+be different for each script.  If you use the perldb command
+directly, you'll notice that the default is just however you ran
+it last.  If you're switching back and forth between working on
 two scripts, that default is going to be wrong a lot.
 
 The next subject, developing perl modules:
@@ -562,9 +555,9 @@ Next, everyone's favorite subject, \"Misc\":
 (defvar perlnow-documentation-tutorial-4-misc t
   "Misc topic 1 - starting from man:
 
-A typical 'nix-style box these days will have the documentation for
+A typical unix-style box these days will have the documentation for
 perl modules installed as man pages, which can be most simply read
-from inside of emacs with the \\[man] command.
+from inside of emacs with the \\[man] or \\[woman] command.
 
   If you happen to be browsing some perl module
 documentation in an emacs man window, you might suddenly be
@@ -696,7 +689,7 @@ Note that perlnow \(at least currently\) does not care if you're
 consistent about this choice, but for your own sanity you should
 probably pick a standard way of doing it and stick to it.
 
-However, there is now (as of version 0.3) a \\[perlnow-edit-test-file]
+There is now (as of version 0.3) a \\[perlnow-edit-test-file]
 command that will create a new test file if one does not already exist.
 The user defineable \"test policy\" dictates where these new
 test files will go.  See \"test policy\" in
@@ -847,6 +840,14 @@ you end up with.")
   "The template that non-h2xs module perl test scripts will be created with.")
 (put 'perlnow-perl-test-template  'risky-local-variable t)
 
+(defcustom perlnow-license-message
+  "This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself, either Perl version 5.8.2 or,
+at your option, any later version of Perl 5 you may have available."
+  "Software license message available to templates as LICENSE.
+The default value is the traditional boilerplate for open source perl code.")
+(put 'perlnow-license-message  'risky-local-variable t) ; cargo cult
+
 (defvar perlnow-perl-script-name nil
   "Used internally to pass the script name to some templates.
 Defines the PERL_SCRIPT_NAME expansion.")
@@ -906,12 +907,10 @@ key had been hit.  I suspect that you need to use
 \(>>>PNFS<<<\)
 stands for \"PerlNow Filename Spaces\" it should
 always insert the same number of spaces as characters
-in the name of the file.  This is a gross kludge
-which can be used to get formatting to line up, for example:
+in the name of the file.  This can be used to get formatting
+to line up, for example:
    \(>>>FILE<<<\)              \(>>>AUTHOR<<<\)
    \(>>>PNFS<<<\)              \(>>>DATE<<<\)
-Note the utility of having \"PNFS\" be four characters,
-the same length as \"FILE\".  Like I said: a gross kludge.
 
 Some experimental, alternative gross kludges:
 
@@ -974,6 +973,12 @@ defined expansions.")
                          (insert (current-time-string))
                        )))
       template-expansion-alist))
+
+(setq template-expansion-alist
+      (cons
+      '("LICENSE" (insert perlnow-license-message))
+      template-expansion-alist))
+
 
 
 (defvar perlnow-minimum-perl-version "5.006"
@@ -1128,14 +1133,14 @@ Used only by the somewhat deprecated \"simple\" functions:
 functions.  By default, perlnow.el makes no changes to the users
 keymappings, because the emacs keymap is too crowded for it to be
 possible to do this intelligently without causing annoyance.  As
-a comprompise, this function is provided to make it easy for you
+a compromise, this function is provided to make it easy for you
 to adopt my recommended keymappings in you like, but they're not
 forced on you.  Note: these all use the \"C-c/\" prefix.  A few
-mappings are provided for useful functions that are defined
+mappings are also included for useful functions that are defined
 outside of the perlnow.el package: cperl-perldoc-at-point,
 comment-region and narrow-to-defun."
 ; TODO - Take the standard prefix as an argument?
-; then the user can choose "\C-c/" or "\C-c/"
+; then the user can choose "\C-c/" or "\C-c'"
 ; TODO - Would be even cooler if it looked for and warned
 ; about possible collisions...
   (interactive)
@@ -1227,12 +1232,14 @@ default, and that's guaranteed to be wrong if you've switched
 to a different file."
   (interactive
    (let (input)
-   (if (eq perlnow-run-string nil)
-       (setq input (perlnow-set-run-string))
-     (setq input perlnow-run-string))
-   (list input)
-   ))
-  (perldb runstring))
+     (if (eq perlnow-run-string nil)
+         (setq input (perlnow-set-run-string))
+       (setq input perlnow-run-string))
+     (list input)
+     ))
+  (let ((modified-runstring
+         (replace-regexp-in-string "/perl " "/perl -d" runstring)))
+    (perldb modified-runstring)))
 
 ;;;----------------------------------------------------------
 (defun perlnow-set-run-string ()
@@ -1423,14 +1430,16 @@ creation."
            (read-from-minibuffer
             "New module to create \(e.g. /tmp/dev/New::Mod\): "
                                  initial keymap nil history nil nil))
-     (setq filename (concat (replace-regexp-in-string "::" perlnow-slash result) ".pm"))
+     (setq filename
+           (concat (replace-regexp-in-string "::" perlnow-slash result) ".pm"))
 
      (while (file-exists-p filename)
        (setq result
              (read-from-minibuffer
               "This name is in use, choose another \(e.g. /tmp/dev/New::Mod\): "
                                  result keymap nil history nil nil))
-       (setq filename (concat (replace-regexp-in-string "::" perlnow-slash result) ".pm")))
+       (setq filename
+             (concat (replace-regexp-in-string "::" perlnow-slash result) ".pm")))
 
      (setq return
            (perlnow-split-perlish-package-name-with-path-to-inc-spot-and-name result))
@@ -2744,21 +2753,33 @@ this returns the module root, \(which in this example is:
 
 
 ;;;----------------------------------------------------------
-(defun perlnow-perlversion-old-to-new (old-version)
+(defun perlnow-perlversion-old-to-new (given-version)
   "Convert old form of perl version into the new form.
-For example, an OLD-VERSION might be 5.006 for which the new is 5.6.0
-which is more suitable for use as the -b parameter of h2xs."
+For example, an GIVEN-VERSION might be 5.006 for which the new is 5.6.0
+which is more suitable for use as the -b parameter of h2xs.
+If given a version that is already in the new style, just
+passes it through unchanged."
+;; TODO -- the regexps here probably need improvement.
+;; Get a definitive list of cases of perl versions that it
+;; should handle, write a unit test, and refactor this
   (let ( (old-version-pat "^\\([0-9]\\)\\.\\([0-9][0-9][0-9]\\)$")
+         (new-version-pat "^\\([0-9]\\)\\.\\([0-9][0-9]*\\)\\.\\([0-9][0-9]*\\)")
          major
          mantissa
          minor1)
-  (if (string-match old-version-pat old-version)
-      (progn
-        (setq major (match-string 1 old-version))
-        (setq mantissa (match-string 2 old-version)))
-    (error "Does not look like an old-style perl version: %s" old-version))
-  (setq minor1 (substring mantissa 2))
-  (concat major "." minor1 "." "0")))
+    (cond
+     ( (string-match new-version-pat given-version)
+       (message "Looks like minimum perl version is in the new style: %s" given-version) ;; DEBUG
+        given-version )
+     ( (string-match old-version-pat given-version)
+       (setq major (match-string 1 given-version))
+       (setq mantissa (match-string 2 given-version))
+       (setq minor1 (substring mantissa 2))
+       (concat major "." minor1 "." "0") )
+     (t
+       (error "Can not make sense of this perl version: %s" given-version))
+     )
+    ))
 
 ;;;----------------------------------------------------------
 (defun perlnow-staging-area (h2xs-location package-name)
@@ -3352,8 +3373,6 @@ and \\[perlnow-dump-docstrings-as-html]."
 ;;;----------------------------------------------------------
 (defun perlnow-symbol-list-from-elisp-file (library)
   "Read the elisp for the given LIBRARY & extract all def* docstrings."
-;;; Defining two patterns here, def-star-pat and def-star-pat-exp.
-;;; The first is in use, because it actually works.
   (save-excursion
     (let* (
            (codefile (locate-library library))
