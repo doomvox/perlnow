@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.217 2009/08/21 21:38:37 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.218 2009/08/21 21:39:20 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -793,6 +793,15 @@ you end up with.")
 ;;  User Options, Variables
 ;;;;##########################################################################
 
+
+(defun perlnow-fixdir (dir)
+  "Fixes the DIR.
+Conditions directory paths for portability and robustness."
+  (let ((return
+  (convert-standard-filename
+   (file-name-as-directory
+    (expand-file-name dir)))))
+    return))
 
 ; TODO:
 ; on the following three locations, I'm currently using HOME
@@ -2333,17 +2342,6 @@ this favors the earlier occurrence in the list."
                             perlnow-slash))))
     (setq return (perlnow-fixdir return))
     return))
-
-
-(defun perlnow-fixdir (dir)
-  "Fixes the DIR.
-Conditions directory paths for portability and robustness."
-  (let ((return
-  (convert-standard-filename
-   (file-name-as-directory
-    (expand-file-name dir)))))
-    return))
-
 
 (defun perlnow-expand-dots-relative-to (dot_means given_path)
   "Using the dot definition DOT_MEANS, expand the GIVEN_PATH.
