@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.216 2009/08/14 00:53:18 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.217 2009/08/21 21:38:37 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -815,35 +815,41 @@ you end up with.")
 (defcustom perlnow-executable-setting ?\110
   "The user-group-all permissions used to make a script executable.")
 
+(defvar perlnow-template-location (perlnow-fixdir (substitute-in-file-name "$HOME/.templates"))
+  "Standard location for template.el templates.")
+  ;; TODO Question: can I get template.el to tell me the template location?
+
 (defcustom perlnow-perl-script-template
-  (substitute-in-file-name "$HOME/.templates/TEMPLATE.perlnow-pl.tpl")
+  (concat perlnow-template-location "/" "TEMPLATE.perlnow-pl.tpl")
   "The template that new perl scripts will be created with.")
 (put 'perlnow-perl-script-template 'risky-local-variable t)
 
 (defcustom perlnow-perl-module-template
-  (substitute-in-file-name "$HOME/.templates/TEMPLATE.perlnow-pm.tpl")
+  (concat perlnow-template-location "/" "TEMPLATE.perlnow-pm.tpl")
   "The template that new perl modules will be created with.")
 (put 'perlnow-perl-module-template  'risky-local-variable t)
 
 (defcustom perlnow-perl-object-module-template
-  (substitute-in-file-name "$HOME/.templates/TEMPLATE.perlnow-object-pm.tpl")
+  (concat perlnow-template-location "/" "TEMPLATE.perlnow-object-pm.tpl")
   "The template that new perl object modules will be created with.")
 (put 'perlnow-perl-object-module-template  'risky-local-variable t)
 
 (defcustom perlnow-perl-test-script-template
-    (substitute-in-file-name "$HOME/.templates/TEMPLATE.perlnow-pl-t.tpl")
+    (concat perlnow-template-location "/" "TEMPLATE.perlnow-pl-t.tpl")
   "The template that tests for perl scripts will be created with.")
 (put 'perlnow-perl-test-template  'risky-local-variable t)
 
 (defcustom perlnow-perl-test-module-template
-    (substitute-in-file-name "$HOME/.templates/TEMPLATE.perlnow-pm-t.tpl")
+    (concat perlnow-template-location "/" "TEMPLATE.perlnow-pm-t.tpl")
   "The template that non-h2xs module perl test scripts will be created with.")
 (put 'perlnow-perl-test-template  'risky-local-variable t)
 
 (defcustom perlnow-license-message
-  "This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself, either Perl version 5.8.2 or,
-at your option, any later version of Perl 5 you may have available."
+  "This program is free software; you can redistribute it and/or modify it
+under the terms of either: the GNU General Public License as published
+by the Free Software Foundation; or the Artistic License.
+
+See http://dev.perl.org/licenses/ for more information."
   "Software license message available to templates as LICENSE.
 The default value is the traditional boilerplate for open source perl code.")
 (put 'perlnow-license-message  'risky-local-variable t) ; cargo cult
@@ -1489,7 +1495,7 @@ The location for the new module defaults to the global
 
 
 (defun perlnow-h2xs (h2xs-location package-name)
-  "To quickly jump into development of a new perl CPAN module.
+  "To quickly jump into development of a new perl CPAN-sytle module.
 Asks two questions, prompting for the H2XS-LOCATION  \(the place where
 h2xs will create the \"staging area\"\) and the PACKAGE-NAME \(in perl's
 double-colon separated package name form\)."
@@ -1539,9 +1545,115 @@ double-colon separated package name form\)."
   (other-window 1)
   ))
 
+
+
+
+(defun perlnow-module-starter (modstar-location package-name)
+  "To quickly jump into development of a new perl CPAN-style module.
+Asks two questions, prompting for the MODSTAR-LOCATION  \(the place where
+module-starter will create the \"staging area\"\) and the PACKAGE-NAME
+\(in perl's double-colon separated package name form\)."
+   ; Because default-directory is the default location for (interactive "D"),
+   ; I'm doing the interactive call in stages: this way can change
+   ; default-directory momentarily, then restore it.
+   ; Uses the dynamic scoping of elisp's "let"
+  (interactive
+   (let ((default-directory perlnow-h2xs-location))
+     (call-interactively 'perlnow-prompt-for-h2xs)))
+  (setq modstar-location (perlnow-fixdir modstar-location))
+
+  (unless (file-exists-p modstar-location)
+    (make-directory modstar-location t))
+  (let* ( display-buffer ; buffer object
+          (modstar-module-file "")
+          (modstar-test-file   "")
+          (modstar-staging-area "")
+          (window-size 14)     ;; number of lines for the *.t file buffer
+          (module-style "object") ;; hardcoded default.  How to pass as argument?
+          )
+    (setq display-buffer (get-buffer-create "*perlnow-module-starter*"))
+       ;Bring the *perlnow-module-starter* display window to the fore (bottom window of the frame)
+    (perlnow-show-buffer-other-window display-buffer window-size t)
+    (perlnow-blank-out-display-buffer display-buffer t)
+
+    (let* ((default-directory modstar-location)
+           (modstar-cmd (perlnow-generate-module-starter-cmd  package-name modstar-location ))
+           )
+      (shell-command modstar-cmd display-buffer nil)
+
+      (setq modstar-staging-area (perlnow-staging-area modstar-location package-name))
+      (perlnow-run-perl-build-pl modstar-staging-area)
+      (setq modstar-module-file (perlnow-full-path-to-h2xs-module modstar-location package-name))
+
+      ;; create a module and test file using appropriate templates,
+      ;; and swap the module file in place of the one module-starter creates
+      (let* ( (template-name
+               (format
+                "%s/TEMPLATE.perlnow-%s-%s-pm.tpl"
+                perlnow-template-location
+                "msmb"         ;; TODO ?  stands for: "module_starter Module::Build" Document?
+                module-style
+                ))
+              (test-template
+               (format
+                "%s/TEMPLATE.perlnow-%s-%s-pm-t.tpl"
+                perlnow-template-location
+                "msmb"         ;; TODO ?
+                module-style
+                ))
+              )
+        (require 'template)
+        (setq perlnow-perl-package-name package-name) ; global used to pass value into template
+
+        (delete-file modstar-module-file)
+        (perlnow-create-with-template modstar-module-file template-name)
+
+        ; Also open the *.t file
+        (setq modstar-test-file
+              (perlnow-full-path-new-module-starter-test-file modstar-staging-area package-name))
+
+        (perlnow-open-file-other-window
+           modstar-test-file
+           window-size
+           test-template
+           t )
+
+        (funcall (perlnow-lookup-preferred-perl-mode))
+        ))))
+
+
+(defun perlnow-generate-module-starter-cmd (module-name location)
+  "Generate shell command string to run module-starter.
+Creates a standard layout for development of a perl module named MODULE-NAME
+in the directory LOCATION.
+Get's the user's full name from the emacs function user-full-name
+and the email address from the variable user-mail-address."
+  (let* ( (author-name (user-full-name))
+          (hyphenated (mapconcat 'identity (split-string module-name "::") "-"))
+          (subdir (concat location "/" hyphenated))
+          (perlnow-module-starter-cmd
+           (format
+            (concat
+            "module-starter "
+            "--module=\"%s\" "
+            "--author=\"%s\" "
+            "--email=\"%s\" "
+            "--builder=\"%s\" "
+            "--license=\"%s\" "
+            "--dir=\"%s\"")
+            module-name
+            author-name
+            user-mail-address
+            "Module::Build"
+            "perl"
+            subdir
+            )))
+    perlnow-module-starter-cmd))
+
+
+
 ;;;==========================================================
 ;;; Older (if not quite deprecated) user level creation commands
-
 
 (defun perlnow-script-using-this-module (script)
   "Jump quickly into a new SCRIPT that uses the current module code.
@@ -1685,7 +1797,7 @@ The test policy is defined by this trio of variables:
 ; Remember the *runstring* is a bit different for
 ; an h2xs module than a regular module.
   (interactive
-   (list (perlnow-get-test-file-name)))  ;;; Uses new function defined way below:
+   (list (perlnow-get-test-file-name)))
   ; set some buffer-local variables before we go any where
   (setq perlnow-run-string (concat "perl " testfile))
   (setq perlnow-associated-code testfile)
@@ -1926,7 +2038,7 @@ already, and if so, asks for another name (by doing yet another
 \\[call-interactively] of another function).  The location
 defaults to the current `default-directory'.  Returns a two
 element list, h2xs-location and package-name."
-  (interactive "DLocation for new h2xs structure? \nsName of new module \(e.g. New::Module\)? ")
+  (interactive "DLocation for new module development? \nsName of new module \(e.g. New::Module\)? ")
   (let ( staging-area
          )
   (setq staging-area (perlnow-staging-area where what))
@@ -1946,7 +2058,10 @@ If the user enters an existing h2xs module name in
 \\[perlnow-prompt-for-h2xs], it will do another chained \\[call-interactively]
 to this function to ask again for WHERE and WHAT with a slightly
 different message.  Returns a two element list, location and package-name."
-  (interactive "DThat exists already! Location for new h2xs structure? \nsName of new module \(e.g. New::Module\)? ")
+  (interactive
+   (concat
+    "DThat exists already! Location for new module development? \n"
+    "sName of new module \(e.g. New::Module\)? " ))
   (list where what))
 
 
@@ -2064,13 +2179,13 @@ with path."
 
 
 
-(defun perlnow-create-with-template (filename template)
+(defun perlnow-create-with-template (filename template force)
   "Create a new file with a template.el template.
 Given FILENAME and TEMPLATE this does the actual creation of
 the file and associated buffer using the template.  As a
 side-effect, it sets the global `template-file' here."
-; Because of a bug in template.el, when using template-new-file
-; non-interactively, we must set the global "template-file" here:
+; The "template-file" must be set here because of a bug in
+; template.el, when using template-new-file non-interactively.
   (setq template-file (template-split-filename filename))
   (template-new-file filename template)
   (write-file filename))
@@ -2222,12 +2337,7 @@ this favors the earlier occurrence in the list."
 
 (defun perlnow-fixdir (dir)
   "Fixes the DIR.
-This does the many cool and groovy elispy things that are a
-good idea for conditioning directory paths for portability and
-robustness.  I don't always know when these things are needed,
-but now that I've got them all in this one, easy to use function,
-I will just use it all the goddamn time, and all of my problems
-will be a thing of the far distant galactic past."
+Conditions directory paths for portability and robustness."
   (let ((return
   (convert-standard-filename
    (file-name-as-directory
@@ -2605,6 +2715,38 @@ with a \"lib\" and/or \"t\" *and* a \"Makefile.PL\"."
         (perlnow-run-perl-makefile-pl-if-needed dir))
     return))
 
+;;; The Module::Build analog of: perlnow-run-perl-makefile-pl-if-needed
+;;; TODO Change jargon from "h2xs"?  Revise comments!
+(defun perlnow-run-perl-build-pl (h2xs-staging-area)
+  "Given a H2XS-STAGING-AREA in an h2xs tree, runs \"perl Build.PL\" if needed.
+Looks to see if there's a file named Build there, and if not,
+runs the \"perl Build.PL\" command to generate it.
+Output is appended to the *perlnow-h2xs* window."
+
+;;; Note, this *presumes* that you're inside an h2xs-staging-area, it does not check.
+;;; TODO should really compare age of Build vs Build.PL
+  (let (display-buffer )
+    (cond ( (not (file-regular-p (concat h2xs-staging-area "Build")))
+;;; This method does it in a *compile* window:
+;;;      (let ((run-command ""))
+;;;                (setq run-command (concat "cd " h2xs-staging-area "; perl Build.PL;"))
+;;;                (compile run-command))
+;;;
+;;; This does it in a *perlnow-h2xs* window:
+            (setq display-buffer (get-buffer-create "*perlnow-h2xs*"))
+;;; Decided *not* to blank out the buffer first, let output follow h2xs output
+;;;    (perlnow-blank-out-display-buffer display-buffer)
+            (set-buffer display-buffer)
+            (insert "Trying to generate Build from Build.PL\n")
+            (let ( (default-directory h2xs-staging-area) )
+;;;              (message "dd: %s" default-directory) ;;; DELETE
+              (call-process "perl"
+                            nil
+                            display-buffer
+                            nil
+                            "Build.PL"
+                            ))))))
+
 
 (defun perlnow-run-perl-makefile-pl-if-needed (h2xs-staging-area)
   "Given a H2XS-STAGING-AREA in an h2xs tree, runs \"perl Makefile.PL\" if needed.
@@ -2612,6 +2754,7 @@ This looks to see if there's a Makefile there, and if not,
 runs the \"perl Makefile.PL\" command to generate it.
 Output is appended to the *perlnow-h2xs* window."
 ;;; Note, this *presumes* that you're inside an h2xs-staging-area, it does not check.
+;;; TODO should really compare age of Makefile vs Makefile.PL
   (let (display-buffer )
     (cond ( (not (file-regular-p (concat h2xs-staging-area "Makefile")))
 ;;; This method does it in a *compile* window:
@@ -2794,6 +2937,24 @@ for the old-fashioned \"1.t\".  E.g. if the staging-area were
           ))
     test-file))
 
+(defun perlnow-full-path-new-module-starter-test-file (modstar-location package-name)
+  "Get the full path to a the new test file to be added to a
+structure created by module_starter (using Module::Build).
+Follows a very simple fixed policy, given a module named
+Modular::Stuff creates a file called 01-Modular-Stuff.t."
+  (let* (
+          (hyphenated (mapconcat 'identity (split-string package-name "::") "-"))
+
+          (location (concat (perlnow-fixdir modstar-location)
+                            "/"
+                            "t"
+                            ))
+
+          (filename (format "01-%s.t" hyphenated))
+
+          (fullname (concat location "/" filename))
+          )
+    fullname))
 
 (defun perlnow-blank-out-display-buffer (buffer &optional switchback)
   "Clear out a temporary display BUFFER.
@@ -3472,3 +3633,4 @@ Internally used by perlnow-dump-docstrings-as-html-exp."
 (provide 'perlnow)
 
 ;;; perlnow.el ends here
+
