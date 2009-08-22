@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.218 2009/08/21 21:39:20 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.219 2009/08/22 03:15:49 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -2188,7 +2188,7 @@ with path."
 
 
 
-(defun perlnow-create-with-template (filename template force)
+(defun perlnow-create-with-template (filename template)
   "Create a new file with a template.el template.
 Given FILENAME and TEMPLATE this does the actual creation of
 the file and associated buffer using the template.  As a
