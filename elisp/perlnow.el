@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.223 2009/08/24 04:43:48 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.224 2009/08/24 06:42:09 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1406,12 +1406,7 @@ If you've been looking at some perl module code -- or a man page
 documenting a perl module -- it will give you a \"use\" line to include
 that module.  If the module is not in perl's @INC array, it will also
 insert the appropriate \"FindBin\" & \"use lib\" lines so that the script
-can find the module. If none of that applies, you just get the usual
-perl script buffer.\n
-It's expected that the user will never need to directly call
-\\[perlnow-do-script] or \\[perlnow-script-using-this-module],
-\(though they're still exposed as interactive functions, so they
-can be\)."
+can find the module."
   (interactive
    (perlnow-prompt-user-for-file-to-create
     "Name for the new perl script? " perlnow-script-location))
@@ -2017,17 +2012,18 @@ See the wrapper function: \\[perlnow-script]."
 Takes arguments SCRIPT-NAME PACKAGE-NAME INC-SPOT,
 which are all explained in `perlnow-documentation-terminology'.
 If INC-SPOT is nil, it skips adding the FindBin/use lib lines.
-Used by \\[perlnow-script] as well as the older
-\\[perlnow-script-using-this-module].
+It's expected that the user will not usually run this directly.
+See the wrapper function: \\[perlnow-script] (or possibly the older
+\\[perlnow-script-using-this-module]).
 Currently always returns t, but future versions may return nil for failure."
 ; Presumption: if inc-spot is nil, then we got here from a man page buffer,
 ; and we can assume the module is installed (or the man page most
-; likely wouldn't be there), hence we can skip the
-;       (perlnow-endow-script-with-access-to inc-spot)
-  ;;; TODO - would be a good idea to check if we can find the
-  ;;;        module and (perhaps) warn if not.
-    ; Make the script we're creating the the default
-    ; runstring for this module before we leave it.
+; likely wouldn't be there).
+;
+;;; TODO - would be a good idea to check if we can find the
+;;;        module and (perhaps) warn if not.
+;
+    ; Make the script we're creating the the default runstring for this module.
     (setq perlnow-module-run-string (format "perl %s" script-name))
     (perlnow-sub-name-to-kill-ring)
     ; module currently displayed, now want to open script, display in paralel
@@ -2035,18 +2031,28 @@ Currently always returns t, but future versions may return nil for failure."
          script-name
          nil
          perlnow-perl-script-template)
-    (unless (eq inc-spot nil) ; without inc-spot, don't mess with FindBin/lib
-      (perlnow-endow-script-with-access-to inc-spot)
-      )
-    ; insert the "use Modular::Stuff;" line
-    (insert (format "use %s;" package-name)) ;;; and maybe a qw() list?
-    (insert "\n")
-  t)
+      ; forget about a "use" line for things that don't look much perl modules.
+      (let ( (case-fold-search nil)
+             (import-string "" )      )
+        (if (string-match "^[A-Z]" package-name)
+            (progn
+              (unless (eq inc-spot nil)
+                (perlnow-endow-script-with-access-to inc-spot)
+
+                ;;; TODO generate an appropriate "use qw()" import list
+                (setq import-string (perlnow-generate-import-list package-name inc-spot))
+
+                )
+              ; insert the "use Modular::Stuff;" line
+              (insert (format "use %s%s;" package-name import-string))
+              (insert "\n")
+              )))
+      t)
 
 
 (defun perlnow-endow-script-with-access-to (location)
   "Insert appropriate \"use lib\" line so script will see given LOCATION."
-  (interactive "sLoc:");; DEBUG
+  ;; (interactive "sLoc:");; DEBUG
   (unless (perlnow-inc-spot-in-INC-p location)
     (let* ((script-name (buffer-file-name))
            (relative-path
@@ -2056,6 +2062,20 @@ Currently always returns t, but future versions may return nil for failure."
       (insert relative-path)
       (insert "\");\n"))))
 
+
+;;(setq import-string (perlnow-generate-import-list package-name inc-spot))
+(defun perlnow-generate-import-list (package-name inc-spot)
+  "Get the default import list from the module PACKAGE-NAME.
+Should look something like ' qw( routine1 routine2 routine3 )', where
+the three routines are exported (optionally or not) from the indicated module.
+If this is not appropriate (e.g. if it's an OOP module, not Exporter based)
+this will return the empty string."
+
+  "" ;; stub
+     ;; TODO NEXT -- ideally would like to drop inc-spot, and support
+     ;; exporter based modules of all sorts, even when creating script from man page.
+     ;; Can I easily find code on the system given just the package name?
+  )
 
 
 (defun perlnow-prompt-for-module-to-create (where what)
@@ -2437,7 +2457,7 @@ schemes for your test files: `perlnow-documentation-test-file-strategies'."
           (test-file-check-list (list (concat hyphenized-package-name ".t")
                                       (concat pm-basename ".t")
                                       ))
-          ;;; TODO - Consider exposing a this list to users in some form.
+          ;;; TODO - Consider exposing this list to users in some form.
           staging-area      ; The location of an h2xs-style dev structure
           staging-area-candidate staging-area-candidate-name
           test-search-list  ; A listing of possible absolute locations to look for the test file,
@@ -2916,7 +2936,7 @@ passes it through unchanged."
          minor1)
     (cond
      ( (string-match new-version-pat given-version)
-       (message "Looks like minimum perl version is in the new style: %s" given-version) ;; DEBUG
+;;       (message "Looks like minimum perl version is in the new style: %s" given-version) ;; DEBUG
         given-version )
      ( (string-match old-version-pat given-version)
        (setq major (match-string 1 given-version))
