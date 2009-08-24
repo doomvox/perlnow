@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.222 2009/08/23 22:54:20 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.223 2009/08/24 04:43:48 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -796,7 +796,11 @@ you end up with.")
 
 (defun perlnow-fixdir (dir)
   "Fixes the DIR.
-Conditions directory paths for portability and robustness."
+Conditions directory paths for portability and robustness.
+Some examples:
+ '~/tmp'             => '/home/doom/tmp/'
+ '~/tmp/../bin/test' => '/home/bin/test/'
+"
   (let ((return
   (convert-standard-filename
    (file-name-as-directory
@@ -914,6 +918,14 @@ the first line in a perl module, e.g. \"use 5.006;\".
 Used by \\[perlnow-module] to insert the value of
 `perlnow-minimum-perl-version'.
 
+\(>>>AMERICAN_DATE<<<\)
+The current date in the much-derided American format:
+MM/DD/YY, where MM and DD do not use leading zeroes.
+
+\(>>>FULL_DATE<<<\)
+The current date without abbreviated month name, e.g.
+\"August 8, 2009\".
+
 \(>>>TAB<<<\)
 Experimental feature: should indent as though the tab
 key had been hit.  I suspect that you need to use
@@ -966,6 +978,16 @@ defined expansions.")
       (cons
       '("PNFS"
         (perlnow-insert-spaces-the-length-of-this-string (buffer-file-name)))
+      template-expansion-alist))
+
+(setq template-expansion-alist
+      (cons
+      '("AMERICAN_DATE" (insert (perlnow-american-date)))
+      template-expansion-alist))
+
+(setq template-expansion-alist
+      (cons
+      '("FULL_DATE" (insert (perlnow-full-date)))
       template-expansion-alist))
 
 (setq template-expansion-alist
@@ -1197,7 +1219,7 @@ This command is like \\\[cperl-check-syntax] with one
 less prompt \(also, it does not require mode-compile.el\)."
   (interactive)
   (save-buffer)
-  (setq compile-command (format "perl -cw \'%s\'" (buffer-file-name)))
+  (setq compile-command (format "perl -Mstrict -cw \'%s\'" (buffer-file-name)))
   (message "compile-command: %s" compile-command)
   (compile compile-command) )
 
@@ -1443,7 +1465,8 @@ creation."
 ;;; Formerly named: perlnow-prompt-for-new-module-in-one-step
   (interactive
    (let ((initial perlnow-pm-location)
-         (keymap perlnow-read-minibuffer-map) ; The keymap is key: transforms read-from-minibuffer.
+         ; The keymap is key: transforms read-from-minibuffer.
+         (keymap perlnow-read-minibuffer-map)
          (history 'perlnow-package-name-history)
          result filename return
          )
@@ -1451,6 +1474,7 @@ creation."
            (read-from-minibuffer
             "New module to create \(e.g. /tmp/dev/New::Mod\): "
                                  initial keymap nil history nil nil))
+     (setq result (replace-regexp-in-string "\.pm$" "" result)) ; remove accidentally typed ".pm"
      (setq filename
            (concat (replace-regexp-in-string "::" perlnow-slash result) ".pm"))
      (while (file-exists-p filename)
@@ -1722,7 +1746,6 @@ for people who don't don't agree that that's more convenient."
 ;;;==========================================================
 ;; The "simple" functions.  Older code that doesn't use template.el.
 ;;;==========================================================
-
 
 (defun perlnow-script-simple ()
   "Quickly jump into development of a new perl script.
@@ -2023,6 +2046,7 @@ Currently always returns t, but future versions may return nil for failure."
 
 (defun perlnow-endow-script-with-access-to (location)
   "Insert appropriate \"use lib\" line so script will see given LOCATION."
+  (interactive "sLoc:");; DEBUG
   (unless (perlnow-inc-spot-in-INC-p location)
     (let* ((script-name (buffer-file-name))
            (relative-path
@@ -2433,6 +2457,34 @@ schemes for your test files: `perlnow-documentation-test-file-strategies'."
             ))
     return))
 
+(defun perlnow-american-date ()
+  "Return the date in the common American format: MM/DD/YY.
+Much derided though it may be.  Note: no leading zeros on MM or DD."
+  (let* (
+         (tl (decode-time (current-time)))
+         (day   (nth 3 tl))
+         (month (nth 4 tl))
+         (year  (nth 5 tl))
+         (year-str (format "%d" year))
+         (year2 (substring year-str 2))
+         (merkin-date (format "%d/%d/%s" month day year2))
+       )
+    merkin-date))
+
+(defun perlnow-full-date ()
+  "Return the date in the fully-spelled out American format.
+For example: \"August 8, 2009\" (which I realize is not *just* American)."
+;;  (interactive) ;; DEBUG
+  (let* (
+         (month (format-time-string "%B"))
+         (day   (format "%d" (nth 3 (decode-time (current-time)))))
+         (year (format-time-string "%Y"))
+         (fulldate (format "%s %s, %s" month day year))
+       )
+    fulldate
+;;    (message fulldate)
+  ))
+
 ;;;==========================================================
 ;;; The following functions are used by perlnow-edit-test-file
 ;;; and it's relatives.
@@ -2808,37 +2860,45 @@ Returns nil if there is none."
             (match-string 1))
       )))
 
-
 (defun perlnow-get-inc-spot (package-name pm-location)
   "Determine the module root, the place where the package namespace begins.
 Given the PACKAGE-NAME \(e.g. \"New::Module\"\),
 and the PM-LOCATION \(as an absolute path to the \".pm\" file,
-e.g. \"/home/doom/perldev/Punk/Skunk/New/Module.pm\"\),
-this returns the module root, \(which in this example is:
+e.g. for \"/home/doom/perldev/Punk/Skunk/New/Module.pm\"\
+the PM-LOCATION is \"/home/doom/perldev/Punk/Skunk/New/\"\),
+Returns the module root, \(which in this example is:
 \"/home/doom/perldev/Punk/Skunk/\"\) Returns nil if pm-location is nil."
-;; Example:
-;;  /home/doom/perldev/Punk/Skunk/New/Module.pm
-;;  /home/doom/perldev/Punk/Skunk/New/              => number of levels:  7
-;;                                New::Module       => double-colon-count: 1
-;;  /home/doom/perldev/Punk/Skunk/                  The desired inc-spot
-;;
-  (let (double-colon-count  ; count of '::' separators
-        file-levels-list    ; list of directories in the path
-        inc-spot)        ;
+  ;; Example:
+  ;;  /home/doom/perldev/Punk/Skunk/New/Module.pm
+  ;;  /home/doom/perldev/Punk/Skunk/New/              => number of levels:  7
+  ;;                                New::Module       => double-colon-count: 1
+  ;;  /home/doom/perldev/Punk/Skunk/                  The desired inc-spot
+  ;;
+  (let (( inc-spot ))
     (cond ((eq pm-location nil)
            (setq inc-spot nil))
           (t
-           (setq double-colon-count (- (length (split-string package-name "::")) 1))
-           (setq file-levels-list (split-string pm-location perlnow-slash))
-           (setq inc-spot (mapconcat 'identity
-                                     (butlast file-levels-list double-colon-count)
-                                     perlnow-slash))
-           (setq inc-spot (concat perlnow-slash inc-spot)) ; kludge, must prepend a "/"
-                                                 ; (thus code breaks if not given full-path)
-           ))
-    inc-spot))
+           ;; Conditioning pm-location: if there's a trailing .pm, strip the last level
+           (if (string-match (concat "^\(.*?" perlnow-slash "\).*?\\.pm$") pm-location)
+               (setq pm-location (match-string 1 pm-location)))
+           ;; Ensure there's a trailing slash (among other things)
+           (setq pm-location (perlnow-fixdir pm-location))
 
-
+           (let* ( (module-terms-list (split-string package-name "::"))
+                   (rev-module-terms-list (reverse module-terms-list))
+                   (pattern)
+                   )
+             (pop rev-module-terms-list) ; discard lowest level (the *.pm)
+             (setq inc-spot pm-location) ; will trim terms from end, and return
+             (dolist (term rev-module-terms-list)
+               (setq pattern (concat "^\\(.*?" perlnow-slash "\\)" term perlnow-slash "$"))
+               (if (string-match pattern inc-spot)
+                   (setq inc-spot (match-string 1 inc-spot))
+                 (error "%s from %s not found in expected place in %s"
+                        term package-name pm-location)
+                 )
+               ))))
+          inc-spot))
 
 (defun perlnow-perlversion-old-to-new (given-version)
   "Convert old form of perl version into the new form.
