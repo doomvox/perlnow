@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.219 2009/08/22 03:15:49 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.220 2009/08/23 22:15:11 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1550,7 +1550,12 @@ double-colon separated package name form\)."
       h2xs-test-file
       window-size)  ; same number of lines as above.  Note: leaving args template and switchback nil.
   (funcall (perlnow-lookup-preferred-perl-mode))
-  (search-forward "BEGIN { plan tests => 1")
+;;  (search-forward "BEGIN { plan tests => 1") ;; worked with older versions of h2xs?
+;;  this works now (Sun Aug 23 13:10:48 2009) but why not just go to bottom?
+;;  (search-forward "# Insert your test code below, the Test::More module is use()ed here so read
+;; # its man page ( perldoc Test::More ) for help writing this test script.
+;;")
+  (goto-char (point-max))
   (other-window 1)
   ))
 
