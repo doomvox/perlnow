@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.221 2009/08/23 22:31:38 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.222 2009/08/23 22:54:20 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1135,13 +1135,21 @@ Used by \\[perlnow-edit-test-file].  See:
 Used only by the somewhat deprecated \"simple\" functions:
 \\[perlnow-script-simple] \\[perlnow-perlify-this-buffer-simple]")
 
+(defvar perlnow-getter-prefix "get_"
+  "Defines the naming convention for getters for object-oriented code.
+Editorial: the default setting in perlnow.el is \"get_\", because that's
+very common, but if you never use the (now deprecated) mutators, doesn't
+it make more sense to use no prefix on getters?")
+
+(defvar perlnow-setter-prefix "set_"
+  "Defines the naming convention for setters for object-oriented code.")
+
 ;;;==========================================================
 ;;; User Commands
 ;;;==========================================================
 
 ;;;==========================================================
 ;;; set-up functions
-
 
 (defun perlnow-define-standard-keymappings ()
   "Quickly define some recommended keymappings for perlnow
@@ -3367,10 +3375,31 @@ Perl package example: given \"/home/doom/lib/Taxed::Reb\" should return
 ;;;==========================================================
 
 ;; Insert boilerplate commands.
-;; These are proof-of-concept.  Better to use skeleton.el/tempo.el
-;; to get automatic indentation adjust?
-;; Difficulty: maybe there should be another set for each perl object paradigm
-;; Need another preference setting, ideally with project specific overrides.
+;; There might be some reason to use skeleton.el or tempo.el for these.
+
+;; Note: the following presume interspersed pod style.
+
+(defun perlnow-insert-basic-sub (name)
+  "Insert the framework of a basic perl sub definition"
+  (interactive "sMethod name: ")
+  (insert (concat
+           "\n"
+           "=item " name "\n"
+           "\n"
+           "=cut" "\n"
+           "\n"
+           "sub " name " {" "\n"
+           "  my $arg = shift;" "\n"
+           "\n"
+           "\n"
+           "}" "\n"
+           ))
+  (previous-line 3)
+  )
+
+;; perl-OOP-oriented:
+;; Currently these are limited to hashref-based oop.
+;; Need more preference settings, ideally with project specific overrides.
 
 (defun perlnow-insert-method (name)
   "Insert the framework of a perl method definition"
@@ -3391,13 +3420,17 @@ Perl package example: given \"/home/doom/lib/Taxed::Reb\" should return
   )
 
 (defun perlnow-insert-accessors (field)
-  "Insert the frameworks for a perl setter and getter"
+  "Insert the basic framework for a perl setter and getter,
+Presumes href-based objects.  Uses two variables to define the
+naming convention for the accessors: \\[perlnow-getter-prefix],
+and \\[perlnow-setter-prefix]."
   (interactive "sObject Attribute name: ")
-  (let ((getter field)
-        (setter (concat "set_" field))
+  (let (
+        (getter-prefix perlnow-getter-prefix)
+        (setter-prefix perlnow-setter-prefix)
+        (getter (concat getter-prefix field))
+        (setter (concat setter-prefix field))
         )
-
-  ; first the getter, named after the field (no "get_").
   (insert (concat
            "\n"
            "=item " getter "\n"
@@ -3412,7 +3445,6 @@ Perl package example: given \"/home/doom/lib/Taxed::Reb\" should return
            "  return $" field ";"                     "\n"
            "}" "\n"
            ))
-  ; now the setter (named set_<field>)
   (insert (concat
            "\n"
            "=item " setter                         "\n"
@@ -3498,7 +3530,9 @@ Perl package example: given \"/home/doom/lib/Taxed::Reb\" should return
 ;;; But consider spinning off a general package, that extracts
 ;;; help strings and converts it into (a) html (b) texinfo (c) xml
 
-
+;;; Done (some time ago):
+;;;   ~/End/Cave/EmacsPerl/Wall/Emacs-Run-ExtractDocs/lisp/extract-doctrings.el
+;;; (Why is the following stuff still in this file?)
 
 (defun perlnow-self-extract-help-to-html ()
   "Extracts the help doctrings from this file to html.
