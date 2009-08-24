@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.220 2009/08/23 22:15:11 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.221 2009/08/23 22:31:38 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1504,7 +1504,7 @@ The location for the new module defaults to the global
 
 
 (defun perlnow-h2xs (h2xs-location package-name)
-  "To quickly jump into development of a new perl CPAN-sytle module.
+  "To quickly jump into development of a new perl CPAN-style module.
 Asks two questions, prompting for the H2XS-LOCATION  \(the place where
 h2xs will create the \"staging area\"\) and the PACKAGE-NAME \(in perl's
 double-colon separated package name form\)."
@@ -3358,6 +3358,133 @@ Perl package example: given \"/home/doom/lib/Taxed::Reb\" should return
                (t
                 (message "match failed") ))
          (list directory fragment) ))
+
+
+
+
+;;;==========================================================
+;;; Experimental functions
+;;;==========================================================
+
+;; Insert boilerplate commands.
+;; These are proof-of-concept.  Better to use skeleton.el/tempo.el
+;; to get automatic indentation adjust?
+;; Difficulty: maybe there should be another set for each perl object paradigm
+;; Need another preference setting, ideally with project specific overrides.
+
+(defun perlnow-insert-method (name)
+  "Insert the framework of a perl method definition"
+  (interactive "sMethod name: ")
+  (insert (concat
+           "\n"
+           "=item " name "\n"
+           "\n"
+           "=cut" "\n"
+           "\n"
+           "sub " name " {" "\n"
+           "  my $self = shift;" "\n"
+           "\n"
+           "\n"
+           "}" "\n"
+           ))
+  (previous-line 3)
+  )
+
+(defun perlnow-insert-accessors (field)
+  "Insert the frameworks for a perl setter and getter"
+  (interactive "sObject Attribute name: ")
+  (let ((getter field)
+        (setter (concat "set_" field))
+        )
+
+  ; first the getter, named after the field (no "get_").
+  (insert (concat
+           "\n"
+           "=item " getter "\n"
+           "\n"
+           "Getter for object attribute " getter "\n"
+           "\n"
+           "=cut" "\n"
+           "\n"
+           "sub " getter " {" "\n"
+           "  my $self = shift;" "\n"
+           "  my $" field " = $self->{ " field " }; " "\n"
+           "  return $" field ";"                     "\n"
+           "}" "\n"
+           ))
+  ; now the setter (named set_<field>)
+  (insert (concat
+           "\n"
+           "=item " setter                         "\n"
+           "\n"
+           "Setter for object attribute " setter    "\n"
+           "\n"
+           "=cut"                                  "\n"
+           "\n"
+           "sub " setter " {"                      "\n"
+           "  my $self = shift;"                   "\n"
+           "  my $" field " = shift;"              "\n"
+           "  $self->{ " field " } = $" field ";"  "\n"
+           "  return $" field ";"                  "\n"
+           "}"                                     "\n"
+           ))
+  ))
+
+
+;; The following isn't bad... but why not put this in your template.el
+;; for OOP perl?
+(defun perlnow-insert-new ()
+  "Insert a basic framework for a 'new' method"
+  (interactive)
+
+  (let ((name "new"))
+    (insert (concat
+             "\n"
+             "=item " name "\n"
+             "\n"
+             "Instantiates a new object of this class." "\n"
+             "\n"
+             "=cut"                     "\n"
+             "\n"
+             "sub " name " {"           "\n"
+             "  my $class = shift;"     "\n"
+             "  my $self = { "          "\n"
+             "  #  fill in: "           "\n"
+             "  #              name => 'value', " "\n"
+             "  # "                     "\n"
+             "  };"                     "\n"
+             "  bless $self, $class;"
+             "\n"
+             "  lock_keys(%{ $self });"
+             "\n"
+             "  return $self;"
+             "\n"
+             "}" "\n"
+             ))
+  (search-backward "=item")
+  (forward-line 3)
+  ))
+
+
+;;; Wrappers around external commands
+; another proof-of-concept
+; TODO:
+; o  uses grep-find internally, but really needs it's own history. ((Why?))
+;    Look at how grep-find is written, and use those constructs.
+; o  Presumes --nocolor and --nogroup aren't entered in ack-search
+;    forcibly remove if they're there?  Does that matter? Check.
+; o  Really this isn't just for running perl code.
+;    Maybe, write a package of external command wrappers?
+
+(defun perlnow-ack (ack-search)
+  "Does searches with the utility ack, ala grep-find."
+  (interactive "sDo ack search: ")
+  (let (
+        (ack-command (format "ack --nocolor --nogroup %s" ack-search))
+        )
+       (let ((null-device nil))		; see grep
+         (grep ack-command))))
+
 
 
 ;;;==========================================================
