@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.224 2009/08/24 06:42:09 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.225 2009/09/05 22:03:51 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1861,11 +1861,11 @@ The test policy is defined by this trio of variables:
         (save-buffer)
         (funcall (perlnow-lookup-preferred-perl-mode))
         (if new-file-p
-            ;;; Uses (>>>9<<<) in the template to get it in the right place
-            ;;; TODO - would it be better to use global(s) to pass to a new expansion?
             (save-excursion
-              (jump-to-register ?9)
-              (perlnow-endow-script-with-access-to inc-spot)))
+              (let ( (whitespace
+                       (perlnow-jump-to-use package-name) )
+                    )
+                 (perlnow-endow-script-with-access-to inc-spot whitespace))))
         ))
      ; if script
      ((perlnow-script-p)
@@ -1889,6 +1889,20 @@ The test policy is defined by this trio of variables:
     (setq perlnow-associated-code original-code)))
 
 
+(defun perlnow-jump-to-use (package-name)
+  "Given the PACKAGE-NAME, jumps to the point before the \'use\' line.
+Specifically, these leaves the cursor at the start of the line
+that does a \"use\" or \"use_ok\" of the module given in perl's
+double-colon seperated form, e.g. \"Modular::Stuff\"."
+  (let ( ( pattern (format "^\\([ \t]*\\)use.*?\\b%s\\b" package-name) )
+         ( whitespace "" )
+         )
+    ;; (message "pattern: %s " pattern);; DEBUG
+    (goto-char (point-min))
+    (re-search-forward pattern nil t)
+    (setq whitespace (match-string 1))
+    (move-beginning-of-line 1)
+    return whitespace))
 
 ;; TODO
 ;; This ends up with a doubled display if
@@ -2049,19 +2063,18 @@ Currently always returns t, but future versions may return nil for failure."
               )))
       t)
 
-
-(defun perlnow-endow-script-with-access-to (location)
+(defun perlnow-endow-script-with-access-to (location &optional whitespace)
   "Insert appropriate \"use lib\" line so script will see given LOCATION."
-  ;; (interactive "sLoc:");; DEBUG
   (unless (perlnow-inc-spot-in-INC-p location)
     (let* ((script-name (buffer-file-name))
            (relative-path
              (file-relative-name location (file-name-directory script-name))))
-      (insert "use FindBin qw\($Bin\);\n")
-      (insert "use lib \(\"$Bin/")
+      (unless (> (length whitespace) 0) ;; Default to empty string (TODO better way?)
+        (setq whitespace ""))
+      (insert (format "%suse FindBin qw\($Bin\);\n" whitespace))
+      (insert (format "%suse lib \(\"$Bin/" whitespace))
       (insert relative-path)
       (insert "\");\n"))))
-
 
 ;;(setq import-string (perlnow-generate-import-list package-name inc-spot))
 (defun perlnow-generate-import-list (package-name inc-spot)
