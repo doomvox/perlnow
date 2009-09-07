@@ -5,12 +5,13 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.225 2009/09/05 22:03:51 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.226 2009/09/07 02:20:48 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
-;; Other Authors:
-;; Quinn Weaver - bug fixes   (( TODO email address ))
+
+;; And thanks to:
+;; Quinn Weaver - bug fixes to identify package names with inside-out OOP modules
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -54,20 +55,18 @@ Also see the documentation for:
 `perlnow-documentation-tutorial'
 `perlnow-documentation-test-file-strategies'
 
-This package is intended to speed development of perl code,
-largely by making it easier to jump into coding when an idea
-strikes. It also includes some commands to help automate some routine
-development tasks including testing the code in the emacs environment.
+This package speeds the development of perl code, by making it
+easier to jump into coding when an idea strikes. It also includes
+some commands to help automate some routine tasks (e.g. running
+or checking the code from within emacs).
 
-A perlnow command will typically prompt for a location and/or name,
-open a file buffer with an appropriate framework already inserted
-\(e.g. the hash-bang line, comments including date and author
-information, a perldoc outline, and so on\).  In the case of scripts
-the file automatically becomes executable.
+Perlnow commands typically prompt for a location and/or name,
+open a file buffer using an appropriate template.
+In the case of scripts the file automatically becomes executable.
 
-Many of the perlnow.el features require that template.el
-package has been installed, along with some templates for
-perl development purposes. See `perlnow-documentation-installation'.
+Many perlnow.el features require the template.el package plus
+some templates for perl development purposes.
+See `perlnow-documentation-installation'.
 
 Primarily, perlnow.el provides the following interactive
 functions:
@@ -78,8 +77,7 @@ perl module, this begins the script with a few lines to use
 the module.
 
 \\[perlnow-script-simple] - an older, not quite deprecated
-form of \\[perlnow-script] that has the virtue of not
-needing template.el to operate.
+form of \\[perlnow-script] that does not need template.el.
 
 \\[perlnow-module] - for creation of new modules.  Asks for
 the location and name of the new module in a single prompt,
@@ -89,7 +87,12 @@ using a hybrid form: \"/usr/lib/perl/Some::Module\"
 Much like perlnow-module, but uses a different template.
 
 \\[perlnow-h2xs] - runs the h2xs command, to begin working
-on a new module for distribution, such as via CPAN.
+on a new module for a CPAN-style distribution.
+
+\\[perlnow-module-starter] - uses module-starter to begin
+working on a new module which can then be distributed as a
+CPAN-style package.  Currently limited to OOP modules and
+packages based on Module::Build.
 
 \\[perlnow-run-check] - does a perl syntax check on the
 current buffer, displaying error messages and warnings in
@@ -105,7 +108,6 @@ it if it has not been defined yet.
 change the run-string used by perlnow-run.
 
 \\[perlnow-perldb] - runs the perl debugger using the above run string.
-
 
 \\[perlnow-alt-run] - works just like \\[perlnow-run]
 except that it uses the \"alt-run-string\" rather than
@@ -142,13 +144,9 @@ version can be found at:
 
    http://sourceforge.net/project/showfiles.php?group_id=47369
 
-You'll need some custom perl-oriented template.el templates that
-come with perlnow.el.  Most likely these templates should go in
-~/.templates, \(note they end with: '.tpl'\).  If you've somehow
-obtained the perlnow.el file without the associated templates,
-you can look for copies of them here:
-
-   http://obsidianrook.com/perlnow/
+You'll need some custom perl-oriented template.el templates (\"*.tpl\")
+that come with perlnow.el.  Most likely these templates should go in
+~/.templates.
 
 Add something like the following to your ~/.emacs file:
 
@@ -165,14 +163,20 @@ Add something like the following to your ~/.emacs file:
 
    \(perlnow-define-standard-keymappings\)
 
-If you prefer, that last function can be broken out into
-individual definitions like so \(this would make it easier
-for you to modify them to suit yourself\):
+Alternately, if you'd like a different prefix than the
+default \"C-c\\\", you can supply it as an argument:
+
+   \(perlnow-define-standard-keymappings \"C-c'\"\)
+
+Or if you prefer, the entire function call can be replaced
+with individual definitions like so, to make it easier
+to modify them individually:
 
    \(global-set-key \"\\C-c/s\" 'perlnow-script\)
    \(global-set-key \"\\C-c/m\" 'perlnow-module\)
    \(global-set-key \"\\C-c/o\" 'perlnow-object-module\)
    \(global-set-key \"\\C-c/h\" 'perlnow-h2xs\)
+   \(global-set-key \"\\C-c/O\" 'perlnow-module-starter\)
    \(global-set-key \"\\C-c/c\" 'perlnow-run-check\)
    \(global-set-key \"\\C-c/r\" 'perlnow-run\)
    \(global-set-key \"\\C-c/a\" 'perlnow-alt-run\)
@@ -208,15 +212,9 @@ aware that \"M-p\" is used in many contexts for \"history\"
 navigation.
 
 Caveats: perlnow.el was developed using GNU emacs 21.1 running
-on a linux box \(or GNU/Linux, if you prefer\).  I've
-avoided using constructs that I know won't work with earlier
-versions of emacs, and I don't know of any reason it
-wouldn't work with xemacs, but none of that has been tested.
-On the other hand, I'm pretty sure that some unix-isms have
-crept into this code: for example, if your file-system
-expects a \"\\\" as a separator between levels, this package
-may have some problems.  I'm amenable to suggestions for
-ways to make future versions more portable.")
+on a linux box \(or GNU/Linux, if you prefer\).  This version
+includes bug fixes to get it working with GNU emacs 23.
+Reportedly, it does not work with xemacs.")
 
 (defvar perlnow-documentation-terminology t
   "Definitions of some terms used here:
@@ -256,12 +254,15 @@ INC SPOT: a place where perl's package space begins
 such \"inc spots\" \(alternate term: \"module root\" or
 \"package root\"\).
 
-STAGING AREA: the directory created by the h2xs command
+STAGING AREA: the directory created by h2xs or module-starter
 for module development, a hyphenized-form of the module name
-e.g. Modular-Stuff. Staging areas often contain a module root
+e.g. Modular-Stuff. Staging areas contain a module root
 \(or \"inc spot\") called \"lib\".
 
 H2XS LOCATION: the place where you put your staging areas
+
+   TODO - need a more general name for that that applies to
+          modules-starter also.  Perhaps \"dev location\"?
 
 PERLISH PATH: this means a module path including double
 colons \(alternate term: \"colon-ized\"\),
@@ -1173,38 +1174,36 @@ it make more sense to use no prefix on getters?")
 ;;;==========================================================
 ;;; set-up functions
 
-(defun perlnow-define-standard-keymappings ()
+(defun perlnow-define-standard-keymappings ( &optional prefix )
   "Quickly define some recommended keymappings for perlnow
-functions.  By default, perlnow.el makes no changes to the users
-keymappings, because the emacs keymap is too crowded for it to be
-possible to do this intelligently without causing annoyance.  As
-a compromise, this function is provided to make it easy for you
-to adopt my recommended keymappings in you like, but they're not
+functions.  By default, perlnow.el makes no changes to the user's
+keymap. This function is provided to make it easy for you
+to adopt a standard set of keymappings, but they're not
 forced on you.  Note: these all use the \"C-c/\" prefix.  A few
 mappings are also included for useful functions that are defined
 outside of the perlnow.el package: cperl-perldoc-at-point,
 comment-region and narrow-to-defun."
-; TODO - Take the standard prefix as an argument?
-; then the user can choose "\C-c/" or "\C-c'"
-; TODO - Would be even cooler if it looked for and warned
-; about possible collisions...
+ ; TODO - Would be even cooler if it looked for and warned
+ ; about possible collisions...
   (interactive)
-   (global-set-key "\C-c/s" 'perlnow-script)
-   (global-set-key "\C-c/m" 'perlnow-module)
-   (global-set-key "\C-c/o" 'perlnow-object-module)
-   (global-set-key "\C-c/h" 'perlnow-h2xs)
-   (global-set-key "\C-c/c" 'perlnow-run-check)
-   (global-set-key "\C-c/r" 'perlnow-run)
-   (global-set-key "\C-c/a" 'perlnow-alt-run)
-   (global-set-key "\C-c/d" 'perlnow-perldb)
-   (global-set-key "\C-c/R" 'perlnow-set-run-string)
-   (global-set-key "\C-c/A" 'perlnow-set-alt-run-string)
-   (global-set-key "\C-c/t" 'perlnow-edit-test-file)
-   (global-set-key "\C-c/b" 'perlnow-back-to-code)
-   (global-set-key "\C-c/~" 'perlnow-perlify-this-buffer-simple)
-   (global-set-key "\C-c/1" 'cperl-perldoc-at-point)
-   (global-set-key "\C-c/#" 'comment-region)
-   (global-set-key "\C-c/N" 'narrow-to-defun))
+  (unless prefix (setq prefix "\C-c/"))
+  (global-set-key (format "%ss" prefix) 'perlnow-script)
+  (global-set-key (format "%sm" prefix) 'perlnow-module)
+  (global-set-key (format "%so" prefix) 'perlnow-object-module)
+  (global-set-key (format "%sh" prefix) 'perlnow-h2xs)
+  (global-set-key (format "%sO" prefix) 'perlnow-module-starter)
+  (global-set-key (format "%sc" prefix) 'perlnow-run-check)
+  (global-set-key (format "%sr" prefix) 'perlnow-run)
+  (global-set-key (format "%sa" prefix) 'perlnow-alt-run)
+  (global-set-key (format "%sd" prefix) 'perlnow-perldb)
+  (global-set-key (format "%sR" prefix) 'perlnow-set-run-string)
+  (global-set-key (format "%sA" prefix) 'perlnow-set-alt-run-string)
+  (global-set-key (format "%st" prefix) 'perlnow-edit-test-file)
+  (global-set-key (format "%sb" prefix) 'perlnow-back-to-code)
+  (global-set-key (format "%s~" prefix) 'perlnow-perlify-this-buffer-simple)
+  (global-set-key (format "%s1" prefix) 'cperl-perldoc-at-point)
+  (global-set-key (format "%s#" prefix) 'comment-region)
+  (global-set-key (format "%sN" prefix) 'narrow-to-defun))
 
 ;;;==========================================================
 ;;; functions to run perl scripts
@@ -1268,7 +1267,7 @@ This uses an interactively set RUNSTRING determined from
 \\[perlnow-set-run-string] is called automatically.
 It can always be changed later by running \\[perlnow-set-run-string]
 manually.  \n
-There's a major advantage that this command has over running
+There's a big advantage that this command has over running
 \\[perldb] directly: you can have different `perlnow-run-string'
 settings for different file buffers \(i.e. it is a buffer local
 variable\).  Unfortunately \(as of this writing\) \\[perldb]
@@ -2037,7 +2036,7 @@ Currently always returns t, but future versions may return nil for failure."
 ;;; TODO - would be a good idea to check if we can find the
 ;;;        module and (perhaps) warn if not.
 ;
-    ; Make the script we're creating the the default runstring for this module.
+    ; Make the script we're creating the default runstring for this module.
     (setq perlnow-module-run-string (format "perl %s" script-name))
     (perlnow-sub-name-to-kill-ring)
     ; module currently displayed, now want to open script, display in paralel
@@ -2404,14 +2403,21 @@ this favors the earlier occurrence in the list."
 ;;; Eh, maybe not.
   (setq location (perlnow-fixdir location))
   (let ((return
-         (concat perlnow-slash
+;;         (concat perlnow-slash
                  (mapconcat 'identity
                             (butlast
                              (split-string location perlnow-slash)
-                             1)
-                            perlnow-slash))))
+                             2)
+                            perlnow-slash)))
+;;)
     (setq return (perlnow-fixdir return))
     return))
+
+;; DEBUG
+;; (perlnow-one-up "/home/doom/tmp/Whatever/")
+;; (perlnow-one-up "/home/doom/tmp/Whatever")
+
+
 
 (defun perlnow-expand-dots-relative-to (dot_means given_path)
   "Using the dot definition DOT_MEANS, expand the GIVEN_PATH.
@@ -2664,7 +2670,7 @@ Will warn if there appear to be redundant possible testfiles."
                    (setq hyphenized-package-name
                      (mapconcat 'identity (split-string package-name "::") "-"))
                    ))
-       ;;; TODO - Consider exposing a this list to users in some form,
+       ;;; TODO - Consider exposing this list to users in some form,
        ;;;        via a defvar or something
            ; This is a listing of possible names for the test file:
            (setq test-file-check-list (list (concat hyphenized-package-name ".t")
