@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.226 2009/09/07 02:20:48 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.227 2009/09/07 20:14:19 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -90,9 +90,9 @@ Much like perlnow-module, but uses a different template.
 on a new module for a CPAN-style distribution.
 
 \\[perlnow-module-starter] - uses module-starter to begin
-working on a new module which can then be distributed as a
-CPAN-style package.  Currently limited to OOP modules and
-packages based on Module::Build.
+working on a new module in a CPAN-style distribution.
+Currently limited to OOP modules and packages based
+on Module::Build.
 
 \\[perlnow-run-check] - does a perl syntax check on the
 current buffer, displaying error messages and warnings in
@@ -158,7 +158,7 @@ Add something like the following to your ~/.emacs file:
       \(substitute-in-file-name \"$HOME/bin\"\)\)
   \(setq `perlnow-pm-location'
       \(substitute-in-file-name \"$HOME/lib\"\)\)\n
-  \(setq `perlnow-h2xs-location''
+  \(setq `perlnow-devlocation''
       \(substitute-in-file-name \"$HOME/perldev\"\)\)\n
 
    \(perlnow-define-standard-keymappings\)
@@ -220,9 +220,9 @@ Reportedly, it does not work with xemacs.")
   "Definitions of some terms used here:
 
 Note: perlnow uses the simplifying assumption that a perl
-package is a perl module is a single file, \(with extension
-*.pm\).  While technically multiple packages can be contained in
-a single file, that is not done often in practice.
+package is a perl module is a single *.pm file,
+Technically multiple packages can be contained in
+a single file, but that is not done often in practice.
 
 Why is there such a mess of terminology below?
 Because there's a file system name space and a module name space:
@@ -249,20 +249,18 @@ portion of module file name, e.g. /usr/lib/perl/Modular/
 MODULE NAME or PACKAGE NAME: perl's double colon separated
 name, e.g. \"Modular::Stuff\"
 
-INC SPOT: a place where perl's package space begins
-\(e.g. /usr/lib/perl\). Perl's @INC is a list of different
-such \"inc spots\" \(alternate term: \"module root\" or
-\"package root\"\).
+INC SPOT or MODULE ROOT or PACKAGE ROOT: a place where perl's
+package space begins \(e.g. /usr/lib/perl\). Perl's @INC is a list
+of different such \"inc spots\".  These are often named \"lib\".
 
 STAGING AREA: the directory created by h2xs or module-starter
 for module development, a hyphenized-form of the module name
 e.g. Modular-Stuff. Staging areas contain a module root
 \(or \"inc spot\") called \"lib\".
 
-H2XS LOCATION: the place where you put your staging areas
-
-   TODO - need a more general name for that that applies to
-          modules-starter also.  Perhaps \"dev location\"?
+DEV LOCATION: the place where you put your staging areas
+\(formerly called the \"h2xs location\" but now it might be
+the \"module-starter location\"\).
 
 PERLISH PATH: this means a module path including double
 colons \(alternate term: \"colon-ized\"\),
@@ -513,36 +511,17 @@ Next, the h2xs approach to module development:
   "There's another completely different style of perl module development,
 from the one discussed in: `perlnow-documentation-tutorial-2-module-development';
 the h2xs module approach, which is intended to be used for modules
-which will be published on CPAN.  This of course, involves using the
-standard framework created by the h2xs command, and for your
+developed using CPAN-style distributions.  This of course, involves using
+the standard framework created by the h2xs command, and for your
 convenience the perlnow package provides: \\[perlnow-h2xs].
 
-This will ask you two questions, \(1\) where do you want to
-put the staging area that h2xs creates, and \(2\) what do you
-want to call this module.  The first question defaults to the
-customizable variable `perlnow-h2xs-location'
-
-\(Aside: my feeling is that asking two questions for the
-creation of an h2xs structure, vs. the one question hybrid
-form used by \\[perlnow-module] is okay.  It helps
-differentiate it from \\[perlnow-module], and in any case it
-doesn't logically lend itself to a single question form.  In
-the case of h2xs the \"where?\" is the staging-area, not the
-module root.  The module root is located inside a \"lib\"
-directory inside the staging-area, so there's a gap between
-the \"where\" and the \"what\", and we might as well represent
-that gap as the gap between the two questions.\)
-
-Anyway, after you answer the two questions, \[perlnow-h2xs]
-will run the h2xs command, and then leave you with two windows
-open, one showing the module file buffer, the other showing the
-test file for the module.
-
-One of the nice features of the h2xs style of development is
-the standard test framework.  This still defaults to a simple
-\"use Test;\" though the wave of the future is probably
-Test::More.  You should familiarize yourself with
-at least one of these.
+This will ask you two questions, \(1\) where do you want to put
+the staging area that h2xs creates, and \(2\) what do you want to
+call this module.  The first question defaults to the
+customizable variable `perlnow-dev-location'.
+Then \[perlnow-h2xs] will run the h2xs command, and then leave
+you with two windows open, one showing the module file buffer, the
+other showing the test file for the module.
 
 If you do a \\[perlnow-run] inside of an h2xs module, it will
 identify it as h2xs, and use \"make test\" as the run string.
@@ -551,6 +530,9 @@ Makefile.PL\" hasn't been run yet, it should do that first.\).
 
 Next, everyone's favorite subject, \"Misc\":
  `perlnow-documentation-tutorial-4-misc'")
+
+;;; TODO document module-starter style also, either as a seperate "tutorial"
+;;;      or worked into the above.
 
 
 (defvar perlnow-documentation-tutorial-4-misc t
@@ -823,8 +805,8 @@ Some examples:
 (defcustom perlnow-pm-location (file-name-as-directory (getenv "HOME"))
   "This is the default location to stash new perl modules.")
 
-(defcustom perlnow-h2xs-location (file-name-as-directory perlnow-pm-location)
-  "This is the default location to do h2xs development of CPAN bound modules.")
+(defcustom perlnow-dev-location (file-name-as-directory perlnow-pm-location)
+  "This is the default location to do h2xs/modstar development for CPAN-style packages.")
 
 (defcustom perlnow-executable-setting ?\110
   "The user-group-all permissions used to make a script executable.")
@@ -855,7 +837,7 @@ Some examples:
 
 (defcustom perlnow-perl-test-module-template
     (concat perlnow-template-location "/" "TEMPLATE.perlnow-pm-t.tpl")
-  "The template that non-h2xs module perl test scripts will be created with.")
+  "The template that ordinary module perl test scripts will be created with.")
 (put 'perlnow-perl-test-template  'risky-local-variable t)
 
 (defcustom perlnow-license-message
@@ -1529,9 +1511,9 @@ The location for the new module defaults to the global
 
 
 
-(defun perlnow-h2xs (h2xs-location package-name)
+(defun perlnow-h2xs (dev-location package-name)
   "To quickly jump into development of a new perl CPAN-style module.
-Asks two questions, prompting for the H2XS-LOCATION  \(the place where
+Asks two questions, prompting for the DEV-LOCATION  \(the place where
 h2xs will create the \"staging area\"\) and the PACKAGE-NAME \(in perl's
 double-colon separated package name form\)."
 ; Because default-directory is the default location for (interactive "D"),
@@ -1539,11 +1521,11 @@ double-colon separated package name form\)."
 ; default-directory momentarily, then restore it. Uses the dynamic scoping
 ; of elisp's "let" (which is more like perl's "local" than perl's "my").
   (interactive
-    (let ((default-directory perlnow-h2xs-location))
-      (call-interactively 'perlnow-prompt-for-h2xs)))
-  (setq h2xs-location (perlnow-fixdir h2xs-location))  ;; just playing safe
-  (unless (file-exists-p h2xs-location)
-    (make-directory h2xs-location t))
+    (let ((default-directory perlnow-dev-location))
+      (call-interactively 'perlnow-prompt-for-cpan-style)))
+  (setq dev-location (perlnow-fixdir dev-location))  ;; just playing safe
+  (unless (file-exists-p dev-location)
+    (make-directory dev-location t))
   (let* ( display-buffer ; buffer object
           (h2xs-module-file "")
           (h2xs-test-file   "")
@@ -1554,7 +1536,7 @@ double-colon separated package name form\)."
     ;Bring the *perlnow-h2xs* display window to the fore (bottom window of the frame)
     (perlnow-show-buffer-other-window display-buffer window-size t)
     (perlnow-blank-out-display-buffer display-buffer t)
-    (let ((default-directory h2xs-location))
+    (let ((default-directory dev-location))
      ; A typical h2xs run string:  h2xs -AX -n Net::Acme -b 5.6.0
       (call-process "h2xs"
                 nil
@@ -1564,14 +1546,14 @@ double-colon separated package name form\)."
                 (concat "-n" package-name)
                 (concat "-b"
                         (perlnow-perlversion-old-to-new perlnow-minimum-perl-version))))
-  (setq h2xs-staging-area (perlnow-staging-area h2xs-location package-name))
+  (setq h2xs-staging-area (perlnow-staging-area dev-location package-name))
   (perlnow-run-perl-makefile-pl-if-needed h2xs-staging-area)
-  (setq h2xs-module-file (perlnow-full-path-to-h2xs-module h2xs-location package-name))
+  (setq h2xs-module-file (perlnow-full-path-to-cpan-style-module dev-location package-name))
   (find-file h2xs-module-file)
   (search-forward "# Preloaded methods go here.")
   (forward-line 1)
   ; Also  open the *.t file
-  (setq h2xs-test-file (perlnow-full-path-to-h2xs-test-file h2xs-staging-area))
+  (setq h2xs-test-file (perlnow-full-path-to-dev-test-file h2xs-staging-area))
   (perlnow-open-file-other-window
       h2xs-test-file
       window-size)  ; same number of lines as above.  Note: leaving args template and switchback nil.
@@ -1598,8 +1580,8 @@ module-starter will create the \"staging area\"\) and the PACKAGE-NAME
    ; default-directory momentarily, then restore it.
    ; Uses the dynamic scoping of elisp's "let"
   (interactive
-   (let ((default-directory perlnow-h2xs-location))
-     (call-interactively 'perlnow-prompt-for-h2xs)))
+   (let ((default-directory perlnow-dev-location))
+     (call-interactively 'perlnow-prompt-for-cpan-style)))
   (setq modstar-location (perlnow-fixdir modstar-location))
 
   (unless (file-exists-p modstar-location)
@@ -1623,7 +1605,7 @@ module-starter will create the \"staging area\"\) and the PACKAGE-NAME
 
       (setq modstar-staging-area (perlnow-staging-area modstar-location package-name))
       (perlnow-run-perl-build-pl modstar-staging-area)
-      (setq modstar-module-file (perlnow-full-path-to-h2xs-module modstar-location package-name))
+      (setq modstar-module-file (perlnow-full-path-to-cpan-style-module modstar-location package-name))
 
       ;; create a module and test file using appropriate templates,
       ;; and swap the module file in place of the one module-starter creates
@@ -1834,7 +1816,7 @@ The test policy is defined by this trio of variables:
 `perlnow-test-policy-dot-definition' i.e.  \"fileloc\" or \"incspot\"
 `perlnow-test-policy-naming-style'   i.e. \"hyphenized\"or \"basename\"."
 ; Remember the *runstring* is a bit different for
-; an h2xs module than a regular module.
+; an cpan-style module than a regular module.
   (interactive
    (list (perlnow-get-test-file-name)))
   ; set some buffer-local variables before we go any where
@@ -2108,21 +2090,22 @@ Note: This is all used only by the mildly deprecated \\[perlnow-module-two-quest
 
 
 
-(defun perlnow-prompt-for-h2xs (where what)
-  "For Internal use only: ask the two questions for \\[perlnow-h2xs].
-The WHERE is location to put the h2xs structure and the WHAT is
-the name of the perl module to create.  Checks to see if one exists
-already, and if so, asks for another name (by doing yet another
-\\[call-interactively] of another function).  The location
-defaults to the current `default-directory'.  Returns a two
-element list, h2xs-location and package-name."
+(defun perlnow-prompt-for-cpan-style (where what)
+  "For Internal use only: ask the two questions needed for cpan-style dev.
+Ala \\[perlnow-h2xs] or  \\[perlnow-module-starter].
+The WHERE is the dev location to put the h2xs or module-starter
+structure and the WHAT is the name of the perl module to create.
+Checks to see if one exists already, and if so, asks for another
+name (by doing yet another \\[call-interactively] of another function).
+The location defaults to the current `default-directory'.  Returns a
+two element list, dev-location and package-name."
   (interactive "DLocation for new module development? \nsName of new module \(e.g. New::Module\)? ")
   (let ( staging-area
          )
   (setq staging-area (perlnow-staging-area where what))
   (while (file-exists-p staging-area)  ; really, directory exists
-    (setq where-and-what  ; that's a list: (h2xs-location package-name)
-      (call-interactively 'perlnow-prompt-for-h2xs-again))
+    (setq where-and-what  ; that's a list: (dev-location package-name)
+      (call-interactively 'perlnow-prompt-for-cpan-style-again))
     (setq where (car where-and-what))
     (setq what (cadr where-and-what))
     (setq staging-area (perlnow-staging-area where what))
@@ -2130,10 +2113,10 @@ element list, h2xs-location and package-name."
   (list where what)))
 
 
-(defun perlnow-prompt-for-h2xs-again (where what)
+(defun perlnow-prompt-for-cpan-style-again (where what)
   "For internal use only: the \"ask again\" for \\[perlnow-h2xs\].
 If the user enters an existing h2xs module name in
-\\[perlnow-prompt-for-h2xs], it will do another chained \\[call-interactively]
+\\[perlnow-prompt-for-cpan-style], it will do another chained \\[call-interactively]
 to this function to ask again for WHERE and WHAT with a slightly
 different message.  Returns a two element list, location and package-name."
   (interactive
@@ -2394,30 +2377,22 @@ this favors the earlier occurrence in the list."
     high_scorer)))
 
 
+;; TODO really, this is all you need, though, right?
+;;   (setq location (perlnow-fixdir "location/.."))
 (defun perlnow-one-up (location)
   "Get an absolute path to the location one above the given LOCATION."
-;;; TODO refactoring:
-;;;   Wouldn't string matches be simpler?
-;;;   (string-match "\\(^.*/\\)[^/]*$" (perlnow-fixdir dir))
-;;;   (setq one-up (match-string 1 dir))
-;;; Eh, maybe not.
   (setq location (perlnow-fixdir location))
   (let ((return
-;;         (concat perlnow-slash
                  (mapconcat 'identity
                             (butlast
                              (split-string location perlnow-slash)
                              2)
                             perlnow-slash)))
-;;)
     (setq return (perlnow-fixdir return))
     return))
-
 ;; DEBUG
 ;; (perlnow-one-up "/home/doom/tmp/Whatever/")
 ;; (perlnow-one-up "/home/doom/tmp/Whatever")
-
-
 
 (defun perlnow-expand-dots-relative-to (dot_means given_path)
   "Using the dot definition DOT_MEANS, expand the GIVEN_PATH.
@@ -2628,8 +2603,116 @@ and the NAMESTYLE \(see `perlnow-test-policy-naming-style'\)."
               (setq test-file test-file-from-policy))
            )
      test-file))
-;;; TODO check presumption above:
-;;; No need to handle h2xs modules differently (want test file, not runstring)
+
+
+
+;;; Experimental variation of
+;;;   perlnow-get-test-file-name-given-policy
+;;; (( NOT YET FINISHED ))
+(defun perlnow-list-test-file (testloc dotdef namestyle &optional choose-one)
+  "Looks for test files associated wtih the current file.
+Uses the three given elements of a \"test policy\", to find
+associated test files:
+A test policy (see `perlnow-documentation-test-file-strategies')
+is defined by three pieces of information:
+the TESTLOC \(see `perlnow-test-policy-test-location'\)
+the DOTDEF \(see `perlnow-test-policy-dot-definition' \)
+and the NAMESTYLE \(see `perlnow-test-policy-naming-style'\).
+Returns a list of appropriate test files found, or just a best
+pick if the CHOOSE-ONE option is non-nil."
+
+;;; Note: perlnow-edit-test-file docs explains a lot of what
+;;; has to happen here. I quote:
+;;   o Checks the test policy, looks for an existing file there.
+;;   o If not, then searches the test path, looks for an existing file there
+
+   (let* (
+         ; script oriented info:
+           (file-location
+             (file-name-directory (buffer-file-name)))
+           (basename
+             (file-name-sans-extension (file-name-nondirectory (buffer-file-name))))
+         ; module oriented info (calculated below):
+           (package-name "")
+           (inc-spot "")
+           (hyphenized-package-name "")
+          ; also will determine:
+           (testloc-absolute "")
+           (test-file-from-policy "")
+           (test-file "")
+           (test-file-list ())
+           )
+    ; module oriented info, calculated:
+    (cond ; do only if module
+     ((setq package-name (perlnow-get-package-name-from-module-buffer))
+           (setq inc-spot (perlnow-get-inc-spot package-name file-location))
+           (setq hyphenized-package-name (mapconcat 'identity (split-string package-name "::") "-"))
+           ))
+     ; define testloc-absolute
+     (cond ((string= dotdef "fileloc") ; might be script or module
+             (setq testloc-absolute
+                 (perlnow-expand-dots-relative-to file-location testloc)))
+           ((string= dotdef "incspot") ; only with modules
+             (setq testloc-absolute
+                 (perlnow-expand-dots-relative-to inc-spot testloc)))
+
+           ((string= dotdef "parallel") ; used by modstar, h2xs
+             (setq testloc-absolute
+                 (perlnow-expand-dots-relative-to (perlnow-one-up inc-spot) testloc)))
+           (t
+            (error
+             "Invalid perlnow-test-policy-dot-definition, should be fileloc, incspot or parallel")))
+
+     (setq testloc-absolute (perlnow-fixdir testloc-absolute))
+     (cond ((file-directory-p testloc-absolute)
+            (setq test-file-list
+                  (directory-files testloc-absolute nil "\.t$"))))
+     )) ;; TODO Try returning just that much...
+
+(defun testosterone ()
+  ""
+  (interactive)
+  (let* ( (test-files
+;;           (perlnow-list-test-file "./t" "incspot" "numbered"))
+           (perlnow-list-test-file "../t" "incspot" "numbered"))
+          )
+    (message "test files:%s"
+             (mapconcat 'identity test-files " "))
+    ))
+
+
+
+
+;;      ; define test-file-from-policy
+;;      (cond ( (string= namestyle "hyphenized")  ; only with modules
+;;                (setq test-file-from-policy
+;;                    (concat testloc-absolute hyphenized-package-name ".t"))
+;;              )
+;;            ( (string= namestyle "basename")    ; might be script or module
+;;              (setq test-file-from-policy
+;;                    (concat testloc-absolute basename ".t"))
+;;              )
+;;            ( (string= namestyle "numbered")    ; might be script or module
+;;              (setq test-file-from-policy  "XXX-TODO-XXX" )) ;; TODO no way to get this to work here, no?
+;;            (t
+;;             (error
+;;              "Invalid perlnow-test-policy-naming-style setting, should be 'hyphenized' or 'basename'")))
+
+;; ;;; TODO NEXT deviate from this structure here:
+
+;;      ;If this result is good, return it, if not, keep looking
+;;      ;If nothing found though, return this as name to be created.
+;;      (cond ((file-exists-p test-file-from-policy)    ; if test-policy finds test-file, does not look for redundant matches
+;;              (setq test-file test-file-from-policy) )
+;;            ((setq test-file (perlnow-search-through-test-path)) ) ; warns if redundant matches exist,
+;;                                                                   ; but returns the first.  nil if none.
+;;            (t
+;;               (setq test-file test-file-from-policy))
+;;            )
+;;     test-file))
+
+
+
 
 
 (defun perlnow-search-through-test-path ()
@@ -2968,24 +3051,24 @@ passes it through unchanged."
     ))
 
 
-(defun perlnow-staging-area (h2xs-location package-name)
-  "Return path to h2xs module staging area for H2XS-LOCATION & PACKAGE-NAME."
+(defun perlnow-staging-area (dev-location package-name)
+  "Return path to staging area for DEV-LOCATION & PACKAGE-NAME."
   (let ((staging-area
          (file-name-as-directory
          (concat
-          (perlnow-fixdir h2xs-location)
+          (perlnow-fixdir dev-location)
           (mapconcat 'identity (split-string package-name "::") "-")))))
     staging-area))
 
 
-(defun perlnow-full-path-to-h2xs-module (h2xs-location package-name)
+(defun perlnow-full-path-to-cpan-style-module (dev-location package-name)
   "Get the full path to a module created by h2xs.
-E.g. if the H2XS-LOCATION were \"/usr/local/perldev\" and the PACKAGE-NAME
+E.g. if the DEV-LOCATION were \"/usr/local/perldev\" and the PACKAGE-NAME
 were \"New::Module\", this should return:
 \"/usr/local/perldev/New-Module/lib/New/Module.pm\""
   (let ((pm-file
          (concat
-          (file-name-as-directory h2xs-location)
+          (file-name-as-directory dev-location)
           (mapconcat 'identity (split-string package-name "::") "-")
           "/lib/"
           (mapconcat 'identity (split-string package-name "::") perlnow-slash)
@@ -2993,9 +3076,9 @@ were \"New::Module\", this should return:
     pm-file))
 
 
-(defun perlnow-full-path-to-h2xs-test-file (h2xs-staging-area)
+(defun perlnow-full-path-to-dev-test-file (staging-area)
   "Get the full path to a the test file for a module created by h2xs.
-Given the H2XS-STAGING-AREA, it looks for files located in the
+Given the STAGING-AREA, it looks for files located in the
 sub-directory \"t\".  First choice is given to a test file with
 a basename related to the module name, if that fails it looks
 for the old-fashioned \"1.t\".  E.g. if the staging-area were
@@ -3010,18 +3093,18 @@ for the old-fashioned \"1.t\".  E.g. if the staging-area were
           (basename "")
           (basename-truncated "")
           )
-    (setq h2xs-staging-area (perlnow-fixdir h2xs-staging-area))  ;;; redundant fixdir now?
+    (setq staging-area (perlnow-fixdir staging-area))  ;;; redundant fixdir now?
     (setq module-test-location
-            (concat h2xs-staging-area "t/"))
-    ; peel off the lower level of "h2xs-staging-area",
+            (concat staging-area "t/"))
+    ; peel off the lower level of "staging-area",
     ; to get the probable base-name
-    (let ((dir h2xs-staging-area))
+    (let ((dir staging-area))
 ;      (string-match "\\(^.*/\\)\\([^/]*\\)[/]*$" dir)
       ;;; TODO - regexp has unix slash dependency
       (string-match "\\(^.*/\\)\\([^/]*\\)/$" dir)
       (setq basename (match-string 2 dir))
       (unless basename
-        (message "warning: blank basename found in perlnow-full-path-to-h2xs-test-file"))
+        (message "warning: blank basename found in perlnow-full-path-to-dev-test-file"))
       )
     (setq test-file1 (concat module-test-location basename ".t"))
     ; for the hell of it, peel off the last part
