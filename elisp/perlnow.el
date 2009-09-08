@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.228 2009/09/07 21:16:14 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.229 2009/09/07 21:19:33 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -812,7 +812,7 @@ Some examples:
 (defcustom perlnow-executable-setting ?\110
   "The user-group-all permissions used to make a script executable.")
 
-(defvar perlnow-template-location (perlnow-fixdir (substitute-in-file-name "$HOME/.templates"))
+(defvar perlnow-template-location (perlnow-fixdir "$HOME/.templates")
   "Standard location for template.el templates.")
   ;; TODO Question: can I get template.el to tell me the template location?
 
@@ -2936,7 +2936,7 @@ with a \"lib\" and/or \"t\" *and* a \"Makefile.PL\"."
           file-list ; file listing of the candidate directory (pre-screened)
           return)
 
-    (setq dir (perlnow-fixdir (file-name-directory filename)))
+    (setq dir (perlnow-fixdir filename))
     (setq return
           (catch 'ICE
             (while (> (length dir) 1)
@@ -3806,12 +3806,6 @@ template.el expansion")
   "Create the HTML-FILE, and fills it with doctrings from this file."
   (interactive "FName of html help file to create: ")
   (let ( (html-template "/home/doom/.templates/TEMPLATE.perlnow-html.tpl")
-
-;;; TODO
-;;; Why wasn't $HOME expanding right?  Bug in fixdir?
-;;          (concat
-;;           (perlnow-fixdir "$HOME/.templates/")
-;;           "TEMPLATE.html.tpl"))
          )
     (setq perlnow-help-docs-title "Documentation from perldoc.el")
    ; Must manually delete existing html-file first (to avoid prompt)
