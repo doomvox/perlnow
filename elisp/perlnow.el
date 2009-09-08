@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.229 2009/09/07 21:19:33 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.230 2009/09/07 22:26:17 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -798,7 +798,7 @@ Some examples:
 ; Maybe it would be better to default to something else, possibly:
 ;   ~/bin  ~/lib
 ; Maybe, see if they exist, and then use them, if not, silently fall
-; back on HOME?
+; back on HOME? (ditto ~/dev).
 
 (defcustom perlnow-script-location (file-name-as-directory (getenv "HOME"))
   "This is the default location to stash new perl scripts.")
@@ -1785,7 +1785,7 @@ It does three things:
       (font-lock-mode))
      ; (You might think it should be "if *not* font-lock", but this works.)
   ;; Make the file executable:
-  ; Save first: make sure the file really exists before
+ ; Save first: make sure the file really exists before
   ; we change the protections on it
   (save-buffer)
   (let ((perlutil-all-but-execute-mask ?\666) ; Mask to screen out executable file permissions
@@ -1815,7 +1815,7 @@ This command follows this process:
 The test policy is defined by this trio of variables:
 `perlnow-test-policy-test-location', e.g. \".\", \"./t\", \"../t\", etc.
 `perlnow-test-policy-dot-definition' i.e.  \"fileloc\" or \"incspot\"
-`perlnow-test-policy-naming-style'   i.e. \"hyphenized\"or \"basename\"."
+`perlnow-test-policy-naming-style'   i.e. \"hyphenized\"or \"basename\"."  ;; TODO  'numeric'
 ; Remember the *runstring* is a bit different for
 ; an cpan-style module than a regular module.
   (interactive
@@ -1917,6 +1917,41 @@ Experimental feature.  Functionality may change."
      (setq basename (file-name-sans-extension just_file_name))
      (setq extension (substring just_file_name (+ 1 (length basename))))))
 
+(defun perlnow-nth-file-path-level (level location)
+  "Return the LEVEL indicated from the given file-path.
+Usage examples:
+
+    (perlnow-nth-file-path-level 0 \"$HOME/End/Cave/Trial/Mod/Liar.pm\") ;; \"home\"
+    (perlnow-nth-file-path-level 2 \"$HOME/End/Cave/Trial/Mod/Liar.pm\") ;; \"End\"
+    (perlnow-nth-file-path-level 1 \"$HOME/End/Cave/Trial/Mod/Liar.pm\") ;; \"doom\"
+    (perlnow-nth-file-path-level 4 \"$HOME/End/Cave/Trial/Mod/Liar.pm\") ;; \"Trial\"
+    (perlnow-nth-file-path-level 6 \"$HOME/End/Cave/Trial/Mod/Liar.pm\") ;; \"Liar.pm\"
+
+    (perlnow-nth-file-path-level -1 \"$HOME/End/Cave/Trial/Mod/Liar.pm\") ;; \"Liar.pm\"
+    (perlnow-nth-file-path-level -2 \"$HOME/End/Cave/Trial/Mod/Liar.pm\") ;; \"Mod\"
+    (perlnow-nth-file-path-level -3 \"$HOME/End/Cave/Trial/Mod/Liar.pm\") ;; \"Trial\"
+
+"
+  (setq location (perlnow-fixdir location))
+  (let* (
+        (slash (convert-standard-filename "/"))
+        (list (split-string location slash))
+        (retval)
+        )
+    ;; trim leading & trailing blank items
+    (if (string= (car list) "")
+        (pop list)
+        )
+    (if (string= (car (last list)) "")
+        (setq list (butlast list))
+        )
+    (cond ( (>= level 0)
+            (setq retval (nth level list)))
+          ( (< level 0)
+            (setq level (+ 1 level))
+            (setq retval (nth (abs level) (reverse list))))
+          )
+    ))
 
 
 ;;;TODO
@@ -1928,7 +1963,7 @@ Experimental feature.  Functionality may change."
 ;;; to show a new window alongside the existing current window, I close
 ;;; all others and just display the two of them.  Would be better to use
 ;;; smarter handling that would leave others open if there's enough room.
-;;; Question: could both both functions be fused together?
+;;; Question: could both functions be fused together?
 
 
 (defun perlnow-open-file-other-window (file &optional numblines template switchback)
@@ -2294,32 +2329,29 @@ This looks for the package line near the top."
     ;;  (2) look at level above.  Does it match hyphenized?
     ;;  (3) is there a "t" parallel to "lib"
     ;;  (4) is there a *.PL file there?  a MANIFEST?
-
-    (let* ( (cpan-style-flag nil)
+    (let* ( (cpan-style-p nil)
             (package-name (perlnow-get-package-name-from-module-buffer))
             (module-file-location
              (file-name-directory (buffer-file-name)))
             (inc-spot
              (perlnow-get-inc-spot package-name module-file-location ))
+            (staging-area
+             (perlnow-one-up inc-spot))
             (hyphenized-package-name
              (mapconcat 'identity (split-string package-name "::") "-"))
-            (pm-basename
-             (file-name-sans-extension (file-name-nondirectory (buffer-file-name))))
-
+;;            (pm-basename
+;;             (file-name-sans-extension (file-name-nondirectory (buffer-file-name))))
            )
-
-      (setq cpan-style-flag
+      (setq cpan-style-p
             (and
              (perlnow-module-code-p)   ;; good idea? TODO
-             (string= (file-name-nodirectory inc-spot) "lib") ;; fix this, sigh
-             ()
-             ()
-             ()
-             ))
-
-      )
-    ))
-
+             (string= (perlnow-nth-file-path-level -1 inc-spot) "lib")
+             (string= (perlnow-nth-file-path-level -2 inc-spot) hyphenized-package-name)
+             (file-exists-p (concat staging-area perlnow-slash "MANIFEST"))
+             (file-directory-p (concat staging-area perlnow-slash "t"))
+             )
+            )
+      cpan-style-p)))
 
 
 (defun perlnow-get-package-name-from-module-buffer ()
@@ -2451,15 +2483,6 @@ like: \"/home/doom/tmp/../bin\"."
    (setq newpath (perlnow-fixdir newpath))
    newpath))
 
-
-(defun perlnow-lowest-level-directory-name (dir)
-  "Return the lowest level name from a given directory path.
-For example, given DIR: \"/usr/lib/perl/\" this returns: \"perl\"."
-  (let* ( (levels (split-string dir perlnow-slash))
-          (return (nth (- (length levels) 1) levels)) )
-    return))
-
-
 (defun perlnow-guess-module-run-string ()
   "Return a good guess for an appropriate `perlnow-module-run-string'.
 First looks for the Makefile \(or Makefile.PL\) of an h2xs set-up.
@@ -2545,13 +2568,9 @@ For example: \"August 8, 2009\" (which I realize is not *just* American)."
 (defun perlnow-get-test-file-name ()
   "Looks for the test file for the current perl code buffer."
    (let (testfile)
-   (cond (
-
-;; TODO uncomment when this exists: perlnow-cpan-style-code-p
-;;          (perlnow-cpan-style-code-p)
-;;           (setq testfile (perlnow-get-test-file-name-cpan-style)))
-
-          (perlnow-module-code-p)
+   (cond ( (perlnow-cpan-style-code-p)
+           (setq testfile (perlnow-get-test-file-name-cpan-style)))
+         ( (perlnow-module-code-p)
            (setq testfile (perlnow-get-test-file-name-module)))
          ( (perlnow-script-p)
            (setq testfile (perlnow-get-test-file-name-script)))
@@ -2574,8 +2593,8 @@ Used by \\[perlnow-get-test-file-name]."
   "Get the test file name for the current perl module buffer.
   Used by \\[perlnow-get-test-file-name]."
   (perlnow-get-test-file-name-given-policy
-   perlnow-test-policy-test-location
-   "../t"     ;; perlnow-test-policy-dot-definition
+   "../t" ;; perlnow-test-policy-test-location
+   perlnow-test-policy-dot-definition
    "numeric"  ;; perlnow-test-policy-naming-style
    ))
 
@@ -3029,7 +3048,9 @@ Returns nil if there is none."
                            "!"
                            "[ \t]*"
                            "\\(.*\\)$"
-                           )) )
+                           ))
+           (return "")
+           )
       (goto-char (point-min)) ; Presume the hash bang, if any, is the first line (no blanks or comments)
       (looking-at hash-bang-pat) ; why not just string-match?
       (setq return
