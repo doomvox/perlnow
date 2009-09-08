@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.230 2009/09/07 22:26:17 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.231 2009/09/07 22:47:35 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -2323,12 +2323,12 @@ This looks for the package line near the top."
 (defun perlnow-cpan-style-code-p ()
   "Determine if this file looks like it's in a cpan-style dev tree."
   (save-excursion
-    ;; maybe, check if this is a module using the above
-    ;; find the module-root
-    ;;  (1) is it named "lib"?
-    ;;  (2) look at level above.  Does it match hyphenized?
-    ;;  (3) is there a "t" parallel to "lib"
-    ;;  (4) is there a *.PL file there?  a MANIFEST?
+    ;;  (0) is this a module?
+    ;;  (1) is the module root named "lib"?
+    ;;  (2) does the level above that match hyphenized form of module name?
+    ;;  (3) is there a "t" in parallel to "lib"
+    ;;  (4) is there a MANIFEST there?
+    ;;  extra credit:  *.PL file there?  (not done)
     (let* ( (cpan-style-p nil)
             (package-name (perlnow-get-package-name-from-module-buffer))
             (module-file-location
@@ -2347,12 +2347,20 @@ This looks for the package line near the top."
              (perlnow-module-code-p)   ;; good idea? TODO
              (string= (perlnow-nth-file-path-level -1 inc-spot) "lib")
              (string= (perlnow-nth-file-path-level -2 inc-spot) hyphenized-package-name)
-             (file-exists-p (concat staging-area perlnow-slash "MANIFEST"))
-             (file-directory-p (concat staging-area perlnow-slash "t"))
+             (file-exists-p    (concat staging-area "MANIFEST"))
+             (file-directory-p (concat staging-area "t"))
              )
             )
       cpan-style-p)))
 
+;; DEBUG -- verified above works
+;; (defun testosteroonie ()
+;;   ""
+;;   (interactive)
+;;   (if (perlnow-cpan-style-code-p)
+;;       (message "yowsa")
+;;     (message "nope"))
+;;   )
 
 (defun perlnow-get-package-name-from-module-buffer ()
   "Get the module name from the package line.
@@ -2593,11 +2601,10 @@ Used by \\[perlnow-get-test-file-name]."
   "Get the test file name for the current perl module buffer.
   Used by \\[perlnow-get-test-file-name]."
   (perlnow-get-test-file-name-given-policy
-   "../t" ;; perlnow-test-policy-test-location
-   perlnow-test-policy-dot-definition
+   "../t"     ;; perlnow-test-policy-test-location
+   "incspot"  ;; perlnow-test-policy-dot-definition
    "numeric"  ;; perlnow-test-policy-naming-style
    ))
-
 
 (defun perlnow-get-test-file-name-script ()
    "Get the test file name for the current perl script buffer.
