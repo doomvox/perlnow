@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.227 2009/09/07 20:14:19 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.228 2009/09/07 21:16:14 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -785,9 +785,10 @@ Some examples:
  '~/tmp/../bin/test' => '/home/bin/test/'
 "
   (let ((return
-  (convert-standard-filename
-   (file-name-as-directory
-    (expand-file-name dir)))))
+         (substitute-in-file-name
+          (convert-standard-filename
+           (file-name-as-directory
+            (expand-file-name dir))))))
     return))
 
 ; TODO:
@@ -2284,6 +2285,43 @@ This looks for the package line near the top."
     (looking-at package-line-pat) )))
 
 
+(defun perlnow-cpan-style-code-p ()
+  "Determine if this file looks like it's in a cpan-style dev tree."
+  (save-excursion
+    ;; maybe, check if this is a module using the above
+    ;; find the module-root
+    ;;  (1) is it named "lib"?
+    ;;  (2) look at level above.  Does it match hyphenized?
+    ;;  (3) is there a "t" parallel to "lib"
+    ;;  (4) is there a *.PL file there?  a MANIFEST?
+
+    (let* ( (cpan-style-flag nil)
+            (package-name (perlnow-get-package-name-from-module-buffer))
+            (module-file-location
+             (file-name-directory (buffer-file-name)))
+            (inc-spot
+             (perlnow-get-inc-spot package-name module-file-location ))
+            (hyphenized-package-name
+             (mapconcat 'identity (split-string package-name "::") "-"))
+            (pm-basename
+             (file-name-sans-extension (file-name-nondirectory (buffer-file-name))))
+
+           )
+
+      (setq cpan-style-flag
+            (and
+             (perlnow-module-code-p)   ;; good idea? TODO
+             (string= (file-name-nodirectory inc-spot) "lib") ;; fix this, sigh
+             ()
+             ()
+             ()
+             ))
+
+      )
+    ))
+
+
+
 (defun perlnow-get-package-name-from-module-buffer ()
   "Get the module name from the package line.
 This will be in perl's double colon separated form, or it will
@@ -2507,7 +2545,13 @@ For example: \"August 8, 2009\" (which I realize is not *just* American)."
 (defun perlnow-get-test-file-name ()
   "Looks for the test file for the current perl code buffer."
    (let (testfile)
-   (cond ( (perlnow-module-code-p)
+   (cond (
+
+;; TODO uncomment when this exists: perlnow-cpan-style-code-p
+;;          (perlnow-cpan-style-code-p)
+;;           (setq testfile (perlnow-get-test-file-name-cpan-style)))
+
+          (perlnow-module-code-p)
            (setq testfile (perlnow-get-test-file-name-module)))
          ( (perlnow-script-p)
            (setq testfile (perlnow-get-test-file-name-script)))
@@ -2525,6 +2569,15 @@ Used by \\[perlnow-get-test-file-name]."
     perlnow-test-policy-test-location
     perlnow-test-policy-dot-definition
     perlnow-test-policy-naming-style))
+
+(defun perlnow-get-test-file-name-cpan-style ()
+  "Get the test file name for the current perl module buffer.
+  Used by \\[perlnow-get-test-file-name]."
+  (perlnow-get-test-file-name-given-policy
+   perlnow-test-policy-test-location
+   "../t"     ;; perlnow-test-policy-dot-definition
+   "numeric"  ;; perlnow-test-policy-naming-style
+   ))
 
 
 (defun perlnow-get-test-file-name-script ()
@@ -2586,13 +2639,15 @@ and the NAMESTYLE \(see `perlnow-test-policy-naming-style'\)."
                (setq test-file-from-policy
                    (concat testloc-absolute hyphenized-package-name ".t"))
              )
-           ( (string= namestyle "basename")    ; might be script or module
-             (setq test-file-from-policy
-                   (concat testloc-absolute basename ".t"))
+
+           ( (string= namestyle "numeric")  ; only with modules (? TODO)
+               (setq test-file-from-policy
+                   (concat testloc-absolute "01-" hyphenized-package-name ".t")) ;; default created by modstar
              )
+
            (t
             (error
-             "Invalid perlnow-test-policy-naming-style setting, should be 'hyphenized' or 'basename'")))
+             "Invalid perlnow-test-policy-naming-style setting, must be hyphenized, basename or numeric")))
      ;If this result is good, return it, if not, keep looking
      ;If nothing found though, return this as name to be created.
      (cond ((file-exists-p test-file-from-policy)    ; if test-policy finds test-file, does not look for redundant matches
@@ -2656,7 +2711,7 @@ pick if the CHOOSE-ONE option is non-nil."
              (setq testloc-absolute
                  (perlnow-expand-dots-relative-to inc-spot testloc)))
 
-           ((string= dotdef "parallel") ; used by modstar, h2xs
+           ((string= dotdef "parallel") ; used by modstar, h2xs  ;;; TODO!
              (setq testloc-absolute
                  (perlnow-expand-dots-relative-to (perlnow-one-up inc-spot) testloc)))
            (t
@@ -2667,9 +2722,10 @@ pick if the CHOOSE-ONE option is non-nil."
      (cond ((file-directory-p testloc-absolute)
             (setq test-file-list
                   (directory-files testloc-absolute nil "\.t$"))))
-     )) ;; TODO Try returning just that much...
+     )) ;; TODO Trying a return of just this much...
 
-(defun testosterone ()
+
+(defun perlnow-testosterone ()
   ""
   (interactive)
   (let* ( (test-files
@@ -2712,9 +2768,7 @@ pick if the CHOOSE-ONE option is non-nil."
 ;;     test-file))
 
 
-
-
-
+;; TODO re-write this beast to find "latest numeric" -- Mon Sep  7 13:38:35 2009
 (defun perlnow-search-through-test-path ()
   "Searches the test path for test files for the current code buffer.
 Returns a single string the full-path and name of (one) test file found.
