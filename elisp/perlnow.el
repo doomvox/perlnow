@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.236 2009/09/09 16:13:59 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.237 2009/09/09 16:25:07 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -504,36 +504,40 @@ Here's the count-down:
    7           SYNOPSIS
    6           DESCRIPTION
 
-Next, the h2xs approach to module development:
-  `perlnow-documentation-tutorial-3-h2xs-module-development'")
+Next, the cpan-style approach to module development:
+  `perlnow-documentation-tutorial-3-cpan-style-module-development'")
 
-(defvar perlnow-documentation-tutorial-3-h2xs-module-development t
-  "There's another completely different style of perl module development,
+(defvar perlnow-documentation-tutorial-3-cpan-style-module-development t
+  "There's another completely different style of perl module development
 from the one discussed in: `perlnow-documentation-tutorial-2-module-development';
-the h2xs module approach, which is intended to be used for modules
-developed using CPAN-style distributions.  This of course, involves using
-the standard framework created by the h2xs command, and for your
-convenience the perlnow package provides: \\[perlnow-h2xs].
+which is oriented toward CPAN-style distributions.
+These are created either with module-starter or the older h2xs program,
+either of which can be run from within emacs using
+\\[perlnow-module-starter] or \\[perlnow-h2xs].
 
 This will ask you two questions, \(1\) where do you want to put
 the staging area that h2xs creates, and \(2\) what do you want to
 call this module.  The first question defaults to the
 customizable variable `perlnow-dev-location'.
-Then \[perlnow-h2xs] will run the h2xs command, and then leave
-you with two windows open, one showing the module file buffer, the
-other showing the test file for the module.
 
-If you do a \\[perlnow-run] inside of an h2xs module, it will
-identify it as h2xs, and use \"make test\" as the run string.
-\(Though actually, the first time you do this, if \"perl
-Makefile.PL\" hasn't been run yet, it should do that first.\).
+Then the commands \\[perlnow-module-starter] or \\[perlnow-h2xs]
+will run the appropriate external program, and then leave you
+with two windows open, one showing the module file buffer, the
+other showing the default test file for the module.
+
+Note that \\[perlnow-module-starter] defaults to using the newer
+Module::Build framework, while \\[perlnow-h2xs] defaults to using
+the ExtUtils::MakeMaker approach.
+
+\(TODO the perlnow-module-starter default can be changed by using... \)
+
+If you do a \\[perlnow-run] inside of a cpan-style module, it
+will identify it and use a different run string: \".Build test\"
+in the case of Module::Build or \"make test\" in the case of
+ExtUtils::Makemaker.
 
 Next, everyone's favorite subject, \"Misc\":
  `perlnow-documentation-tutorial-4-misc'")
-
-;;; TODO document module-starter style also, either as a seperate "tutorial"
-;;;      or worked into the above.
-
 
 (defvar perlnow-documentation-tutorial-4-misc t
   "Misc topic 1 - starting from man:
