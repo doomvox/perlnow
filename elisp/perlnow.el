@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.237 2009/09/09 16:25:07 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.238 2009/09/09 16:42:51 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -344,50 +344,29 @@ Okay, so once you're in your new perl script buffer, you can
 start coding away.  At any time, you can do a perlnow-run-check
 to make sure your syntax is okay.
 
-Note that if you take nothing else away from messing with
-the perlnow.el package, you owe it to yourself to grab this
-perlnow-run-check command.  Don't get hung-up on any
-installation hassles you might run into, don't tell yourself
-\"maybe I'll play with that someday after I finish reading
-all that long-winded documentation\", if need be just grab
-that half-dozen lines of elisp and cut and paste it into
-your .emacs.  If you haven't messed with something like this
-before, you will be stunned and amazed at the convenience of
-coding inside of emacs.  All perlnow-run-check does is act
-as a wrapper around the emacs compile-command facility,
-feeding in the \"perl -cw\" command.  Once you do the check,
-the errors and warnings will be listed in another buffer,
-and doing a \"next-error\" will rotate you through these,
-skipping you directly to the point in the code where the
-problem was reported.  Typically you run \"next-error\"
-with a control-x back-apostrophe, randomly enough.
-It looks like your binding is: \\[next-error]
+The command perlnow-run-check acts as a wrapper around the emacs
+compile-command facility, feeding it the \"perl -cw\" command.
+Once you do the check, the errors and warnings will be listed in
+another buffer, and doing a \"next-error\" will rotate you
+through these, skipping you directly to the point in the code
+where the problem was reported.  By default, one runs \"next-error\"
+via \"control-x back-apostrophe\"; and it looks like
+your current binding is: \\[next-error]
 
-But as cool as \\[perlnow-run-check] is, you could skip it if
-you like, and go straight to \\[perlnow-run], which will
+Alternately, you might skip \\[perlnow-run-check] and
+go straight to \\[perlnow-run], which will
 \(the first time through\) then ask you how you want to
-run the script. The default command line is just
+run the script. The default command line is usually just
 \"perl <scriptname>\"; but you can append whatever
 arguments and re-directs you like.  Once a run-string
 is defined for that file buffer it will stop asking you
 this question, though you can change the run string later
 at any time with \\[perlnow-set-run-string].
 
-Every time you do a \\[perlnow-run] it behaves much like
-doing a \\[perlnow-run-check]: any problems will be reported
-in another buffer \(mixed in with the output from the
-program\), once again letting you do the \\[next-error]
-trick to jump to where you need to be.
-
-By the way, you might notice I've said nothing about
-stopping to do a \"chmod u+x\" to make the script
-executable.  That's because \\[perlnow-script] does this for you.
-Admittedly, this feature is less impressive than it used to
-be in these emacs 21 days, when you can just put this in
-your .emacs:
-
-  \\(add-hook 'after-save-hook
-    'executable-make-buffer-file-executable-if-script-p\\)
+As with \\[perlnow-run-check], \\[perlnow-run] reports any
+problems in another buffer \(mixed in with the output from the
+program\), once again letting you do the \\[next-error] trick to
+jump to where you need to be.
 
 Should you want to use the perl debugger, I suggest using
 \\[perlnow-perldb], rather than \\[perldb] directly.  The perlnow
@@ -409,9 +388,11 @@ is similar to script development:
 You have your choice of three ways of beginning work
 on a new module:
 
-For proceedural modules:       \\[perlnow-module]
-For object-oriented modules:   \\[perlnow-object-module]
-For h2xs (cpan) modules:       \\[perlnow-h2xs]
+For proceedural modules:             \\[perlnow-module]
+For object-oriented modules:         \\[perlnow-object-module]
+For cpan-style modules:
+   Using ExtUtils::MakeMaker         \\[perlnow-h2xs]
+   Using Module::Build (by default)  \\[perlnow-module-starter]
 
 The first two are very similar, they just use a different
 template (the OOP version is simpler, there being no need
@@ -437,8 +418,7 @@ Tab and space completion works while navigating the previously
 existing part of the path \(including the part inside the package
 name space\).  When you hit enter, it will create whatever
 intervening directories it needs, after first prompting to make sure
-it's okay \(note, I'm a little dubious of that prompt: it may
-disappear in future versions\).
+it's okay.
 
 Now I have worked long and hard on getting this single-prompt
 method of entering this information, and I'm very proud of
@@ -455,6 +435,10 @@ Note that one of the advantages of the \\[perlnow-run-check]
 command for doing syntax checks is that it works on module
 code just as well as on scripts: you don't need to have a
 method of running the module to clean up the syntactical bugs.
+
+
+TODO SOON tighten up the babble here.
+
 
 If you do a \\[perlnow-run] it will \(a\) perform an
 elaborate search to try and find a test file for the module
@@ -1592,7 +1576,7 @@ module-starter will create the \"staging area\"\) and the PACKAGE-NAME
           (modstar-test-file   "")
           (modstar-staging-area "")
           (window-size 14)     ;; number of lines for the *.t file buffer
-          (module-style "object") ;; hardcoded default.  How to pass as argument?
+          (module-style "object") ;; hardcoded default.  How to pass as argument?  TODO NEXT
           )
     (setq display-buffer (get-buffer-create "*perlnow-module-starter*"))
        ;Bring the *perlnow-module-starter* display window to the fore (bottom window of the frame)
@@ -1614,7 +1598,7 @@ module-starter will create the \"staging area\"\) and the PACKAGE-NAME
                (format
                 "%s/TEMPLATE.perlnow-%s-%s-pm.tpl"
                 perlnow-template-location
-                "msmb"         ;; TODO ?  stands for: "module_starter Module::Build" Document?
+                "msmb"         ;; TODO ?  stands for: "module_starter Module::Build"  Document this?
                 module-style
                 ))
               (test-template
@@ -1645,6 +1629,10 @@ module-starter will create the \"staging area\"\) and the PACKAGE-NAME
         ))))
 
 
+;; TODO NEXT break out "Module::Build" as a default variable
+;; Q: would it be simpler to blend this routine in with the above?
+;; Remember, also need to generate template names in a standard way.
+;; And document them for the user
 (defun perlnow-generate-module-starter-cmd (module-name location)
   "Generate shell command string to run module-starter.
 Creates a standard layout for development of a perl module named MODULE-NAME
