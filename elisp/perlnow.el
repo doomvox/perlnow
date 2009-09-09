@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.233 2009/09/09 04:51:32 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.234 2009/09/09 14:47:39 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -2959,31 +2959,66 @@ with a \"lib\" and/or \"t\" *and* a \"Makefile.PL\"."
         (perlnow-run-perl-makefile-pl-if-needed dir))
     return))
 
+
+
+
+;; replaces perlnow-run-perl-makefile-pl-if-needed & perlnow-run-perl-build-pl
+;; TODO -- should this bring the display-buffer up front?
+(defun perlnow-cpan-style-build (staging-area)
+  "Does the cpan-style build in the STAGING-AREA (but only if needed).
+Specifically, this runs Makefile.PL and/or Build.PL.
+Output is appended to the *perlnow-build* window."
+;; Note: relies on naming convention, "perl *.PL" creates target "*".
+  (let* ( (display-buffer-name "*perlnow-build*")
+          (display-buffer)
+          (builders (list "Makefile.PL" "Build.PL"))
+          (return-flag nil)
+          )
+    (dolist (builder builders)
+      (let* (
+            (build-target (file-name-sans-extension builder))
+            (build-target-full (concat staging-area build-target))
+            (builder-full    (concat staging-area builder))
+            )
+
+      (cond ( (not (file-newer-than-file-p build-target-full builder-full))
+              (setq display-buffer (get-buffer-create display-buffer-name))
+              (set-buffer display-buffer)
+
+              (cond ( (file-regular-p builder-full)
+                      (insert (format "Perlnow is generating %s from %s, in %s...\n"
+                                      build-target builder staging-area))
+                      (let ( (default-directory staging-area) )
+                        (call-process "perl"
+                                      nil
+                                      display-buffer
+                                      nil
+                                      builder
+                                      ))
+                      (end-of-buffer display-buffer)
+                      ))))
+
+      (if (file-regular-p build-target-full)
+          (setq return-flag t))
+      ))
+    return-flag
+    ))
+
 ;;; The Module::Build analog of: perlnow-run-perl-makefile-pl-if-needed
-;;; TODO Change jargon from "h2xs"?  Revise comments!
-(defun perlnow-run-perl-build-pl (h2xs-staging-area)
-  "Given a H2XS-STAGING-AREA in an h2xs tree, runs \"perl Build.PL\" if needed.
+(defun perlnow-run-perl-build-pl (staging-area)
+  "Given a STAGING-AREA in an h2xs tree, runs \"perl Build.PL\" if needed.
 Looks to see if there's a file named Build there, and if not,
 runs the \"perl Build.PL\" command to generate it.
-Output is appended to the *perlnow-h2xs* window."
+Output is appended to the *perlnow-build* window."
 
-;;; Note, this *presumes* that you're inside an h2xs-staging-area, it does not check.
+;;; Note, this *presumes* that you're inside an staging-area, it does not check.
 ;;; TODO should really compare age of Build vs Build.PL
   (let (display-buffer )
-    (cond ( (not (file-regular-p (concat h2xs-staging-area "Build")))
-;;; This method does it in a *compile* window:
-;;;      (let ((run-command ""))
-;;;                (setq run-command (concat "cd " h2xs-staging-area "; perl Build.PL;"))
-;;;                (compile run-command))
-;;;
-;;; This does it in a *perlnow-h2xs* window:
-            (setq display-buffer (get-buffer-create "*perlnow-h2xs*"))
-;;; Decided *not* to blank out the buffer first, let output follow h2xs output
-;;;    (perlnow-blank-out-display-buffer display-buffer)
+    (cond ( (not (file-regular-p (concat staging-area "Build")))
+            (setq display-buffer (get-buffer-create "*perlnow-build*"))
             (set-buffer display-buffer)
             (insert "Trying to generate Build from Build.PL\n")
-            (let ( (default-directory h2xs-staging-area) )
-;;;              (message "dd: %s" default-directory) ;;; DELETE
+            (let ( (default-directory staging-area) )
               (call-process "perl"
                             nil
                             display-buffer
@@ -3001,19 +3036,10 @@ Output is appended to the *perlnow-h2xs* window."
 ;;; TODO should really compare age of Makefile vs Makefile.PL
   (let (display-buffer )
     (cond ( (not (file-regular-p (concat h2xs-staging-area "Makefile")))
-;;; This method does it in a *compile* window:
-;;;      (let ((run-command ""))
-;;;                (setq run-command (concat "cd " h2xs-staging-area "; perl Makefile.PL;"))
-;;;                (compile run-command))
-;;;
-;;; This does it in a *perlnow-h2xs* window:
             (setq display-buffer (get-buffer-create "*perlnow-h2xs*"))
-;;; Decided *not* to blank out the buffer first, let output follow h2xs output
-;;;    (perlnow-blank-out-display-buffer display-buffer)
             (set-buffer display-buffer)
             (insert "Trying to generate Makefile from Makefile.PL\n")
             (let ( (default-directory h2xs-staging-area) )
-;;;              (message "dd: %s" default-directory) ;;; DELETE
               (call-process "perl"
                             nil
                             display-buffer
@@ -3053,7 +3079,7 @@ Returns the module root, \(which in this example is:
 \"/home/doom/perldev/Punk/Skunk/\"\) Returns nil if pm-location is nil."
   ;; Example:
   ;;  /home/doom/perldev/Punk/Skunk/New/Module.pm
-  ;;  /home/doom/perldev/Punk/Skunk/New/              => number of levels:  7
+  ;;  /home/doom/perldev/Punk/Skunk/New/              => number of slashes:  7
   ;;                                New::Module       => double-colon-count: 1
   ;;  /home/doom/perldev/Punk/Skunk/                  The desired inc-spot
   ;;
