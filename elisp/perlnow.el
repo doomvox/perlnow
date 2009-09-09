@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.234 2009/09/09 14:47:39 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.235 2009/09/09 14:57:31 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1547,7 +1547,7 @@ double-colon separated package name form\)."
                 (concat "-b"
                         (perlnow-perlversion-old-to-new perlnow-minimum-perl-version))))
   (setq h2xs-staging-area (perlnow-staging-area dev-location package-name))
-  (perlnow-run-perl-makefile-pl-if-needed h2xs-staging-area)
+  (perlnow-cpan-style-build h2xs-staging-area)
   (setq h2xs-module-file (perlnow-full-path-to-cpan-style-module dev-location package-name))
   (find-file h2xs-module-file)
   (search-forward "# Preloaded methods go here.")
@@ -1601,7 +1601,7 @@ module-starter will create the \"staging area\"\) and the PACKAGE-NAME
       (shell-command modstar-cmd display-buffer nil)
 
       (setq modstar-staging-area (perlnow-staging-area modstar-location package-name))
-      (perlnow-run-perl-build-pl modstar-staging-area)
+      (perlnow-cpan-style-build modstar-staging-area)
       (setq modstar-module-file (perlnow-full-path-to-cpan-style-module modstar-location package-name))
 
       ;; create a module and test file using appropriate templates,
@@ -2956,10 +2956,8 @@ with a \"lib\" and/or \"t\" *and* a \"Makefile.PL\"."
               (setq dir (perlnow-one-up dir)))
             (setq return nil))) ; ran the gauntlet without success, so return nil
     (if return ; skip if nothing found (and dir is "/").
-        (perlnow-run-perl-makefile-pl-if-needed dir))
+        (perlnow-cpan-style-build dir))
     return))
-
-
 
 
 ;; replaces perlnow-run-perl-makefile-pl-if-needed & perlnow-run-perl-build-pl
@@ -3004,6 +3002,7 @@ Output is appended to the *perlnow-build* window."
     return-flag
     ))
 
+;; TODO DELETE SOON
 ;;; The Module::Build analog of: perlnow-run-perl-makefile-pl-if-needed
 (defun perlnow-run-perl-build-pl (staging-area)
   "Given a STAGING-AREA in an h2xs tree, runs \"perl Build.PL\" if needed.
@@ -3027,6 +3026,8 @@ Output is appended to the *perlnow-build* window."
                             ))))))
 
 
+
+;; TODO DELETE SOON
 (defun perlnow-run-perl-makefile-pl-if-needed (h2xs-staging-area)
   "Given a H2XS-STAGING-AREA in an h2xs tree, runs \"perl Makefile.PL\" if needed.
 This looks to see if there's a Makefile there, and if not,
