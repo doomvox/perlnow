@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.232 2009/09/09 02:48:58 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.233 2009/09/09 04:51:32 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1278,7 +1278,6 @@ run this command indirectly if need be; however using this command
 directly is necessary to change the run command string later.  \n
 From within a program, it's probably best to set some variables
 directly, see `perlnow-script-run-string' and `perlnow-module-run-string'.\n
-
 This function uses \\\[perlnow-module-code-p] to see if the code looks like a
 module (i.e. does it have a package line), otherwise it
 assumes it's a perl script."
@@ -2304,7 +2303,8 @@ e.g. test files \(*.t\) or scripts on non-unix-like systems."
     (looking-at hash-bang-line-pat))))
 
 
-(defun perlnow-module-code-p  "Determine if the buffer looks like a perl module.
+(defun perlnow-module-code-p ()
+  "Determine if the buffer looks like a perl module.
 This looks for the package line near the top."
   (save-excursion
   (let ( (package-line-pat "^[ \t]*package\\b")
@@ -2514,8 +2514,8 @@ schemes for your test files: `perlnow-documentation-test-file-strategies'."
           fish water        ; going fishing
           return            ; the returned run string
           )
-; h2xs case first,
-    (cond ( (setq staging-area (perlnow-find-h2xs-staging-area))
+    ; h2xs case first,
+    (cond ( (setq staging-area (perlnow-find-cpan-style-staging-area))
             (setq return (concat "cd " staging-area "; make test"))
             )
           (t ; non-h2xs module
@@ -2908,7 +2908,7 @@ has been chosen as the default to work on perl code."
           (setq run-line (concat perl-command " " filename))
            )
         ( (string-match "\.t$"  filename) ; it's a test file
-          (if (setq staging-area (perlnow-find-h2xs-staging-area))
+          (if (setq staging-area (perlnow-find-cpan-style-staging-area))
               (setq run-line (concat "cd " staging-area "; " "make test"))
             (setq run-line
 ;               (format "perl -MExtUtils::Command::MM -e \"test_harness(1, '%s')\"" filename))
@@ -2920,7 +2920,7 @@ has been chosen as the default to work on perl code."
   (setq perlnow-script-run-string run-line)))
 
 
-(defun perlnow-find-h2xs-staging-area ()
+(defun perlnow-find-cpan-style-staging-area ()
   "Determines if the current file buffer is located in an h2xs tree.
 Should return the path to the current h2xs staging area, or nil
 if it's not found.  The staging area is located by searching upwards
@@ -2934,26 +2934,24 @@ with a \"lib\" and/or \"t\" *and* a \"Makefile.PL\"."
 ;; Crawl up from file location, until "t" and/or "lib" is found.
 ;; Is there a Makefile.PL next to them?
 
-  (let* ((filename (buffer-file-name))
-          ; some directory-files arguments:
-          (full-names nil)
-          (nosort t)
-          (pattern "^[ltM]") ; pre-screen listing for interesting results only
+  (let* ( ; args for directory-files function:
           dir       ; candidate directory under examination
+          (full-names nil)
+          (pattern "^[ltMB]") ; pre-screen listing for interesting results only
+          (nosort t)
+
           file-list ; file listing of the candidate directory (pre-screened)
           return)
-
-    (setq dir (perlnow-fixdir filename))
+    (setq dir (perlnow-fixdir (file-name-directory (buffer-file-name))))
     (setq return
           (catch 'ICE
             (while (> (length dir) 1)
-
               (setq file-list (directory-files dir full-names pattern nosort))
               (dolist (file file-list)
                 (if (or (string= file "lib") (string= file "t")) ; we're here!
                     ; start scan again: "Makefile.PL" might be before or after lib or t
                     (dolist (file file-list)
-                      (if (string= file "Makefile.PL") ; we found it!
+                      (if (or (string= file "Makefile.PL") (string= file "Build.PL")) ; we found it!
                           (throw 'ICE dir)))))
               (setq dir (perlnow-one-up dir)))
             (setq return nil))) ; ran the gauntlet without success, so return nil
