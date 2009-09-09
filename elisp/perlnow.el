@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.231 2009/09/07 22:47:35 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.232 2009/09/09 02:48:58 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1568,9 +1568,6 @@ double-colon separated package name form\)."
   (other-window 1)
   ))
 
-
-
-
 (defun perlnow-module-starter (modstar-location package-name)
   "To quickly jump into development of a new perl CPAN-style module.
 Asks two questions, prompting for the MODSTAR-LOCATION  \(the place where
@@ -2010,9 +2007,8 @@ visible.  Options: NUMBLINES, the number number of lines in
 the new window, defaults to half window height; TEMPLATE a
 template.el template to be used in creating a new file
 buffer.  If SWITCHBACK is true, the cursor is left in the
-original window, not the new one."
-;;; TODO check if true:
-;;; Argument BUFFER can be a string or a buffer object.
+original window, not the new one. BUFFER can be a string or
+a buffer object."
   (unless numblines
     (setq numblines (/ (screen-height) 2) )) ; new window defaults to half of frame height
   (delete-other-windows)
@@ -2022,7 +2018,6 @@ original window, not the new one."
   (if switchback
       (other-window 1))
     )
-
 
 (defun perlnow-do-script (filename)
   "Quickly jump into development of a new perl script.
@@ -2309,8 +2304,7 @@ e.g. test files \(*.t\) or scripts on non-unix-like systems."
     (looking-at hash-bang-line-pat))))
 
 
-(defun perlnow-module-code-p ()
-  "Determine if the buffer looks like a perl module.
+(defun perlnow-module-code-p  "Determine if the buffer looks like a perl module.
 This looks for the package line near the top."
   (save-excursion
   (let ( (package-line-pat "^[ \t]*package\\b")
@@ -2325,7 +2319,7 @@ This looks for the package line near the top."
   (save-excursion
     ;;  (0) is this a module?
     ;;  (1) is the module root named "lib"?
-    ;;  (2) does the level above that match hyphenized form of module name?
+    ;;  (2) does the level above match the hyphenized form of module name?
     ;;  (3) is there a "t" in parallel to "lib"
     ;;  (4) is there a MANIFEST there?
     ;;  extra credit:  *.PL file there?  (not done)
@@ -2352,15 +2346,6 @@ This looks for the package line near the top."
              )
             )
       cpan-style-p)))
-
-;; DEBUG -- verified above works
-;; (defun testosteroonie ()
-;;   ""
-;;   (interactive)
-;;   (if (perlnow-cpan-style-code-p)
-;;       (message "yowsa")
-;;     (message "nope"))
-;;   )
 
 (defun perlnow-get-package-name-from-module-buffer ()
   "Get the module name from the package line.
@@ -2685,12 +2670,13 @@ and the NAMESTYLE \(see `perlnow-test-policy-naming-style'\)."
            )
      test-file))
 
-
-
-;;; Experimental variation of
-;;;   perlnow-get-test-file-name-given-policy
-;;; (( NOT YET FINISHED ))
-(defun perlnow-list-test-file (testloc dotdef namestyle &optional choose-one)
+;;; TODO SOON
+;;; Not yet in use.
+;;; TODO check if this is limited to cpan-style
+;;; TODO somewhere need to be able to do recursive decent through a project tree
+;;; TODO
+;;; Display a buffer of all associated test files, allow choice between them.
+(defun perlnow-list-test-files (testloc dotdef namestyle &optional choose-one)
   "Looks for test files associated wtih the current file.
 Uses the three given elements of a \"test policy\", to find
 associated test files:
@@ -2701,12 +2687,7 @@ the DOTDEF \(see `perlnow-test-policy-dot-definition' \)
 and the NAMESTYLE \(see `perlnow-test-policy-naming-style'\).
 Returns a list of appropriate test files found, or just a best
 pick if the CHOOSE-ONE option is non-nil."
-
-;;; Note: perlnow-edit-test-file docs explains a lot of what
-;;; has to happen here. I quote:
-;;   o Checks the test policy, looks for an existing file there.
-;;   o If not, then searches the test path, looks for an existing file there
-
+;;; Note, code mutated from above: perlnow-get-test-file-name-given-policy
    (let* (
          ; script oriented info:
            (file-location
@@ -2737,64 +2718,64 @@ pick if the CHOOSE-ONE option is non-nil."
              (setq testloc-absolute
                  (perlnow-expand-dots-relative-to inc-spot testloc)))
 
-           ((string= dotdef "parallel") ; used by modstar, h2xs  ;;; TODO!
-             (setq testloc-absolute
-                 (perlnow-expand-dots-relative-to (perlnow-one-up inc-spot) testloc)))
            (t
             (error
              "Invalid perlnow-test-policy-dot-definition, should be fileloc, incspot or parallel")))
 
      (setq testloc-absolute (perlnow-fixdir testloc-absolute))
-     (cond ((file-directory-p testloc-absolute)
-            (setq test-file-list
-                  (directory-files testloc-absolute nil "\.t$"))))
-     )) ;; TODO Trying a return of just this much...
 
+     (unless (file-directory-p testloc-absolute)
+       (message "warning %s is not a directory" testloc-absolute))
 
-(defun perlnow-testosterone ()
-  ""
+     (setq test-file-list
+           (directory-files testloc-absolute nil "\.t$"))
+
+     (if (choose-one)
+         (setq test-file-list (list (perlnow-latest-test-file test-file-list)))
+       )
+     test-file-list))
+
+;; for DEBUG
+(defun perlnow-test-files-report ()
+  "Report the test files associated with current buffer.
+Currently limited to cpan-style code buffers (hardcoded params)."
   (interactive)
-  (let* ( (test-files
-;;           (perlnow-list-test-file "./t" "incspot" "numbered"))
-           (perlnow-list-test-file "../t" "incspot" "numbered"))
+  (let* ( (listsky
+           (perlnow-list-test-files "../t" "incspot" "numbered"))
+          (return (mapconcat 'identity listsky " "))
           )
-    (message "test files:%s"
-             (mapconcat 'identity test-files " "))
+    (message "%s" return)
+  ))
+
+
+(defun perlnow-latest-test-file (test-file-list)
+  "Given a list of test files, select the \"latest\" one.
+By latest, we mean the one a developer is most likely to want
+to work on."
+;; first cut:
+;; grep for numeric prefixes, sort, return the last.
+  (let* ( (new-list
+            (perlnow-grep "^[0-9]*?-" test-file-list))
+          (new-list (sort new-list 'string<))
+          (last-item (car (last new-list)))
+          )
+;;    new-list ;; intermediate return for DEBUG
+    last-item
     ))
 
+(defun perlnow-grep (pattern list)
+  "A (probably naive) implementation of perl's grep.
+Return a new list of elements from LIST that match PATTERN.
+LIST is presumed to be a list of strings."
+  (let ( (new-list) )
+    (dolist (item list)
+      (if (string-match pattern item)
+           (setq new-list (cons item new-list))
+        ))
+    new-list))
 
-
-
-;;      ; define test-file-from-policy
-;;      (cond ( (string= namestyle "hyphenized")  ; only with modules
-;;                (setq test-file-from-policy
-;;                    (concat testloc-absolute hyphenized-package-name ".t"))
-;;              )
-;;            ( (string= namestyle "basename")    ; might be script or module
-;;              (setq test-file-from-policy
-;;                    (concat testloc-absolute basename ".t"))
-;;              )
-;;            ( (string= namestyle "numbered")    ; might be script or module
-;;              (setq test-file-from-policy  "XXX-TODO-XXX" )) ;; TODO no way to get this to work here, no?
-;;            (t
-;;             (error
-;;              "Invalid perlnow-test-policy-naming-style setting, should be 'hyphenized' or 'basename'")))
-
-;; ;;; TODO NEXT deviate from this structure here:
-
-;;      ;If this result is good, return it, if not, keep looking
-;;      ;If nothing found though, return this as name to be created.
-;;      (cond ((file-exists-p test-file-from-policy)    ; if test-policy finds test-file, does not look for redundant matches
-;;              (setq test-file test-file-from-policy) )
-;;            ((setq test-file (perlnow-search-through-test-path)) ) ; warns if redundant matches exist,
-;;                                                                   ; but returns the first.  nil if none.
-;;            (t
-;;               (setq test-file test-file-from-policy))
-;;            )
-;;     test-file))
-
-
-;; TODO re-write this beast to find "latest numeric" -- Mon Sep  7 13:38:35 2009
+;; TODO re-write to find "latest numeric"? -- Mon Sep  7 13:38:35 2009
+;; Possibly using: perlnow-latest-test-file
 (defun perlnow-search-through-test-path ()
   "Searches the test path for test files for the current code buffer.
 Returns a single string the full-path and name of (one) test file found.
