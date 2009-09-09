@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.235 2009/09/09 14:57:31 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.236 2009/09/09 16:13:59 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -2501,24 +2501,24 @@ schemes for your test files: `perlnow-documentation-test-file-strategies'."
             (mapconcat 'identity (split-string package-name "::") "-"))
           (pm-basename
             (file-name-sans-extension (file-name-nondirectory (buffer-file-name))))
-          ; This is a listing of possible names for the test file:
-          (test-file-check-list (list (concat hyphenized-package-name ".t")
-                                      (concat pm-basename ".t")
-                                      ))
-          ;;; TODO - Consider exposing this list to users in some form.
+
           staging-area      ; The location of an h2xs-style dev structure
           staging-area-candidate staging-area-candidate-name
           test-search-list  ; A listing of possible absolute locations to look for the test file,
                             ; built up from relative locations in perlnow-test-path
           testloc testfile
-          fish water        ; going fishing
           return            ; the returned run string
           )
-    ; h2xs case first,
+    ; first, the cpan-style case
     (cond ( (setq staging-area (perlnow-find-cpan-style-staging-area))
-            (setq return (concat "cd " staging-area "; make test"))
-            )
-          (t ; non-h2xs module
+            (cond ( (file-exists-p (concat staging-area "Build.PL"))
+                    (setq return (concat "cd " staging-area "; ./Build test"))
+                    )
+                  ( (file-exists-p (concat staging-area "Makefile.PL"))
+                    (setq return (concat "cd " staging-area "; make test"))
+                    )
+                  ))
+          (t ; non-cpan-style module
            (setq testfile (perlnow-get-test-file-name))
            (setq return (format "perl '%s'" testfile))
 
@@ -2817,7 +2817,9 @@ Will warn if there appear to be redundant possible testfiles."
        ;;; TODO - Consider exposing this list to users in some form,
        ;;;        via a defvar or something
            ; This is a listing of possible names for the test file:
-           (setq test-file-check-list (list (concat hyphenized-package-name ".t")
+           (setq test-file-check-list (list
+                                       (concat hyphenized-package-name ".t")
+                                       (concat "01-" hyphenized-package-name ".t")
                                        (concat basename ".t")
                                        ))
    ;;; TODO NOW
