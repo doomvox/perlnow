@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.238 2009/09/09 16:42:51 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.239 2009/09/10 00:58:04 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -115,8 +115,6 @@ the \"run-string\".
 
 \\[perlnow-set-alt-run-string] - Allows the user to manually
 change the alt-run-string used by perlnow-alt-run.
-
-
 
 A list of the important functions that require template.el:
 \\[perlnow-script]
@@ -436,33 +434,28 @@ command for doing syntax checks is that it works on module
 code just as well as on scripts: you don't need to have a
 method of running the module to clean up the syntactical bugs.
 
+If you do a \\[perlnow-run] in a module buffer it will \(a\)
+perform an elaborate search to try and find a test file for the
+module then \(b\) ask you for the name of a script to run that
+uses the module.
 
-TODO SOON tighten up the babble here.
+If you don't have either yet, you can first run \\[perlnow-edit-test-file]
+to create a test file for the module, or \\[perlnow-script]
+which will create an ordinary script using the module.
 
+Both of these commands will create files with a
+\"use <module name>\" line filled in.  If the module is not in your
+@INC search path, it will also add the necessary \"FindBin/use lib\"
+magic to make sure that the script will be able to find the module.
 
-If you do a \\[perlnow-run] it will \(a\) perform an
-elaborate search to try and find a test file for the module
-then \(b\) ask you for the name of a script to run that uses
-the module.  Unless you're some kind of sick and twisted
-extreme programming freak, the odds are pretty good you
-won't have either, yet.  So before doing that
-\\[perlnow-run], you have your choice of \\[perlnow-script]
-or if you *are* a test-first-code-later fanatic,
-\\[perlnow-edit-test-file].  Both will get you started on
-writing a script that uses the module.  Both of them
-will create files with a \"use <module name>\" line filled in.
-If the module is not in your @INC search path, it will also
-add the necessary \"FindBin/use lib\" magic to make sure
-that the script will be able to find the module.
 
 If you skip back to the original module buffer, and do a \\[perlnow-run],
 you'll notice that the script you just created has become the default
 for the way the code in the module gets run.
 
-Another little gimmick hidden away here, is that you should find
-that the name of whatever perl \"sub\" the cursor happened to
-have been near has been pushed on to the kill-ring.  You can just
-do a \\[yank] if you've got some use for it.
+Both the script and test creation commands capture the name of
+the nearest \"sub\" and push it to the kill-ring, where it can
+easily be retrieved via \\[yank].
 
 But remember in order for that sub to be accessible, you
 might need to do some chores like add the sub name to the
@@ -470,10 +463,7 @@ module's EXPORT_TAGS list, and then add it to a qw() list
 appended to the \"use <package-name>\" inside the
 script.
 
-Currently the perlnow.el package is a little light on
-features to smooth/sleaze your way past those obstacles \(we
-do Have Plans, however\), but you might like to know that
-the module template provided with perlnow puts some useful
+The module template provided with perlnow puts some useful
 locations in the numeric registers.  So you can quickly jump
 to these positions with the emacs command
 \\[jump-to-register], e.g. \(presuming the default
@@ -520,10 +510,38 @@ will identify it and use a different run string: \".Build test\"
 in the case of Module::Build or \"make test\" in the case of
 ExtUtils::Makemaker.
 
-Next, everyone's favorite subject, \"Misc\":
- `perlnow-documentation-tutorial-4-misc'")
+Next, the template naming convention:
+ `perlnow-documentation-tutorial-4-template-naming-convention'")
 
-(defvar perlnow-documentation-tutorial-4-misc t
+
+
+(defvar perlnow-documentation-tutorial-4-template-naming-convention t
+  "There's a convention for naming templates so that perlnow
+can find appropriate ones for different cases.  For example, if
+you run \\[perlnow-module-starter] using the default settings,
+it will use two templates named:
+
+  TEMPLATE.perlnow-modstar-module_build-object-pm.tpl
+  TEMPLATE.perlnow-modstar-module_build-object-pm-t.tpl
+
+Here \"modstar\" corresponds to \"module_starter\"
+\(as opposed to \\[] or \\[] \).
+
+\"module_build\" means it's for a Module::Build cpan-style
+distribution \(as opposed to \"module_install\" or
+\"extutils_makemaker\"\).
+
+\"object\" means it's for OOP development (as opposed to \"exporter\").
+
+This naming convention is new \(as of version 0.5\), and it
+is not yet universally respected by all perlnow commands.
+That can be expected by version 0.6.
+
+Next, everyone's favorite subject, \"Misc\":
+ `perlnow-documentation-tutorial-5-misc'")
+
+
+(defvar perlnow-documentation-tutorial-5-misc t
   "Misc topic 1 - starting from man:
 
 A typical unix-style box these days will have the documentation for
@@ -594,10 +612,12 @@ Note that if you need to switch between more than two
 run strings, there's always the minibuffer \"history\"
 features:  \\[previous-history-element] and
 \\[next-history-element] which in-context, you will
-typically find bound to Alt-p and Alt-n.")
+typically find bound to Alt-p and Alt-n."
 
+Next:
+ `perlnow-documentation-6-test-file-strategies'")
 
-(defvar perlnow-documentation-test-file-strategies t
+(defvar perlnow-documentation-6-test-file-strategies t
   "As mentioned in a few other places, the \\[perlnow-run]
 and \\[set-perlnow-run-string] commands try to find
 appropriate test files for perl code buffers.
@@ -608,13 +628,17 @@ precedence of this search as currently implemented: it may
 change\):
 
 First of all, test files all end with the \".t\" extension
-\(just as with h2xs test files\).  There are two possibilities
+\(just as with h2xs test files\).  There are several possibilities
 for the name of the basename of the test file, \(1\) it might
 just be the same as the base name for the \".pm\" file itself,
 or it might be a \"hyphenized\" form of the module's package
-name \(like an h2xs staging area name\).  For example, in the
-case of \"Modular::Silliness\", the name might be \"Silliness.t\",
-or \"Modular-Silliness.t\".
+name \(like an h2xs staging area name\), or \(3\) it might have a
+leading numeric code to order the tests.
+
+For example, in the case of \"Modular::Silliness\", the name
+might be \"Silliness.t\", or \"Modular-Silliness.t\" or something
+like \"01-Modular-Silliness.t\" \(which is a default name used by
+module_starter\).
 
 Secondly, a test file might be located in the same place
 that a module file is located, or it may be located in the
@@ -635,7 +659,7 @@ directory called \"t\", a subdirectory of the place where
 
 So if you've got a module called \"Modular::Silliness\", which
 is really the file: ~/perldev/lib/Modular/Silliness.pm
-For a test file, you could use:
+For an initial test file name, you could use:
 
   ~/perldev/lib/Modular/t/Modular-Silliness.t
 
@@ -664,99 +688,11 @@ There is now (as of version 0.3) a \\[perlnow-edit-test-file]
 command that will create a new test file if one does not already exist.
 The user defineable \"test policy\" dictates where these new
 test files will go.  See \"test policy\" in
-`perlnow-documentation-terminology'.")
+`perlnow-documentation-terminology'."
 
-(defvar perlnow-documentation-unashamed-deviancy t
-  "There are a number of areas where I'm aware of deviating from
-standard and/or recommended practice.  In a vain attempt
-at forestalling criticism, I'm going to list them:
+Next:
+ `perlnow-documentation-7-template-expansions'")
 
-On variables such as `perlnow-script-run-string', I've
-used \\[make-variable-buffer-local] in preference to the
-recommended \\[make-local-variable].  I personally always
-want these variables to be buffer local, and I have trouble
-thinking of a reason that the user would want them otherwise.
-It's much more convenient to use make-variable-buffer-local
-right after they're defined, and to not have to worry about it
-later.
-
-In minibuffer input, I typically define an \"initial\"
-string rather than a \"default\", because an initial string
-is easily and obviously editable.  It's a good point that
-the newer minibuffer history features get you much of the
-same functionality, but they're not terribly obvious (personally,
-I've only just realized that they were there, and I've been
-an emacs user for quite a long time).  The claim that
-defaults are better than initial values because they're less
-\"intrusive\" strikes me as a relatively abstruse issue
-in comparison.
-
-It would probably be better if perlnow were a global minor-mode
-with a set of built-in keymappings, but for now I've decided to
-punt, and just instruct the user to add them to their global
-key map in their .emacs file.  \(Whenever I research the issue,
-my eyes begin to glaze over... if you'd care to join me, see
-the ramblings in \\[perlnow-documentation-to-mode-or-not-to-mode] \).
-
-Similarly, rather than master the intricacies of texinfo, I'm
-copping out and entering documentation as variable docstrings
-such as this.  I picked up this idea from looking at IZ's
-cperl-mode, and I expect it appeals to me for the same reason
-it appeals to him: we're perl programmers, and we're used to
-\"pod\".
-
-I've adopted the practice of inserting horizontal rules
-between my function definitions (as suggested in a style
-guide written by the tinytools folks), because this makes it
-possible to use white space between chunks of code within
-the defuns without confusing things.  My comment style remains
-strongly influenced by perl culture \(many elisp people seem
-to think it's possible to write \"self-documenting\" code...\).
-
-Oh, and one last set of issues: for now I'm completely
-ignoring the newer emacs features for menubars and
-the \"customize\" facility, because I don't know anything
-about them.  I never use them.  I'm a \(menu-bar-mode -1\) kind-of guy.
-Not to mention: \(scroll-bar-mode -1\) and \(tool-bar-mode -1\).")
-
-(defvar perlnow-documentation-to-mode-or-not-to-mode t
-  "Should perlnow.el become a minor mode?
-
-This is an issue I keep noodling around: perlnow.el
-is designed to work with other modes, and it needs to have
-a default keymap, so that would seem to imply it should
-be a minor-mode.
-
-It has to make some assignments to the global keymap,
-because the main purpose of the package is to make it easy
-to jump into perl programming whatever the current mode
-happens to be.  So that might imply it should be a global
-minor-mode.
-
-But some perlnow commands are only needed inside of a perl code
-buffer \(e.g. \\[perlnow-run] and \\[perlnow-run-check]\)
-and could reasonably be kept local to your perl mode \(slight
-complication: there are two perl modes\).
-
-So perhaps perlnow.el should be a combination of the two, a
-global and a local minor-mode, \(implemented in one .el
-package?  Or should it be split into two packages?\).
-
-Further, it's possible that I might add some other commands that should
-be local to still *other* modes, for example a perlnow-script-from-dired
-might create a perl script in the location displayed in a current dired
-buffer.  So does that imply yet another sub-local-minor-mode?
-
-Eh. I've punted on this for now.  It doesn't help that the Emacs Lisp
-Reference Manual is a little light on examples of how to do global
-minor-modes.
-
-In general, it's not entirely clear to me how minor-modes are supposed
-to play together nicely.  The segment of the keymap available for
-minor-mode usage is pretty small \(C-c [punctuation], and not just any
-punctuation either\).  I would think you could easily run into situations
-where the order in which you load minor-modes would change the keymappings
-you end up with.")
 
 
 
@@ -860,7 +796,7 @@ Defines the PERL_MODULE_NAME expansion.")
 
 ;; Defining additional "expansions" for use in template.el templates.
 ;;
-(defvar perlnow-documentation-template-expansions t
+(defvar perlnow-documentation-7-template-expansions t
   "The perlnow template.el templates use some custom
 expansions defined in perlnow.el.  A template.el
 \"expansion\" is a place holder in the template that
@@ -1123,6 +1059,29 @@ test file name would be \"Modular-Stuff.t\", the basename style
 would be \"Style.t\".
 Used by \\[perlnow-edit-test-file].  See:
 `perlnow-documentation-test-file-strategies'.")
+
+(defcustom perlnow-module-starter-builder "Module::Build"
+  "Base module for a cpan-style distribution.
+Allowed values: \"Module::Build\", \"Module::Install\", \"ExtUtils::MakeMaker\".")
+
+
+(defcustom perlnow-perl-path "perl"
+  "Set this to provide a hint about your preferred perl binary.
+For example, make it \"/usr/local/bin/perl\" if you would rather
+use that than the system's perl.  Defaults to just \"perl\"
+\(and let's the path sort it out\).  Note: this is used only in some
+cases, e.g. \\[perlnow-module-starter], where possible perlnow
+uses whatever is specified in the hash-bang line.")
+
+(defcustom perlnow-module-style "object"
+  "Type of module you usually prefer to create, e.g. \"object\", or \"exporter\".
+Defaults to \"object\", which for better or worse is the current
+standard.  Used by some routines, such as
+\\[perlnow-module-starter], to choose a code template.
+Note, there is no restriction on the allowed values here, any
+arbitrary string can be used, provided you have appropriate code
+templates that use it.")
+
 
 (defcustom perlnow-simple-hash-bang-line "#!/usr/bin/perl -w"
   "A typical hash bang line for perl code.
@@ -1571,15 +1530,18 @@ module-starter will create the \"staging area\"\) and the PACKAGE-NAME
 
   (unless (file-exists-p modstar-location)
     (make-directory modstar-location t))
-  (let* ( display-buffer ; buffer object
+  (let* ( (modstar-template-tag "modstar")
+          (display-buffer) ; buffer object
           (modstar-module-file "")
           (modstar-test-file   "")
           (modstar-staging-area "")
           (window-size 14)     ;; number of lines for the *.t file buffer
-          (module-style "object") ;; hardcoded default.  How to pass as argument?  TODO NEXT
+          (module-style perlnow-module-style)
+          (builder-code
+           (downcase (mapconcat 'identity (split-string perlnow-module-starter-builder  "::") "_")))
           )
     (setq display-buffer (get-buffer-create "*perlnow-module-starter*"))
-       ;Bring the *perlnow-module-starter* display window to the fore (bottom window of the frame)
+    ;Bring the *perlnow-module-starter* display window to the fore (bottom window of the frame)
     (perlnow-show-buffer-other-window display-buffer window-size t)
     (perlnow-blank-out-display-buffer display-buffer t)
 
@@ -1596,16 +1558,18 @@ module-starter will create the \"staging area\"\) and the PACKAGE-NAME
       ;; and swap the module file in place of the one module-starter creates
       (let* ( (template-name
                (format
-                "%s/TEMPLATE.perlnow-%s-%s-pm.tpl"
+                "%s/TEMPLATE.perlnow-%s-%s-%s-pm.tpl"
                 perlnow-template-location
-                "msmb"         ;; TODO ?  stands for: "module_starter Module::Build"  Document this?
+                modstar-template-tag
+                builder-code
                 module-style
                 ))
               (test-template
                (format
-                "%s/TEMPLATE.perlnow-%s-%s-pm-t.tpl"
+                "%s/TEMPLATE.perlnow-%s-%s-%s-pm-t.tpl"
                 perlnow-template-location
-                "msmb"         ;; TODO ?
+                modstar-template-tag
+                builder-code
                 module-style
                 ))
               )
@@ -1628,11 +1592,6 @@ module-starter will create the \"staging area\"\) and the PACKAGE-NAME
         (funcall (perlnow-lookup-preferred-perl-mode))
         ))))
 
-
-;; TODO NEXT break out "Module::Build" as a default variable
-;; Q: would it be simpler to blend this routine in with the above?
-;; Remember, also need to generate template names in a standard way.
-;; And document them for the user
 (defun perlnow-generate-module-starter-cmd (module-name location)
   "Generate shell command string to run module-starter.
 Creates a standard layout for development of a perl module named MODULE-NAME
@@ -1655,8 +1614,8 @@ and the email address from the variable user-mail-address."
             module-name
             author-name
             user-mail-address
-            "Module::Build"
-            "perl"
+            perlnow-module-starter-builder
+            perlnow-perl-path
             subdir
             )))
     perlnow-module-starter-cmd))
