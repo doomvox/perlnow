@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.240 2009/09/10 02:10:37 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.241 2009/09/10 07:14:22 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1198,8 +1198,8 @@ It can always be changed later by running \\[perlnow-set-run-string]
 manually.  \n
 There's a big advantage that this command has over running
 \\[perldb] directly: you can have different `perlnow-run-string'
-settings for different file buffers \(i.e. it is a buffer local
-variable\).  Unfortunately \(as of this writing\) \\[perldb]
+settings for different file buffers \(that is to say it's a buffer
+local variable\).  Unfortunately \(as of this writing\) \\[perldb]
 used directly always re-uses it's previous run-string as a
 default, and that's guaranteed to be wrong if you've switched
 to a different file."
@@ -1211,7 +1211,7 @@ to a different file."
      (list input)
      ))
   (let ((modified-runstring
-         (replace-regexp-in-string "/perl " "/perl -d" runstring)))
+         (replace-regexp-in-string "\\bperl " "perl -d " runstring)))
     (perldb modified-runstring)))
 
 
