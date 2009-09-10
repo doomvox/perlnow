@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.239 2009/09/10 00:58:04 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.240 2009/09/10 02:10:37 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -684,11 +684,10 @@ Note that perlnow \(at least currently\) does not care if you're
 consistent about this choice, but for your own sanity you should
 probably pick a standard way of doing it and stick to it.
 
-There is now (as of version 0.3) a \\[perlnow-edit-test-file]
-command that will create a new test file if one does not already exist.
-The user defineable \"test policy\" dictates where these new
-test files will go.  See \"test policy\" in
-`perlnow-documentation-terminology'."
+There is a \\[perlnow-edit-test-file] command that will create a
+new test file if one does not already exist.  The user defineable
+\"test policy\" dictates where these new test files will go.  See
+\"test policy\" in `perlnow-documentation-terminology'."
 
 Next:
  `perlnow-documentation-7-template-expansions'")
@@ -2849,28 +2848,39 @@ has been chosen as the default to work on perl code."
 
 
 (defun perlnow-guess-script-run-string ()
-  "Return a good guess for `perlnow-script-run-string'."
+  "Return a good guess for `perlnow-script-run-string'.
+Also sets that global variable as a side-effect."
 ;;; Presumption is that this won't be called if we're in a module,
 ;;; so there's no point in testing that again.
-  (let ( perl-command run-line
-        (filename (buffer-file-name))
-        staging-area)
+  (let ( (perl-command)
+         (run-line)
+         (staging-area)
+         (filename (buffer-file-name))
+         )
   ;;# check for hash bang:
   (cond ( (setq perl-command (perlnow-hashbang))
            ; preserve the hash-bang run string, e.g. to preserve -T
           (setq run-line (concat perl-command " " filename))
            )
         ( (string-match "\.t$"  filename) ; it's a test file
-          (if (setq staging-area (perlnow-find-cpan-style-staging-area))
-              (setq run-line (concat "cd " staging-area "; " "make test"))
-            (setq run-line
-;               (format "perl -MExtUtils::Command::MM -e \"test_harness(1, '%s')\"" filename))
-                  (format "perl %s" filename))
-             ))
+          (cond ( (setq staging-area (perlnow-find-cpan-style-staging-area))
+                  (cond ( (file-exists-p (concat staging-area "Build.PL"))
+                          (setq run-line (concat "cd " staging-area "; ./Build test"))
+                          )
+                        ( (file-exists-p (concat staging-area "Makefile.PL"))
+                          (setq run-line (concat "cd " staging-area "; make test"))
+                          )
+                        ))
+                (t ; non-cpan-style code
+                 (setq run-line (format "perl %s" filename))
+                 )
+             )
+          )
         (t ; When all else fails, just feed it to perl and hope for the best
          (setq run-line (format "perl %s" filename))
           ))
-  (setq perlnow-script-run-string run-line)))
+  (setq perlnow-script-run-string run-line)
+  run-line))
 
 
 (defun perlnow-find-cpan-style-staging-area ()
