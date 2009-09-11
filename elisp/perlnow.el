@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.241 2009/09/10 07:14:22 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.242 2009/09/11 00:19:36 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -591,8 +591,8 @@ name then you're pretty much there.
 
 Misc topic 3 - the \"alternative\" way of running a script:
 
-With version 0.3, perlnow.el now includes a way to
-have easy access to two different ways of running some code.
+There is an experimental feature that allows
+easy access to two different ways of running some code.
 In addition to the commands \\[perlnow-run] and
 \\[set-perlnow-run-string] commands there are now
 \\[perlnow-alt-run] and \\[set-perlnow-alt-run-string].
@@ -618,52 +618,49 @@ Next:
  `perlnow-documentation-6-test-file-strategies'")
 
 (defvar perlnow-documentation-6-test-file-strategies t
-  "As mentioned in a few other places, the \\[perlnow-run]
-and \\[set-perlnow-run-string] commands try to find
-appropriate test files for perl code buffers.
-There's a relatively elaborate search path for this.  Here's
-a quick description of what it looks for before giving up
-and prompting the user \(but please, avoid relying on the
-precedence of this search as currently implemented: it may
-change\):
+  "As mentioned in a few other places, the \\[perlnow-run] and
+\\[set-perlnow-run-string] commands try to find appropriate test
+files for perl code buffers.  There's a relatively elaborate
+search path for this.  Here's a description of what it looks for
+\(but please, don't be suprised if the precedence changes in the
+future\):
 
-First of all, test files all end with the \".t\" extension
-\(just as with h2xs test files\).  There are several possibilities
-for the name of the basename of the test file, \(1\) it might
-just be the same as the base name for the \".pm\" file itself,
-or it might be a \"hyphenized\" form of the module's package
-name \(like an h2xs staging area name\), or \(3\) it might have a
-leading numeric code to order the tests.
+First of all, test files all end with the \".t\" extension.
+There are several possibilities considered for the name of the
+basename of the test file.
 
 For example, in the case of \"Modular::Silliness\", the name
-might be \"Silliness.t\", or \"Modular-Silliness.t\" or something
-like \"01-Modular-Silliness.t\" \(which is a default name used by
+might be \"Silliness.t\", or \"Modular-Silliness.t\" or
+\"01-Modular-Silliness.t\" \(which is the initial name used by
 module_starter\).
 
-Secondly, a test file might be located in the same place
-that a module file is located, or it may be located in the
-module root location where the module's package name space
-starts, or it might be tucked away in a directory called
-\"t\" which could be located in either of those places.
+Secondly, a test file might be located in the same place that a
+module file is located, or it may be located in the module root
+location where the module's package name space starts, and of
+course, it might be tucked away in a directory called \"t\" which
+could be located in either of those places.
 
 This means that there are a number of strategies you might
 choose to use for perl module test files that should
-work well with perlnow.el. \(And some of them are even
-reasonable.  And some of them are already in use in industry.
-And there's even some overlap between those two sets.\)
+work well with perlnow.el.
 
-An example of a good practice would be to always use the
-hyphenized base name form, and always put test files in a
-directory called \"t\", a subdirectory of the place where
-\".pm\" file is located.
-
+An example of a good practice (and the default currently used by
+perlnow) would be to always use the hyphenized base name form,
+and always put test files in a directory called \"t\", a
+subdirectory of the place where \".pm\" file is located.
 So if you've got a module called \"Modular::Silliness\", which
-is really the file: ~/perldev/lib/Modular/Silliness.pm
-For an initial test file name, you could use:
+is really the file: ~/perldev/lib/Modular/Silliness.pm For an
+initial test file name, you would have:
 
   ~/perldev/lib/Modular/t/Modular-Silliness.t
 
-If you don't like that you can use any of these schemes:
+There is a \\[perlnow-edit-test-file] command that will create this
+new test file if it does not already exist.  The user defineable
+\"test policy\" dictates where these new test files will go.  See
+\"test policy\" in `perlnow-documentation-terminology'.
+
+With a different policy, you might put your initial test file
+in any of these locations:
 
   ~/perldev/lib/t/Modular-Silliness.t
   ~/perldev/lib/Modular/t/Silliness.t
@@ -671,23 +668,19 @@ If you don't like that you can use any of these schemes:
   ~/perldev/lib/Modular/Silliness.t
   ~/perldev/t/Modular-Silliness.t
 
-The ones you probably don't want to use are these:
+It is also possible, though not recommended to use a policy that
+would do something like this:
+
   ~/perldev/lib/t/Silliness.t
   ~/perldev/lib/Silliness.t
   ~/perldev/t/Silliness.t
 
-\(There's too much potential for name collisions, if you use
+There's too much potential for name collisions if you use
 the short \"basename\" form high up in the tree. Modular::Silliness
-and Monolithic::Silliness would fight to use the same name.\)
+and Monolithic::Silliness would fight to use the same name.
 
 Note that perlnow \(at least currently\) does not care if you're
-consistent about this choice, but for your own sanity you should
-probably pick a standard way of doing it and stick to it.
-
-There is a \\[perlnow-edit-test-file] command that will create a
-new test file if one does not already exist.  The user defineable
-\"test policy\" dictates where these new test files will go.  See
-\"test policy\" in `perlnow-documentation-terminology'."
+consistent about this choice."
 
 Next:
  `perlnow-documentation-7-template-expansions'")
@@ -1122,6 +1115,7 @@ comment-region and narrow-to-defun."
   (global-set-key (format "%sh" prefix) 'perlnow-h2xs)
   (global-set-key (format "%sO" prefix) 'perlnow-module-starter)
   (global-set-key (format "%sc" prefix) 'perlnow-run-check)
+  (global-set-key (format "%sC" prefix) 'perlnow-run-check-thorough)
   (global-set-key (format "%sr" prefix) 'perlnow-run)
   (global-set-key (format "%sa" prefix) 'perlnow-alt-run)
   (global-set-key (format "%sd" prefix) 'perlnow-perldb)
@@ -1147,10 +1141,32 @@ This command is like \\\[cperl-check-syntax] with one
 less prompt \(also, it does not require mode-compile.el\)."
   (interactive)
   (save-buffer)
-  (setq compile-command (format "perl -Mstrict -cw \'%s\'" (buffer-file-name)))
+  (setq compile-command
+         (format "perl -Mstrict -cw \'%s\'" (buffer-file-name)))
   (message "compile-command: %s" compile-command)
-  (compile compile-command) )
+  (compile compile-command);; this just returns buffer name "*compilation*"
+  )
 
+(defun perlnow-run-check-thorough ()
+  "Run a perl check on the current buffer.
+This displays errors and warnings in another window, in the
+usual emacs style: After running this, you can skip to
+the location of the next problem with \\\[next-error]\n
+This command is like \\\[cperl-check-syntax] with one
+less prompt \(also, it does not require mode-compile.el\)."
+  (interactive)
+  (save-buffer)
+  (setq compile-command
+        (concat
+         (format "perl -Mstrict -cw \'%s\'" (buffer-file-name))
+         "; "
+         (format "podchecker \'%s\'" (buffer-file-name))
+         "; "
+         (format "perlcritic --nocolor --verbose 1 \'%s\'" (buffer-file-name))
+         ))
+  (message "compile-command: %s" compile-command)
+  (compile compile-command);; this just returns buffer name "*compilation*"
+  )
 
 (defun perlnow-run (runstring)
   "Run the perl code in this file buffer.
@@ -1219,11 +1235,12 @@ to a different file."
   "Prompt the user for a new run string for the current buffer.
 This sets the global variable `perlnow-run-string' that \\[perlnow-run]
 will use to run the code in future in the current buffer.
-Frequently, the user will prefer to use \\[perlnow-run] and let it
-run this command indirectly if need be; however using this command
-directly is necessary to change the run command string later.  \n
+The user needs to run this directly to manually change the run
+string, but it is also used indirectly by the \\[perlnow-run]
+if the run string is not yet defined.
+
 From within a program, it's probably best to set some variables
-directly, see `perlnow-script-run-string' and `perlnow-module-run-string'.\n
+directly, see `perlnow-script-run-string' and `perlnow-module-run-string'.
 This function uses \\\[perlnow-module-code-p] to see if the code looks like a
 module (i.e. does it have a package line), otherwise it
 assumes it's a perl script."
@@ -1231,6 +1248,14 @@ assumes it's a perl script."
 ;; tests for perl code, like looking for the hash-bang,
 ;; aren't reliable (perl scripts need not have a hash-bang
 ;; line: e.g. *.t files, perl on windows...).
+;;; TODO - would be better to do a script-p, set a runstring based on that,
+;;; and then have a fall through section that tries to verify if it's some
+;;; sort of test script ("use Test"?), and otherwise either fail with warning,
+;;; or prompt the user ask them what they think they're doing.
+;;; Ah, another way out: run a perl -c on the buffer, and if it fails,
+;;; tell the user it ain't passing perl check (is it even perl code?).
+;;; (( why not check to see if you're in a perl mode, eh?
+;;;    or just *restrict these commands to those modes* ))
   (interactive)
    (cond
    ((perlnow-module-code-p)
@@ -1247,13 +1272,6 @@ assumes it's a perl script."
      ; tell perlnow-run how to do it
      (setq perlnow-run-string perlnow-module-run-string))
    (t  ;;  assume it's a script since it's not a module.
-;;; TODO - would be better to do a script-p, set a runstring based on that,
-;;; and then have a fall through section that tries to verify if it's some
-;;; sort of test script ("use Test"?), and otherwise either fail with warning,
-;;; or prompt the user ask them what they think they're doing.
-;;; Ah, another way out: run a perl -c on the buffer, and if it fails,
-;;; tell the user it ain't passing perl check (is it even perl code?).
-
      ; set-up intelligent default run string
      (unless perlnow-script-run-string
        (progn
@@ -1283,12 +1301,7 @@ module (i.e. does it have a package line), otherwise it
 assumes it's a perl script.  The heuristics for setting a default
 \"alt\"-run string are identical to those used for setting the
 `perlnow-run-string'."
-;;; perlnow-set-alt-run-string was (at least originally)
-;;; a copy and paste of perlnow-set-run-string
-;;; with the word "run" changed to "alt-run",
-;;; except in these two cases:
-;;;    perlnow-guess-script-run-string
-;;;    perlnow-guess-module-run-string
+;;; perlnow-set-alt-run-string is a minor variation of perlnow-set-run-string
   (interactive)
    (cond
    ((perlnow-module-code-p)
@@ -2428,17 +2441,15 @@ like: \"/home/doom/tmp/../bin\"."
 
 (defun perlnow-guess-module-run-string ()
   "Return a good guess for an appropriate `perlnow-module-run-string'.
-First looks for the Makefile \(or Makefile.PL\) of an h2xs set-up.
-Failing that it looks for a nearby test file of an appropriate name.
-For example if the module were named New::Module, the test file
-could be New-Module.t or Module.t.  It searches the paths in
-`perlnow-test-path', which uses a familiar dot notation \(\".\" \"..\"\)
-to specify them relative to \"here\", where \"here\" means either
-the module-file-location or the inc-spot \(both interpretations
-are checked\). \n
-If this seems too complex, that's because it is, but it does make
-it convenient to use this with a number of reasonable organizational
-schemes for your test files: `perlnow-documentation-test-file-strategies'."
+First looks for the Makefile.PL or Build.PL of a cpan-style
+distribution.  Failing that this looks for a nearby test file of an
+appropriate name.  For example if the module were named
+New::Module, the test file could be New-Module.t or Module.t.
+The code searches the paths in `perlnow-test-path', which uses a familiar
+dot notation \(\".\" \"..\"\) to specify locations relative to either
+the module-file-location or the inc-spot.
+See: `perlnow-documentation-terminology' and/or
+`perlnow-documentation-test-file-strategies'."
 
   (unless (perlnow-module-code-p)
     (error "This buffer does not look like a perl module (no \"package\" line)"))
