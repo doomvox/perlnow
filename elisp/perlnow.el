@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.242 2009/09/11 00:19:36 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.243 2009/09/11 00:36:08 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1131,42 +1131,44 @@ comment-region and narrow-to-defun."
 ;;;==========================================================
 ;;; functions to run perl scripts
 
-
-(defun perlnow-run-check ()
+; TODO scrape hashbang (if present), and just default to this: perlnow-perl-path
+; TODO write a routine to tildicize file here.  clean-up display?
+; perhaps even better, thinking about changing the directory...
+; TODO probe for perlcritic, skip it if it's not installed.
+; TODO And don't try to run a binary if it's been set to blank or nil, eh?
+(defun perlnow-run-check (arg)
   "Run a perl check on the current buffer.
-This displays errors and warnings in another window, in the
-usual emacs style: After running this, you can skip to
-the location of the next problem with \\\[next-error]\n
-This command is like \\\[cperl-check-syntax] with one
-less prompt \(also, it does not require mode-compile.el\)."
-  (interactive)
-  (save-buffer)
-  (setq compile-command
-         (format "perl -Mstrict -cw \'%s\'" (buffer-file-name)))
-  (message "compile-command: %s" compile-command)
-  (compile compile-command);; this just returns buffer name "*compilation*"
-  )
-
-(defun perlnow-run-check-thorough ()
-  "Run a perl check on the current buffer.
-This displays errors and warnings in another window, in the
-usual emacs style: After running this, you can skip to
-the location of the next problem with \\\[next-error]\n
-This command is like \\\[cperl-check-syntax] with one
-less prompt \(also, it does not require mode-compile.el\)."
-  (interactive)
-  (save-buffer)
-  (setq compile-command
-        (concat
-         (format "perl -Mstrict -cw \'%s\'" (buffer-file-name))
-         "; "
-         (format "podchecker \'%s\'" (buffer-file-name))
-         "; "
-         (format "perlcritic --nocolor --verbose 1 \'%s\'" (buffer-file-name))
-         ))
-  (message "compile-command: %s" compile-command)
-  (compile compile-command);; this just returns buffer name "*compilation*"
-  )
+This displays errors and warnings in another window, in the usual
+emacs style: After running this, you can skip to the location of
+the next problem with \\\[next-error]\n This command is like
+\\\[cperl-check-syntax] with one less prompt \(also, it does not
+require mode-compile.el\).  When run with a prefix argument
+\(i.e. after hitting C-u\), it runs a more elaborate suite of
+checks, including podchecker and perlcritic."
+  (interactive "P")
+  (let* ( (file (buffer-file-name))
+          (perl perlnow-perl-path)
+          (podchecker "podchecker")   ;; TODO expose as var
+          (perlcritic "perlcritic")   ;; TODO expose as var
+          )
+    (save-buffer)
+    (cond ( (not arg) ; no prefix
+            (setq compile-command
+                  (format "%s -Mstrict -cw \'%s\'" perl file))
+            )
+          (t ; C-u prefix
+           (setq compile-command
+                 (concat
+                  (format "%s -Mstrict -cw \'%s\'" perl file)
+                  "; "
+                  (format "%s \'%s\'" podchecker file)
+                  "; "
+                  (format "%s --nocolor --verbose 1 \'%s\'" perlcritic file)
+                  ))
+           ))
+    (message "compile-command: %s" compile-command)
+    (compile compile-command);; this just returns buffer name "*compilation*"
+    ))
 
 (defun perlnow-run (runstring)
   "Run the perl code in this file buffer.
