@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.246 2009/09/12 05:22:29 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.247 2009/09/12 10:12:03 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1205,9 +1205,9 @@ perlcritic in addition to a \"perl -cw\"."
     ))
 
 
-(defun perlnow-run (runstring)
+(defun perlnow-run (run-string)
   "Run the perl code in this file buffer.
-This uses an interactively set RUNSTRING determined from
+This uses an interactively set RUN-STRING determined from
 `perlnow-run-string' which may have been set by using
 \\[perlnow-set-run-string].  If `perlnow-run-string' is nil,
 \\[perlnow-set-run-string] is called automatically.\n
@@ -1216,24 +1216,29 @@ The run string can always be changed later by running
 
 ;;; perlnow-run-string || (perlnow-set-run-string)
   (interactive
-   (let (
-         (prefix current-prefix-arg)
-         (input  (or
-
-                  ;; also need to use prefix to swap in perlnow-run-string-harder instead of this...
-                  perlnow-run-string
-
-                  (perlnow-set-run-string prefix)
+   (let* (
+          (harder-flag current-prefix-arg)
+          (existing-run-string
+            (cond ( harder-flag
+                    perlnow-run-string-harder
+                   )
+                  (t
+                   perlnow-run-string
+                   )
+                  ))
+          (input  (or
+                   existing-run-string
+                   (perlnow-set-run-string harder-flag)
+                   )
                   )
-                )
-         )
-   (list input)
-   ))
-  (compile runstring))
+          )
+     (list input)
+     ))
+  (compile run-string))
 
-(defun perlnow-alt-run (altrunstring)
+(defun perlnow-alt-run (alt-run-string)
   "Run the perl code in this file buffer.
-This uses an interractively set ALTRUNSTRING determined
+This uses an interractively set ALT-RUN-STRING determined
 from `perlnow-alt-run-string' which may have been set by using
 \\[perlnow-set-alt-run-string].  If `perlnow-alt-run-string' is nil,
 \\[perlnow-set-alt-run-string] is called automatically.\n
@@ -1246,12 +1251,12 @@ The alt run string can always be changed later by running
      (setq input perlnow-alt-run-string))
    (list input)
    ))
-  (perlnow-run altrunstring)) ; Note: uses perlnow-run rather than running compile directly
+  (perlnow-run alt-run-string)) ; Note: uses perlnow-run rather than running compile directly
 
 
-(defun perlnow-perldb (runstring)
+(defun perlnow-perldb (run-string)
   "Run the perl debugger on the code in this file buffer.
-This uses an interactively set RUNSTRING determined from
+This uses an interactively set RUN-STRING determined from
 `perlnow-run-string' which may have been set by using
 \\[perlnow-set-run-string].  If `perlnow-run-string' is nil,
 \\[perlnow-set-run-string] is called automatically.
@@ -1271,9 +1276,9 @@ to a different file."
        (setq input perlnow-run-string))
      (list input)
      ))
-  (let ((modified-runstring
-         (replace-regexp-in-string "\\bperl " "perl -d " runstring)))
-    (perldb modified-runstring)))
+  (let ((modified-run-string
+         (replace-regexp-in-string "\\bperl " "perl -d " run-string)))
+    (perldb modified-run-string)))
 
 
 (defun perlnow-set-run-string ()
@@ -1292,7 +1297,7 @@ directly: `perlnow-script-run-string' and/or `perlnow-module-run-string'."
 ;; tests for perl code, like looking for the hash-bang,
 ;; aren't reliable (perl scripts need not have a hash-bang
 ;; line: e.g. *.t files, perl on windows...).
-;;; TODO - would be better to do a script-p, set a runstring based on that,
+;;; TODO - would be better to do a script-p, set a run-string based on that,
 ;;; and then have a fall through section that tries to verify if it's some
 ;;; sort of test script ("use Test"?), and otherwise either fail with warning,
 ;;; or prompt the user ask them what they think they're doing.
@@ -1695,7 +1700,7 @@ The test policy is defined by this trio of variables:
 `perlnow-test-policy-test-location', e.g. \".\", \"./t\", \"../t\", etc.
 `perlnow-test-policy-dot-definition' i.e.  \"fileloc\" or \"incspot\"
 `perlnow-test-policy-naming-style'   i.e. \"hyphenized\"or \"basename\"."  ;; TODO  'numeric'
-; Remember the *runstring* is a bit different for
+; Remember the *run-string* is a bit different for
 ; an cpan-style module than a regular module.
   (interactive
    (list (perlnow-get-test-file-name)))
@@ -1933,7 +1938,7 @@ Currently always returns t, but future versions may return nil for failure."
 ;;; TODO - would be a good idea to check if we can find the
 ;;;        module and (perhaps) warn if not.
 ;
-    ; Make the script we're creating the default runstring for this module.
+    ; Make the script we're creating the default run-string for this module.
     (setq perlnow-module-run-string (format "perl %s" script-name))
     (perlnow-sub-name-to-kill-ring)
     ; module currently displayed, now want to open script, display in paralel
