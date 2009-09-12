@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.245 2009/09/11 07:58:39 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.246 2009/09/12 05:22:29 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -696,30 +696,46 @@ Some examples:
             (expand-file-name dir))))))
     return))
 
-; TODO:
-; on the following three locations, I'm currently using HOME
-; environment variable for a default location, though it's
-; expected this will be overridden with a .emacs setting.
-; Maybe it would be better to default to something else, possibly:
+; todo (done, needs test):
+; Instead of just using the HOME environment variable for a default locations,
+; the following first looks for
 ;   ~/bin  ~/lib
-; Maybe, see if they exist, and then use them, if not, silently fall
-; back on HOME? (ditto ~/dev).
+; and if they don't exist, silently falls back on HOME
 
-(defcustom perlnow-script-location (file-name-as-directory (getenv "HOME"))
+;; (defcustom perlnow-script-location (file-name-as-directory (getenv "HOME"))
+;;  "This is the default location to stash new perl scripts.")
+
+(defcustom perlnow-script-location
+  (cond ( (file-directory-p  (perlnow-fixdir "$HOME/bin"))
+          (perlnow-fixdir "$HOME/bin")
+          )
+        (t
+         (perlnow-fixdir "$HOME")
+         ))
   "This is the default location to stash new perl scripts.")
 
+;; (defcustom perlnow-pm-location (file-name-as-directory (getenv "HOME"))
+;;   "This is the default location to stash new perl modules.")
+
 (defcustom perlnow-pm-location (file-name-as-directory (getenv "HOME"))
+  (cond ( (file-directory-p  (perlnow-fixdir "$HOME/lib"))
+          (perlnow-fixdir "$HOME/lib")
+          )
+        (t
+         (perlnow-fixdir "$HOME")
+         ))
   "This is the default location to stash new perl modules.")
 
 (defcustom perlnow-dev-location (file-name-as-directory perlnow-pm-location)
-  "This is the default location to do h2xs/modstar development for CPAN-style packages.")
+  "This is the default location to work on CPAN-style distributions.")
 
 (defcustom perlnow-executable-setting ?\110
   "The user-group-all permissions used to make a script executable.")
 
 (defvar perlnow-template-location (perlnow-fixdir "$HOME/.templates")
   "Standard location for template.el templates.")
-  ;; TODO Question: can I get template.el to tell me the template location?
+  ;; TODO Q: if that doesn't exist, I could try falilng back to this:
+  ;;   (car template-default-directories)
 
 (defcustom perlnow-perl-script-template
   (concat perlnow-template-location "/" "TEMPLATE.perlnow-pl.tpl")
@@ -961,6 +977,18 @@ See `perlnow-script-run-string' and `perlnow-module-run-string' instead.")
 (put 'perlnow-run-string  'risky-local-variable t)
 (make-variable-buffer-local 'perlnow-run-string)
 
+
+;; TODO better name?
+(defvar perlnow-run-string-harder nil
+   "Tells \\[perlnow-run] how to run code in a buffer, if given C-u prefix.
+This is a buffer local variable which is set by \\[perlnow-script-run-string],
+and this should not typically be set by the user directly.
+See `perlnow-script-run-string' and `perlnow-module-run-string' instead.
+This variant will be used to remember a more through way of running some
+code (e.g. a full barrage of tests, rather than just one test file).")
+(put 'perlnow-run-string  'risky-local-variable t)
+(make-variable-buffer-local 'perlnow-run-string)
+
 ;;; Now implementing the "alt-run-string" in addition to
 ;;; the "run-string": having both allows for
 ;;; having two separate concurrently defined ways of running the
@@ -1129,8 +1157,6 @@ comment-region and narrow-to-defun."
 ;;; functions to run perl scripts
 
 ; TODO scrape hashbang (if present): perlnow-perl-path should only be the default.
-; TODO probe for perlcritic, skip it if it's not installed.
-; TODO And don't try to run a binary if it's been set to blank or nil, eh?
 (defun perlnow-run-check (arg)
   "Run a perl check on the current buffer.
 This displays errors and warnings in another window, in the usual
@@ -1148,6 +1174,8 @@ perlcritic in addition to a \"perl -cw\"."
 
           (perl perlnow-perl-path)
           (podchecker perlnow-podchecker-path)
+          ; TODO probe for perlcritic, set to nil if it's not installed.
+          ;   perlcritic --version  =>  1.102
           (perlcritic perlnow-perlcritic-path)
           )
     (save-buffer)
@@ -1160,15 +1188,22 @@ perlcritic in addition to a \"perl -cw\"."
            (setq compile-command
                  (concat
                   (format "%s -Mstrict -cw \'%s\'" perl filename)
-                  "; "
-                  (format "%s \'%s\'" podchecker filename)
-                  "; "
-                  (format "%s --nocolor --verbose 1 \'%s\'" perlcritic filename)
+                  (cond ( podchecker
+                          (concat
+                           "; "
+                           (format "%s \'%s\'" podchecker filename)
+                           )))
+                  (cond ( perlcritic
+                          (concat
+                           "; "
+                           (format "%s --nocolor --verbose 1 \'%s\'" perlcritic filename)
+                           )))
                   ))
            ))
     (message "compile-command: %s" compile-command)
     (compile compile-command);; this just returns buffer name "*compilation*"
     ))
+
 
 (defun perlnow-run (runstring)
   "Run the perl code in this file buffer.
@@ -1178,15 +1213,23 @@ This uses an interactively set RUNSTRING determined from
 \\[perlnow-set-run-string] is called automatically.\n
 The run string can always be changed later by running
 \\[perlnow-set-run-string] manually."
+
+;;; perlnow-run-string || (perlnow-set-run-string)
   (interactive
-   (let (input)
-   (if (eq perlnow-run-string nil)
-       (setq input (perlnow-set-run-string))
-     (setq input perlnow-run-string))
+   (let (
+         (prefix current-prefix-arg)
+         (input  (or
+
+                  ;; also need to use prefix to swap in perlnow-run-string-harder instead of this...
+                  perlnow-run-string
+
+                  (perlnow-set-run-string prefix)
+                  )
+                )
+         )
    (list input)
    ))
   (compile runstring))
-
 
 (defun perlnow-alt-run (altrunstring)
   "Run the perl code in this file buffer.
@@ -1235,17 +1278,16 @@ to a different file."
 
 (defun perlnow-set-run-string ()
   "Prompt the user for a new run string for the current buffer.
-This sets the global variable `perlnow-run-string' that \\[perlnow-run]
-will use to run the code in future in the current buffer.
-The user needs to run this directly to manually change the run
-string, but it is also used indirectly by the \\[perlnow-run]
-if the run string is not yet defined.
-
-From within a program, it's probably best to set some variables
-directly, see `perlnow-script-run-string' and `perlnow-module-run-string'.
+This sets the global variable `perlnow-run-string' that
+\\[perlnow-run] will use to run the code in the current buffer.
+The user needs to run this function directly to manually change
+the run string, but it is also used indirectly by \\[perlnow-run]
+if the run string is not yet defined.\n
 This function uses \\\[perlnow-module-code-p] to see if the code looks like a
 module (i.e. does it have a package line), otherwise it
-assumes it's a perl script."
+assumes it's a perl script.
+From within an elisp program, it's probably best to set these variables
+directly: `perlnow-script-run-string' and/or `perlnow-module-run-string'."
 ;; And if it's not perl at all, that's your problem: the obvious
 ;; tests for perl code, like looking for the hash-bang,
 ;; aren't reliable (perl scripts need not have a hash-bang
@@ -1939,9 +1981,13 @@ If this is not appropriate (e.g. if it's an OOP module, not Exporter based)
 this will return the empty string."
 
   "" ;; stub
-     ;; TODO NEXT -- ideally would like to drop inc-spot, and support
-     ;; exporter based modules of all sorts, even when creating script from man page.
-     ;; Can I easily find code on the system given just the package name?
+
+     ;; TODO NEXT -- ideally: support exporter based modules of all
+     ;; sorts, even when creating script from man page.
+     ;; Make inc-spot optional?
+     ;; Can I easily find code on the system given just the package
+     ;; name?  (Can perl tell you?)
+
   )
 
 
@@ -3425,6 +3471,7 @@ and module name, which are returned as a two-element list."
 ;;; TODO
 ;;; Fix any portability problem here.  Can pattern [^/] work on windows?
 ;;; Why not build it up using perlnow-slash?
+;;; Possibly better: don't use regexps here so much.
   (let* ( (pattern
             (concat
              "^\\(.*\\)"       ; ^(.*)    - stuff at start becomes the mod root
