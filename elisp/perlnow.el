@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.247 2009/09/12 10:12:03 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.248 2009/09/12 18:51:53 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1213,8 +1213,7 @@ This uses an interactively set RUN-STRING determined from
 \\[perlnow-set-run-string] is called automatically.\n
 The run string can always be changed later by running
 \\[perlnow-set-run-string] manually."
-
-;;; perlnow-run-string || (perlnow-set-run-string)
+;; use perlnow-run-string or (perlnow-set-run-string)
   (interactive
    (let* (
           (harder-flag current-prefix-arg)
@@ -1234,6 +1233,7 @@ The run string can always be changed later by running
           )
      (list input)
      ))
+  ;; TODO why not stash this run-string now in one of the memory vars? -- Sep 12, 2009
   (compile run-string))
 
 (defun perlnow-alt-run (alt-run-string)
@@ -1281,59 +1281,54 @@ to a different file."
     (perldb modified-run-string)))
 
 
-(defun perlnow-set-run-string ()
+(defun perlnow-set-run-string (&optional harder-flag-setting)
   "Prompt the user for a new run string for the current buffer.
 This sets the global variable `perlnow-run-string' that
 \\[perlnow-run] will use to run the code in the current buffer.
-The user needs to run this function directly to manually change
-the run string, but it is also used indirectly by \\[perlnow-run]
+To manually change the run string, the user needs to run this
+function directly, but it is also called indirectly by \\[perlnow-run]
 if the run string is not yet defined.\n
 This function uses \\\[perlnow-module-code-p] to see if the code looks like a
 module (i.e. does it have a package line), otherwise it
 assumes it's a perl script.
-From within an elisp program, it's probably best to set these variables
+From within an elisp program, it may be better to set these variables
 directly: `perlnow-script-run-string' and/or `perlnow-module-run-string'."
-;; And if it's not perl at all, that's your problem: the obvious
-;; tests for perl code, like looking for the hash-bang,
-;; aren't reliable (perl scripts need not have a hash-bang
-;; line: e.g. *.t files, perl on windows...).
-;;; TODO - would be better to do a script-p, set a run-string based on that,
-;;; and then have a fall through section that tries to verify if it's some
-;;; sort of test script ("use Test"?), and otherwise either fail with warning,
-;;; or prompt the user ask them what they think they're doing.
-;;; Ah, another way out: run a perl -c on the buffer, and if it fails,
-;;; tell the user it ain't passing perl check (is it even perl code?).
-;;; (( why not check to see if you're in a perl mode, eh?
-;;;    or just *restrict these commands to those modes* ))
   (interactive)
-   (cond
-   ((perlnow-module-code-p)
-     ; set-up a decent default value
-     (unless perlnow-module-run-string
-       (progn
-         (setq perlnow-module-run-string
-               (perlnow-guess-module-run-string))))
-     ; ask user how to run this module (use as default next time)
-     (setq perlnow-module-run-string
-           (read-from-minibuffer
-            "Set the run string for this module: "
-            perlnow-module-run-string))
-     ; tell perlnow-run how to do it
-     (setq perlnow-run-string perlnow-module-run-string))
-   (t  ;;  assume it's a script since it's not a module.
-     ; set-up intelligent default run string
-     (unless perlnow-script-run-string
-       (progn
-         (setq perlnow-script-run-string
-               (perlnow-guess-script-run-string))
-         ))
-     ; ask user how to run this script (use as default next time)
-     (setq perlnow-script-run-string
-           (read-from-minibuffer
-            "Set the run string for this script: "
-            perlnow-script-run-string))
-     ; tell perlnow-run to do it that way
-     (setq perlnow-run-string perlnow-script-run-string))))
+  (let* ( (harder-flag (or harder-flag-setting current-prefix-arg))
+          )
+    (cond
+     ((perlnow-module-code-p)
+      ; set-up a decent default value
+      (unless perlnow-module-run-string
+        (progn
+          (setq perlnow-module-run-string
+                (perlnow-guess-module-run-string harder-flag))))
+      ; ask user how to run this module (use as default next time)
+      (setq perlnow-module-run-string
+            (read-from-minibuffer
+             "Set the run string for this module: "
+             perlnow-module-run-string))
+      ; tell perlnow-run how to do it
+      (cond ( harder-flag
+              (setq perlnow-run-string-harder perlnow-module-run-string)
+              )
+            (t
+             (setq perlnow-run-string perlnow-module-run-string))
+            ))
+     (t  ;;  assume it's a script since it's not a module.
+      ; set-up intelligent default run string
+      (unless perlnow-script-run-string
+        (progn
+          (setq perlnow-script-run-string
+                (perlnow-guess-script-run-string))
+          ))
+                                        ; ask user how to run this script (use as default next time)
+      (setq perlnow-script-run-string
+            (read-from-minibuffer
+             "Set the run string for this script: "
+             perlnow-script-run-string))
+                                        ; tell perlnow-run to do it that way
+      (setq perlnow-run-string perlnow-script-run-string)))))
 
 
 (defun perlnow-set-alt-run-string ()
@@ -2370,7 +2365,7 @@ like: \"/home/doom/tmp/../bin\"."
    (setq newpath (perlnow-fixdir newpath))
    newpath))
 
-(defun perlnow-guess-module-run-string ()
+(defun perlnow-guess-module-run-string (&optional harder-flag)
   "Return a good guess for an appropriate `perlnow-module-run-string'.
 First looks for the Makefile.PL or Build.PL of a cpan-style
 distribution.  Failing that this looks for a nearby test file of an
@@ -2401,6 +2396,14 @@ See: `perlnow-documentation-terminology' and/or
           testloc testfile
           return            ; the returned run string
           )
+
+    ;; TODO NEXT -
+    ;; This is where it really happens:
+    ;; When the harder-flag is set, it handles the cpan-style case as shown
+    ;; When not set, it must do something more clever, looking for a "latest" *.t
+    ;; Further, in the non-cpan case, the harder-flag should do a "prove *.t"
+    ;;    perlnow-get-test-file-name might be fixed/extended to cover those two points
+
     ; first, the cpan-style case
     (cond ( (setq staging-area (perlnow-find-cpan-style-staging-area))
             (cond ( (file-exists-p (concat staging-area "Build.PL"))
