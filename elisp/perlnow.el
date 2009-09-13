@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.249 2009/09/12 21:41:45 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.250 2009/09/13 01:28:11 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -2381,62 +2381,59 @@ dot notation \(\".\" \"..\"\) to specify locations relative to either
 the module-file-location or the inc-spot.
 See: `perlnow-documentation-terminology' and/or
 `perlnow-documentation-test-file-strategies'."
-
+  (message "perlnow-guess-module-run-string called")
   (unless (perlnow-module-code-p)
     (error "This buffer does not look like a perl module (no \"package\" line)"))
   (let* ( (package-name (perlnow-get-package-name-from-module-buffer))
           (module-file-location
-            (file-name-directory (buffer-file-name)))
+           (file-name-directory (buffer-file-name)))
           (inc-spot
-            (perlnow-get-inc-spot package-name module-file-location ))
+           (perlnow-get-inc-spot package-name module-file-location ))
           (hyphenized-package-name
-            (mapconcat 'identity (split-string package-name "::") "-"))
+           (mapconcat 'identity (split-string package-name "::") "-"))
           (pm-basename
-            (file-name-sans-extension (file-name-nondirectory (buffer-file-name))))
+           (file-name-sans-extension (file-name-nondirectory (buffer-file-name))))
 
           staging-area      ; The location of an h2xs-style dev structure
           staging-area-candidate staging-area-candidate-name
-          test-search-list  ; A listing of possible absolute locations to look for the test file,
-                            ; built up from relative locations in perlnow-test-path
+          test-search-list ;; A listing of possible absolute locations to look for the test file,
+          ;; built up from relative locations in perlnow-test-path
           testloc testfile
-          return            ; the returned run string
+          run-string            ; the return value
           )
-
-
     (cond ( harder-flag
-            ; the cpan-style case
+            ;; the cpan-style case
             (cond ( (setq staging-area (perlnow-find-cpan-style-staging-area))
                     (cond ( (file-exists-p (concat staging-area "Build.PL"))
-                            (setq return (concat "cd " staging-area "; ./Build test"))
+                            (setq run-string (concat "cd " staging-area "; ./Build test"))
                             )
                           ( (file-exists-p (concat staging-area "Makefile.PL"))
-                            (setq return (concat "cd " staging-area "; make test"))
+                            (setq run-string (concat "cd " staging-area "; make test"))
                             )
                           ))
                   (t ; non-cpan-style module
                    ;; TODO better: do a "prove *.t", maybe with a "-r"  (if no better idea: defcustom setting)
                    (setq testfile (perlnow-get-test-file-name))
-                   (setq return (format "perl '%s'" testfile))
+                   (setq run-string (format "perl '%s'" testfile))
                    ))
             )
           (t ;; not "harder": simple/quick tests
-           ; the cpan-style case
+           ;; the cpan-style case
            (cond ( (setq staging-area (perlnow-find-cpan-style-staging-area))
-                   (setq return
-                         (perlnow-latest-test-file
-                          (perlnow-list-test-files
-                           ;; the standard cpan-style "policy" (TODO)
-                           "../t"     ;; perlnow-test-policy-test-location
-                           "incspot"  ;; perlnow-test-policy-dot-definition
-                           "numeric"  ;; perlnow-test-policy-naming-style
-                           ))
-                         ))
+                   (setq run-string (format "perl '%s'"
+                                            (perlnow-latest-test-file
+                                             (perlnow-list-test-files
+                                              "../t"
+                                              "incspot"
+                                              "numeric"
+                                              ))))
+                   )
                  (t ; non-cpan-style module
                   (setq testfile (perlnow-get-test-file-name))
-                  (setq return (format "perl '%s'" testfile))
+                  (setq run-string (format "perl '%s'" testfile))
                   ))
            ))
-    return))
+    run-string))
 
 (defun perlnow-american-date ()
   "Return the date in the common American format: MM/DD/YY.
@@ -2600,6 +2597,7 @@ and the NAMESTYLE \(see `perlnow-test-policy-naming-style'\).
 Returns a list of appropriate test files found, or just a best
 pick if the CHOOSE-ONE option is non-nil."
 ;;; Note, code mutated from above: perlnow-get-test-file-name-given-policy
+  (message "perlnow-list-test-files, looking at buffer: %s" (buffer-name))
    (let* (
          ; script oriented info:
            (file-location
@@ -2616,6 +2614,7 @@ pick if the CHOOSE-ONE option is non-nil."
            (test-file "")
            (test-file-list ())
            )
+
     ; module oriented info, calculated:
     (cond ; do only if module
      ((setq package-name (perlnow-get-package-name-from-module-buffer))
@@ -2642,7 +2641,7 @@ pick if the CHOOSE-ONE option is non-nil."
      (setq test-file-list
            (directory-files testloc-absolute nil "\.t$"))
 
-     (if (choose-one)
+     (if choose-one
          (setq test-file-list (list (perlnow-latest-test-file test-file-list)))
        )
      test-file-list))
@@ -2659,6 +2658,23 @@ Currently limited to cpan-style code buffers (hardcoded params)."
     (message "%s" return)
   ))
 
+
+(defun perlnow-test-files-debuggery ()
+  ""
+  (interactive)
+  (let ( (return) )
+                   (setq return
+                         (perlnow-latest-test-file
+                          (perlnow-list-test-files
+                           "../t"
+                           "incspot"
+                           "numeric"
+                           ))
+                         )
+                   (message "%s" return)
+                   ))
+
+
 (defun perlnow-latest-test-file (test-file-list)
   "Given a list of test files, select the \"latest\" one.
 By latest, we mean the one a developer is most likely to want to
@@ -2667,7 +2683,8 @@ numeric sort-order prefix."
 ;; first cut:
 ;; grep for numeric prefixes, sort, return the last.
   (let* ( (new-list
-            (perlnow-grep "^[0-9]*?-" test-file-list))
+;;            (perlnow-grep "^[0-9]*?-" test-file-list))
+            (perlnow-grep "/[0-9]*?-*$" test-file-list))
           (new-list (sort new-list 'string<))
           (last-item (car (last new-list)))
           )
@@ -2858,7 +2875,7 @@ with a \"lib\" and/or \"t\" *and* a \"Makefile.PL\"."
 ;; This uses a simple method:
 ;; Crawl up from file location, until "t" and/or "lib" is found.
 ;; Is there a Makefile.PL next to them?
-
+  (message "perlnow-find-cpan-style-staging-area called")
   (let* ( ; args for directory-files function:
           dir       ; candidate directory under examination
           (full-names nil)
@@ -2887,11 +2904,13 @@ with a \"lib\" and/or \"t\" *and* a \"Makefile.PL\"."
 
 ;; replaces perlnow-run-perl-makefile-pl-if-needed & perlnow-run-perl-build-pl
 ;; TODO -- should this bring the display-buffer up front?
+;; TODO -- silly thing has a side-effect: changes the current buffer.  trying save-excursion...
 (defun perlnow-cpan-style-build (staging-area)
   "Does the cpan-style build in the STAGING-AREA (but only if needed).
 Specifically, this runs Makefile.PL and/or Build.PL.
 Output is appended to the *perlnow-build* window."
-;; Note: relies on naming convention, "perl *.PL" creates target "*".
+  ;; Note: relies on naming convention, "perl *.PL" creates target "*".
+  (message "perlnow-cpan-style-build called")
   (let* ( (display-buffer-name "*perlnow-build*")
           (display-buffer)
           (builders (list "Makefile.PL" "Build.PL"))
@@ -2899,33 +2918,33 @@ Output is appended to the *perlnow-build* window."
           )
     (dolist (builder builders)
       (let* (
-            (build-target (file-name-sans-extension builder))
-            (build-target-full (concat staging-area build-target))
-            (builder-full    (concat staging-area builder))
-            )
+             (build-target (file-name-sans-extension builder))
+             (build-target-full (concat staging-area build-target))
+             (builder-full    (concat staging-area builder))
+             )
+        (save-excursion
+          (cond ( (not (file-newer-than-file-p build-target-full builder-full))
+                  (setq display-buffer (get-buffer-create display-buffer-name))
+                  (set-buffer display-buffer)
 
-      (cond ( (not (file-newer-than-file-p build-target-full builder-full))
-              (setq display-buffer (get-buffer-create display-buffer-name))
-              (set-buffer display-buffer)
+                  (cond ( (file-regular-p builder-full)
+                          (insert (format "Perlnow is generating %s from %s, in %s...\n"
+                                          build-target builder staging-area))
+                          (let ( (default-directory staging-area) )
+                            (call-process "perl"
+                                          nil
+                                          display-buffer
+                                          nil
+                                          builder
+                                          ))
+                          (end-of-buffer display-buffer)
+                          ))))
 
-              (cond ( (file-regular-p builder-full)
-                      (insert (format "Perlnow is generating %s from %s, in %s...\n"
-                                      build-target builder staging-area))
-                      (let ( (default-directory staging-area) )
-                        (call-process "perl"
-                                      nil
-                                      display-buffer
-                                      nil
-                                      builder
-                                      ))
-                      (end-of-buffer display-buffer)
-                      ))))
-
-      (if (file-regular-p build-target-full)
-          (setq return-flag t))
-      ))
-    return-flag
-    ))
+          (if (file-regular-p build-target-full)
+              (setq return-flag t))
+          ))
+      return-flag
+      )))
 
 ;; TODO DELETE SOON
 ;;; The Module::Build analog of: perlnow-run-perl-makefile-pl-if-needed
@@ -2937,6 +2956,7 @@ Output is appended to the *perlnow-build* window."
 
 ;;; Note, this *presumes* that you're inside an staging-area, it does not check.
 ;;; TODO should really compare age of Build vs Build.PL
+  (message "perlnow-run-perl-build-pl called")
   (let (display-buffer )
     (cond ( (not (file-regular-p (concat staging-area "Build")))
             (setq display-buffer (get-buffer-create "*perlnow-build*"))
