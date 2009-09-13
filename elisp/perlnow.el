@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.252 2009/09/13 04:19:47 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.253 2009/09/13 11:29:56 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1307,17 +1307,17 @@ instead of a single test file\)."
           )
     (cond
      ((perlnow-module-code-p)
-      ; set-up a decent default value
+      ;; set-up a decent default value
       (unless perlnow-module-run-string
         (progn
           (setq perlnow-module-run-string
                 (perlnow-guess-module-run-string harder-flag))))
-      ; ask user how to run this module (use as default next time)
+      ;; ask user how to run this module (use as default next time)
       (setq perlnow-module-run-string
             (read-from-minibuffer
              "Set the run string for this module: "
              perlnow-module-run-string))
-      ; tell perlnow-run how to do it
+      ;; tell perlnow-run how to do it
       (cond ( harder-flag
               (setq perlnow-run-string-harder perlnow-module-run-string)
               )
@@ -1325,18 +1325,18 @@ instead of a single test file\)."
              (setq perlnow-run-string perlnow-module-run-string))
             ))
      (t  ;;  assume it's a script since it's not a module.
-      ; set-up intelligent default run string
+         ;; set-up intelligent default run string
       (unless perlnow-script-run-string
         (progn
           (setq perlnow-script-run-string
                 (perlnow-guess-script-run-string))
           ))
-                                        ; ask user how to run this script (use as default next time)
+      ;; ask user how to run this script (use as default next time)
       (setq perlnow-script-run-string
             (read-from-minibuffer
              "Set the run string for this script: "
              perlnow-script-run-string))
-                                        ; tell perlnow-run to do it that way
+      ;; tell perlnow-run to do it that way
       (setq perlnow-run-string perlnow-script-run-string)))))
 
 
@@ -1358,31 +1358,31 @@ assumes it's a perl script.  The heuristics for setting a default
   (interactive)
    (cond
    ((perlnow-module-code-p)
-     ; set-up a decent default value
+     ;; set-up a decent default value
      (unless perlnow-module-alt-run-string
        (progn
          (setq perlnow-module-alt-run-string
                (perlnow-guess-module-run-string))))
-     ; ask user the alternative way to run this module (use as default next time)
+     ;; ask user the alternative way to run this module (use as default next time)
      (setq perlnow-module-alt-run-string
            (read-from-minibuffer
             "Set the alternative run string for this module: "
             perlnow-module-alt-run-string))
-     ; tell perlnow-alt-run how to do it
+     ;; tell perlnow-alt-run how to do it
      (setq perlnow-alt-run-string perlnow-module-alt-run-string))
    (t  ;;  assume it's a script since it's not a module.
-     ; set-up intelligent default alt run string
+     ;; set-up intelligent default alt run string
      (unless perlnow-script-alt-run-string
        (progn
          (setq perlnow-script-alt-run-string
                (perlnow-guess-script-run-string))
          ))
-     ; ask user the alternative way to run this script (use as default next time)
+     ;; ask user the alternative way to run this script (use as default next time)
      (setq perlnow-script-alt-run-string
            (read-from-minibuffer
             "Set the alternative run string for this script: "
             perlnow-script-alt-run-string))
-     ; tell perlnow-alt-run to do it that way
+     ;; tell perlnow-alt-run to do it that way
      (setq perlnow-alt-run-string perlnow-script-alt-run-string))))
 
 
@@ -1911,7 +1911,6 @@ a buffer object."
 
 ;;=======
 
-
 (defun perlnow-do-script (filename)
   "Quickly jump into development of a new perl script.
 Prompts the user for the FILENAME.
@@ -2001,6 +2000,8 @@ this will return the empty string."
      ;; Can I easily find code on the system given just the package
      ;; name?  (Can perl tell you?)
      ;; Maybe: just work your way through @INC yourself...
+     ;; Yeah: already written:
+     ;; (setq module-file (perlnow-module-found-in-INC package-name))
 
   )
 
@@ -2217,6 +2218,7 @@ This looks for the package line near the top."
     (looking-at package-line-pat) )))
 
 
+;; TODO as written this applies only to modules, not scripts...
 (defun perlnow-cpan-style-code-p ()
   "Determine if this file looks like it's in a cpan-style dev tree."
   (save-excursion
@@ -2433,7 +2435,9 @@ See: `perlnow-documentation-terminology' and/or
                             )
                           ))
                   (t ; non-cpan-style module
-                   ;; TODO better: do a "prove *.t", maybe with a "-r"  (if no better idea: defcustom setting)
+                   ;; TODO better: do a "prove *.t", maybe with a "-r"
+                   ;;      (if no better idea: turn on -r with a defcustom setting)
+                   ;;      To do this, need to find "t" directories.
                    (setq testfile (perlnow-get-test-file-name))
                    (setq run-string (format "perl '%s'" testfile))
                    ))
@@ -2505,7 +2509,6 @@ For example: \"August 8, 2009\" (which I realize is not *just* American)."
            (setq testfile (perlnow-get-test-file-name-script))))
    testfile))
 
-
 (defun perlnow-get-test-file-name-module ()
    "Get the test file name for the current perl module buffer.
 Used by \\[perlnow-get-test-file-name]."
@@ -2531,7 +2534,6 @@ Used by \\[perlnow-get-test-file-name]."
     perlnow-test-policy-test-location
     "fileloc"
     "basename"))
-
 
 (defun perlnow-get-test-file-name-given-policy (testloc dotdef namestyle)
    "Get the test file name for the current perl buffer, given a test policy.
@@ -2836,6 +2838,79 @@ has been chosen as the default to work on perl code."
             (t
              (setq mode default)))
       mode))
+
+
+;; concept: if given a module, you can get the module root
+;; and from there, you peek up one level (check for "../t"),
+;; and scan downwards, adding the "t"s found to the list.
+;; Order should be top to bottom.;; (and how to deal with scripts?
+;; for now: use script location in place of module root.
+;; exception: if it's inside a cpan-style package).
+;; TODO needs trial and debug
+(defun perlnow-find-t-directories ()
+  "Find 't' directories associated with current file."
+  (let* ( (slash (convert-standard-filename "/"))
+          (levels () )
+          (t-list () )
+          )
+    (cond ( (perlnow-module-code-p)
+            (let* (
+                   (pm-file (buffer-file-name))
+                   (pm-location (file-name-directory pm-file))
+                   (package-name (perlnow-get-package-name-from-module-buffer))
+                   (inc-spot (perlnow-get-inc-spot package-name pm-location))
+                   (candidate)
+                   )
+
+              (setq candidate (perlnow-fixdir (concat inc-spot "../t")))
+              (if (file-directory-p candidate)
+                  (setq t-list (cons candidate t-list)))
+
+              ;;; subtract inc-spot from pm-location...
+              (if (string-match (concat "^" inc-spot "\(.*?\)$") pm-location)
+                  (setq tail (match-string 1 pm-location)))
+              ;;; split up the tail, ala what's done in perlnow-nth-file-path-level
+              (setq levels (split-string tail slash))
+              ;; trim leading & trailing blank items
+              (if (string= (car levels) "")
+                  (pop levels)
+                )
+              (if (string= (car (last levels)) "")
+                  (setq levels (butlast levels))
+                )
+
+              ;; append levels one at a time to inc-spot,
+              ;; looking for "t" dirs at each level
+              (let ( (path inc-spot)
+                     )
+                (dolist (level levels)
+                  (setq path (concat path level "/"))
+                  (setq candidate (concat path "t"))
+                  (if (file-directory-p candidate)
+                      (setq t-list (cons candidate t-list)))
+                  ))
+
+              ))
+          (t ;; assume it's a script then
+           (let* ( (full-file (buffer-file-name))
+                   (location (file-name-directory full-file))
+                   (filename (file-name-nondirectory full-file))
+                   )
+
+              (setq candidate (perlnow-fixdir (concat location "../t")))
+              (if (file-directory-p candidate)
+                  (setq t-list (cons candidate t-list)))
+
+              (setq candidate (perlnow-fixdir (concat location "t")))
+              (if (file-directory-p candidate)
+                  (setq t-list (cons candidate t-list)))
+
+             ))
+          )
+    t-list
+    ))
+
+
 
 ;;;==========================================================
 ;;; The end of perlnow-edit-test-file family of functions
