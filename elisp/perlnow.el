@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.251 2009/09/13 03:46:05 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.252 2009/09/13 04:19:47 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1212,7 +1212,11 @@ This uses an interactively set RUN-STRING determined from
 \\[perlnow-set-run-string].  If `perlnow-run-string' is nil,
 \\[perlnow-set-run-string] is called automatically.\n
 The run string can always be changed later by running
-\\[perlnow-set-run-string] manually."
+\\[perlnow-set-run-string] manually.\n
+When run with a \"C-u\" prefix, the variable `perlnow-run-string-harder'
+is used instead, so that it can remember how it was
+run in either case."
+;; TODO Docs need more work?
 ;; use perlnow-run-string or (perlnow-set-run-string)
   (interactive
    (let* (
@@ -1292,7 +1296,12 @@ This function uses \\\[perlnow-module-code-p] to see if the code looks like a
 module (i.e. does it have a package line), otherwise it
 assumes it's a perl script.
 From within an elisp program, it may be better to set these variables
-directly: `perlnow-script-run-string' and/or `perlnow-module-run-string'."
+directly: `perlnow-script-run-string' and/or `perlnow-module-run-string'.
+When run with a \"C-u\" prefix \(or non-interactively, with an arg of \"t\"\)
+this works with the `perlnow-run-string-harder' variable, and
+tries to guess a more thorough way to run the code \(e.g. a test suite
+instead of a single test file\)."
+;; TODO  documentation needs more work?
   (interactive)
   (let* ( (harder-flag (or harder-flag-setting current-prefix-arg))
           )
@@ -2372,13 +2381,25 @@ like: \"/home/doom/tmp/../bin\"."
 
 (defun perlnow-guess-module-run-string (&optional harder-flag)
   "Return a good guess for an appropriate `perlnow-module-run-string'.
-First looks for the Makefile.PL or Build.PL of a cpan-style
-distribution.  Failing that this looks for a nearby test file of an
-appropriate name.  For example if the module were named
-New::Module, the test file could be New-Module.t or Module.t.
+By default, tries to pick the most appropriate (\"latest\") test file
+for the code, but if run with the HARDER-FLAG set to t, it tries to
+run an entire suite of appropriate tests, \n
+
+The \"latest\" (currently) means that it tries to find the test
+file with the highest numeric prefix, or failing that (( TODO not
+quite implemented like this )) it looks for a nearby test file of
+an appropriate name.  For example if the module were named
+New::Module, the test file could be New-Module.t or Module.t.\n
+
+But when run \"harder\", it first looks for the Makefile.PL or
+Build.PL of a cpan-style distribution, then (( TODO not implemented ))
+falls back to finding an appropriate \"t\" directory in which to run
+\"prove\".
+
 The code searches the paths in `perlnow-test-path', which uses a familiar
 dot notation \(\".\" \"..\"\) to specify locations relative to either
 the module-file-location or the inc-spot.
+
 See: `perlnow-documentation-terminology' and/or
 `perlnow-documentation-test-file-strategies'."
   (message "perlnow-guess-module-run-string called")
