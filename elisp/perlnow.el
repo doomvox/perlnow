@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.248 2009/09/12 18:51:53 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.249 2009/09/12 21:41:45 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -717,7 +717,7 @@ Some examples:
 ;; (defcustom perlnow-pm-location (file-name-as-directory (getenv "HOME"))
 ;;   "This is the default location to stash new perl modules.")
 
-(defcustom perlnow-pm-location (file-name-as-directory (getenv "HOME"))
+(defcustom perlnow-pm-location
   (cond ( (file-directory-p  (perlnow-fixdir "$HOME/lib"))
           (perlnow-fixdir "$HOME/lib")
           )
@@ -1972,6 +1972,11 @@ Currently always returns t, but future versions may return nil for failure."
       (insert relative-path)
       (insert "\");\n"))))
 
+;; TODO SOON the interface on this is silly:
+;; Just assume you've already got the module code in front of you,
+;; in the current buffer.  Search through it for the standard
+;; Exporter boiler plate.  (You could do a keystroke macro as a
+;; first cut).
 ;;(setq import-string (perlnow-generate-import-list package-name inc-spot))
 (defun perlnow-generate-import-list (package-name inc-spot)
   "Get the default import list from the module PACKAGE-NAME.
@@ -1982,11 +1987,11 @@ this will return the empty string."
 
   "" ;; stub
 
-     ;; TODO NEXT -- ideally: support exporter based modules of all
-     ;; sorts, even when creating script from man page.
-     ;; Make inc-spot optional?
+     ;; TODO EXTRA CREDIT -- ideally: support exporter based modules
+     ;; of all sorts, even when creating script from man page.
      ;; Can I easily find code on the system given just the package
      ;; name?  (Can perl tell you?)
+     ;; Maybe: just work your way through @INC yourself...
 
   )
 
@@ -2397,27 +2402,40 @@ See: `perlnow-documentation-terminology' and/or
           return            ; the returned run string
           )
 
-    ;; TODO NEXT -
-    ;; This is where it really happens:
-    ;; When the harder-flag is set, it handles the cpan-style case as shown
-    ;; When not set, it must do something more clever, looking for a "latest" *.t
-    ;; Further, in the non-cpan case, the harder-flag should do a "prove *.t"
-    ;;    perlnow-get-test-file-name might be fixed/extended to cover those two points
 
-    ; first, the cpan-style case
-    (cond ( (setq staging-area (perlnow-find-cpan-style-staging-area))
-            (cond ( (file-exists-p (concat staging-area "Build.PL"))
-                    (setq return (concat "cd " staging-area "; ./Build test"))
-                    )
-                  ( (file-exists-p (concat staging-area "Makefile.PL"))
-                    (setq return (concat "cd " staging-area "; make test"))
-                    )
+    (cond ( harder-flag
+            ; the cpan-style case
+            (cond ( (setq staging-area (perlnow-find-cpan-style-staging-area))
+                    (cond ( (file-exists-p (concat staging-area "Build.PL"))
+                            (setq return (concat "cd " staging-area "; ./Build test"))
+                            )
+                          ( (file-exists-p (concat staging-area "Makefile.PL"))
+                            (setq return (concat "cd " staging-area "; make test"))
+                            )
+                          ))
+                  (t ; non-cpan-style module
+                   ;; TODO better: do a "prove *.t", maybe with a "-r"  (if no better idea: defcustom setting)
+                   (setq testfile (perlnow-get-test-file-name))
+                   (setq return (format "perl '%s'" testfile))
+                   ))
+            )
+          (t ;; not "harder": simple/quick tests
+           ; the cpan-style case
+           (cond ( (setq staging-area (perlnow-find-cpan-style-staging-area))
+                   (setq return
+                         (perlnow-latest-test-file
+                          (perlnow-list-test-files
+                           ;; the standard cpan-style "policy" (TODO)
+                           "../t"     ;; perlnow-test-policy-test-location
+                           "incspot"  ;; perlnow-test-policy-dot-definition
+                           "numeric"  ;; perlnow-test-policy-naming-style
+                           ))
+                         ))
+                 (t ; non-cpan-style module
+                  (setq testfile (perlnow-get-test-file-name))
+                  (setq return (format "perl '%s'" testfile))
                   ))
-          (t ; non-cpan-style module
-           (setq testfile (perlnow-get-test-file-name))
-           (setq return (format "perl '%s'" testfile))
-
-            ))
+           ))
     return))
 
 (defun perlnow-american-date ()
@@ -2565,8 +2583,7 @@ and the NAMESTYLE \(see `perlnow-test-policy-naming-style'\)."
            )
      test-file))
 
-;;; TODO SOON
-;;; Not yet in use.
+
 ;;; TODO check if this is limited to cpan-style
 ;;; TODO somewhere need to be able to do recursive decent through a project tree
 ;;; TODO
@@ -2642,11 +2659,11 @@ Currently limited to cpan-style code buffers (hardcoded params)."
     (message "%s" return)
   ))
 
-
 (defun perlnow-latest-test-file (test-file-list)
   "Given a list of test files, select the \"latest\" one.
-By latest, we mean the one a developer is most likely to want
-to work on."
+By latest, we mean the one a developer is most likely to want to
+work on, which currently means the the one with the largest
+numeric sort-order prefix."
 ;; first cut:
 ;; grep for numeric prefixes, sort, return the last.
   (let* ( (new-list
@@ -2659,7 +2676,7 @@ to work on."
     ))
 
 (defun perlnow-grep (pattern list)
-  "A (probably naive) implementation of perl's grep.
+  "A simple implementation of perl's grep.
 Return a new list of elements from LIST that match PATTERN.
 LIST is presumed to be a list of strings."
   (let ( (new-list) )
