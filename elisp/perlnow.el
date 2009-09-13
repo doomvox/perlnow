@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.250 2009/09/13 01:28:11 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.251 2009/09/13 03:46:05 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -2426,6 +2426,7 @@ See: `perlnow-documentation-terminology' and/or
                                               "../t"
                                               "incspot"
                                               "numeric"
+                                              t
                                               ))))
                    )
                  (t ; non-cpan-style module
@@ -2583,9 +2584,8 @@ and the NAMESTYLE \(see `perlnow-test-policy-naming-style'\)."
 
 ;;; TODO check if this is limited to cpan-style
 ;;; TODO somewhere need to be able to do recursive decent through a project tree
-;;; TODO
-;;; Display a buffer of all associated test files, allow choice between them.
-(defun perlnow-list-test-files (testloc dotdef namestyle &optional choose-one)
+;;; TODO display a buffer of all associated test files, allow choice between them.
+(defun perlnow-list-test-files (testloc dotdef namestyle &optional fullpath)
   "Looks for test files associated wtih the current file.
 Uses the three given elements of a \"test policy\", to find
 associated test files:
@@ -2594,8 +2594,7 @@ is defined by three pieces of information:
 the TESTLOC \(see `perlnow-test-policy-test-location'\)
 the DOTDEF \(see `perlnow-test-policy-dot-definition' \)
 and the NAMESTYLE \(see `perlnow-test-policy-naming-style'\).
-Returns a list of appropriate test files found, or just a best
-pick if the CHOOSE-ONE option is non-nil."
+Returns file names with full path if FULLPATH is t."
 ;;; Note, code mutated from above: perlnow-get-test-file-name-given-policy
   (message "perlnow-list-test-files, looking at buffer: %s" (buffer-name))
    (let* (
@@ -2639,11 +2638,7 @@ pick if the CHOOSE-ONE option is non-nil."
        (message "warning %s is not a directory" testloc-absolute))
 
      (setq test-file-list
-           (directory-files testloc-absolute nil "\.t$"))
-
-     (if choose-one
-         (setq test-file-list (list (perlnow-latest-test-file test-file-list)))
-       )
+           (directory-files testloc-absolute fullpath "\.t$"))
      test-file-list))
 
 ;; for DEBUG
@@ -2652,7 +2647,7 @@ pick if the CHOOSE-ONE option is non-nil."
 Currently limited to cpan-style code buffers (hardcoded params)."
   (interactive)
   (let* ( (listsky
-           (perlnow-list-test-files "../t" "incspot" "numbered"))
+           (perlnow-list-test-files "../t" "incspot" "numbered" t))
           (return (mapconcat 'identity listsky " "))
           )
     (message "%s" return)
@@ -2684,7 +2679,7 @@ numeric sort-order prefix."
 ;; grep for numeric prefixes, sort, return the last.
   (let* ( (new-list
 ;;            (perlnow-grep "^[0-9]*?-" test-file-list))
-            (perlnow-grep "/[0-9]*?-*$" test-file-list))
+            (perlnow-grep "/[0-9]*?-.*?$" test-file-list))
           (new-list (sort new-list 'string<))
           (last-item (car (last new-list)))
           )
