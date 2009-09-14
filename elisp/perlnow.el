@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.255 2009/09/14 06:23:49 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.256 2009/09/14 08:34:29 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1326,10 +1326,10 @@ instead of a single test file\)."
         (progn
           (setq perlnow-module-run-string
                 (perlnow-guess-module-run-string harder-flag))))
+;; TODO NEXT -- ignore if that return is nil?  ignore how?
+;; Bang out of here without setting anything?
 
-      ;; TODO Q: what if the *.t file invoked does not exist?
-      ;;         want to deal with that only after the suggestion is accepted below.
-      ;;         Might mean: need to scrape the run-string to extract the file name.
+
 
       ;; ask user how to run this module (use as default next time)
       (setq perlnow-module-run-string
@@ -2484,6 +2484,7 @@ invoked with a double prefix (C-u C-u), instead of running
                           ))
                   (t ; non-cpan-style module
                    (let* ( (t-dir (car (perlnow-find-t-directories)) )
+                             ;; TODO what if there *is* no t directory yet?  Create according to policy.
                            )
                      (setq run-string
                            (cond ( (>= harder 16) ;; even harder!
@@ -2507,9 +2508,34 @@ invoked with a double prefix (C-u C-u), instead of running
                    )
                  (t ; non-cpan-style module
                   (setq testfile (perlnow-get-test-file-name))
-                  (setq run-string (format "perl '%s'" testfile))
+                  ;; (perlnow-ensure-test-file-exists testfile)
+                  (cond ( (not (file-exists-p testfile))
+                          (perlnow-edit-test-file testfile)
+                          (setq run-string nil) ;; TODO is this Okay?  Don't *want* it to run yet.
+                          )
+                        (t
+                         (setq run-string (format "perl '%s'" testfile))
+                         ))
                   ))))
     run-string))
+
+
+;; experimental
+(defun perlnow-ensure-test-file-exists (test-file)
+  "If the given TEST-FILE doesn't exist, creates it using the test template.
+The template used is specified by the variable `perlnow-perl-test-module-template'."
+    (cond ( (not (file-exists-p test-file))
+            (let* ( (location (file-name-directory test-file))
+                    )
+              (unless (file-exists-p location)
+                (make-directory location t))
+              (save-excursion
+                (perlnow-create-with-template
+                 test-file
+                 perlnow-perl-test-module-template)
+                (funcall (perlnow-lookup-preferred-perl-mode)) ;; TODO why isn't this done inside perlnow-create-with-template
+                (save-buffer)
+              )))))
 
 (defun perlnow-american-date ()
   "Return the date in the common American format: MM/DD/YY.
@@ -2554,8 +2580,6 @@ For example: \"August 8, 2009\" (which I realize is not *just* American)."
          ( (perlnow-script-p)
            (setq testfile (perlnow-get-test-file-name-script)))
          (t
-    ;;; TODO
-    ;;; ask user first if this is really a perl script?
            (setq testfile (perlnow-get-test-file-name-script))))
    testfile))
 
