@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.254 2009/09/13 18:45:52 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.255 2009/09/14 06:23:49 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -682,19 +682,31 @@ Next:
 ;;;;##########################################################################
 
 
+;; TODO should I add a second argument, an optional ROOT that
+;; could be passed in as a second arg to expand-file-name?
 (defun perlnow-fixdir (dir)
   "Fixes the DIR.
 Conditions directory paths for portability and robustness.
 Some examples:
  '~/tmp'             => '/home/doom/tmp/'
  '~/tmp/../bin/test' => '/home/bin/test/'
-"
+Note: converts relative paths to absolute, using the current
+default-directory setting.
+As a side-effect converts the empty string into the default-directory."
   (let ((return
          (substitute-in-file-name
           (convert-standard-filename
            (file-name-as-directory
             (expand-file-name dir))))))
     return))
+; (perlnow-fixdir "~/tmp")
+; (perlnow-fixdir "~/tmp/../bin/bupkes")
+; (perlnow-fixdir "~/..")
+; (perlnow-fixdir "~/../..")
+; relative paths are resolve using default-directory
+; (perlnow-fixdir "../../..")
+; (perlnow-fixdir "")
+
 
 ; todo (done, needs test):
 ; Instead of just using the HOME environment variable for a default locations,
@@ -923,6 +935,7 @@ defined expansions.")
 
 
 
+;; TODO revise what I'm saying here in light of v-strings being deprecated.
 (defvar perlnow-minimum-perl-version "5.006"
   "The minimum perl version you are interested in supporting.
 This is used to define the template expansion of MINIMUM_PERL_VERSION.
@@ -946,10 +959,11 @@ this writing, the latest is 5.8.2")
 ;;; (2) I can't think of a case where the user would be annoyed at
 ;;; me depriving them of this choice.
 
-;;; TODO refactor - I intensely dislike having separate module and
+;;; TODO refactor - I dislike having separate module and
 ;;;    script runstrings variables (both of which are almost
 ;;;    certainly nil) and the one actual run-string.
 ;;;    This is a problem multiplied by two now with the alt-run-string.
+;;;    (( And perhaps now it's "worse" with perlnow-run-string-harder ))
 
 (defvar perlnow-script-run-string nil
    "The run string for perl scripts, used by \\[perlnow-run].
@@ -1179,7 +1193,7 @@ perlcritic in addition to a \"perl -cw\"."
           (perlcritic perlnow-perlcritic-path)
           )
     (save-buffer)
-    (setq default-directory location)
+    (setq default-directory location)  ;; TODO better to use let, so that old default-directory is restored?
     (cond ( (not arg) ; no prefix
             (setq compile-command
                   (format "%s -Mstrict -cw \'%s\'" perl filename))
@@ -1217,7 +1231,7 @@ When run with a \"C-u\" prefix, the variable `perlnow-run-string-harder'
 is used instead, so that it can remember how it was
 run in either case."
 ;; TODO Docs need more work?
-;; use perlnow-run-string or (perlnow-set-run-string)
+;; use either perlnow-run-string or call (perlnow-set-run-string)
   (interactive
    (let* (
           (harder-flag current-prefix-arg)
@@ -1312,6 +1326,11 @@ instead of a single test file\)."
         (progn
           (setq perlnow-module-run-string
                 (perlnow-guess-module-run-string harder-flag))))
+
+      ;; TODO Q: what if the *.t file invoked does not exist?
+      ;;         want to deal with that only after the suggestion is accepted below.
+      ;;         Might mean: need to scrape the run-string to extract the file name.
+
       ;; ask user how to run this module (use as default next time)
       (setq perlnow-module-run-string
             (read-from-minibuffer
@@ -1345,7 +1364,7 @@ instead of a single test file\)."
 This sets the global variable `perlnow-alt-run-string' that \\[perlnow-alt-run]
 will use to run the code in future in the current buffer.
 Frequently, the user will prefer to use \\[perlnow-alt-run] and let it
-run this command indirectly if need be; however using this command
+urun this command indirectly if need be; however using this command
 directly is necessary to change the alt-run command string later.  \n
 From within a program, it's probably best to set some variables
 directly, see `perlnow-script-alt-run-string' and `perlnow-module-alt-run-string'.\n
@@ -1556,6 +1575,8 @@ double-colon separated package name form\)."
                 (concat "-n" package-name)
                 (concat "-b"
                         (perlnow-perlversion-old-to-new perlnow-minimum-perl-version))))
+               ;; TODO perlnow-perlversion-old-to-new => "v-strings", right?  This is Bad (now).
+
   (setq h2xs-staging-area (perlnow-staging-area dev-location package-name))
   (perlnow-cpan-style-build h2xs-staging-area)
   (setq h2xs-module-file (perlnow-full-path-to-cpan-style-module dev-location package-name))
@@ -2336,22 +2357,54 @@ this favors the earlier occurrence in the list."
     high_scorer)))
 
 
-;; TODO really, this is all you need, though, right?
+;; TODO DELETE SOON
+;; todo (done) really, this is close to all you need, though, right?
 ;;   (setq location (perlnow-fixdir "location/.."))
-(defun perlnow-one-up (location)
-  "Get an absolute path to the location one above the given LOCATION."
-  (setq location (perlnow-fixdir location))
+(defun perlnow-one-up-old (location)
+  "Get an absolute path to the location one above the given LOCATION.
+The empty string is treated as a synonym for root \(\"/\"\).
+Relative locations are resolved by pre-pending the default-directory.
+"
+  (setq location
+        (cond ((string= location "")
+               "/")
+              (t
+               (perlnow-fixdir location))
+              ))
   (let ((return
                  (mapconcat 'identity
                             (butlast
                              (split-string location perlnow-slash)
                              2)
                             perlnow-slash)))
-    (setq return (perlnow-fixdir return))
+    (setq return
+          (cond ((string= return "")
+                 "/")
+                (t
+                 (perlnow-fixdir return))
+                ))
     return))
+
+(defun perlnow-one-up (location)
+  "Get an absolute path to the location one above the given LOCATION.
+The empty string is treated as a synonym for root \(\"/\"\).
+Relative locations are resolved by pre-pending the default-directory."
+  (let* ( (slash perlnow-slash)
+          (root slash)  ;; TODO anything more portable?
+         )
+    (setq location
+          (cond ((string= location "")
+                 root)
+                (t
+                 (perlnow-fixdir (concat location slash "..")))
+                ))
+    location))
+
 ;; DEBUG
-;; (perlnow-one-up "/home/doom/tmp/Whatever/")
-;; (perlnow-one-up "/home/doom/tmp/Whatever")
+;; (perlnow-one-up "/home/doom/tmp/Whatever/")  =>  /home/doom/tmp/
+;; (perlnow-one-up "/home/doom/tmp/Whatever")   =>  /home/doom/tmp/
+;; (perlnow-one-up "/home/")                    =>  /
+;; (perlnow-one-up "")                          =>  /
 
 (defun perlnow-expand-dots-relative-to (dot_means given_path)
   "Using the dot definition DOT_MEANS, expand the GIVEN_PATH.
@@ -2372,30 +2425,34 @@ like: \"/home/doom/tmp/../bin\"."
    (setq newpath (perlnow-fixdir newpath))
    newpath))
 
-(defun perlnow-guess-module-run-string (&optional harder-flag)
+(defun perlnow-guess-module-run-string (&optional harder)
   "Return a good guess for an appropriate `perlnow-module-run-string'.
-By default, tries to pick the most appropriate (\"latest\") test file
-for the code, but if run with the HARDER-FLAG set to t, it tries to
-run an entire suite of appropriate tests, \n
+By default, tries to do a simple, quick test, using a single test
+file you're likely to want to run \(the \"latest\" test\), but if
+run with HARDER turned on \(set to a numeric value generated by a
+prefix command to a calling routine\), it tries to run an entire
+suite of appropriate tests, \n
 
-The \"latest\" (currently) means that it tries to find the test
+The \"latest\" \(currently\) means that it tries to find the test
 file with the highest numeric prefix, or failing that (( TODO not
 quite implemented like this )) it looks for a nearby test file of
 an appropriate name.  For example if the module were named
 New::Module, the test file could be New-Module.t or Module.t.\n
 
 But when run \"harder\", it first looks for the Makefile.PL or
-Build.PL of a cpan-style distribution, then (( TODO not implemented ))
-falls back to finding an appropriate \"t\" directory in which to run
-\"prove\".
+Build.PL of a cpan-style distribution, then falls back to finding
+a likely \"t\" directory in which to run \"prove\".  In that
+case, if the \"harder\" argument looks as though things were
+invoked with a double prefix (C-u C-u), instead of running
+\"prove\" it will run \"prove -r \"."
+  ;; TODO improve the above documentation:
+  ;; A snippet from the old docs (not sure how true this is now):
+  ;; The code searches the paths in `perlnow-test-path', which uses a familiar
+  ;; dot notation \(\".\" \"..\"\) to specify locations relative to either
+  ;; the module-file-location or the inc-spot.
+  ;; See: `perlnow-documentation-terminology' and/or
+  ;; `perlnow-documentation-test-file-strategies'.
 
-The code searches the paths in `perlnow-test-path', which uses a familiar
-dot notation \(\".\" \"..\"\) to specify locations relative to either
-the module-file-location or the inc-spot.
-
-See: `perlnow-documentation-terminology' and/or
-`perlnow-documentation-test-file-strategies'."
-  (message "perlnow-guess-module-run-string called")
   (unless (perlnow-module-code-p)
     (error "This buffer does not look like a perl module (no \"package\" line)"))
   (let* ( (package-name (perlnow-get-package-name-from-module-buffer))
@@ -2415,7 +2472,7 @@ See: `perlnow-documentation-terminology' and/or
           testloc testfile
           run-string            ; the return value
           )
-    (cond ( harder-flag
+    (cond ( harder
             ;; the cpan-style case
             (cond ( (setq staging-area (perlnow-find-cpan-style-staging-area))
                     (cond ( (file-exists-p (concat staging-area "Build.PL"))
@@ -2426,14 +2483,17 @@ See: `perlnow-documentation-terminology' and/or
                             )
                           ))
                   (t ; non-cpan-style module
-                   ;; TODO better: do a "prove *.t", maybe with a "-r"
-                   ;;      (if no better idea: turn on -r with a defcustom setting)
-                   ;;      To do this, need to find "t" directories.
-                   (setq testfile (perlnow-get-test-file-name))
-                   (setq run-string (format "perl '%s'" testfile))
-                   ))
-            )
-          (t ;; not "harder": simple/quick tests
+                   (let* ( (t-dir (car (perlnow-find-t-directories)) )
+                           )
+                     (setq run-string
+                           (cond ( (>= harder 16) ;; even harder!
+                                   (concat "cd " t-list "; prove -r"))
+                                 ( t
+                                   (concat "cd " t-list "; prove"))
+                                 )))
+                   )))
+          ;; TODO improve... make this match docs?
+          (t ;; simple/quick tests (as opposed to "harder")
            ;; the cpan-style case
            (cond ( (setq staging-area (perlnow-find-cpan-style-staging-area))
                    (setq run-string (format "perl '%s'"
@@ -2448,8 +2508,7 @@ See: `perlnow-documentation-terminology' and/or
                  (t ; non-cpan-style module
                   (setq testfile (perlnow-get-test-file-name))
                   (setq run-string (format "perl '%s'" testfile))
-                  ))
-           ))
+                  ))))
     run-string))
 
 (defun perlnow-american-date ()
@@ -2955,27 +3014,22 @@ Also sets that global variable as a side-effect."
 
 
 (defun perlnow-find-cpan-style-staging-area ()
-  "Determines if the current file buffer is located in an h2xs tree.
-Should return the path to the current h2xs staging area, or nil
+  "Determines if the current file buffer is located in an cpan-style tree.
+Should return the path to the current cpan-style staging area, or nil
 if it's not found.  The staging area is located by searching upwards
 from the location of the buffer's associated file for a place
-with a \"lib\" and/or \"t\" *and* a \"Makefile.PL\"."
+with a \"lib\" and/or \"t\" and also a \"Makefile.PL\" or a \"Build.PL\"."
 ;; Two cases I definitely want to cover:
 ;;   ~/perldev/Horror-Grossout/lib/Horror/Grossout.pm
 ;;   ~/perldev/Horror-Grossout/t/Horror-Grossout.t
-;;
-;; This uses a simple method:
-;; Crawl up from file location, until "t" and/or "lib" is found.
-;; Is there a Makefile.PL next to them?
   (message "perlnow-find-cpan-style-staging-area called")
-  (let* ( ; args for directory-files function:
-          dir       ; candidate directory under examination
+  (let* ( ;; args for directory-files function:
+          (dir "")     ;; candidate directory under examination
           (full-names nil)
-          (pattern "^[ltMB]") ; pre-screen listing for interesting results only
+          (pattern "^[ltMB]") ;; pre-screen listing for interesting results only
           (nosort t)
-
-          file-list ; file listing of the candidate directory (pre-screened)
-          return)
+          (file-list () ) ;; file listing of the candidate directory (pre-screened)
+          (return) )
     (setq dir (perlnow-fixdir (file-name-directory (buffer-file-name))))
     (setq return
           (catch 'ICE
@@ -2983,11 +3037,16 @@ with a \"lib\" and/or \"t\" *and* a \"Makefile.PL\"."
               (setq file-list (directory-files dir full-names pattern nosort))
               (dolist (file file-list)
                 (if (or (string= file "lib") (string= file "t")) ; we're here!
-                    ; start scan again: "Makefile.PL" might be before or after lib or t
+                    ;; start scan again: "Makefile.PL" might be before or after lib or t
                     (dolist (file file-list)
                       (if (or (string= file "Makefile.PL") (string= file "Build.PL")) ; we found it!
                           (throw 'ICE dir)))))
-              (setq dir (perlnow-one-up dir)))
+;;              (setq dir (perlnow-one-up dir))
+              (setq dir (perlnow-fixdir "../dir"))
+
+              (if (not (file-accessible-directory-p dir))
+                  (throw 'ICE nil))
+              ) ; end while
             (setq return nil))) ; ran the gauntlet without success, so return nil
     (if return ; skip if nothing found (and dir is "/").
         (perlnow-cpan-style-build dir))
@@ -3147,6 +3206,8 @@ Returns the module root, \(which in this example is:
                ))))
           inc-spot))
 
+;; TODO what I'm calling the "new form" here is usually
+;;      called "v-strings", and they are now deprecated.
 (defun perlnow-perlversion-old-to-new (given-version)
   "Convert old form of perl version into the new form.
 For example, an GIVEN-VERSION might be 5.006 for which the new is 5.6.0
@@ -3281,8 +3342,8 @@ the convention for temporary display buffers, i.e. it has
 a name beginning with an asterix.  Create it if it doesn't exist.
 Returns the buffer object.  Argument BUFFER can be a string or
 a buffer object.  This can work on a read-only buffer."
-  (let ((original-buff (buffer-name))
-        (original-default-directory default-directory)
+  (let ((original-buff (buffer-name))                   ;; TODO Not used, right?
+        (original-default-directory default-directory)  ;; TODO What for?
         original-read-only-status)
   ; Buffer argument may be string or buffer object
   (if (char-or-string-p buffer) ; stringp better ? would a char work?
