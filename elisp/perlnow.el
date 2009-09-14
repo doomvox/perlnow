@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.253 2009/09/13 11:29:56 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.254 2009/09/13 18:45:52 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1481,7 +1481,6 @@ creation."
     (perlnow-create-with-template filename perlnow-perl-module-template)))
 
 
-
 (defun perlnow-object-module (inc-spot package-name)
   "Quickly jump into development of a new perl OOP module.
 In interactive use, gets the path INC-SPOT and PACKAGE-NAME
@@ -1823,15 +1822,8 @@ Usage examples:
   (setq location (perlnow-fixdir location))
   (let* (
         (slash (convert-standard-filename "/"))
-        (list (split-string location slash))
+        (list (split-string location slash t)) ;; omit-nulls is on
         (retval)
-        )
-    ;; trim leading & trailing blank items
-    (if (string= (car list) "")
-        (pop list)
-        )
-    (if (string= (car (last list)) "")
-        (setq list (butlast list))
         )
     (cond ( (>= level 0)
             (setq retval (nth level list)))
@@ -1840,7 +1832,6 @@ Usage examples:
             (setq retval (nth (abs level) (reverse list))))
           )
     ))
-
 
 ;;; =======
 ;;; window management
@@ -2848,7 +2839,18 @@ has been chosen as the default to work on perl code."
 ;; exception: if it's inside a cpan-style package).
 ;; TODO needs trial and debug
 (defun perlnow-find-t-directories ()
-  "Find 't' directories associated with current file."
+  "Find 't' directories associated with current file.
+Order them in rough order of likely priority. At present, that is
+just \"top to bottom\", currently this does not use the test
+policy settings.  Note: this code looks for \"t\" files directly
+adjacent to one of the significant levels of the code's path,
+it does not, for example, do a full recursive descent from
+a module's inc-spot."
+;; TODO how would you do recursive descent if that's what you want?
+;;      could make that a flag on this code?
+;; TODO think about using test policy somehow: run the code to do
+;; a best pick of *.t files, then give it's location priority in
+;; this list.
   (let* ( (slash (convert-standard-filename "/"))
           (levels () )
           (t-list () )
@@ -2860,32 +2862,23 @@ has been chosen as the default to work on perl code."
                    (package-name (perlnow-get-package-name-from-module-buffer))
                    (inc-spot (perlnow-get-inc-spot package-name pm-location))
                    (candidate)
+                   (tail)
                    )
-
               (setq candidate (perlnow-fixdir (concat inc-spot "../t")))
               (if (file-directory-p candidate)
                   (setq t-list (cons candidate t-list)))
-
               ;;; subtract inc-spot from pm-location...
-              (if (string-match (concat "^" inc-spot "\(.*?\)$") pm-location)
+              (if (string-match (concat "^" inc-spot "\\\(.*?\\\)$") pm-location)
                   (setq tail (match-string 1 pm-location)))
               ;;; split up the tail, ala what's done in perlnow-nth-file-path-level
-              (setq levels (split-string tail slash))
-              ;; trim leading & trailing blank items
-              (if (string= (car levels) "")
-                  (pop levels)
-                )
-              (if (string= (car (last levels)) "")
-                  (setq levels (butlast levels))
-                )
-
+              (setq levels (split-string tail slash t)) ;; omit-nulls is on
               ;; append levels one at a time to inc-spot,
               ;; looking for "t" dirs at each level
               (let ( (path inc-spot)
                      )
                 (dolist (level levels)
-                  (setq path (concat path level "/"))
-                  (setq candidate (concat path "t"))
+                  (setq path (concat path level slash))
+                  (setq candidate (perlnow-fixdir (concat path "t")))
                   (if (file-directory-p candidate)
                       (setq t-list (cons candidate t-list)))
                   ))
@@ -2910,7 +2903,15 @@ has been chosen as the default to work on perl code."
     t-list
     ))
 
-
+;; DEBUG
+(defun perlnow-report-t-directories ()
+  ""
+  (interactive)
+  (let* (( t-list
+           (perlnow-find-t-directories))
+         )
+    (message "%s" t-list) ;; The %s form does automatic conversion of list (pp?)
+  ))
 
 ;;;==========================================================
 ;;; The end of perlnow-edit-test-file family of functions
@@ -2994,8 +2995,8 @@ with a \"lib\" and/or \"t\" *and* a \"Makefile.PL\"."
 
 
 ;; replaces perlnow-run-perl-makefile-pl-if-needed & perlnow-run-perl-build-pl
-;; TODO -- should this bring the display-buffer up front?
-;; TODO -- silly thing has a side-effect: changes the current buffer.  trying save-excursion...
+;; TODO -- should this bring the display-buffer up front? (you can do this
+;;         without losing focus from the current buffer, correct?)
 (defun perlnow-cpan-style-build (staging-area)
   "Does the cpan-style build in the STAGING-AREA (but only if needed).
 Specifically, this runs Makefile.PL and/or Build.PL.
