@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.256 2009/09/14 08:34:29 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.257 2009/09/15 00:32:01 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1243,16 +1243,20 @@ run in either case."
                    perlnow-run-string
                    )
                   ))
-          (input  (or
+          (run-string  (or
                    existing-run-string
                    (perlnow-set-run-string harder-flag)
                    )
                   )
           )
-     (list input)
+     (list run-string)
      ))
   ;; TODO why not stash this run-string now in one of the memory vars? -- Sep 12, 2009
-  (compile run-string))
+  ;;      is it done at a lower level?  why?
+  (if run-string
+      (compile run-string)
+    ))
+
 
 (defun perlnow-alt-run (alt-run-string)
   "Run the perl code in this file buffer.
@@ -1298,7 +1302,6 @@ to a different file."
          (replace-regexp-in-string "\\bperl " "perl -d " run-string)))
     (perldb modified-run-string)))
 
-
 (defun perlnow-set-run-string (&optional harder-flag-setting)
   "Prompt the user for a new run string for the current buffer.
 This sets the global variable `perlnow-run-string' that
@@ -1315,7 +1318,7 @@ When run with a \"C-u\" prefix \(or non-interactively, with an arg of \"t\"\)
 this works with the `perlnow-run-string-harder' variable, and
 tries to guess a more thorough way to run the code \(e.g. a test suite
 instead of a single test file\)."
-;; TODO  documentation needs more work?
+  ;; TODO  documentation needs more work?
   (interactive)
   (let* ( (harder-flag (or harder-flag-setting current-prefix-arg))
           )
@@ -1326,25 +1329,21 @@ instead of a single test file\)."
         (progn
           (setq perlnow-module-run-string
                 (perlnow-guess-module-run-string harder-flag))))
-;; TODO NEXT -- ignore if that return is nil?  ignore how?
-;; Bang out of here without setting anything?
-
-
-
-      ;; ask user how to run this module (use as default next time)
-      (setq perlnow-module-run-string
-            (read-from-minibuffer
-             "Set the run string for this module: "
-             perlnow-module-run-string))
-      ;; tell perlnow-run how to do it
-      (cond ( harder-flag
-              (setq perlnow-run-string-harder perlnow-module-run-string)
-              )
-            (t
-             (setq perlnow-run-string perlnow-module-run-string))
-            ))
+      ;; experimental hack: skip this all if the "guess" was nil
+      (cond ( perlnow-module-run-string
+              ;; ask user how to run this module (use as default next time)
+              (setq perlnow-module-run-string
+                    (read-from-minibuffer
+                     "Set the run string for this module: "
+                    perlnow-module-run-string))
+              ;; tell perlnow-run how to do it
+              (cond ( harder-flag
+                      (setq perlnow-run-string-harder perlnow-module-run-string))
+                    (t
+                     (setq perlnow-run-string perlnow-module-run-string))
+                    ))))
      (t  ;;  assume it's a script since it's not a module.
-         ;; set-up intelligent default run string
+      ;; set-up intelligent default run string
       (unless perlnow-script-run-string
         (progn
           (setq perlnow-script-run-string
@@ -1792,7 +1791,7 @@ double-colon seperated form, e.g. \"Modular::Stuff\"."
     (re-search-forward pattern nil t)
     (setq whitespace (match-string 1))
     (move-beginning-of-line 1)
-    return whitespace))
+    whitespace))
 
 ;; TODO
 ;; This ends up with a doubled display if
