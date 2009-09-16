@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.257 2009/09/15 00:32:01 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.258 2009/09/15 19:37:21 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1185,15 +1185,15 @@ perlcritic in addition to a \"perl -cw\"."
   (let* ( (full-file (buffer-file-name))
           (location (file-name-directory full-file))
           (filename (file-name-nondirectory full-file))
+          (default-directory location)
 
-          (perl perlnow-perl-path)
+          (perl       perlnow-perl-path)
           (podchecker perlnow-podchecker-path)
           ; TODO probe for perlcritic, set to nil if it's not installed.
           ;   perlcritic --version  =>  1.102
           (perlcritic perlnow-perlcritic-path)
           )
     (save-buffer)
-    (setq default-directory location)  ;; TODO better to use let, so that old default-directory is restored?
     (cond ( (not arg) ; no prefix
             (setq compile-command
                   (format "%s -Mstrict -cw \'%s\'" perl filename))
@@ -1231,23 +1231,24 @@ When run with a \"C-u\" prefix, the variable `perlnow-run-string-harder'
 is used instead, so that it can remember how it was
 run in either case."
 ;; TODO Docs need more work?
-;; use either perlnow-run-string or call (perlnow-set-run-string)
+;; this uses either perlnow-run-string or perlnow-run-string-harder,
+;; or it calls (perlnow-set-run-string)
   (interactive
    (let* (
-          (harder-flag current-prefix-arg)
+          (harder-setting current-prefix-arg)
           (existing-run-string
-            (cond ( harder-flag
+            (cond ( harder-setting
                     perlnow-run-string-harder
                    )
                   (t
                    perlnow-run-string
                    )
                   ))
-          (run-string  (or
-                   existing-run-string
-                   (perlnow-set-run-string harder-flag)
-                   )
-                  )
+          (run-string
+           (or
+            existing-run-string
+            (perlnow-set-run-string harder-setting)
+            ))
           )
      (list run-string)
      ))
@@ -1520,14 +1521,14 @@ The location for the new module defaults to the global
            (read-from-minibuffer
             "New OOP module to create \(e.g. /tmp/dev/New::Mod\): "
                                  initial keymap nil history nil nil))
-     ;;; TODO: check 'result', if it has a .pm file already, strip it first.
+     (setq result (replace-regexp-in-string "\.pm$" "" result)) ; remove accidentally typed ".pm"
      (setq filename (concat (replace-regexp-in-string "::" perlnow-slash result) ".pm"))
      (while (file-exists-p filename)
        (setq result
              (read-from-minibuffer
               "This name is in use, choose another \(e.g. /tmp/dev/New::Mod\): "
                                  result keymap nil history nil nil))
-     ;;; TODO: check 'result', if it has a .pm file already, strip it first.
+       (setq result (replace-regexp-in-string "\.pm$" "" result)) ; remove accidentally typed ".pm"
        (setq filename (concat (replace-regexp-in-string "::" perlnow-slash result) ".pm")))
      (setq return
            (perlnow-split-perlish-package-name-with-path-to-inc-spot-and-name result))
