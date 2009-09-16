@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.263 2009/09/16 03:11:35 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.264 2009/09/16 03:28:00 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -2487,11 +2487,13 @@ invoked with a double prefix (C-u C-u), instead of running
                                    (concat "cd " t-list "; prove"))
                                  )))
                    )))
+
           ;; TODO improve... make this match docs?
           (t ;; simple/quick tests (as opposed to "harder")
            ;; the cpan-style case
            (cond ( (setq staging-area (perlnow-find-cpan-style-staging-area))
-                   (setq run-string (format "perl '%s'"
+                   (setq run-string (format "%s '%s'"
+                                            perlnow-perl-path
                                             (perlnow-latest-test-file
                                              (perlnow-list-test-files
                                               "../t"
@@ -2508,7 +2510,7 @@ invoked with a double prefix (C-u C-u), instead of running
                           (setq run-string nil) ;; TODO is this Okay?  Don't *want* it to run yet.
                           )
                         (t
-                         (setq run-string (format "perl '%s'" testfile))
+                         (setq run-string (format "%s '%s'" perlnow-perl-path testfile))
                          ))
                   ))))
     run-string))
@@ -3008,7 +3010,7 @@ Also sets that global variable as a side-effect."
   ;;# check for hash bang:
   (cond ( (setq perl-command (perlnow-hashbang))
            ; preserve the hash-bang run string, e.g. to preserve -T
-          (setq run-line (concat perl-command " " filename))
+          (setq run-line (concat perl-command " '" filename "'"))
            )
         ( (string-match "\.t$"  filename) ; it's a test file
           (cond ( (setq staging-area (perlnow-find-cpan-style-staging-area))
@@ -3020,13 +3022,13 @@ Also sets that global variable as a side-effect."
                           )
                         ))
                 (t ; non-cpan-style code
-                 (setq run-line (format "perl %s" filename))
+                 (setq run-line (concat perlnow-perl-path " '" filename "'"))
                  )
              )
           )
         (t ; When all else fails, just feed it to perl and hope for the best
-         (setq run-line (format "perl %s" filename))
-          ))
+         (setq run-line (concat perlnow-perl-path " '" filename "'"))
+         ))
   (setq perlnow-script-run-string run-line)
   run-line))
 
