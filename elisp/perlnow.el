@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.261 2009/09/16 02:54:51 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.262 2009/09/16 02:55:09 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1154,8 +1154,8 @@ comment-region and narrow-to-defun."
                )"
                ))
          )
-    (add-hook 'cperl-mode-hook (eval (read define-perl-bindings)))
-    (add-hook 'perl-mode-hook  (eval (read define-perl-bindings)))
+    (add-hook 'cperl-mode-hook (eval (read define-perl-bindings-string)))
+    (add-hook 'perl-mode-hook  (eval (read define-perl-bindings-string)))
     ))
 
 
