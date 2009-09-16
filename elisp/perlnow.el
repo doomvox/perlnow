@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.258 2009/09/15 19:37:21 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.259 2009/09/16 02:00:41 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -185,11 +185,11 @@ to modify them individually:
    \(global-set-key \"\\C-c/~\" 'perlnow-perlify-this-buffer-simple\)
 
 Above, the odd prefix \"control-c slash\" has been used because
-the C-c <punctuation> bindings are the only places in the keymap
-allocated for minor modes, and while the perlnow.el package is
-not a minor-mode, it has some aspects in common with them.  The
-slash was choosen because it's unshifted and on the opposite side
-from the \"c\" \(on typical keyboards\).
+the C-c <punctuation> bindings are reserved for minor modes,
+and while the perlnow.el package is not a minor-mode, it has some
+aspects in common with them.  The slash was choosen because it's
+unshifted and on the opposite side from the \"c\" \(on typical
+keyboards\).
 
 You, on the other hand, are free to do whatever you want in
 your .emacs, and you might prefer other assignments, such
@@ -204,9 +204,8 @@ Some examples:
 
 When looking for a good prefix to attach \"perl\" stuff, consider
 that \"C-x p\" is used by the p4.el package \(a front-end to the
-proprietary perforce version control system\), and you should be
-aware that \"M-p\" is used in many contexts for \"history\"
-navigation.
+proprietary perforce version control system\), and remember that
+\"M-p\" is used in many contexts for \"history\" navigation.
 
 Caveats: perlnow.el was developed using GNU emacs 21.1 running
 on a linux box \(or GNU/Linux, if you prefer\).  This version
@@ -502,7 +501,10 @@ Note that \\[perlnow-module-starter] defaults to using the newer
 Module::Build framework, while \\[perlnow-h2xs] defaults to using
 the ExtUtils::MakeMaker approach.
 
-\(TODO the perlnow-module-starter default can be changed by using... \)
+The \\[perlnow-module-starter] default can be changed by
+setting the `perlnow-module-starter-builder' variable.
+Also, \\[perlnow-module-starter] respects the preference specified
+by the `perlnow-module-style', which defaults to \"object\".
 
 If you do a \\[perlnow-run] inside of a cpan-style module, it
 will identify it and use a different run string: \".Build test\"
@@ -682,40 +684,22 @@ Next:
 ;;;;##########################################################################
 
 
-;; TODO should I add a second argument, an optional ROOT that
-;; could be passed in as a second arg to expand-file-name?
-(defun perlnow-fixdir (dir)
+(defun perlnow-fixdir (dir &optional root)
   "Fixes the DIR.
 Conditions directory paths for portability and robustness.
 Some examples:
  '~/tmp'             => '/home/doom/tmp/'
  '~/tmp/../bin/test' => '/home/bin/test/'
 Note: converts relative paths to absolute, using the current
-default-directory setting.
-As a side-effect converts the empty string into the default-directory."
+default-directory setting, unless specified otherwise with the
+ROOT option.  Note side-effect: converts the empty string into
+the default-directory or the ROOT setting."
   (let ((return
          (substitute-in-file-name
           (convert-standard-filename
            (file-name-as-directory
-            (expand-file-name dir))))))
+            (expand-file-name dir root))))))
     return))
-; (perlnow-fixdir "~/tmp")
-; (perlnow-fixdir "~/tmp/../bin/bupkes")
-; (perlnow-fixdir "~/..")
-; (perlnow-fixdir "~/../..")
-; relative paths are resolve using default-directory
-; (perlnow-fixdir "../../..")
-; (perlnow-fixdir "")
-
-
-; todo (done, needs test):
-; Instead of just using the HOME environment variable for a default locations,
-; the following first looks for
-;   ~/bin  ~/lib
-; and if they don't exist, silently falls back on HOME
-
-;; (defcustom perlnow-script-location (file-name-as-directory (getenv "HOME"))
-;;  "This is the default location to stash new perl scripts.")
 
 (defcustom perlnow-script-location
   (cond ( (file-directory-p  (perlnow-fixdir "$HOME/bin"))
@@ -725,9 +709,6 @@ As a side-effect converts the empty string into the default-directory."
          (perlnow-fixdir "$HOME")
          ))
   "This is the default location to stash new perl scripts.")
-
-;; (defcustom perlnow-pm-location (file-name-as-directory (getenv "HOME"))
-;;   "This is the default location to stash new perl modules.")
 
 (defcustom perlnow-pm-location
   (cond ( (file-directory-p  (perlnow-fixdir "$HOME/lib"))
@@ -746,7 +727,7 @@ As a side-effect converts the empty string into the default-directory."
 
 (defvar perlnow-template-location (perlnow-fixdir "$HOME/.templates")
   "Standard location for template.el templates.")
-  ;; TODO Q: if that doesn't exist, I could try falilng back to this:
+  ;; TODO  if that doesn't exist, I could try falilng back to this:
   ;;   (car template-default-directories)
 
 (defcustom perlnow-perl-script-template
@@ -933,37 +914,33 @@ defined expansions.")
       '("LICENSE" (insert perlnow-license-message))
       template-expansion-alist))
 
-
-
-;; TODO revise what I'm saying here in light of v-strings being deprecated.
 (defvar perlnow-minimum-perl-version "5.006"
   "The minimum perl version you are interested in supporting.
-This is used to define the template expansion of MINIMUM_PERL_VERSION.
-Note that perl version numbers jumped from 5.006 to 5.7.0.  As of
-this writing, the latest is 5.8.2")
+This is used to define the template expansion for \(>>>MINIMUM_PERL_VERSION<<<\).
+For versions of perl later than 5.006, version numbers looking like
+5.7.0 or 5.8.2 were often used.  My guess -- the subject is actually
+insanely complicated -- is that you're safest with a version such
+as \"5.008002\" rather than \"5.8.2\".")
 ; Defining feature MINIMUM_PERL_VERSION to insert the above as an
 ; an "expansion" in a template.el template: (>>>MINIMUM_PERL_VERSION<<<);
 (setq template-expansion-alist
       (cons
       '("MINIMUM_PERL_VERSION" (insert perlnow-minimum-perl-version))
       template-expansion-alist))
-;;; DEBUG note: eval this to erase effects of the above two settings:
-;;; (setq template-expansion-alist 'nil)
 
-
-;;; I am following my instinct and using make-variable-buffer-local
-;;; to force the following to always be buffer-local, despite the
-;;; admonition in the emacs lisp ref.
+;;; The following variables are always buffer-local.  There is an
+;;; admonition against this in the emacs lisp reference but I
+;;; don't believe the reasoning applies here.
 ;;; (1) this makes the code a little simpler (I don't want to have
 ;;; to remember to use make-local-variable in different places);
-;;; (2) I can't think of a case where the user would be annoyed at
-;;; me depriving them of this choice.
+;;; (2) I can't think of a case where the user would be annoyed
+;;; by this.
 
-;;; TODO refactor - I dislike having separate module and
-;;;    script runstrings variables (both of which are almost
-;;;    certainly nil) and the one actual run-string.
-;;;    This is a problem multiplied by two now with the alt-run-string.
-;;;    (( And perhaps now it's "worse" with perlnow-run-string-harder ))
+;;; TODO refactor - are there too many of these buffer-local vars?
+;;;  E.g. I have separate module and script runstrings variables
+;;;  (both of which are almost certainly nil) and the one
+;;;  actual run-string.  And that's multiplied by 2 with the
+;;;  "alt-run-string" feature.
 
 (defvar perlnow-script-run-string nil
    "The run string for perl scripts, used by \\[perlnow-run].
@@ -991,8 +968,6 @@ See `perlnow-script-run-string' and `perlnow-module-run-string' instead.")
 (put 'perlnow-run-string  'risky-local-variable t)
 (make-variable-buffer-local 'perlnow-run-string)
 
-
-;; TODO better name?
 (defvar perlnow-run-string-harder nil
    "Tells \\[perlnow-run] how to run code in a buffer, if given C-u prefix.
 This is a buffer local variable which is set by \\[perlnow-script-run-string],
@@ -1036,8 +1011,9 @@ See `perlnow-script-alt-run-string' and `perlnow-module-alt-run-string' instead.
 (make-variable-buffer-local 'perlnow-alt-run-string)
 
 (defvar perlnow-associated-code nil
-  "Associated code for the current buffer (presumably a test file).
-Used by \\[perlnow-back-to-code].")
+  "A buffer associated with the current buffer.
+Typicially a module might be associated with it's test file,
+and vice-versa.  Used by \\[perlnow-back-to-code].")
 (put 'perlnow-associated-code  'risky-local-variable t)
 (make-variable-buffer-local 'perlnow-associated-code)
 
@@ -1149,28 +1125,54 @@ comment-region and narrow-to-defun."
  ; about possible collisions...
   (interactive)
   (unless prefix (setq prefix "\C-c/"))
+  ;; TODO these should be truly global, runnable from any mode
+  ;;      make that conditional on a defcustom setting?
   (global-set-key (format "%ss" prefix) 'perlnow-script)
   (global-set-key (format "%sm" prefix) 'perlnow-module)
   (global-set-key (format "%so" prefix) 'perlnow-object-module)
   (global-set-key (format "%sh" prefix) 'perlnow-h2xs)
   (global-set-key (format "%sO" prefix) 'perlnow-module-starter)
-  (global-set-key (format "%sc" prefix) 'perlnow-run-check)
-  (global-set-key (format "%sr" prefix) 'perlnow-run)
-  (global-set-key (format "%sa" prefix) 'perlnow-alt-run)
-  (global-set-key (format "%sd" prefix) 'perlnow-perldb)
-  (global-set-key (format "%sR" prefix) 'perlnow-set-run-string)
-  (global-set-key (format "%sA" prefix) 'perlnow-set-alt-run-string)
-  (global-set-key (format "%st" prefix) 'perlnow-edit-test-file)
-  (global-set-key (format "%sb" prefix) 'perlnow-back-to-code)
-  (global-set-key (format "%s~" prefix) 'perlnow-perlify-this-buffer-simple)
-  (global-set-key (format "%s1" prefix) 'cperl-perldoc-at-point)
-  (global-set-key (format "%s#" prefix) 'comment-region)
-  (global-set-key (format "%sN" prefix) 'narrow-to-defun))
+
+  ;; the following need only be defined in perl-mode and cperl-mode
+  ;; TODO refactor, reduce the redundancy (define anon routine, use it twice)
+  (add-hook 'cperl-mode-hook
+            '(lambda ()
+               (global-set-key (format "%sc" prefix) 'perlnow-run-check)
+               (global-set-key (format "%sr" prefix) 'perlnow-run)
+               (global-set-key (format "%sa" prefix) 'perlnow-alt-run)
+               (global-set-key (format "%sd" prefix) 'perlnow-perldb)
+               (global-set-key (format "%sR" prefix) 'perlnow-set-run-string)
+               (global-set-key (format "%sA" prefix) 'perlnow-set-alt-run-string)
+               (global-set-key (format "%st" prefix) 'perlnow-edit-test-file)
+               (global-set-key (format "%sb" prefix) 'perlnow-back-to-code)
+               (global-set-key (format "%s1" prefix) 'cperl-perldoc-at-point)
+               (global-set-key (format "%s#" prefix) 'comment-region)
+               (global-set-key (format "%sN" prefix) 'narrow-to-defun)
+               ))
+  (add-hook 'perl-mode-hook
+            '(lambda ()
+               (global-set-key (format "%sc" prefix) 'perlnow-run-check)
+               (global-set-key (format "%sr" prefix) 'perlnow-run)
+               (global-set-key (format "%sa" prefix) 'perlnow-alt-run)
+               (global-set-key (format "%sd" prefix) 'perlnow-perldb)
+               (global-set-key (format "%sR" prefix) 'perlnow-set-run-string)
+               (global-set-key (format "%sA" prefix) 'perlnow-set-alt-run-string)
+               (global-set-key (format "%st" prefix) 'perlnow-edit-test-file)
+               (global-set-key (format "%sb" prefix) 'perlnow-back-to-code)
+               (global-set-key (format "%s1" prefix) 'cperl-perldoc-at-point)
+               (global-set-key (format "%s#" prefix) 'comment-region)
+               (global-set-key (format "%sN" prefix) 'narrow-to-defun)
+               ))
+  ;; not sure about the utility of this one
+  ;; (global-set-key (format "%s~" prefix) 'perlnow-perlify-this-buffer-simple)
+)
 
 ;;;==========================================================
 ;;; functions to run perl scripts
 
 ; TODO scrape hashbang (if present): perlnow-perl-path should only be the default.
+;; (setq perl-command (perlnow-hashbang))
+;;           ; preserve the hash-bang run string, e.g. to preserve -T
 (defun perlnow-run-check (arg)
   "Run a perl check on the current buffer.
 This displays errors and warnings in another window, in the usual
@@ -1782,31 +1784,41 @@ The test policy is defined by this trio of variables:
 (defun perlnow-jump-to-use (package-name)
   "Given the PACKAGE-NAME, jumps to the point before the \'use\' line.
 Specifically, these leaves the cursor at the start of the line
-that does a \"use\" or \"use_ok\" of the module given in perl's
-double-colon seperated form, e.g. \"Modular::Stuff\"."
+that does a \"use\" or \"use_ok\" of the named module specified in
+perl's double-colon seperated form, e.g. \"Modular::Stuff\"."
   (let ( ( pattern (format "^\\([ \t]*\\)use.*?\\b%s\\b" package-name) )
          ( whitespace "" )
          )
-    ;; (message "pattern: %s " pattern);; DEBUG
     (goto-char (point-min))
     (re-search-forward pattern nil t)
     (setq whitespace (match-string 1))
     (move-beginning-of-line 1)
     whitespace))
 
-;; TODO
-;; This ends up with a doubled display if
-;; the buffer is *already* displayed.  Would be
-;; better to switch windows if it there's an already
-;; active window.
+
+
 (defun perlnow-back-to-code ()
-  "Return to the code that this testfile is for.
-Experimental feature.  Functionality may change."
+  "Return to the buffer that the current buffer is presently
+associated with.  Perlnow commands often leave tracks in the form
+of settings of the `perlnow-associated-code' buffer-local
+variable.  For example, if you use a perlnow command to open a
+test file from a module, both buffers will be pointing at each
+other, so that this command can easily be used to switch back and
+forth between them, even in cases where \\[switch-to-buffer]
+would be confused.  If the buffer is already displayed in another
+window of the current frame, this will switch to that window."
+  ;; Note perlnow-associated-code is automatically updated by
+  ;; perlnow-open-file-other-window.
   (interactive)
-; Uses buffer-local variable:
-;    perlnow-associated-code
-; set by perlnow-edit-test-file, etc.
-  (find-file perlnow-associated-code))
+  (let* ( (other-buffer perlnow-associated-code)
+          (existing-window (get-buffer-window other-buffer nil)) ;; checks *this* frame only
+          )
+    (cond ( existing-window
+            (select-window existing-window))
+          (t
+           (find-file other-buffer))
+          )
+    ))
 
 
 ;;;==========================================================
@@ -1872,11 +1884,9 @@ window (defaults to half of frame height); TEMPLATE a
 template.el template to be used in creating a new file
 buffer.  If SWITCHBACK is true, the cursor is left in the
 original window, not the new one."
-;;; TODO -
-;;; Inelegant interface: *requires* NUMBLINES if you want to feed it a TEMPLATE
-  ; before you open, point at where you're going to be from here
-  (setq perlnow-associated-code file)    ; bufloc, used by "C-c/b"
-  ; and save name of what we're looking at
+  ;; before you open, point at where you're going to be from here
+  (setq perlnow-associated-code file)    ;; bufloc, used by "C-c/b"
+  ;; and save name of what we're looking at
   (setq original-file-displayed (buffer-file-name)) ; Doesn't work if just a buffer without file...
   (unless numblines
     (setq numblines (- (/ (screen-height) 2) 1) )) ; new window defaults to half of frame height
@@ -3168,6 +3178,30 @@ Output is appended to the *perlnow-h2xs* window."
                             "Makefile.PL"
                             ))))))
 
+(defun perlnow-how-to-perl ()
+  "Define how to run perl for the current buffer.
+Gives precedence to the way it's done with the hash-bang line if
+that's found at the top of the file \(this preserves whatever
+path and options the author of the code intended, e.g. the \"-T\"
+flag\).  If that's not found, it uses the contents of the
+`perlnow-perl-path' variable, and if that has not been defined
+falls back to just \"perl\"."
+  (let* ( (perl-from-hashbang (perlnow-hashbang))
+          (how-to-perl "")
+          )
+    (cond ( perl-from-hashbang
+            (setq how-to-perl perl-from-hashbang)
+            )
+          ( perlnow-perl-path
+            (message "yow!")
+            (setq how-to-perl perlnow-perl-path)
+           )
+          (t
+            (setq how-to-perl "perl")
+           )
+          )
+    how-to-perl
+    ))
 
 (defun perlnow-hashbang ()
   "What is the hash bang line for this file buffer?
@@ -3185,9 +3219,9 @@ Returns nil if there is none."
            (return "")
            )
       (goto-char (point-min)) ; Presume the hash bang, if any, is the first line (no blanks or comments)
-      (looking-at hash-bang-pat) ; why not just string-match?
-      (setq return
-            (match-string 1))
+      (if (looking-at hash-bang-pat)
+          (setq return
+                (match-string 1)))
       )))
 
 (defun perlnow-get-inc-spot (package-name pm-location)
