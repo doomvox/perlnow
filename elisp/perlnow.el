@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.259 2009/09/16 02:00:41 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.260 2009/09/16 02:51:00 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1133,39 +1133,67 @@ comment-region and narrow-to-defun."
   (global-set-key (format "%sh" prefix) 'perlnow-h2xs)
   (global-set-key (format "%sO" prefix) 'perlnow-module-starter)
 
-  ;; the following need only be defined in perl-mode and cperl-mode
-  ;; TODO refactor, reduce the redundancy (define anon routine, use it twice)
-  (add-hook 'cperl-mode-hook
-            '(lambda ()
-               (global-set-key (format "%sc" prefix) 'perlnow-run-check)
-               (global-set-key (format "%sr" prefix) 'perlnow-run)
-               (global-set-key (format "%sa" prefix) 'perlnow-alt-run)
-               (global-set-key (format "%sd" prefix) 'perlnow-perldb)
-               (global-set-key (format "%sR" prefix) 'perlnow-set-run-string)
-               (global-set-key (format "%sA" prefix) 'perlnow-set-alt-run-string)
-               (global-set-key (format "%st" prefix) 'perlnow-edit-test-file)
-               (global-set-key (format "%sb" prefix) 'perlnow-back-to-code)
-               (global-set-key (format "%s1" prefix) 'cperl-perldoc-at-point)
-               (global-set-key (format "%s#" prefix) 'comment-region)
-               (global-set-key (format "%sN" prefix) 'narrow-to-defun)
-               ))
-  (add-hook 'perl-mode-hook
-            '(lambda ()
-               (global-set-key (format "%sc" prefix) 'perlnow-run-check)
-               (global-set-key (format "%sr" prefix) 'perlnow-run)
-               (global-set-key (format "%sa" prefix) 'perlnow-alt-run)
-               (global-set-key (format "%sd" prefix) 'perlnow-perldb)
-               (global-set-key (format "%sR" prefix) 'perlnow-set-run-string)
-               (global-set-key (format "%sA" prefix) 'perlnow-set-alt-run-string)
-               (global-set-key (format "%st" prefix) 'perlnow-edit-test-file)
-               (global-set-key (format "%sb" prefix) 'perlnow-back-to-code)
-               (global-set-key (format "%s1" prefix) 'cperl-perldoc-at-point)
-               (global-set-key (format "%s#" prefix) 'comment-region)
-               (global-set-key (format "%sN" prefix) 'narrow-to-defun)
-               ))
+;; (setq code-string "(somefunc (car (cdr blah)))")
+;; (eval (read code-string)
+
+  (let ( ( define-perl-bindings-string
+           (format
+            "'(lambda ()
+               (global-set-key \"%sc\" 'perlnow-run-check)
+               (global-set-key \"%sr\" 'perlnow-run)
+               (global-set-key \"%sa\" 'perlnow-alt-run)
+               (global-set-key \"%sd\" 'perlnow-perldb)
+               (global-set-key \"%sR\" 'perlnow-set-run-string)
+               (global-set-key \"%sA\" 'perlnow-set-alt-run-string)
+               (global-set-key \"%st\" 'perlnow-edit-test-file)
+               (global-set-key \"%sb\" 'perlnow-back-to-code)
+               (global-set-key \"%s1\" 'cperl-perldoc-at-point)
+               (global-set-key \"%s#\" 'comment-region)
+               (global-set-key \"%sN\" 'narrow-to-defun)
+               )"
+               prefix
+               )
+           )
+         )
+    (add-hook 'cperl-mode-hook (eval (read define-perl-bindings)))
+    (add-hook 'perl-mode-hook  (eval (read define-perl-bindings)))
+    ))
+
+
+;;   ;; the following need only be defined in perl-mode and cperl-mode
+;;   ;; TODO refactor, reduce the redundancy (define anon routine, use it twice)
+
+;;   (add-hook 'cperl-mode-hook
+;;             '(lambda ( prefix )
+;;                (global-set-key (format "%sc" prefix) 'perlnow-run-check)
+;;                (global-set-key (format "%sr" prefix) 'perlnow-run)
+;;                (global-set-key (format "%sa" prefix) 'perlnow-alt-run)
+;;                (global-set-key (format "%sd" prefix) 'perlnow-perldb)
+;;                (global-set-key (format "%sR" prefix) 'perlnow-set-run-string)
+;;                (global-set-key (format "%sA" prefix) 'perlnow-set-alt-run-string)
+;;                (global-set-key (format "%st" prefix) 'perlnow-edit-test-file)
+;;                (global-set-key (format "%sb" prefix) 'perlnow-back-to-code)
+;;                (global-set-key (format "%s1" prefix) 'cperl-perldoc-at-point)
+;;                (global-set-key (format "%s#" prefix) 'comment-region)
+;;                (global-set-key (format "%sN" prefix) 'narrow-to-defun)
+;;                ))
+;;   (add-hook 'perl-mode-hook
+;;             '(lambda ( prefix )
+;;                (global-set-key (format "%sc" prefix) 'perlnow-run-check)
+;;                (global-set-key (format "%sr" prefix) 'perlnow-run)
+;;                (global-set-key (format "%sa" prefix) 'perlnow-alt-run)
+;;                (global-set-key (format "%sd" prefix) 'perlnow-perldb)
+;;                (global-set-key (format "%sR" prefix) 'perlnow-set-run-string)
+;;                (global-set-key (format "%sA" prefix) 'perlnow-set-alt-run-string)
+;;                (global-set-key (format "%st" prefix) 'perlnow-edit-test-file)
+;;                (global-set-key (format "%sb" prefix) 'perlnow-back-to-code)
+;;                (global-set-key (format "%s1" prefix) 'cperl-perldoc-at-point)
+;;                (global-set-key (format "%s#" prefix) 'comment-region)
+;;                (global-set-key (format "%sN" prefix) 'narrow-to-defun)
+;;                ))
   ;; not sure about the utility of this one
   ;; (global-set-key (format "%s~" prefix) 'perlnow-perlify-this-buffer-simple)
-)
+
 
 ;;;==========================================================
 ;;; functions to run perl scripts
