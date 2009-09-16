@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.264 2009/09/16 03:28:00 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.265 2009/09/16 03:30:18 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -2350,35 +2350,6 @@ this favors the earlier occurrence in the list."
              ))
     high_scorer)))
 
-
-;; TODO DELETE SOON
-;; todo (done) really, this is close to all you need, though, right?
-;;   (setq location (perlnow-fixdir "location/.."))
-(defun perlnow-one-up-old (location)
-  "Get an absolute path to the location one above the given LOCATION.
-The empty string is treated as a synonym for root \(\"/\"\).
-Relative locations are resolved by pre-pending the default-directory.
-"
-  (setq location
-        (cond ((string= location "")
-               "/")
-              (t
-               (perlnow-fixdir location))
-              ))
-  (let ((return
-                 (mapconcat 'identity
-                            (butlast
-                             (split-string location perlnow-slash)
-                             2)
-                            perlnow-slash)))
-    (setq return
-          (cond ((string= return "")
-                 "/")
-                (t
-                 (perlnow-fixdir return))
-                ))
-    return))
-
 (defun perlnow-one-up (location)
   "Get an absolute path to the location one above the given LOCATION.
 The empty string is treated as a synonym for root \(\"/\"\).
@@ -3117,53 +3088,6 @@ Output is appended to the *perlnow-build* window."
       return-flag
       )))
 
-;; TODO DELETE SOON
-;;; The Module::Build analog of: perlnow-run-perl-makefile-pl-if-needed
-(defun perlnow-run-perl-build-pl (staging-area)
-  "Given a STAGING-AREA in an h2xs tree, runs \"perl Build.PL\" if needed.
-Looks to see if there's a file named Build there, and if not,
-runs the \"perl Build.PL\" command to generate it.
-Output is appended to the *perlnow-build* window."
-
-;;; Note, this *presumes* that you're inside an staging-area, it does not check.
-;;; TODO should really compare age of Build vs Build.PL
-  (message "perlnow-run-perl-build-pl called")
-  (let (display-buffer )
-    (cond ( (not (file-regular-p (concat staging-area "Build")))
-            (setq display-buffer (get-buffer-create "*perlnow-build*"))
-            (set-buffer display-buffer)
-            (insert "Trying to generate Build from Build.PL\n")
-            (let ( (default-directory staging-area) )
-              (call-process "perl"
-                            nil
-                            display-buffer
-                            nil
-                            "Build.PL"
-                            ))))))
-
-
-
-;; TODO DELETE SOON
-(defun perlnow-run-perl-makefile-pl-if-needed (h2xs-staging-area)
-  "Given a H2XS-STAGING-AREA in an h2xs tree, runs \"perl Makefile.PL\" if needed.
-This looks to see if there's a Makefile there, and if not,
-runs the \"perl Makefile.PL\" command to generate it.
-Output is appended to the *perlnow-h2xs* window."
-;;; Note, this *presumes* that you're inside an h2xs-staging-area, it does not check.
-;;; TODO should really compare age of Makefile vs Makefile.PL
-  (let (display-buffer )
-    (cond ( (not (file-regular-p (concat h2xs-staging-area "Makefile")))
-            (setq display-buffer (get-buffer-create "*perlnow-h2xs*"))
-            (set-buffer display-buffer)
-            (insert "Trying to generate Makefile from Makefile.PL\n")
-            (let ( (default-directory h2xs-staging-area) )
-              (call-process "perl"
-                            nil
-                            display-buffer
-                            nil
-                            "Makefile.PL"
-                            ))))))
-
 (defun perlnow-how-to-perl ()
   "Define how to run perl for the current buffer.
 Gives precedence to the way it's done with the hash-bang line if
@@ -3251,7 +3175,8 @@ Returns the module root, \(which in this example is:
           inc-spot))
 
 ;; TODO what I'm calling the "new form" here is usually
-;;      called "v-strings", and they are now deprecated.
+;;      called "v-strings", and they have been going
+;;      in-and-out of style.
 (defun perlnow-perlversion-old-to-new (given-version)
   "Convert old form of perl version into the new form.
 For example, an GIVEN-VERSION might be 5.006 for which the new is 5.6.0
