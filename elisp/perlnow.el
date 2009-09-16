@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.260 2009/09/16 02:51:00 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.261 2009/09/16 02:54:51 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1136,8 +1136,9 @@ comment-region and narrow-to-defun."
 ;; (setq code-string "(somefunc (car (cdr blah)))")
 ;; (eval (read code-string)
 
-  (let ( ( define-perl-bindings-string
-           (format
+  (let ( (define-perl-bindings-string
+           (replace-regexp-in-string
+            "%s" prefix
             "'(lambda ()
                (global-set-key \"%sc\" 'perlnow-run-check)
                (global-set-key \"%sr\" 'perlnow-run)
@@ -1151,9 +1152,7 @@ comment-region and narrow-to-defun."
                (global-set-key \"%s#\" 'comment-region)
                (global-set-key \"%sN\" 'narrow-to-defun)
                )"
-               prefix
-               )
-           )
+               ))
          )
     (add-hook 'cperl-mode-hook (eval (read define-perl-bindings)))
     (add-hook 'perl-mode-hook  (eval (read define-perl-bindings)))
