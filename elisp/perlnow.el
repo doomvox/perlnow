@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.262 2009/09/16 02:55:09 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.263 2009/09/16 03:11:35 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1117,25 +1117,21 @@ it make more sense to use no prefix on getters?")
 functions.  By default, perlnow.el makes no changes to the user's
 keymap. This function is provided to make it easy for you
 to adopt a standard set of keymappings, but they're not
-forced on you.  Note: these all use the \"C-c/\" prefix.  A few
-mappings are also included for useful functions that are defined
-outside of the perlnow.el package: cperl-perldoc-at-point,
-comment-region and narrow-to-defun."
- ; TODO - Would be even cooler if it looked for and warned
- ; about possible collisions...
+forced on you.  Note: these all use the \"C-c/\" prefix by
+default, unless a different PREFIX is supplied.
+A few mappings are also included for useful functions that are
+defined outside of the perlnow.el package:
+cperl-perldoc-at-point, comment-region and narrow-to-defun."
   (interactive)
   (unless prefix (setq prefix "\C-c/"))
-  ;; TODO these should be truly global, runnable from any mode
-  ;;      make that conditional on a defcustom setting?
+  ;; These need to be defined widely in all (or most) modes
+  ;; because they're for jumping into perl code.
   (global-set-key (format "%ss" prefix) 'perlnow-script)
   (global-set-key (format "%sm" prefix) 'perlnow-module)
   (global-set-key (format "%so" prefix) 'perlnow-object-module)
   (global-set-key (format "%sh" prefix) 'perlnow-h2xs)
   (global-set-key (format "%sO" prefix) 'perlnow-module-starter)
-
-;; (setq code-string "(somefunc (car (cdr blah)))")
-;; (eval (read code-string)
-
+  ;; These bindings can be specific to the user's favorite perl mode.
   (let ( (define-perl-bindings-string
            (replace-regexp-in-string
             "%s" prefix
@@ -1158,48 +1154,9 @@ comment-region and narrow-to-defun."
     (add-hook 'perl-mode-hook  (eval (read define-perl-bindings-string)))
     ))
 
-
-;;   ;; the following need only be defined in perl-mode and cperl-mode
-;;   ;; TODO refactor, reduce the redundancy (define anon routine, use it twice)
-
-;;   (add-hook 'cperl-mode-hook
-;;             '(lambda ( prefix )
-;;                (global-set-key (format "%sc" prefix) 'perlnow-run-check)
-;;                (global-set-key (format "%sr" prefix) 'perlnow-run)
-;;                (global-set-key (format "%sa" prefix) 'perlnow-alt-run)
-;;                (global-set-key (format "%sd" prefix) 'perlnow-perldb)
-;;                (global-set-key (format "%sR" prefix) 'perlnow-set-run-string)
-;;                (global-set-key (format "%sA" prefix) 'perlnow-set-alt-run-string)
-;;                (global-set-key (format "%st" prefix) 'perlnow-edit-test-file)
-;;                (global-set-key (format "%sb" prefix) 'perlnow-back-to-code)
-;;                (global-set-key (format "%s1" prefix) 'cperl-perldoc-at-point)
-;;                (global-set-key (format "%s#" prefix) 'comment-region)
-;;                (global-set-key (format "%sN" prefix) 'narrow-to-defun)
-;;                ))
-;;   (add-hook 'perl-mode-hook
-;;             '(lambda ( prefix )
-;;                (global-set-key (format "%sc" prefix) 'perlnow-run-check)
-;;                (global-set-key (format "%sr" prefix) 'perlnow-run)
-;;                (global-set-key (format "%sa" prefix) 'perlnow-alt-run)
-;;                (global-set-key (format "%sd" prefix) 'perlnow-perldb)
-;;                (global-set-key (format "%sR" prefix) 'perlnow-set-run-string)
-;;                (global-set-key (format "%sA" prefix) 'perlnow-set-alt-run-string)
-;;                (global-set-key (format "%st" prefix) 'perlnow-edit-test-file)
-;;                (global-set-key (format "%sb" prefix) 'perlnow-back-to-code)
-;;                (global-set-key (format "%s1" prefix) 'cperl-perldoc-at-point)
-;;                (global-set-key (format "%s#" prefix) 'comment-region)
-;;                (global-set-key (format "%sN" prefix) 'narrow-to-defun)
-;;                ))
-  ;; not sure about the utility of this one
-  ;; (global-set-key (format "%s~" prefix) 'perlnow-perlify-this-buffer-simple)
-
-
 ;;;==========================================================
 ;;; functions to run perl scripts
 
-; TODO scrape hashbang (if present): perlnow-perl-path should only be the default.
-;; (setq perl-command (perlnow-hashbang))
-;;           ; preserve the hash-bang run string, e.g. to preserve -T
 (defun perlnow-run-check (arg)
   "Run a perl check on the current buffer.
 This displays errors and warnings in another window, in the usual
@@ -1215,8 +1172,8 @@ perlcritic in addition to a \"perl -cw\"."
           (location (file-name-directory full-file))
           (filename (file-name-nondirectory full-file))
           (default-directory location)
+          (perl (perlnow-how-to-perl))
 
-          (perl       perlnow-perl-path)
           (podchecker perlnow-podchecker-path)
           ; TODO probe for perlcritic, set to nil if it's not installed.
           ;   perlcritic --version  =>  1.102
