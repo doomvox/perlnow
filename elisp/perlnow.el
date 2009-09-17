@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.265 2009/09/16 03:30:18 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.266 2009/09/17 01:37:43 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1285,9 +1285,12 @@ to a different file."
        (setq input perlnow-run-string))
      (list input)
      ))
-  (let ((modified-run-string
-         (replace-regexp-in-string "\\bperl " "perl -d " run-string)))
-    (perldb modified-run-string)))
+  (let* ((modified-run-string
+          (replace-regexp-in-string "\\bperl " "perl -d " run-string))
+         (hacked-run-string
+          (replace-regexp-in-string "'" "" modified-run-string))
+        )
+    (perldb hacked-run-string)))
 
 (defun perlnow-set-run-string (&optional harder-flag-setting)
   "Prompt the user for a new run string for the current buffer.
@@ -1689,8 +1692,6 @@ and the email address from the variable user-mail-address."
             subdir
             )))
     perlnow-module-starter-cmd))
-
-
 
 (defun perlnow-edit-test-file (testfile)
    "Find \(or create\) an appropriate TESTFILE for the current perl code.
@@ -2224,39 +2225,17 @@ This looks for the package line near the top."
     (looking-at package-line-pat) )))
 
 
-;; TODO as written this applies only to modules, not scripts...
+;; Just a wrapper provided for backwards compatibility (and for forwards
+;; compatibility with my likely expectation that this function will exist).
 (defun perlnow-cpan-style-code-p ()
-  "Determine if this file looks like it's in a cpan-style dev tree."
-  (save-excursion
-    ;;  (0) is this a module?
-    ;;  (1) is the module root named "lib"?
-    ;;  (2) does the level above match the hyphenized form of module name?
-    ;;  (3) is there a "t" in parallel to "lib"
-    ;;  (4) is there a MANIFEST there?
-    ;;  extra credit:  *.PL file there?  (not done)
-    (let* ( (cpan-style-p nil)
-            (package-name (perlnow-get-package-name-from-module-buffer))
-            (module-file-location
-             (file-name-directory (buffer-file-name)))
-            (inc-spot
-             (perlnow-get-inc-spot package-name module-file-location ))
-            (staging-area
-             (perlnow-one-up inc-spot))
-            (hyphenized-package-name
-             (mapconcat 'identity (split-string package-name "::") "-"))
-;;            (pm-basename
-;;             (file-name-sans-extension (file-name-nondirectory (buffer-file-name))))
-           )
-      (setq cpan-style-p
-            (and
-             (perlnow-module-code-p)   ;; good idea? TODO
-             (string= (perlnow-nth-file-path-level -1 inc-spot) "lib")
-             (string= (perlnow-nth-file-path-level -2 inc-spot) hyphenized-package-name)
-             (file-exists-p    (concat staging-area "MANIFEST"))
-             (file-directory-p (concat staging-area "t"))
-             )
-            )
-      cpan-style-p)))
+  "Determine if this file looks like it's in a cpan-style dev tree.
+Returns the staging-area name, or nil if not found.
+From the current file-buffer, climbs upwards, looking for a level
+with a Makefile.PL or a Build.PL."
+;; as written, this also checks for a "lib" or "t" dir next to it.
+  (let* ( (staging-area (perlnow-find-cpan-style-staging-area) )
+        )
+      staging-area))
 
 (defun perlnow-get-package-name-from-module-buffer ()
   "Get the module name from the package line.
@@ -2625,15 +2604,19 @@ and the NAMESTYLE \(see `perlnow-test-policy-naming-style'\)."
                (setq test-file-from-policy
                    (concat testloc-absolute hyphenized-package-name ".t"))
              )
-
            ( (string= namestyle "numeric")  ; only with modules (? TODO)
                (setq test-file-from-policy
                    (concat testloc-absolute "01-" hyphenized-package-name ".t")) ;; default created by modstar
              )
-
+           ( (string= namestyle "basename")
+               (setq test-file-from-policy
+                   (concat testloc-absolute basename ".t"))
+             )
            (t
             (error
-             "Invalid perlnow-test-policy-naming-style setting, must be hyphenized, basename or numeric")))
+             (format
+              "Invalid namestyle argument: %s, must be hyphenized, basename or numeric."
+              namestyle))))
      ;If this result is good, return it, if not, keep looking
      ;If nothing found though, return this as name to be created.
      (cond ((file-exists-p test-file-from-policy)    ; if test-policy finds test-file, does not look for redundant matches
@@ -2766,7 +2749,7 @@ LIST is presumed to be a list of strings."
 ;; Possibly using: perlnow-latest-test-file
 (defun perlnow-search-through-test-path ()
   "Searches the test path for test files for the current code buffer.
-Returns a single string the full-path and name of (one) test file found.
+Returns the full-path and name of one test file found.
 Will warn if there appear to be redundant possible testfiles."
 ;;; *Might* be better to return a list of all matches, let other
 ;;; code check for and complain about the problem of multiple finds.
@@ -3004,6 +2987,7 @@ Also sets that global variable as a side-effect."
   run-line))
 
 
+;; TODO would it be better to look for a MANIFEST, rather than a "t" or "lib"?
 (defun perlnow-find-cpan-style-staging-area ()
   "Determines if the current file buffer is located in an cpan-style tree.
 Should return the path to the current cpan-style staging area, or nil
