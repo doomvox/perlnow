@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.266 2009/09/17 01:37:43 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.267 2009/09/17 02:23:33 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1112,7 +1112,39 @@ it make more sense to use no prefix on getters?")
 ;;;==========================================================
 ;;; set-up functions
 
+;; old-fashioned way, all globals, no mode hook manipulayion
 (defun perlnow-define-standard-keymappings ( &optional prefix )
+  "Quickly define some recommended keymappings for perlnow
+functions.  By default, perlnow.el makes no changes to the user's
+keymap. This function is provided to make it easy for you
+to adopt a standard set of keymappings, but they're not
+forced on you.  Note: these all use the \"C-c/\" prefix.  A few
+mappings are also included for useful functions that are defined
+outside of the perlnow.el package: cperl-perldoc-at-point,
+comment-region and narrow-to-defun."
+  (interactive)
+  (unless prefix (setq prefix "\C-c/"))
+  (global-set-key (format "%ss" prefix) 'perlnow-script)
+  (global-set-key (format "%sm" prefix) 'perlnow-module)
+  (global-set-key (format "%so" prefix) 'perlnow-object-module)
+  (global-set-key (format "%sh" prefix) 'perlnow-h2xs)
+  (global-set-key (format "%sO" prefix) 'perlnow-module-starter)
+  (global-set-key (format "%sc" prefix) 'perlnow-run-check)
+  (global-set-key (format "%sr" prefix) 'perlnow-run)
+  (global-set-key (format "%sa" prefix) 'perlnow-alt-run)
+  (global-set-key (format "%sd" prefix) 'perlnow-perldb)
+  (global-set-key (format "%sR" prefix) 'perlnow-set-run-string)
+  (global-set-key (format "%sA" prefix) 'perlnow-set-alt-run-string)
+  (global-set-key (format "%st" prefix) 'perlnow-edit-test-file)
+  (global-set-key (format "%sb" prefix) 'perlnow-back-to-code)
+  (global-set-key (format "%s~" prefix) 'perlnow-perlify-this-buffer-simple)
+  (global-set-key (format "%s1" prefix) 'cperl-perldoc-at-point)
+  (global-set-key (format "%s#" prefix) 'comment-region)
+  (global-set-key (format "%sN" prefix) 'narrow-to-defun))
+
+;; This experimental version is more DRY, at the expense of some
+;; probably excessive hackery with eval-read in mode hooks.
+(defun perlnow-define-standard-keymappings-exp ( &optional prefix )
   "Quickly define some recommended keymappings for perlnow
 functions.  By default, perlnow.el makes no changes to the user's
 keymap. This function is provided to make it easy for you
