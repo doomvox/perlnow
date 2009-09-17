@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.268 2009/09/17 02:24:12 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.269 2009/09/17 08:21:32 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -54,17 +54,15 @@ Also see the documentation for:
 `perlnow-documentation-tutorial'
 `perlnow-documentation-test-file-strategies'
 
-This package speeds the development of perl code, by making it
-easier to jump into coding when an idea strikes. It also includes
-some commands to help automate some routine tasks (e.g. running
-or checking the code from within emacs).
+This package speeds the development of perl code by automating
+some routine tasks.  When an idea strikes, it makes it easier to
+jump into coding; and while you're coding it assists in checking,
+running and debugging the code from within emacs.
 
-Perlnow commands typically prompt for a location and/or name,
-open a file buffer using an appropriate template.
-In the case of scripts the file automatically becomes executable.
-
-Many perlnow.el features require the template.el package plus
-some templates for perl development purposes.
+The commands for initial code creation typically prompt for a
+location and/or name, and open a file buffer using an appropriate
+template.  Perlnow makes heavy use of the template.el package,
+adding a number of templates designed for perl development.
 See `perlnow-documentation-installation'.
 
 Primarily, perlnow.el provides the following interactive
@@ -90,8 +88,7 @@ on a new module for a CPAN-style distribution.
 
 \\[perlnow-module-starter] - uses module-starter to begin
 working on a new module in a CPAN-style distribution.
-Currently limited to OOP modules and packages based
-on Module::Build.
+This defaults to OOP modules built using Module::Build.
 
 \\[perlnow-run-check] - does a perl syntax check on the
 current buffer, displaying error messages and warnings in
@@ -99,9 +96,9 @@ the standard emacs style, so that the next-error command,
 \(usually bound to control-x back-apostrophe\)
 will skip you to the location of the problem.
 
-\\[perlnow-run] - like the above, except that it actually
-tries to run the code, prompting the user for a run string
-it if it has not been defined yet.
+\\[perlnow-run] - like the above, except that it actually runs
+the code, prompting the user for a run string it if it has not
+been defined yet.
 
 \\[perlnow-set-run-string] - Allows the user to manually
 change the run-string used by perlnow-run.
@@ -156,7 +153,7 @@ Add something like the following to your ~/.emacs file:
   \(setq `perlnow-pm-location'
       \(substitute-in-file-name \"$HOME/lib\"\)\)\n
   \(setq `perlnow-devlocation''
-      \(substitute-in-file-name \"$HOME/perldev\"\)\)\n
+      \(substitute-in-file-name \"$HOME/dev\"\)\)\n
 
    \(perlnow-define-standard-keymappings\)
 
@@ -185,16 +182,15 @@ to modify them individually:
    \(global-set-key \"\\C-c/~\" 'perlnow-perlify-this-buffer-simple\)
 
 Above, the odd prefix \"control-c slash\" has been used because
-the C-c <punctuation> bindings are reserved for minor modes,
+only the C-c <punctuation> bindings are reserved for minor modes,
 and while the perlnow.el package is not a minor-mode, it has some
 aspects in common with them.  The slash was choosen because it's
 unshifted and on the opposite side from the \"c\" \(on typical
 keyboards\).
 
-You, on the other hand, are free to do whatever you want in
-your .emacs, and you might prefer other assignments, such
-as using function keys for frequently used commands.
-Some examples:
+The user is free to do choose any key bindings, and you might
+prefer other assignments, such as using function keys for
+frequently used commands.  Some examples:
 
   \(global-set-key [f4] 'perlnow-script\)
 
@@ -202,10 +198,11 @@ Some examples:
           '\(lambda \(\)
              \(define-key cperl-mode-map [f1] 'perlnow-perl-check\) \)\)
 
-When looking for a good prefix to attach \"perl\" stuff, consider
-that \"C-x p\" is used by the p4.el package \(a front-end to the
-proprietary perforce version control system\), and remember that
-\"M-p\" is used in many contexts for \"history\" navigation.
+When looking for a good prefix for \"perl\" commands, remember
+that \"M-p\" is used in many contexts for \"history\" navigation.
+You should also be aware that \"C-x p\" is used by the p4.el
+package \(a front-end to the proprietary perforce version control
+system\).
 
 Caveats: perlnow.el was developed using GNU emacs 21.1 running
 on a linux box \(or GNU/Linux, if you prefer\).  This version
