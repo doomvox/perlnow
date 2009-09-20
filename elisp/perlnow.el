@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.269 2009/09/17 08:21:32 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.270 2009/09/19 20:12:28 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1709,9 +1709,9 @@ This command follows this process:
 The test policy is defined by this trio of variables:
 `perlnow-test-policy-test-location', e.g. \".\", \"./t\", \"../t\", etc.
 `perlnow-test-policy-dot-definition' i.e.  \"fileloc\" or \"incspot\"
-`perlnow-test-policy-naming-style'   i.e. \"hyphenized\"or \"basename\"."  ;; TODO  'numeric'
-; Remember the *run-string* is a bit different for
-; an cpan-style module than a regular module.
+`perlnow-test-policy-naming-style'   i.e. \"hyphenized\", \"basename\" or \"numeric\"."
+;; Remember the *run-string* is a bit different for
+;; an cpan-style module than a regular module.
   (interactive
    (list (perlnow-get-test-file-name)))
   ; set some buffer-local variables before we go any where
