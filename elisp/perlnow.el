@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.270 2009/09/19 20:12:28 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.271 2009/09/20 02:31:52 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1204,8 +1204,27 @@ perlcritic in addition to a \"perl -cw\"."
     ))
 
 
-(defun perlnow-run (run-string)
+;; classic version, without support for 'harder' prefix
+(defun perlnow-run (runstring)
   "Run the perl code in this file buffer.
+This uses an interactively set RUNSTRING determined from
+`perlnow-run-string' which may have been set by using
+\\[perlnow-set-run-string].  If `perlnow-run-string' is nil,
+\\[perlnow-set-run-string] is called automatically.\n
+The run string can always be changed later by running
+\\[perlnow-set-run-string] manually."
+  (interactive
+   (let (input)
+   (if (eq perlnow-run-string nil)
+       (setq input (perlnow-set-run-string))
+     (setq input perlnow-run-string))
+   (list input)
+   ))
+  (compile runstring))
+
+
+(defun perlnow-run-exp (run-string)
+  "EXPERIMENTAL Run the perl code in this file buffer.
 This uses an interactively set RUN-STRING determined from
 `perlnow-run-string' which may have been set by using
 \\[perlnow-set-run-string].  If `perlnow-run-string' is nil,
@@ -1395,7 +1414,6 @@ assumes it's a perl script.  The heuristics for setting a default
 
 ;;;==========================================================
 ;;; user level creation functions (script, module, h2xs...)
-
 
 (defun perlnow-script (script-name)
   "General purpose command to quickly jump into coding a perl script.
@@ -3699,6 +3717,9 @@ Perl package example: given \"/home/doom/lib/Taxed::Reb\" should return
 
 ;; Note: the following presume interspersed pod style.
 
+;; Ideally, there would be some way of customizing these, but then,
+;; just writing your own is easy enough.
+
 (defun perlnow-insert-basic-sub (name)
   "Insert the framework of a basic perl sub definition"
   (interactive "sMethod name: ")
@@ -3782,7 +3803,6 @@ and \\[perlnow-setter-prefix]."
            ))
   ))
 
-
 ;; The following isn't bad... but why not put this in your template.el
 ;; for OOP perl?
 (defun perlnow-insert-new ()
@@ -3836,6 +3856,64 @@ and \\[perlnow-setter-prefix]."
         )
        (let ((null-device nil))		; see grep
          (grep ack-command))))
+
+
+;;; cheat check commands ("cheat" == automatically fix things so checks pass)
+
+
+(defun perlnow-revise-test-plan ()
+  "Revise the test plan to match the current count of tests.
+Presumes you've just run the test, and checks the '*compilation*'
+buffer to find out what the actual count of tests are, and
+modifies the *.t file's plan to match."
+;; Note: presumes that perlnow-run uses standard buffer name *compilation*.
+;; TODO Ideally: verify that *compilation* shows results from running filename
+;; if not, do a run first.
+  (interactive)
+  (let* ((full-file (buffer-file-name))
+         (location (file-name-directory full-file))
+         (filename (file-name-nondirectory full-file))
+         (extension (perlnow-file-extension filename))
+         ;; (original-buffer (current-buffer)) ;; needed?
+         (plan-count-pattern
+          "Looks like you planned \\([0-9]+\\) test.*?but ran \\([0-9]+\\)")
+         (planned-tests)
+         (actual-tests)
+         (planned-tests-pattern))
+    (save-excursion
+      ;; verify that we're inside a *.t buffer
+      (unless (string= extension "t")
+        (error "Can only run perlnow-revise-test-plan on a *.t file."))
+      (save-excursion
+        (set-buffer "*compilation*")
+        (goto-char (point-min))
+        (cond ( (re-search-forward plan-count-pattern)
+                (setq planned-tests (match-string 1))
+                (setq actual-tests  (match-string 2))
+                )
+              (t
+               (message "Is the test plan already up-to-date?")))
+        ) ;; return to the *.t buffer
+      ;; (set-buffer original-buffer) ;; uncomment, if needed
+
+      ;; Skip to top, search down for 'Test::',
+      (goto-char (point-min))
+      (cond ( (and
+               (re-search-forward "Test::")
+               (re-search-forward "plan") )
+            ;; No good?  Why?  TODO  "\b" doesn't work either
+            ;;  (setq planned-testes-pattern (format "\\b" planned-tests "\\b" ))
+              (setq planned-testes-pattern planned-tests)
+               (cond ((re-search-forward planned-testes-pattern nil t)
+                       (replace-match actual-tests nil t))
+                     (t
+                      (message "Failed to find expected %s after \"plan\"." planned-tests)
+                      )))
+            (t
+             (message "Test::More plan not found."))
+            ))))
+
+
 
 
 
