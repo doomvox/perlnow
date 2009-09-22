@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.277 2009/09/22 02:16:16 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.278 2009/09/22 02:39:31 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1965,12 +1965,10 @@ It's expected that the user will not usually run this directly.
 See the wrapper function: \\[perlnow-script] (or possibly the older
 \\[perlnow-script-using-this-module]).
 Currently always returns t, but future versions may return nil for failure."
-; Presumption: if inc-spot is nil, then we got here from a man page buffer,
-; and we can assume the module is installed (or the man page most
-; likely wouldn't be there).
-;;; TODO - would be a good idea to check if we can find the
-;;;        module and (perhaps) warn if not.
-;;;
+;; Presumption: if inc-spot is nil, then we got here from a man page buffer,
+;; and we can assume the module is installed (or the man page most
+;; likely wouldn't be there).  TODO check that and warn otherwise?
+;;
     ;; Make the script we're creating the default run-string for this module.
     (setq perlnow-module-run-string (perlnow-generate-run-string script-name))
     (perlnow-sub-name-to-kill-ring)
@@ -2035,26 +2033,35 @@ of this routine is subject to change."
   ;; Any need for perlnow-module-code-p?
   (unless (perlnow-module-code-p)
     (error "perlnow-generate-import-list expects to be run in a module buffer."))
-  (perlnow-exporter-code-p)
+  (let* ((import-string "")
+         ;; Searching for a line like this:
+         ;;  our %EXPORT_TAGS = ( 'all' => [
 
-  (save-excursion
-    (let* ((import-string "")
-           ;; Searching for a line like this:
-           ;;  our %EXPORT_TAGS = ( 'all' => [
-           (all-tag-pattern
-            "\\b%EXPORT_TAGS[ \t]*=[ \t]*(.*?\\ball\\b") ; allowing alt quotes,
-                                                         ; requiring first paren
-           )
-      (goto-char (point-min))
-      (setq import-string
-            (cond ( (re-search-forward all-tag-pattern nil t)
-                    " qw(:all) "
-                    )
-                  (t
-                   ""
-                   )))
-      import-string
-      )))
+;; Does not work because of the '%'. Why?  Backwhack(s): no help.
+;;          (all-tag-pattern
+;;           "\\b%EXPORT_TAGS[ \t]*=[ \t]*(.*?\\ball\\b") ; allowing alt quotes,
+;;                                                        ; requiring first paren
+
+         (all-tag-pattern
+          "\\bEXPORT_TAGS[ \t]*=[ \t]*(.*?\\ball\\b") ; allowing alt quotes,
+                                                       ; requiring first paren
+         )
+    (message "all-tag-pattern: %s" all-tag-pattern)
+    (cond ((perlnow-exporter-code-p)
+           (save-excursion
+             (goto-char (point-min))
+             (setq import-string
+                   (cond ( (re-search-forward all-tag-pattern nil t)
+                           " qw(:all) "
+                           )
+                         (t
+                          ""
+                          )))))
+          (t
+           (setq import-string "")
+           ))
+    import-string
+    ))
 
 (defun perlnow-import-string-explicit (package-name &optional inc-spot)
   "Get a workable import string from the module PACKAGE-NAME.
@@ -2072,11 +2079,16 @@ the indicated module."
                   )
                  (t
                   (perlnow-module-found-in-INC package-name))))
+          (original-buffer (current-buffer))
+          (import-string "")
           )
+     ;; you might *think* this save-excursion would restore the current buffer...
      (save-excursion
        (find-file module-file)
-       (perlnow-import-string)
-       )))
+       (setq import-string (perlnow-import-string))
+       )
+     (switch-to-buffer original-buffer)
+     import-string))
 
 
 (defun perlnow-prompt-for-module-to-create (where what)
