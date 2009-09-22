@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.279 2009/09/22 03:49:16 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.280 2009/09/22 05:55:11 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1152,6 +1152,7 @@ cperl-perldoc-at-point, comment-region and narrow-to-defun."
                (global-set-key \"%s1\" 'cperl-perldoc-at-point)
                (global-set-key \"%s#\" 'comment-region)
                (global-set-key \"%sN\" 'narrow-to-defun)
+               (global-set-key \"%si\" 'perlnow-insert-sub)
                )"
                ))
          )
@@ -1778,7 +1779,7 @@ will be associated with the TESTFILE."  ;; TODO expand docs
         (funcall (perlnow-lookup-preferred-perl-mode))
         (if new-file-p
             (save-excursion
-              (let* ((import-string (perlnow-import-string-explicit package-name inc-spot))
+              (let* ((import-string (perlnow-import-string-from package-name inc-spot))
                      (whitespace
                       (perlnow-jump-to-use package-name import-string) ))
                 (perlnow-endow-script-with-access-to inc-spot whitespace))))
@@ -1999,7 +2000,7 @@ Currently always returns t, but future versions may return nil for failure."
             (progn
               (unless (eq inc-spot nil)
                 (perlnow-endow-script-with-access-to inc-spot)
-                (setq import-string (perlnow-import-string-explicit package-name inc-spot))
+                (setq import-string (perlnow-import-string-from package-name inc-spot))
                 )
               ;; insert the "use Modular::Stuff;" line
               (insert (format "use %s%s;" package-name import-string))
@@ -2045,7 +2046,6 @@ if it's not called on a module buffer.
 Note: this is a quick-and-dirty experiment: the precise behavior
 of this routine is subject to change."
   (interactive) ;; DEBUG only
-  ;; Any need for perlnow-module-code-p?
   (unless (perlnow-module-code-p)
     (error "perlnow-generate-import-list expects to be run in a module buffer."))
   (let* ((import-string "")
@@ -2058,10 +2058,9 @@ of this routine is subject to change."
 ;;                                                        ; requiring first paren
 
          (all-tag-pattern
-          "\\bEXPORT_TAGS[ \t]*=[ \t]*(.*?\\ball\\b") ; allowing alt quotes,
+          "\\bEXPORT_TAGS[ \t]*=[ \t]*(.*?\\ball\\b")  ; allowing alt quotes,
                                                        ; requiring first paren
          )
-    (message "all-tag-pattern: %s" all-tag-pattern)
     (cond ((perlnow-exporter-code-p)
            (save-excursion
              (goto-char (point-min))
@@ -2078,7 +2077,7 @@ of this routine is subject to change."
     import-string
     ))
 
-(defun perlnow-import-string-explicit (package-name &optional inc-spot)
+(defun perlnow-import-string-from (package-name &optional inc-spot)
   "Get a workable import string from the module PACKAGE-NAME.
 At present this will just be ':all' \(if the module is Exporter\)
 based, or the empty string if not.  If the module is installed,
@@ -2104,6 +2103,72 @@ the indicated module."
        )
      (switch-to-buffer original-buffer)
      import-string))
+
+
+;;; TODO Steal ideas:
+;;          ;; Searching for a line like this:
+;;          ;;  our %EXPORT_TAGS = ( 'all' => [
+;;          (all-tag-pattern
+;;           "\\bEXPORT_TAGS[ \t]*=[ \t]*(.*?\\ball\\b")  ; allowing alt quotes,
+;;                                                        ; requiring first paren
+
+
+
+(defun perlnow-revise-export-list ()
+  "NOT YET WORKING.  Intended to
+Find subs defined in the module that are not yet in the
+EXPORT lists, and add them to EXPORT_OK."
+  (interactive)
+  (unless (perlnow-module-code-p)
+    (error "perlnow-generate-import-list expects to be run in a module buffer."))
+  (let* ((sub-list (perlnow-list-all-subs))
+
+         ;; Searching for a line like this:
+         ;;  our %EXPORT_TAGS = ( 'all' => [
+         (all-tag-pattern
+          "\\bEXPORT_TAGS[ \t]*=[ \t]*(.*?\\ball\\b")  ; allowing alt quotes,
+                                                       ; requiring first paren
+         )
+    (cond ((perlnow-exporter-code-p)
+
+
+;;            (save-excursion
+;;              (goto-char (point-min))
+;;              (setq import-string
+;;                    (cond ( (re-search-forward all-tag-pattern nil t)
+;;                            " qw(:all) "
+;;                            )
+;;                          (t
+;;                           ""
+;;                           )))))
+;;           (t
+;;            (setq import-string "")
+;;            ))
+
+
+    ))
+
+(defun perlnow-list-all-subs ()
+  ""
+  (interactive) ;; DEBUG only
+
+  ;; TODO NEXT
+  ;; check if module is exporter
+  ;; scrape through the module for sub names
+
+  )
+
+
+
+(defun perlnow-all-subs-report ()
+  ""
+  (interactive)
+  ;; run perlnow-list-all-subs and print the list
+)
+
+
+;;=======
+;; prompt functions
 
 
 (defun perlnow-prompt-for-module-to-create (where what)
@@ -3231,15 +3296,14 @@ Also sets that global variable as a side-effect."
   run-line))
 
 
-      ;; TODO would it be better to look for a MANIFEST, rather than a "t" or "lib"?
-      ;; Let's try it...
 (defun perlnow-find-cpan-style-staging-area ()
   "Determines if the current file buffer is located in an cpan-style tree.
 Should return the path to the current cpan-style staging area, or nil
 if it's not found.  The staging area is located by searching upwards
-from the location of the buffer's associated file for a place
-with a \"lib\" and/or \"t\" and also a \"Makefile.PL\" or a \"Build.PL\"."
-;; Two cases I definitely want to cover:
+from the location of the buffer's file to a location with files that
+look like a cpan-style project (as currently implemented, it looks
+for the \"MANIFEST\" and either a \"Makefile.PL\" or a \"Build.PL\"\)."
+;; Two important cases to cover are:
 ;;   ~/perldev/Horror-Grossout/lib/Horror/Grossout.pm
 ;;   ~/perldev/Horror-Grossout/t/Horror-Grossout.t
   (message "perlnow-find-cpan-style-staging-area called")
@@ -3256,9 +3320,9 @@ with a \"lib\" and/or \"t\" and also a \"Makefile.PL\" or a \"Build.PL\"."
             (while (> (length dir) 1)
               (setq file-list (directory-files dir full-names pattern nosort))
               (dolist (file file-list)
-;;                (if (or (string= file "lib") (string= file "t")) ; we're here!
-                (if (string= file "MANIFEST")  ; we're here!
-                    ;; start scan again: "Makefile.PL" might be before or after lib or t
+;;                (if (or (string= file "lib") (string= file "t"))
+                (if (string= file "MANIFEST")  ; could be we're here...
+                    ;; start scan again: "*.PL" might be before or after
                     (dolist (file file-list)
                       (if (or (string= file "Makefile.PL") (string= file "Build.PL")) ; we found it!
                           (throw 'ICE dir)))))
@@ -3896,9 +3960,24 @@ Perl package example: given \"/home/doom/lib/Taxed::Reb\" should return
 ;; Ideally, there would be some way of customizing these, but then,
 ;; just writing your own is easy enough.
 
+
+(defun perlnow-insert-sub ()
+ "Insert the framework for a new sub.
+Adapts to context and inserts an OOP framework if this
+is an OOP module, otherwise, an ordinary sub."
+ (interactive)
+ (cond ((perlnow-module-code-p)
+        (cond ((perlnow-exporter-code-p)
+               (call-interactively 'perlnow-insert-basic-sub))
+              (t ;; presume OOP
+               (call-interactively 'perlnow-insert-method))))
+       (t ;; presume a script
+        (call-interactively 'perlnow-insert-basic-sub))))
+
+
 (defun perlnow-insert-basic-sub (name)
   "Insert the framework of a basic perl sub definition"
-  (interactive "sMethod name: ")
+  (interactive "ssub name: ")
   (insert (concat
            "\n"
            "=item " name "\n"
