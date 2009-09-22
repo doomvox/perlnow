@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.272 2009/09/21 20:58:40 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.273 2009/09/21 21:01:00 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1748,7 +1748,7 @@ The test policy is defined by this trio of variables:
                (perlnow-edit-test-file-harder harder-setting))
               (t
                (perlnow-get-test-file-name))))))
-    (perlnow-open-test-file testfile)))
+    (perlnow-open-test-file testfile))
 
 
 (defun perlnow-open-test-file (testfile)
