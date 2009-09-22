@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.278 2009/09/22 02:39:31 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.279 2009/09/22 03:49:16 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1209,25 +1209,31 @@ perlcritic in addition to a \"perl -cw\"."
     (compile compile-command);; this just returns buffer name "*compilation*"
     ))
 
-
-;; classic version, without support for 'harder' prefix
-(defun perlnow-run (runstring)
+(defun perlnow-run (run-string)
   "Run the perl code in this file buffer.
-This uses an interactively set RUNSTRING determined from
-`perlnow-run-string' which may have been set by using
-\\[perlnow-set-run-string].  If `perlnow-run-string' is nil,
-\\[perlnow-set-run-string] is called automatically.\n
-The run string can always be changed later by running
-\\[perlnow-set-run-string] manually."
+When run interactively, this uses a RUN-STRING determined from `perlnow-run-string'
+If it is nil, the function \\[perlnow-set-run-string] is called automatically.\n
+This default run string can always be changed later by running
+\\[perlnow-set-run-string] manually.  If this is run with a numeric
+prefix \(\"C-u\"\) it will try to find a more through way of doing
+the run \(e.g. a \"make test\" rather than running a single test file\)."
+;; currently: if harder is set, we always regenerate the run-string.
+;; We use the perlnow-run-string var only in the ordinary case.
+;;
   (interactive
-   (let (input)
-   (if (eq perlnow-run-string nil)
-       (setq input (perlnow-set-run-string))
-     (setq input perlnow-run-string))
-   (list input)
-   ))
-  (compile runstring))
-
+     (let* ( (harder-setting current-prefix-arg)
+             (input
+              (cond (harder-setting
+                     (perlnow-set-run-string harder-setting))
+                    (t
+                     (cond ((eq perlnow-run-string nil)
+                            (perlnow-set-run-string))
+                           (t
+                            perlnow-run-string))))))
+       (list input)
+       ))
+  (setq perlnow-run-string run-string) ;; redundant, but that's okay.
+  (compile run-string))
 
 (defun perlnow-run-exp (run-string)
   "EXPERIMENTAL Run the perl code in this file buffer.
@@ -1240,9 +1246,9 @@ The run string can always be changed later by running
 When run with a \"C-u\" prefix, the variable `perlnow-run-string-harder'
 is used instead, so that it can remember how it was
 run in either case."
-;; TODO Docs need more work?
 ;; this uses either perlnow-run-string or perlnow-run-string-harder,
 ;; or it calls (perlnow-set-run-string)
+;; TODO needs work... and perlnow-run is good enough, now.
   (interactive
    (let* (
           (harder-setting current-prefix-arg)
@@ -1317,7 +1323,7 @@ to a different file."
         )
     (perldb hacked-run-string)))
 
-(defun perlnow-set-run-string (&optional harder-flag-setting)
+(defun perlnow-set-run-string (&optional harder-setting)
   "Prompt the user for a new run string for the current buffer.
 This sets the global variable `perlnow-run-string' that
 \\[perlnow-run] will use to run the code in the current buffer.
@@ -1335,7 +1341,7 @@ tries to guess a more thorough way to run the code \(e.g. a test suite
 instead of a single test file\)."
   ;; TODO  documentation needs more work?
   (interactive)
-  (let* ( (harder-flag (or harder-flag-setting current-prefix-arg))
+  (let* ( (harder-flag (or harder-setting current-prefix-arg))
           )
     (cond
      ((perlnow-module-code-p)
@@ -1769,13 +1775,14 @@ will be associated with the TESTFILE."  ;; TODO expand docs
               )
         (setq perlnow-perl-package-name package-name) ; global to pass value to template
         (perlnow-open-file-other-window testfile 30 perlnow-perl-test-module-template )
-        (save-buffer)
         (funcall (perlnow-lookup-preferred-perl-mode))
         (if new-file-p
             (save-excursion
-              (let ( (whitespace
-                      (perlnow-jump-to-use package-name) ))
+              (let* ((import-string (perlnow-import-string-explicit package-name inc-spot))
+                     (whitespace
+                      (perlnow-jump-to-use package-name import-string) ))
                 (perlnow-endow-script-with-access-to inc-spot whitespace))))
+        (save-buffer)
         ))
      ;; if script
      ((perlnow-script-p)
@@ -1792,17 +1799,25 @@ will be associated with the TESTFILE."  ;; TODO expand docs
                )))))
     (setq perlnow-associated-code original-code)))
 
-(defun perlnow-jump-to-use (package-name)
+(defun perlnow-jump-to-use (package-name &optional import-string)
   "Given the PACKAGE-NAME, jumps to the point before the \'use\' line.
 Specifically, these leaves the cursor at the start of the line
 that does a \"use\" or \"use_ok\" of the named module specified in
 perl's double-colon seperated form, e.g. \"Modular::Stuff\"."
+;; experimental: if given optional import-string, modify the use line to use it
   (let ( ( pattern (format "^\\([ \t]*\\)use.*?\\b%s\\b" package-name) )
          ( whitespace "" )
          )
     (goto-char (point-min))
     (re-search-forward pattern nil t)
     (setq whitespace (match-string 1))
+
+    (cond (import-string
+           (if (re-search-forward "'[ \t]*" nil t)
+               (insert ", "))
+           (insert import-string)
+           ))
+
     (move-beginning-of-line 1)
     whitespace))
 
@@ -3196,8 +3211,8 @@ Also sets that global variable as a side-effect."
           (setq run-line (perlnow-generate-run-string filename)) ;; redundantly calls perlnow-hashbang again
            )
         ( (string-match "\.t$"  filename) ; it's a test file
-          (cond ( (setq staging-area (shell-quote-argument
-                                      (perlnow-find-cpan-style-staging-area)))
+          (cond ( (setq staging-area (perlnow-find-cpan-style-staging-area))
+                  (setq staging-area (shell-quote-argument staging-area))
                   (cond ( (file-exists-p (concat staging-area "Build.PL"))
                           (setq run-line (concat "cd " staging-area "; ./Build test"))
                           )
