@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.273 2009/09/21 21:01:00 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.274 2009/09/21 22:54:53 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1748,15 +1748,16 @@ The test policy is defined by this trio of variables:
                (perlnow-edit-test-file-harder harder-setting))
               (t
                (perlnow-get-test-file-name))))))
-    (perlnow-open-test-file testfile))
-
+    (unless
+      (string-match "^\*" testfile)
+        (perlnow-open-test-file testfile)))
 
 (defun perlnow-open-test-file (testfile)
   "Follow-up to interactive functions such as \\[perlnow-edit-test-file].
 Presumes that when it is called, the current buffer contains code which
 will be associated with the TESTFILE."  ;; TODO expand docs
   ;; set some buffer-local variables before we go any where
-  (setq perlnow-run-string (concat "perl " testfile)) ;; TODO single quotes around file name?
+  (setq perlnow-run-string (perlnow-simple-run-string testfile))
   (setq perlnow-associated-code testfile)
   (let* ( (package-name)
           (new-file-p (not (file-exists-p testfile)))
@@ -2762,26 +2763,12 @@ Currently limited to cpan-style code buffers (hardcoded params)."
 (define-key perlnow-select-mode-map "n"    'next-line)
 (define-key perlnow-select-mode-map "p"    'previous-line)
 
-(defun perlnow-select-file-simple ()
-  "Choose the item on the current line.
-Returns file name with full path."
-  (interactive)
-  (move-beginning-of-line 1)
-  (let ( (beg (point)) )
-    (move-end-of-line 1)
-    (let* ( (full-file
-             (buffer-substring beg (point)))
-;;            (location (file-name-directory full-file))
-;;            (filename (file-name-nondirectory full-file))
-            )
-      (message "perlnow-select-file: %s" full-file)
-      full-file)))
-
 
 ;; trace the buffer local var back to the original calling context.
 ;;   follow perlnow-associated-code, then set it to the newly opened file
 ;; revise run-string in original context
 ;; establish two-way pointers, test-file and calling context
+;;   set run-string in the new test file
 ;; leave selected test file open;; extra-credit: set it up so that you can do this again,
 ;; from the same menu buffer, and have it all work.
 (defun perlnow-select-file ()
@@ -2812,7 +2799,8 @@ Returns file name with full path."
 
     ;; switch to the original, point forward to the newly opened
     ;; (switch-to-buffer original-context)
-    (find-file original-context) ;; TODO why need to do a find-file? It's open already.
+;;;;    (find-file original-context) ;; TODO why need to do a find-file? It's open already.
+    (set-buffer (find-buffer-visiting original-context))
     (setq older-related-code perlnow-associated-code) ;; do i need this?
     (setq perlnow-associated-code newly-selected-buffer-name)
 
@@ -2822,11 +2810,9 @@ Returns file name with full path."
     (perlnow-show-buffer-other-window (find-buffer-visiting original-context) nil t)
     selected-file)))
 
-
-
-
 ;; TODO Any use for this trick?
 ;;   (perlnow-open-test-file testfile)
+
 
 ;; Adding "harder" awareness to:  perlnow-edit-test-file
 ;;    C-u C-c \ t
@@ -3116,6 +3102,26 @@ a module's inc-spot."
 ;;;==========================================================
 ;;; The end of perlnow-edit-test-file family of functions
 ;;;==========================================================
+
+
+;; TODO if looking at a script, try to scrape the hashbang for the perl invocation.
+;; TODO need a real shell quoting mechanism (and *de-quoting* mechanism for perldb)
+;; TODO look for other places in the code where this function could be used.
+;;      (currently just perlnow-open-test-file).
+(defun perlnow-simple-run-string (program-file)
+  "Given the name of the PROGRAM-FILE, returns a simple perl invocation.
+Generates the simplest possible run-string. There is no awareness of
+whether the given PROGRAM-FILE is part of a larger cpan-style structure.
+For those applications, other functions exist, such as
+\\[perlnow-guess-script-run-string]."
+  (let ( perl-command runstring )
+    (cond ((setq perl-command (perlnow-hashbang)))
+          (t
+           (setq perl-command perlnow-perl-path))
+          )
+    (setq runstring
+          (concat perl-command " '" testfile "' "))
+    runstring))
 
 
 (defun perlnow-guess-script-run-string ()
@@ -4089,10 +4095,7 @@ package name."
           )
     (unless package-name
       (error "%s" "This file doesn't look like a perl module (no leading package line)."))
-
     (perlnow-do-script-from-module script package-name inc-spot)))
-
-
 
 (defun perlnow-module-two-questions (inc-spot package-name)
   "Quickly jump into development of a new perl module.
