@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.275 2009/09/22 00:02:47 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.276 2009/09/22 00:46:29 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1059,10 +1059,9 @@ Used by \\[perlnow-edit-test-file].  See:
 `perlnow-documentation-test-file-strategies'.")
 
 
-;; paths and names of external programs
-;; TODO rename the -path. Maybe: -external-program
+;;; paths and names of external programs
 
-(defcustom perlnow-perl-path "perl"
+(defcustom perlnow-perl-program "perl"
   "Set this to provide a hint about your preferred perl binary.
 For example, make it \"/usr/local/bin/perl\" if you would rather
 use that than the system's perl.  Defaults to just \"perl\"
@@ -1070,12 +1069,12 @@ use that than the system's perl.  Defaults to just \"perl\"
 some cases, e.g. \\[perlnow-module-starter], where possible perlnow
 uses whatever is specified in the hash-bang line.")
 
-(defcustom perlnow-podchecker-path "podchecker"
+(defcustom perlnow-podchecker-program "podchecker"
   "Set this to provide a hint about your preferred podchecker binary.
 Set this to the path and name of the program you would like to run
 when \\[perlnow-run-check] is invoked with a prefix argument.")
 
-(defcustom perlnow-perlcritic-path "perlcritic"
+(defcustom perlnow-perlcritic-program "perlcritic"
   "Set this to provide a hint about your preferred perlcritic binary.
 Set this to the path and name of the program you would like to run
 when \\[perlnow-run-check] is invoked with a prefix argument.")
@@ -1083,7 +1082,7 @@ when \\[perlnow-run-check] is invoked with a prefix argument.")
 
 (defcustom perlnow-module-starter-builder "Module::Build"
   "Base module for a cpan-style distribution.
-Allowed values: \"Module::Build\", \"Module::Install\", \"ExtUtils::MakeMaker\".")
+Should be one of: \"Module::Build\", \"Module::Install\", \"ExtUtils::MakeMaker\".")
 
 (defcustom perlnow-module-style "object"
   "Type of module you usually prefer to create, e.g. \"object\", or \"exporter\".
@@ -1104,14 +1103,10 @@ Used only by the somewhat deprecated \"simple\" functions:
   "Defines the naming convention for getters for object-oriented code.
 Editorial: the default setting in perlnow.el is \"get_\", because that's
 very common, but if you never use the (now deprecated) mutators, doesn't
-it make more sense to use no prefix on getters?")
+it make more sense to use an empty string?")
 
 (defvar perlnow-setter-prefix "set_"
   "Defines the naming convention for setters for object-oriented code.")
-
-
-
-
 
 ;;;==========================================================
 ;;; User Commands
@@ -1184,10 +1179,10 @@ perlcritic in addition to a \"perl -cw\"."
           (default-directory location)
           (perl (perlnow-how-to-perl))
 
-          (podchecker perlnow-podchecker-path)
+          (podchecker perlnow-podchecker-program)
           ; TODO probe for perlcritic, set to nil if it's not installed.
           ;   perlcritic --version  =>  1.102
-          (perlcritic perlnow-perlcritic-path)
+          (perlcritic perlnow-perlcritic-program)
           )
     (save-buffer)
     (cond ( (not arg) ; no prefix
@@ -1267,7 +1262,7 @@ run in either case."
           )
      (list run-string)
      ))
-  ;; TODO why not stash this run-string now in one of the memory vars? -- Sep 12, 2009
+  ;; TODO why not save this run-string in a bufflocal here? -- Sep 12, 2009
   ;;      is it done at a lower level?  why?
   (if run-string
       (compile run-string)
@@ -1316,8 +1311,9 @@ to a different file."
      ))
   (let* ((modified-run-string
           (replace-regexp-in-string "\\bperl " "perl -d " run-string))
+         ;;;; TODO old dequote operation. Better: split-string-and-unquote
          (hacked-run-string
-          (replace-regexp-in-string "'" "" modified-run-string))   ;; TODO dequote operation
+          (replace-regexp-in-string "'" "" modified-run-string))
         )
     (perldb hacked-run-string)))
 
@@ -1716,7 +1712,7 @@ and the email address from the variable user-mail-address."
             author-name
             user-mail-address
             perlnow-module-starter-builder
-            perlnow-perl-path
+            perlnow-perl-program
             subdir
             )))
     perlnow-module-starter-cmd))
@@ -1976,7 +1972,6 @@ Currently always returns t, but future versions may return nil for failure."
 ;;;        module and (perhaps) warn if not.
 ;;;
     ;; Make the script we're creating the default run-string for this module.
-;;DELETE    (setq perlnow-module-run-string (format "perl %s" script-name))
     (setq perlnow-module-run-string (perlnow-simple-run-string script-name)) ;; ;; TODO use perlnow-simple-run-string here.
     (perlnow-sub-name-to-kill-ring)
     ;; module currently displayed, now want to open script, display in paralel
@@ -2472,7 +2467,7 @@ invoked with a double prefix (C-u C-u), instead of running
            ;; the cpan-style case
            (cond ( (setq staging-area (perlnow-find-cpan-style-staging-area))
                    (setq run-string (format "%s '%s'"
-                                            perlnow-perl-path
+                                            perlnow-perl-program
                                             (perlnow-latest-test-file
                                              (perlnow-list-test-files
                                               "../t"
@@ -2489,7 +2484,6 @@ invoked with a double prefix (C-u C-u), instead of running
                           (setq run-string nil) ;; TODO is this Okay?  Don't *want* it to run yet.
                           )
                         (t
-;;; DELETE                         (setq run-string (format "%s '%s'" perlnow-perl-path testfile))  ;;; TODOsky
                          (setq run-string (perlnow-simple-run-string testfile))
                          ))
                   ))))
@@ -2720,35 +2714,6 @@ Returns file names with full path if FULLPATH is t."
      (setq test-file-list
            (directory-files testloc-absolute fullpath "\.t$"))
      test-file-list))
-
-;; for DEBUG
-(defun perlnow-test-files-report ()
-  "Report the test files associated with current buffer.
-Currently limited to cpan-style code buffers (hardcoded params)."
-  (interactive)
-  (let* ( (listsky
-           (perlnow-list-test-files "../t" "incspot" "numbered" t))
-          (return (mapconcat 'identity listsky " "))
-          )
-    (message "%s" return)
-  ))
-
-
-;; for DEBUG only TODO DELETE
-(defun perlnow-test-files-debuggery ()
-  ""
-  (interactive)
-  (let ( (return) )
-                   (setq return
-                         (perlnow-latest-test-file
-                          (perlnow-list-test-files
-                           "../t"
-                           "incspot"
-                           "numeric"
-                           ))
-                         )
-                   (message "%s" return)
-                   ))
 
 
 (define-derived-mode perlnow-select-mode
@@ -3103,8 +3068,6 @@ a module's inc-spot."
 ;;; The end of perlnow-edit-test-file family of functions
 ;;;==========================================================
 
-
-;; TODO if looking at a script, try to scrape the hashbang for the perl invocation.
 ;; TODO need a real shell quoting mechanism (and *de-quoting* mechanism for perldb)
 ;;  ch 37.2 Shell Arguments:
 ;;        shell-quote-argument argument
@@ -3119,19 +3082,16 @@ a module's inc-spot."
 
 (defun perlnow-simple-run-string (program-file)
   "Given the name of the PROGRAM-FILE, returns a simple perl invocation.
-Generates the simplest possible run-string. There is no awareness of
-whether the given PROGRAM-FILE is part of a larger cpan-style structure.
-For those applications, other functions exist, such as
-\\[perlnow-guess-script-run-string]."
+Generates the simplest possible run-string.  This is used
+internally by routines such as \\[perlnow-guess-script-run-string]."
   (let ( perl-command runstring )
-    (cond ((setq perl-command (perlnow-hashbang)))
+    (cond ((setq perl-command (perlnow-hashbang))) ;; preserves hash-bang, including -T
           (t
-           (setq perl-command perlnow-perl-path))
+           (setq perl-command perlnow-perl-program))
           )
     (setq runstring
-          (concat perl-command " '" testfile "' "))
+          (combine-and-quote-strings (list perl-command program-file)))
     runstring))
-
 
 (defun perlnow-guess-script-run-string ()
   "Return a good guess for `perlnow-script-run-string'.
@@ -3145,11 +3105,11 @@ Also sets that global variable as a side-effect."
          )
   ;;# check for hash bang:
   (cond ( (setq perl-command (perlnow-hashbang))
-           ; preserve the hash-bang run string, e.g. to preserve -T
-          (setq run-line (concat perl-command " '" filename "'"))
+          (setq run-line (perlnow-simple-run-string filename)) ;; redundantly calls perlnow-hashbang again
            )
         ( (string-match "\.t$"  filename) ; it's a test file
-          (cond ( (setq staging-area (perlnow-find-cpan-style-staging-area))
+          (cond ( (setq staging-area (shell-quote-argument
+                                      (perlnow-find-cpan-style-staging-area)))
                   (cond ( (file-exists-p (concat staging-area "Build.PL"))
                           (setq run-line (concat "cd " staging-area "; ./Build test"))
                           )
@@ -3158,12 +3118,11 @@ Also sets that global variable as a side-effect."
                           )
                         ))
                 (t ; non-cpan-style code
-                 (setq run-line (concat perlnow-perl-path " '" filename "'"))
-                 )
-             )
+                 (setq run-line (perlnow-simple-run-string filename))
+                 ))
           )
         (t ; When all else fails, just feed it to perl and hope for the best
-         (setq run-line (concat perlnow-perl-path " '" filename "'"))
+         (setq run-line (perlnow-simple-run-string filename))
          ))
   (setq perlnow-script-run-string run-line)
   run-line))
@@ -3261,7 +3220,7 @@ Gives precedence to the way it's done with the hash-bang line if
 that's found at the top of the file \(this preserves whatever
 path and options the author of the code intended, e.g. the \"-T\"
 flag\).  If that's not found, it uses the contents of the
-`perlnow-perl-path' variable, and if that has not been defined
+`perlnow-perl-program' variable, and if that has not been defined
 falls back to just \"perl\"."
   (let* ( (perl-from-hashbang (perlnow-hashbang))
           (how-to-perl "")
@@ -3269,9 +3228,9 @@ falls back to just \"perl\"."
     (cond ( perl-from-hashbang
             (setq how-to-perl perl-from-hashbang)
             )
-          ( perlnow-perl-path
+          ( perlnow-perl-program
             (message "yow!")
-            (setq how-to-perl perlnow-perl-path)
+            (setq how-to-perl perlnow-perl-program)
            )
           (t
             (setq how-to-perl "perl")
@@ -3459,14 +3418,8 @@ Follows a very simple fixed policy, given a module named
 Modular::Stuff creates a file called 01-Modular-Stuff.t."
   (let* (
           (hyphenated (mapconcat 'identity (split-string package-name "::") "-"))
-
-          (location (concat (perlnow-fixdir modstar-location)
-                            "/"
-                            "t"
-                            ))
-
+          (location (concat (perlnow-fixdir modstar-location) "/" "t"))
           (filename (format "01-%s.t" hyphenated))
-
           (fullname (concat location "/" filename))
           )
     fullname))
