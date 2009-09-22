@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.276 2009/09/22 00:46:29 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.277 2009/09/22 02:16:16 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1753,7 +1753,7 @@ The test policy is defined by this trio of variables:
 Presumes that when it is called, the current buffer contains code which
 will be associated with the TESTFILE."  ;; TODO expand docs
   ;; set some buffer-local variables before we go any where
-  (setq perlnow-run-string (perlnow-simple-run-string testfile))
+  (setq perlnow-run-string (perlnow-generate-run-string testfile))
   (setq perlnow-associated-code testfile)
   (let* ( (package-name)
           (new-file-p (not (file-exists-p testfile)))
@@ -1972,7 +1972,7 @@ Currently always returns t, but future versions may return nil for failure."
 ;;;        module and (perhaps) warn if not.
 ;;;
     ;; Make the script we're creating the default run-string for this module.
-    (setq perlnow-module-run-string (perlnow-simple-run-string script-name)) ;; ;; TODO use perlnow-simple-run-string here.
+    (setq perlnow-module-run-string (perlnow-generate-run-string script-name))
     (perlnow-sub-name-to-kill-ring)
     ;; module currently displayed, now want to open script, display in paralel
       (perlnow-open-file-other-window
@@ -1986,8 +1986,7 @@ Currently always returns t, but future versions may return nil for failure."
             (progn
               (unless (eq inc-spot nil)
                 (perlnow-endow-script-with-access-to inc-spot)
-                ;;; TODO generate an appropriate "use qw()" import list
-                (setq import-string (perlnow-generate-import-list package-name inc-spot))
+                (setq import-string (perlnow-import-string-explicit package-name inc-spot))
                 )
               ;; insert the "use Modular::Stuff;" line
               (insert (format "use %s%s;" package-name import-string))
@@ -2008,32 +2007,76 @@ Currently always returns t, but future versions may return nil for failure."
       (insert relative-path)
       (insert "\");\n"))))
 
-;; TODO SOON maybe the interface on this is silly:
-;; Could just assume you've already got the module code in front of you,
-;; in the current buffer.
-;; (( But then, there's the issue with installed modules, where you start from man. ))
-;; Search through it for the standard Exporter boiler plate.
-;; (You could do a keystroke macro as a first cut).
-;; Usage:
-;;    (setq import-string (perlnow-generate-import-list package-name inc-spot))
-(defun perlnow-generate-import-list (package-name inc-spot)
-  "Get the default import list from the module PACKAGE-NAME.
-Should look something like ' qw( routine1 routine2 routine3 )', where
-the three routines are exported (optionally or not) from the indicated module.
-If this is not appropriate (e.g. if it's an OOP module, not Exporter based)
-this will return the empty string."
+(defun perlnow-exporter-code-p ()
+  "Return t if the current buffer looks like an Exporter based module.
+Return nil otherwise."
+  ;; searches for "use Exporter" or "require Exporter"
+  (save-excursion
+    (let* (
+           (exporter-pattern "\\b\\(require\\|use\\)[ \t]+Exporter\\b")
+           )
+      (goto-char (point-min))
+      (re-search-forward exporter-pattern nil t)
+    )))
 
-  "" ;; stub  -- but why not   qw( :all )
+(defun perlnow-exporter-code-report ()
+  (interactive) ;; DEBUG only
+  (message "%s" (perlnow-exporter-code-p)))
 
-     ;; TODO EXTRA CREDIT -- ideally: support exporter based modules
-     ;; of all sorts, even when creating script from man page.
-     ;; Can I easily find code on the system given just the package
-     ;; name?  (Can perl tell you?)
-     ;; Maybe: just work your way through @INC yourself...
-     ;; Yeah: already written:
-     ;; (setq module-file (perlnow-module-found-in-INC package-name))
+(defun perlnow-import-string ()
+  "Determine a good import string for using the current module.
+Returns the ':all' tag if the current buffer shows an Exporter-based
+module, and an empty string if it's an OOP module.  Errors out
+if it's not called on a module buffer.
 
-  )
+Note: this is a quick-and-dirty experiment: the precise behavior
+of this routine is subject to change."
+  (interactive) ;; DEBUG only
+  ;; Any need for perlnow-module-code-p?
+  (unless (perlnow-module-code-p)
+    (error "perlnow-generate-import-list expects to be run in a module buffer."))
+  (perlnow-exporter-code-p)
+
+  (save-excursion
+    (let* ((import-string "")
+           ;; Searching for a line like this:
+           ;;  our %EXPORT_TAGS = ( 'all' => [
+           (all-tag-pattern
+            "\\b%EXPORT_TAGS[ \t]*=[ \t]*(.*?\\ball\\b") ; allowing alt quotes,
+                                                         ; requiring first paren
+           )
+      (goto-char (point-min))
+      (setq import-string
+            (cond ( (re-search-forward all-tag-pattern nil t)
+                    " qw(:all) "
+                    )
+                  (t
+                   ""
+                   )))
+      import-string
+      )))
+
+(defun perlnow-import-string-explicit (package-name &optional inc-spot)
+  "Get a workable import string from the module PACKAGE-NAME.
+At present this will just be ':all' \(if the module is Exporter\)
+based, or the empty string if not.  If the module is installed,
+this can work just with the PACKAGE-NAME, otherwise, the optional
+INC-SPOT is needed to point at it.
+TODO: Someday, this module might return something like
+   \"qw( routine1 routine2 routine3 )\"
+where the three routines are exported \(optionally or not\) from
+the indicated module."
+   (let* ((module-file
+           (cond (inc-spot
+                  (perlnow-full-path-to-module inc-spot package-name)
+                  )
+                 (t
+                  (perlnow-module-found-in-INC package-name))))
+          )
+     (save-excursion
+       (find-file module-file)
+       (perlnow-import-string)
+       )))
 
 
 (defun perlnow-prompt-for-module-to-create (where what)
@@ -2484,7 +2527,7 @@ invoked with a double prefix (C-u C-u), instead of running
                           (setq run-string nil) ;; TODO is this Okay?  Don't *want* it to run yet.
                           )
                         (t
-                         (setq run-string (perlnow-simple-run-string testfile))
+                         (setq run-string (perlnow-generate-run-string testfile))
                          ))
                   ))))
     run-string))
@@ -3064,31 +3107,64 @@ a module's inc-spot."
     (message "%s" t-list) ;; The %s form does automatic conversion of list (pp?)
   ))
 
-;;;==========================================================
+
 ;;; The end of perlnow-edit-test-file family of functions
 ;;;==========================================================
+;;; the something-or-other utilities    TODO
+;;;==========================================================
 
-;; TODO need a real shell quoting mechanism (and *de-quoting* mechanism for perldb)
-;;  ch 37.2 Shell Arguments:
-;;        shell-quote-argument argument
-;;        combine-and-quote-strings list-of-strings &optional separator
-;;        split-string-and-unquote  (( undoes the above, use by perldb! ))
-;; TODO look for other places in the code where this function could be used.
-;;      (currently just perlnow-open-test-file).
-;;      Maybe: perlnow-guess-script-run-string
 
-;; TODO should this routine use:
-;;        perlnow-how-to-perl
-
-(defun perlnow-simple-run-string (program-file)
-  "Given the name of the PROGRAM-FILE, returns a simple perl invocation.
-Generates the simplest possible run-string.  This is used
-internally by routines such as \\[perlnow-guess-script-run-string]."
-  (let ( perl-command runstring )
-    (cond ((setq perl-command (perlnow-hashbang))) ;; preserves hash-bang, including -T
-          (t
-           (setq perl-command perlnow-perl-program))
+(defun perlnow-how-to-perl ()
+  "Define how to run perl for the current buffer.
+Gives precedence to the way it's done with the hash-bang line if
+that's found at the top of the file \(this preserves whatever
+path and options the author of the code intended, e.g. the \"-T\"
+flag\).  If that's not found, it uses the contents of the
+`perlnow-perl-program' variable, and if that has not been defined
+falls back to just \"perl\"."
+  (let* ( (perl-from-hashbang (perlnow-hashbang))
+          (how-to-perl "")
           )
+    (cond ( perl-from-hashbang
+            (setq how-to-perl perl-from-hashbang)
+            )
+          ( perlnow-perl-program
+            (setq how-to-perl perlnow-perl-program)
+           )
+          (t
+            (setq how-to-perl "perl")
+           )
+          )
+    how-to-perl
+    ))
+
+(defun perlnow-hashbang ()
+  "What is the hash bang line for this file buffer?
+Returns nil if there is none."
+  (save-excursion
+    (let ( (hash-bang-pat (concat     ; Want:  "^#!(rest captured)"
+                           "^"
+                           "[ \t]*"   ; Allowing whitespace between everything
+                           "#"
+                           "[ \t]*"
+                           "!"
+                           "[ \t]*"
+                           "\\(.*\\)$"
+                           ))
+           (return "")
+           )
+      (goto-char (point-min)) ; Presume the hash bang, if any, is the first line (no blanks or comments)
+      (if (looking-at hash-bang-pat)
+          (setq return
+                (match-string 1)))
+      )))
+
+(defun perlnow-generate-run-string (program-file)
+  "Generates a direct run-string for the perl PROGRAM-FILE.
+This is used internally by routines such as \\[perlnow-guess-script-run-string]."
+;; a centralized place to apply shell quoting
+  (let ( (perl-command (perlnow-how-to-perl))
+         (runstring "") )
     (setq runstring
           (combine-and-quote-strings (list perl-command program-file)))
     runstring))
@@ -3105,7 +3181,7 @@ Also sets that global variable as a side-effect."
          )
   ;;# check for hash bang:
   (cond ( (setq perl-command (perlnow-hashbang))
-          (setq run-line (perlnow-simple-run-string filename)) ;; redundantly calls perlnow-hashbang again
+          (setq run-line (perlnow-generate-run-string filename)) ;; redundantly calls perlnow-hashbang again
            )
         ( (string-match "\.t$"  filename) ; it's a test file
           (cond ( (setq staging-area (shell-quote-argument
@@ -3118,11 +3194,11 @@ Also sets that global variable as a side-effect."
                           )
                         ))
                 (t ; non-cpan-style code
-                 (setq run-line (perlnow-simple-run-string filename))
+                 (setq run-line (perlnow-generate-run-string filename))
                  ))
           )
         (t ; When all else fails, just feed it to perl and hope for the best
-         (setq run-line (perlnow-simple-run-string filename))
+         (setq run-line (perlnow-generate-run-string filename))
          ))
   (setq perlnow-script-run-string run-line)
   run-line))
@@ -3212,52 +3288,6 @@ Output is appended to the *perlnow-build* window."
               (setq return-flag t))
           ))
       return-flag
-      )))
-
-(defun perlnow-how-to-perl ()
-  "Define how to run perl for the current buffer.
-Gives precedence to the way it's done with the hash-bang line if
-that's found at the top of the file \(this preserves whatever
-path and options the author of the code intended, e.g. the \"-T\"
-flag\).  If that's not found, it uses the contents of the
-`perlnow-perl-program' variable, and if that has not been defined
-falls back to just \"perl\"."
-  (let* ( (perl-from-hashbang (perlnow-hashbang))
-          (how-to-perl "")
-          )
-    (cond ( perl-from-hashbang
-            (setq how-to-perl perl-from-hashbang)
-            )
-          ( perlnow-perl-program
-            (message "yow!")
-            (setq how-to-perl perlnow-perl-program)
-           )
-          (t
-            (setq how-to-perl "perl")
-           )
-          )
-    how-to-perl
-    ))
-
-(defun perlnow-hashbang ()
-  "What is the hash bang line for this file buffer?
-Returns nil if there is none."
-  (save-excursion
-    (let ( (hash-bang-pat (concat     ; Want:  "^#!(rest captured)"
-                           "^"
-                           "[ \t]*"   ; Allowing whitespace between everything
-                           "#"
-                           "[ \t]*"
-                           "!"
-                           "[ \t]*"
-                           "\\(.*\\)$"
-                           ))
-           (return "")
-           )
-      (goto-char (point-min)) ; Presume the hash bang, if any, is the first line (no blanks or comments)
-      (if (looking-at hash-bang-pat)
-          (setq return
-                (match-string 1)))
       )))
 
 (defun perlnow-get-inc-spot (package-name pm-location)
