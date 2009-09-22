@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.274 2009/09/21 22:54:53 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.275 2009/09/22 00:02:47 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1317,7 +1317,7 @@ to a different file."
   (let* ((modified-run-string
           (replace-regexp-in-string "\\bperl " "perl -d " run-string))
          (hacked-run-string
-          (replace-regexp-in-string "'" "" modified-run-string))
+          (replace-regexp-in-string "'" "" modified-run-string))   ;; TODO dequote operation
         )
     (perldb hacked-run-string)))
 
@@ -1960,8 +1960,6 @@ See the wrapper function: \\[perlnow-script]."
   (perlnow-create-with-template filename perlnow-perl-script-template)
   (perlnow-change-mode-to-executable))
 
-
-
 (defun perlnow-do-script-from-module (script-name package-name &optional inc-spot)
   "Does the work of creating a script from a module-buffer.
 Takes arguments SCRIPT-NAME PACKAGE-NAME INC-SPOT,
@@ -1974,31 +1972,29 @@ Currently always returns t, but future versions may return nil for failure."
 ; Presumption: if inc-spot is nil, then we got here from a man page buffer,
 ; and we can assume the module is installed (or the man page most
 ; likely wouldn't be there).
-;
 ;;; TODO - would be a good idea to check if we can find the
 ;;;        module and (perhaps) warn if not.
-;
-    ; Make the script we're creating the default run-string for this module.
-    (setq perlnow-module-run-string (format "perl %s" script-name))
+;;;
+    ;; Make the script we're creating the default run-string for this module.
+;;DELETE    (setq perlnow-module-run-string (format "perl %s" script-name))
+    (setq perlnow-module-run-string (perlnow-simple-run-string script-name)) ;; ;; TODO use perlnow-simple-run-string here.
     (perlnow-sub-name-to-kill-ring)
-    ; module currently displayed, now want to open script, display in paralel
+    ;; module currently displayed, now want to open script, display in paralel
       (perlnow-open-file-other-window
          script-name
          nil
          perlnow-perl-script-template)
-      ; forget about a "use" line for things that don't look much perl modules.
+      ;; forget about a "use" line for things that don't look much perl modules.
       (let ( (case-fold-search nil)
              (import-string "" )      )
         (if (string-match "^[A-Z]" package-name)
             (progn
               (unless (eq inc-spot nil)
                 (perlnow-endow-script-with-access-to inc-spot)
-
                 ;;; TODO generate an appropriate "use qw()" import list
                 (setq import-string (perlnow-generate-import-list package-name inc-spot))
-
                 )
-              ; insert the "use Modular::Stuff;" line
+              ;; insert the "use Modular::Stuff;" line
               (insert (format "use %s%s;" package-name import-string))
               (insert "\n")
               )))
@@ -2017,12 +2013,14 @@ Currently always returns t, but future versions may return nil for failure."
       (insert relative-path)
       (insert "\");\n"))))
 
-;; TODO SOON the interface on this is silly:
-;; Just assume you've already got the module code in front of you,
-;; in the current buffer.  Search through it for the standard
-;; Exporter boiler plate.  (You could do a keystroke macro as a
-;; first cut).
-;;(setq import-string (perlnow-generate-import-list package-name inc-spot))
+;; TODO SOON maybe the interface on this is silly:
+;; Could just assume you've already got the module code in front of you,
+;; in the current buffer.
+;; (( But then, there's the issue with installed modules, where you start from man. ))
+;; Search through it for the standard Exporter boiler plate.
+;; (You could do a keystroke macro as a first cut).
+;; Usage:
+;;    (setq import-string (perlnow-generate-import-list package-name inc-spot))
 (defun perlnow-generate-import-list (package-name inc-spot)
   "Get the default import list from the module PACKAGE-NAME.
 Should look something like ' qw( routine1 routine2 routine3 )', where
@@ -2030,7 +2028,7 @@ the three routines are exported (optionally or not) from the indicated module.
 If this is not appropriate (e.g. if it's an OOP module, not Exporter based)
 this will return the empty string."
 
-  "" ;; stub
+  "" ;; stub  -- but why not   qw( :all )
 
      ;; TODO EXTRA CREDIT -- ideally: support exporter based modules
      ;; of all sorts, even when creating script from man page.
@@ -2443,7 +2441,8 @@ invoked with a double prefix (C-u C-u), instead of running
           staging-area-candidate staging-area-candidate-name
           test-search-list ;; A listing of possible absolute locations to look for the test file,
           ;; built up from relative locations in perlnow-test-path
-          testloc testfile
+          testloc
+          testfile
           run-string            ; the return value
           )
     (cond ( harder
@@ -2490,7 +2489,8 @@ invoked with a double prefix (C-u C-u), instead of running
                           (setq run-string nil) ;; TODO is this Okay?  Don't *want* it to run yet.
                           )
                         (t
-                         (setq run-string (format "%s '%s'" perlnow-perl-path testfile))
+;;; DELETE                         (setq run-string (format "%s '%s'" perlnow-perl-path testfile))  ;;; TODOsky
+                         (setq run-string (perlnow-simple-run-string testfile))
                          ))
                   ))))
     run-string))
@@ -3106,8 +3106,17 @@ a module's inc-spot."
 
 ;; TODO if looking at a script, try to scrape the hashbang for the perl invocation.
 ;; TODO need a real shell quoting mechanism (and *de-quoting* mechanism for perldb)
+;;  ch 37.2 Shell Arguments:
+;;        shell-quote-argument argument
+;;        combine-and-quote-strings list-of-strings &optional separator
+;;        split-string-and-unquote  (( undoes the above, use by perldb! ))
 ;; TODO look for other places in the code where this function could be used.
 ;;      (currently just perlnow-open-test-file).
+;;      Maybe: perlnow-guess-script-run-string
+
+;; TODO should this routine use:
+;;        perlnow-how-to-perl
+
 (defun perlnow-simple-run-string (program-file)
   "Given the name of the PROGRAM-FILE, returns a simple perl invocation.
 Generates the simplest possible run-string. There is no awareness of
