@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.282 2009/09/22 20:33:14 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.283 2009/09/22 20:44:23 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -775,10 +775,10 @@ Defines the PERL_MODULE_NAME expansion.")
 
 (defconst perlnow-slash (convert-standard-filename "/")
   "A \(possibly\) more portable form of the file system name separator.")
-                                        ; Using this instead of "/", as a stab at portability (e.g. for windows).
-                                        ; But even if this helps, there are still other places
-                                        ; dependencies have crept in, e.g. patterns that use [^/].
-                                        ; (And what about a root of "/" vs "C:\" ?)
+;; Using this instead of "/", as a stab at portability (e.g. for windows).
+;; But even if this helps, there are still other places
+;; dependencies have crept in, e.g. patterns that use [^/].
+;; (And what about a root of "/" vs "C:\" ?)
 
 
 ;; Defining additional "expansions" for use in template.el templates.
@@ -852,7 +852,7 @@ already be in that area.
 See `template-expansion-alist' for the current list of
 defined expansions.")
 
-                                        ; Now the actual definitions:
+;; Now the actual definitions:
 
 (setq template-expansion-alist
       (cons
@@ -918,8 +918,8 @@ For versions of perl later than 5.006, version numbers looking like
 5.7.0 or 5.8.2 were often used.  My guess -- the subject is actually
 insanely complicated -- is that you're safest with a version such
 as \"5.008002\" rather than \"5.8.2\".")
-                                        ; Defining feature MINIMUM_PERL_VERSION to insert the above as an
-                                        ; an "expansion" in a template.el template: (>>>MINIMUM_PERL_VERSION<<<);
+;; Defining feature MINIMUM_PERL_VERSION to insert the above as an
+;; an "expansion" in a template.el template: (>>>MINIMUM_PERL_VERSION<<<);
 (setq template-expansion-alist
       (cons
        '("MINIMUM_PERL_VERSION" (insert perlnow-minimum-perl-version))
@@ -1181,8 +1181,8 @@ perlcritic in addition to a \"perl -cw\"."
           (perl (perlnow-how-to-perl))
 
           (podchecker perlnow-podchecker-program)
-                                        ; TODO probe for perlcritic, set to nil if it's not installed.
-                                        ;   perlcritic --version  =>  1.102
+          ;; TODO probe for perlcritic, set to nil if it's not installed.
+          ;;   perlcritic --version  =>  1.102
           (perlcritic perlnow-perlcritic-program)
           )
     (save-buffer)
@@ -1454,8 +1454,8 @@ can find the module."
      ( (setq package-name (perlnow-get-package-name-from-man))
        (setq perlnow-perl-package-name package-name) ; global used to pass value into template
        (perlnow-do-script-from-module script-name package-name))
-     (t ; no package name found, so we're working with a script
-                                        ; (someday, might use perlnow-script-p)
+     (t ;; no package name found, so we're working with a script
+        ;; (someday, might use perlnow-script-p)
       (perlnow-do-script script-name)))))
 
 ;;;   TODO
@@ -1491,7 +1491,7 @@ creation."
 ;;; Formerly named: perlnow-prompt-for-new-module-in-one-step
   (interactive
    (let ((initial perlnow-pm-location)
-                                        ; The keymap is key: transforms read-from-minibuffer.
+         ;; The keymap is key: transforms read-from-minibuffer.
          (keymap perlnow-read-minibuffer-map)
          (history 'perlnow-package-name-history)
          result filename return
@@ -1565,10 +1565,10 @@ The location for the new module defaults to the global
 Asks two questions, prompting for the DEV-LOCATION  \(the place where
 h2xs will create the \"staging area\"\) and the PACKAGE-NAME \(in perl's
 double-colon separated package name form\)."
-                                        ; Because default-directory is the default location for (interactive "D"),
-                                        ; I'm doing the interactive call in stages: this way can change
-                                        ; default-directory momentarily, then restore it. Uses the dynamic scoping
-                                        ; of elisp's "let" (which is more like perl's "local" than perl's "my").
+  ;; Because default-directory is the default location for (interactive "D"),
+  ;; I'm doing the interactive call in stages: this way can change
+  ;; default-directory momentarily, then restore it. Uses the dynamic scoping
+  ;; of elisp's "let" (which is more like perl's "local" than perl's "my").
   (interactive
    (let ((default-directory perlnow-dev-location))
      (call-interactively 'perlnow-prompt-for-cpan-style)))
@@ -1582,11 +1582,11 @@ double-colon separated package name form\)."
           (window-size 14)
           )
     (setq display-buffer (get-buffer-create "*perlnow-h2xs*"))
-                                        ;Bring the *perlnow-h2xs* display window to the fore (bottom window of the frame)
+    ;; Bring the *perlnow-h2xs* display window to the fore (bottom window of the frame)
     (perlnow-show-buffer-other-window display-buffer window-size t)
     (perlnow-blank-out-display-buffer display-buffer t)
     (let ((default-directory dev-location))
-                                        ; A typical h2xs run string:  h2xs -AX -n Net::Acme -b 5.6.0
+      ;; A typical h2xs run string:  h2xs -AX -n Net::Acme -b 5.6.0
       (call-process "h2xs"
                     nil
                     display-buffer      ; must be buffer object?
@@ -1603,7 +1603,7 @@ double-colon separated package name form\)."
     (find-file h2xs-module-file)
     (search-forward "# Preloaded methods go here.")
     (forward-line 1)
-                                        ; Also  open the *.t file
+    ;; Also  open the *.t file
     (setq h2xs-test-file (perlnow-full-path-to-dev-test-file h2xs-staging-area))
     (perlnow-open-file-other-window
      h2xs-test-file
@@ -1623,10 +1623,10 @@ double-colon separated package name form\)."
 Asks two questions, prompting for the MODSTAR-LOCATION  \(the place where
 module-starter will create the \"staging area\"\) and the PACKAGE-NAME
 \(in perl's double-colon separated package name form\)."
-                                        ; Because default-directory is the default location for (interactive "D"),
-                                        ; I'm doing the interactive call in stages: this way can change
-                                        ; default-directory momentarily, then restore it.
-                                        ; Uses the dynamic scoping of elisp's "let"
+  ;; Because default-directory is the default location for (interactive "D"),
+  ;; I'm doing the interactive call in stages: this way can change
+  ;; default-directory momentarily, then restore it.
+  ;; Uses the dynamic scoping of elisp's "let"
   (interactive
    (let ((default-directory perlnow-dev-location))
      (call-interactively 'perlnow-prompt-for-cpan-style)))
@@ -1645,7 +1645,7 @@ module-starter will create the \"staging area\"\) and the PACKAGE-NAME
            (downcase (mapconcat 'identity (split-string perlnow-module-starter-builder  "::") "_")))
           )
     (setq display-buffer (get-buffer-create "*perlnow-module-starter*"))
-                                        ;Bring the *perlnow-module-starter* display window to the fore (bottom window of the frame)
+    ;;Bring the *perlnow-module-starter* display window to the fore (bottom window of the frame)
     (perlnow-show-buffer-other-window display-buffer window-size t)
     (perlnow-blank-out-display-buffer display-buffer t)
 
@@ -1678,12 +1678,12 @@ module-starter will create the \"staging area\"\) and the PACKAGE-NAME
                 ))
               )
         (require 'template)
-        (setq perlnow-perl-package-name package-name) ; global used to pass value into template
+        (setq perlnow-perl-package-name package-name) ;; global used to pass value into template
 
         (delete-file modstar-module-file)
         (perlnow-create-with-template modstar-module-file template-name)
 
-                                        ; Also open the *.t file
+        ;; Also open the *.t file
         (setq modstar-test-file
               (perlnow-full-path-new-module-starter-test-file modstar-staging-area package-name))
 
@@ -1926,14 +1926,14 @@ original window, not the new one."
     ;;; (probably not workable without dorking out the calling interface)
     (cond ((file-exists-p file)
            (find-file file))
-          (t ; file does not exist yet
-                                        ; create directory if need be
+          (t ;; file does not exist yet
+             ;; create directory if need be
            (unless (file-exists-p location)
              (make-directory location t))
            (if template
                (perlnow-create-with-template file template)
              (find-file file))))
-                                        ; after opening, point back from new place to where we were
+    ;; after opening, point back from new place to where we were
     (setq perlnow-associated-code original-file-displayed) ; bufloc, used by "C-c/b"
     (if switchback
         (other-window 1))
@@ -2059,7 +2059,7 @@ of this routine is subject to change."
 
          (all-tag-pattern
           "\\bEXPORT_TAGS[ \t]*=[ \t]*(.*?\\ball\\b")  ; allowing alt quotes,
-                                        ; requiring first paren
+         ;; requiring first paren
          )
     (cond ((perlnow-exporter-code-p)
            (save-excursion
@@ -2117,7 +2117,7 @@ EXPORT lists, and add them to the qw() list associated with %EXPORT_TAGS."
          ;;  our %EXPORT_TAGS = ( 'all' => [
          (all-tag-pattern
           "\\bEXPORT_TAGS[ \t]*=[ \t]*(.*?\\ball\\b")  ; allowing alt quotes,
-                                                       ; requiring first paren
+         ;; requiring first paren
          (open-quoted-words-pattern
           "qw(")
          (closing-quoted-words-pattern
@@ -2147,17 +2147,12 @@ EXPORT lists, and add them to the qw() list associated with %EXPORT_TAGS."
              (move-beginning-of-line 1) ;; redundant
              (next-line 1)
              (open-line 1)  ;; TODO make conditional upon add-list?
-
-;;             (insert (mapconcat 'identity add-list (concat "\n" indent)))
              (insert (mapconcat '(lambda (item)
                                    (concat indent item))
                                 add-list "\n"))
            ))))))
 
 
-;; (mapcar (lambda (item)
-;;      (concat "Prefix: " item))
-;;       '("AAA" "BBB" "CCC")))
 
 
 ;; ========
@@ -2485,8 +2480,8 @@ with path."
 Given FILENAME and TEMPLATE this does the actual creation of
 the file and associated buffer using the template.  As a
 side-effect, it sets the global `template-file' here."
-                                        ; The "template-file" must be set here because of a bug in
-                                        ; template.el, when using template-new-file non-interactively.
+  ;; The "template-file" must be set here because of a bug in
+  ;; template.el, when using template-new-file non-interactively.
   (setq template-file (template-split-filename filename))
   (template-new-file filename template)
   (write-file filename))
@@ -2615,7 +2610,7 @@ this favors the earlier occurrence in the list."
               (setq score (+ 1 score)))
           )
         (setq score-alist (cons (cons candidate score) score-alist))))
-                                        ; Now find max value in score-alist, return key.
+    ;; Now find max value in score-alist, return key.
     (let ( string score high_scorer
                   (largest 0))
       (dolist (connie score-alist)
@@ -2662,7 +2657,7 @@ like: \"/home/doom/tmp/../bin\"."
     (setq dot_means (perlnow-fixdir dot_means))
     (setq newpath
           (replace-regexp-in-string two-dot-pat (perlnow-one-up dot_means) given_path))
-                                        ; because perlnow-one-up uses perlnow-fixdir, no need to call it, (or to append "/" here)
+    ;; because perlnow-one-up uses perlnow-fixdir, no need to call it, (or to append "/" here)
     (setq newpath
           (replace-regexp-in-string one-dot-pat dot_means newpath))
     (setq newpath (perlnow-fixdir newpath))
@@ -2921,12 +2916,12 @@ and the NAMESTYLE \(see `perlnow-test-policy-naming-style'\)."
             (format
              "Invalid namestyle argument: %s, must be hyphenized, basename or numeric."
              namestyle))))
-                                        ;If this result is good, return it, if not, keep looking
-                                        ;If nothing found though, return this as name to be created.
-    (cond ((file-exists-p test-file-from-policy)    ; if test-policy finds test-file, does not look for redundant matches
+    ;; If this result is good, return it, if not, keep looking
+    ;; If nothing found though, return this as name to be created.
+    (cond ((file-exists-p test-file-from-policy) ;; if test-policy finds test-file, stop looking
            (setq test-file test-file-from-policy) )
-          ((setq test-file (perlnow-search-through-test-path)) ) ; warns if redundant matches exist,
-                                        ; but returns the first.  nil if none.
+          ((setq test-file (perlnow-search-through-test-path)) ) ;; warns if redundant matches exist,
+                                                                 ;; but returns the first.  nil if none.
           (t
            (setq test-file test-file-from-policy))
           )
@@ -2948,29 +2943,29 @@ Returns file names with full path if FULLPATH is t."
 ;;; Note, code mutated from above: perlnow-get-test-file-name-given-policy
   (message "perlnow-list-test-files, looking at buffer: %s" (buffer-name))
   (let* (
-                                        ; script oriented info:
+         ;; script oriented info:
          (file-location
           (file-name-directory (buffer-file-name)))
          (basename
           (file-name-sans-extension (file-name-nondirectory (buffer-file-name))))
-                                        ; module oriented info (calculated below):
+         ;; module oriented info (calculated below):
          (package-name "")
          (inc-spot "")
          (hyphenized-package-name "")
-                                        ; also will determine:
+         ;; also will determine:
          (testloc-absolute "")
          (test-file-from-policy "")
          (test-file "")
          (test-file-list ())
          )
 
-                                        ; module oriented info, calculated:
+    ;; module oriented info, calculated:
     (cond ; do only if module
      ((setq package-name (perlnow-get-package-name-from-module-buffer))
       (setq inc-spot (perlnow-get-inc-spot package-name file-location))
       (setq hyphenized-package-name (mapconcat 'identity (split-string package-name "::") "-"))
       ))
-                                        ; define testloc-absolute
+    ;; define testloc-absolute
     (cond ((string= dotdef "fileloc") ; might be script or module
            (setq testloc-absolute
                  (perlnow-expand-dots-relative-to file-location testloc)))
@@ -3149,7 +3144,7 @@ Will warn if there appear to be redundant possible testfiles."
 ;;; code check for and complain about the problem of multiple finds.
   (let*  (
           (test-search-list ())  ; A listing of possible absolute locations to look for the test file,
-                                        ; built up from relative locations in perlnow-test-path
+          ;; built up from relative locations in perlnow-test-path
           testloc   ; a location to be searched for test files
           testfile  ; a possible testfile to check for existance
 
@@ -3168,12 +3163,12 @@ Will warn if there appear to be redundant possible testfiles."
       ;;; TODO - routine that probes for all possible info like this
       ;;; you could want, and stashes it in a data structure like an alist
       ;;; which you can then pass around if you like.
-                                        ; script oriented info:
+    ;; script oriented info:
     (setq file-location
           (file-name-directory (buffer-file-name)))
     (setq basename
           (file-name-sans-extension (file-name-nondirectory (buffer-file-name))))
-                                        ; module oriented info:
+    ;; module oriented info:
     (cond ( (setq package-name (perlnow-get-package-name-from-module-buffer))
             (setq inc-spot (perlnow-get-inc-spot package-name file-location))
             (setq hyphenized-package-name
@@ -3181,7 +3176,7 @@ Will warn if there appear to be redundant possible testfiles."
             ))
        ;;; TODO - Consider exposing this list to users in some form,
        ;;;        via a defvar or something
-                                        ; This is a listing of possible names for the test file:
+    ;; This is a listing of possible names for the test file:
     (setq test-file-check-list (list
                                 (concat hyphenized-package-name ".t")
                                 (concat "01-" hyphenized-package-name ".t")
@@ -3189,8 +3184,8 @@ Will warn if there appear to be redundant possible testfiles."
                                 ))
    ;;; TODO NOW
    ;;; Question: is the following general code that would work on a script *or* a module file?
-                                        ; load test-search-list:
-                                        ;    do munging of dots, deal with different possible meanings of "here"
+    ;; load test-search-list:
+    ;;    do munging of dots, deal with different possible meanings of "here"
     (dolist (testloc-dotform perlnow-test-path)
       (setq testloc
             (perlnow-expand-dots-relative-to file-location testloc-dotform))
@@ -3202,7 +3197,7 @@ Will warn if there appear to be redundant possible testfiles."
              (if (file-directory-p testloc)
                  (setq test-search-list (cons testloc test-search-list)))
              )))
-                                        ; tracking down the *.t files (if any)
+    ;; tracking down the *.t files (if any)
     (dolist (real-place test-search-list)
       (dolist (possible-name test-file-check-list)
         (setq testfile
@@ -3211,7 +3206,7 @@ Will warn if there appear to be redundant possible testfiles."
                possible-name))
         (if (file-regular-p testfile)
             (setq fish-list (cons testfile fish-list)))))
-                                        ; handle the case of multiple possible test files
+    ;; handle the case of multiple possible test files
     (cond ((> (length fish-list) 1)
            (let ( (i 1)
                   (warning "PERLNOW WARNING: more than one valid test file (using the first):"))
@@ -3648,10 +3643,10 @@ for the old-fashioned \"1.t\".  E.g. if the staging-area were
     (setq staging-area (perlnow-fixdir staging-area))  ;;; redundant fixdir now?
     (setq module-test-location
           (concat staging-area "t/"))
-                                        ; peel off the lower level of "staging-area",
-                                        ; to get the probable base-name
+    ;; peel off the lower level of "staging-area",
+    ;; to get the probable base-name
     (let ((dir staging-area))
-                                        ;      (string-match "\\(^.*/\\)\\([^/]*\\)[/]*$" dir)
+      ;;      (string-match "\\(^.*/\\)\\([^/]*\\)[/]*$" dir)
       ;;; TODO - regexp has unix slash dependency
       (string-match "\\(^.*/\\)\\([^/]*\\)/$" dir)
       (setq basename (match-string 2 dir))
@@ -3659,16 +3654,16 @@ for the old-fashioned \"1.t\".  E.g. if the staging-area were
         (message "warning: blank basename found in perlnow-full-path-to-dev-test-file"))
       )
     (setq test-file1 (concat module-test-location basename ".t"))
-                                        ; for the hell of it, peel off the last part
-                                        ; of that name, a second try for basename (not likely)
+    ;; for the hell of it, peel off the last part
+    ;; of that name, a second try for basename (not likely)
     (string-match "\\(^.*-\\)\\([^-]*\\)$" basename)
     (setq basename-truncated (match-string 2 basename))
     (setq test-file2 (concat module-test-location basename-truncated ".t"))
-                                        ; And failing that, well try the numeric name, 1.t
-                                        ; And if *that* fails, we'll return the directory location
-                                        ; (a feature that might be better than just returning a
-                                        ; single file, eh?  Maybe should only open the h2xs test file
-                                        ; when there's only one there...  Think about that -- TODO).
+    ;; And failing that, well try the numeric name, 1.t
+    ;; And if *that* fails, we'll return the directory location
+    ;; (a feature that might be better than just returning a
+    ;; single file, eh?  Maybe should only open the h2xs test file
+    ;; when there's only one there...  Think about that -- TODO).
     (cond ( (file-exists-p test-file1)
             (setq test-file test-file1 ) )
           ( (file-exists-p test-file2)
@@ -3705,12 +3700,12 @@ a buffer object.  This can work on a read-only buffer."
   (let ((original-buff (buffer-name))                   ;; TODO Not used, right?
         (original-default-directory default-directory)  ;; TODO What for?
         original-read-only-status)
-                                        ; Buffer argument may be string or buffer object
+    ;; Buffer argument may be string or buffer object
     (if (char-or-string-p buffer) ; stringp better ? would a char work?
         (setq buffer (get-buffer-create buffer)))
     (if (not (string= "*" (substring (buffer-name buffer) 0 1)))
         (error "Will not blank out a buffer that does not begin with \"*\""))
-                                        ; clear buffer if it exists, create it otherwise
+    ;; clear buffer if it exists, create it otherwise
     (if (buffer-live-p buffer)
         (progn
           (set-buffer buffer)
@@ -3734,9 +3729,9 @@ current file buffer.  Used by \\[perlnow-do-script-from-module]."
 ;;; Consider loading a lisp structure with @INC once early on,
 ;;; so we won't need to do this repeatedly
 ;;;
-                                        ; Note: Just checking getenv("PERL5LIB") would be close, but
-                                        ; using @INC as reported by perl seems more solid, so that's
-                                        ; what we do here.
+  ;; Note: Just checking getenv("PERL5LIB") would be close, but
+  ;; using @INC as reported by perl seems more solid, so that's
+  ;; what we do here.
   (unless inc-spot
     (setq inc-spot
           (perlnow-get-inc-spot
@@ -3835,27 +3830,27 @@ and \\[perlnow-read-minibuffer-complete-word\]."
         raw_string candidate-alist suggested-completion field-start word-separator
                    two-pieces-list perlish-path fragment fragment-pat file-system-path
                    lastchar returned new-portion new-portion-first-word result new-mini
-                                        ; definitions
+                   ;; definitions
                    (end-of-prompt-pat ": ")
                    (pm-extension-pat "\\.pm$") )
     (setq raw_string (buffer-string))
     (string-match end-of-prompt-pat raw_string)
     (setq field-start (match-end 0)) ; also used later to blank minibuffer
     (setq minibuffer-string (substring raw_string field-start))
-                                        ; No single trailing colons allowed: double them up
+    ;; No single trailing colons allowed: double them up
     (if (string-match "[^:]:$" minibuffer-string)
         (setq new-mini (concat minibuffer-string ":"))
-      (progn ; else, do usual processing
-                                        ; Treat input string as a directory plus fragment
+      (progn ;; else, do usual processing
+             ;; Treat input string as a directory plus fragment
         (setq two-pieces-list
               (perlnow-split-module-path-to-dir-and-tail minibuffer-string))
         (setq perlish-path (car two-pieces-list))
         (setq fragment (cadr two-pieces-list))
         (setq fragment-pat (concat "^" fragment))
-        (cond (; Are we inside the perl package namespace yet?
+        (cond (;; Are we inside the perl package namespace yet?
                (string-match "::" perlish-path)
                (setq file-system-path (replace-regexp-in-string "::" perlnow-slash perlish-path))
-                                        ; swap in file system separator "/"  for perl package separators "::"
+               ;; swap in file system separator "/"  for perl package separators "::"
                (setq separator "::"))
               (t
                (setq separator perlnow-slash)
@@ -3863,7 +3858,7 @@ and \\[perlnow-read-minibuffer-complete-word\]."
         (setq candidate-alist
               (perlnow-list-directories-and-modules-as-alist file-system-path fragment-pat))
         (setq returned (try-completion fragment candidate-alist))
-                                        ; must convert logical values of "returned" into appropriate strings
+        ;; must convert logical values of "returned" into appropriate strings
         (cond ((eq returned nil)
                (setq suggested-completion fragment))
               ((eq returned t) ; a precise match that is not a *.pm file is a directory: add separator
@@ -3872,15 +3867,15 @@ and \\[perlnow-read-minibuffer-complete-word\]."
                  (setq suggested-completion (concat fragment separator))))
               (t
                (setq suggested-completion returned)))
-                                        ; Prevents .pm extensions from appearing in the minibuffer
-                                        ; (Yeah, checking *again*. Inelegant, but WTH)
+        ;; Prevents .pm extensions from appearing in the minibuffer
+        ;; (Yeah, checking *again*. Inelegant, but WTH)
         (if (string-match pm-extension-pat suggested-completion)
             (setq suggested-completion (substring suggested-completion 0 (match-beginning 0) )))
-                                        ; if there's no change from the input value, go into help
+        ;; if there's no change from the input value, go into help
         (setq result (concat perlish-path suggested-completion))
         (if (string= result minibuffer-string)
             (perlnow-read-minibuffer-completion-help))
-                                        ; peel off existing fragment from suggested-completion, what remains is the new-portion
+        ;; peel off existing fragment from suggested-completion, what remains is the new-portion
         (string-match fragment-pat suggested-completion)
         (setq new-portion (substring suggested-completion (match-end 0)))
         (if restrict-to-word-completion  ; for "spacey"
@@ -3915,15 +3910,15 @@ be bound to the \"?\" key during the minibuffer read."
          (pat ": ")
          (field-start (+ (string-match pat raw_string) (length pat)))
          (string (substring raw_string field-start))
-                                        ; Treat input string as a directory plus fragment
+         ;; Treat input string as a directory plus fragment
          (two-pieces-list
           (perlnow-split-module-path-to-dir-and-tail string))
          (perlish-path     (car two-pieces-list))
          (fragment (cadr two-pieces-list))
          (fragment-pat (concat "^" fragment)) ; for getting possible filename completions
-                                        ; out of a list of bare filenames (no path)
+         ;; out of a list of bare filenames (no path)
          (file-system-path (replace-regexp-in-string "::" perlnow-slash perlish-path) )
-                                        ; unix file system separator "/" swapped in for perl package separators "::"
+         ;; unix file system separator "/" swapped in for perl package separators "::"
          match-alist
          )
     (setq match-alist (perlnow-list-directories-and-modules-as-alist file-system-path fragment-pat))
@@ -3939,7 +3934,7 @@ be bound to the \"?\" key during the minibuffer read."
   "Remove the pm extension from the names in the ALIST of file names and values.
 Currently this throws away the numeric value and re-numbers the names in the
 alist in order."
-                                        ; Does the numbering of items in the alist matter one way or another?
+  ;; Does the numbering of items in the alist matter one way or another?
   (let (name new-alist (i (length alist)) )
     (dolist (pair alist)
       (setq name (car pair))
@@ -3967,7 +3962,7 @@ are sequential integers."
 ;;; Nope: I can't do that, it messes up "workhorse" as written.
   (let* (
          match-alist
-                                        ; some directory-files arguments:
+         ;; some directory-files arguments:
          (directory-full-name nil)
          (directory-nosort nil)
          (file-list
@@ -3982,7 +3977,7 @@ are sequential integers."
                 ((string-match "\\.pm$" file)
                  (setq match-alist (cons (cons file i) match-alist))
                  (setq i (+ i 1))))))
-                                        ; Reverse the order of the match-alist to get values counting up starting from 1
+    ;; Reverse the order of the match-alist to get values counting up starting from 1
     (setq match-alist (reverse match-alist))  ;; maybe this isn't needed, but cargo cult programming is fun
     ))
 
@@ -4000,7 +3995,7 @@ it only lists directories."
 ;;; Functional, but most likely NOT USED
   (let* (
          match-alist
-                                        ; directory-files directory &optional full-name match-regexp nosort
+         ;; directory-files directory &optional full-name match-regexp nosort
          (directory-full-name nil)
          (directory-nosort nil)
          (file-list
@@ -4013,7 +4008,7 @@ it only lists directories."
             (setq match-alist (cons (cons file i) match-alist))
             (setq i (+ i 1))
             )))
-                                        ; Reverse the order of the match-alist
+    ;; Reverse the order of the match-alist
     (setq match-alist (reverse match-alist))  ;; maybe this isn't needed, but cargo cult programming is fun
     ))
 
@@ -4244,14 +4239,14 @@ and \\[perlnow-setter-prefix]."
 
 
 ;;; Wrappers around external commands
-; another proof-of-concept
-; TODO:
-; o  uses grep-find internally, but really needs it's own history. ((Why?))
-;    Look at how grep-find is written, and use those constructs.
-; o  Presumes --nocolor and --nogroup aren't entered in ack-search
-;    forcibly remove if they're there?  Does that matter? Check.
-; o  Really this isn't just for running perl code.
-;    Maybe, write a package of external command wrappers?
+;; another proof-of-concept
+;; TODO:
+;; o  uses grep-find internally, but really needs it's own history. ((Why?))
+;;    Look at how grep-find is written, and use those constructs.
+;; o  Presumes --nocolor and --nogroup aren't entered in ack-search
+;;    forcibly remove if they're there?  Does that matter? Check.
+;; o  Really this isn't just for running perl code.
+;;    Maybe, write a package of external command wrappers?
 
 (defun perlnow-ack (ack-search)
   "Does searches with the utility ack, ala grep-find."
@@ -4353,10 +4348,10 @@ newer \\[perlnow-module\] uses a hybrid form to get that
 information in a single question.  This function is still provided
 for people who don't don't agree that that's more convenient."
   (interactive
-   ; Because default-directory is the default location for (interactive "D"),
-   ; I'm doing the interactive call in two stages: change
-   ; default-directory momentarily, then restore it. Uses dynamic scoping via "let".
-   ; (It's more like perl's "local" than perl's "my".)
+   ;; Because default-directory is the default location for (interactive "D"),
+   ;; I'm doing the interactive call in two stages: change
+   ;; default-directory momentarily, then restore it. Uses dynamic scoping via "let".
+   ;; (It's more like perl's "local" than perl's "my".)
    (let ((default-directory perlnow-pm-location))
      (call-interactively 'perlnow-prompt-for-module-to-create)))
   (require 'template)
@@ -4374,8 +4369,8 @@ This is a simple, though inflexible form of \\[perlnow-script].
 One advantage: it does not require the template.el package."
 ;;; formerly: perlutil-perlnow
   (interactive)
-  ; ask the user the name of the script to create
-  ; check to see if one exists already, and if so, ask for another name
+  ;; ask the user the name of the script to create
+  ;; check to see if one exists already, and if so, ask for another name
   (let ( (perlutil-ask-mess "Name for the new perl script? " )
          (perlutil-perlnow-file-name "") )
     (while (progn
@@ -4384,9 +4379,9 @@ One advantage: it does not require the template.el package."
                    )
              (setq perlutil-ask-mess "That name is already in use, use another file name: " )
              (file-exists-p perlutil-perlnow-file-name)))
-                                        ; open a buffer associated with the file
+    ;; open a buffer associated with the file
     (find-file perlutil-perlnow-file-name))
-  ; Insert the hashbang, a simple header, and make the file executable:
+  ;; Insert the hashbang, a simple header, and make the file executable:
   (perlnow-perlify-this-buffer-simple))
 
 
@@ -4400,21 +4395,21 @@ It does three things:
    Goes into cperl-mode using font-lock-mode."
 ;;; Formerly: perlutil-perlify-this-buffer
    (interactive)
-    ; insert the hash bang line at the top of the file:
+   ;; insert the hash bang line at the top of the file:
     (goto-char (point-min))
     (insert perlnow-simple-hash-bang-line)
     (insert "\n")
     (insert "# ")
-    ; now, insert a simple header, of the form:
-    ; <programname> - <author's email>
-    ;                 <timestamp>
+    ;; now, insert a simple header, of the form:
+    ;; <programname> - <author's email>
+    ;;                 <timestamp>
     (let ((perlutil-file-name-no-path (file-name-nondirectory (buffer-file-name)) ))
       (insert perlutil-file-name-no-path)
         (insert " - " )
         (insert user-mail-address)
         (insert "\n")
       (insert "# ")
-        ; Indent so that the date lines up under the email address:
+      ;; Indent so that the date lines up under the email address:
         (let ( (i 0) )
         (while (< i (length perlutil-file-name-no-path) )
           (setq i (1+ i))
@@ -4422,15 +4417,15 @@ It does three things:
         (insert "   ")   ; extend indent passed the " - " on line above
       (insert (current-time-string))
       (insert "\n\n"))
-  ; Switch buffer to cperl-mode (whether you like it or not)
+    ;; Switch buffer to cperl-mode (whether you like it or not)
   (cperl-mode)
-  ; Turn on font-lock-mode, (if not on already)
+  ;; Turn on font-lock-mode, (if not on already)
   (if (font-lock-mode)
       (font-lock-mode))
-     ; (You might think it should be "if *not* font-lock", but this works.)
+  ;; (You might think it should be "if *not* font-lock", but this works.)
   ;; Make the file executable:
- ; Save first: make sure the file really exists before
-  ; we change the protections on it
+  ;; Save first: make sure the file really exists before
+  ;; we change the protections on it
   (save-buffer)
   (let ((perlutil-all-but-execute-mask ?\666) ; Mask to screen out executable file permissions
         (perlutil-file-permissions)
