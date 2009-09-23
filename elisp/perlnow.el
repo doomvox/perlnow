@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.283 2009/09/22 20:44:23 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.284 2009/09/22 23:24:58 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -178,17 +178,18 @@ to modify them individually:
    \(global-set-key \"\\C-c/R\" 'perlnow-set-run-string\)
    \(global-set-key \"\\C-c/A\" 'perlnow-set-alt-run-string\)
    \(global-set-key \"\\C-c/t\" 'perlnow-edit-test-file\)
+   \(global-set-key \"\\C-c/i\" 'perlnow-insert-sub\)
    \(global-set-key \"\\C-c/b\" 'perlnow-back-to-code\)
    \(global-set-key \"\\C-c/~\" 'perlnow-perlify-this-buffer-simple\)
 
 Above, the odd prefix \"control-c slash\" has been used because
 only the C-c <punctuation> bindings are reserved for minor modes,
-and while the perlnow.el package is not a minor-mode, it has some
-aspects in common with them.  The slash was choosen because it's
-unshifted and on the opposite side from the \"c\" \(on typical
-keyboards\).
+\(the perlnow is not a minor-mode, but it has similarities:
+many commands here need to work from many different modes\).
+The slash was choosen because it's unshifted and on the opposite
+side from the \"c\" \(on typical keyboards\).
 
-The user is free to do choose any key bindings, and you might
+The user is free to choose any key bindings, and you might
 prefer other assignments, such as using function keys for
 frequently used commands.  Some examples:
 
@@ -198,16 +199,15 @@ frequently used commands.  Some examples:
           '\(lambda \(\)
              \(define-key cperl-mode-map [f1] 'perlnow-perl-check\) \)\)
 
-When looking for a good prefix for \"perl\" commands, remember
+If you're looking for a good prefix for \"perl\" commands, remember
 that \"M-p\" is used in many contexts for \"history\" navigation.
-You should also be aware that \"C-x p\" is used by the p4.el
-package \(a front-end to the proprietary perforce version control
-system\).
+And be aware that \"C-x p\" is used by the p4.el package \(a
+front-end to the proprietary perforce version control system\).
 
 Caveats: perlnow.el was developed using GNU emacs 21.1 running
-on a linux box \(or GNU/Linux, if you prefer\).  This version
-includes bug fixes to get it working with GNU emacs 23.
-Reportedly, it does not work with xemacs.")
+on a linux box \(aka GNU/Linux\).  This version includes bug fixes
+to get it working with GNU emacs 23.  Reportedly, it does not
+work with xemacs.")
 
 (defvar perlnow-documentation-terminology t
   "Definitions of some terms used here:
@@ -2205,7 +2205,7 @@ found in LIST2."
 ;;;; To begin with, in the following it's okay to assume a layout a lot like this:
 ;;;;
 ;; our %EXPORT_TAGS = ( 'all' => [
-;;   # TODO Add names of items to export here.
+;;   # names of items to export
 ;;   qw(
 ;;      nada
 ;;      slackoff
@@ -2266,9 +2266,11 @@ found in LIST2."
     (message "%s" list)
     ))
 
-(defun perlnow-list-all-subs ()
+(defun perlnow-list-all-subs ( &optional internals )
   "Extracts the sub names for all routines in the current buffer.
-Presumes the current buffer is a perl module."
+Presumes the current buffer is a perl module.  If the INTERNALS
+option is set to t, subs with leading underscores are included,
+otherwise they're skipped." ;; TODO implement internals feature
   (interactive) ;; DEBUG only
   (unless (perlnow-module-code-p)
     (error "perlnow-list-all-subs expects to be called from a module buffer."))
@@ -2288,9 +2290,8 @@ Presumes the current buffer is a perl module."
           (re-search-forward sub-pattern nil t) ;; uses current buffer
         (progn
           (setq sub-name (match-string-no-properties 1))
-          ;; cons on the end of list
-          ;; (push sub-name sub-list)
-          (setq sub-list (cons sub-name sub-list))
+          (if (or internals (not (string-match "^_" sub-name)))
+                 (setq sub-list (cons sub-name sub-list)))
           ))
       sub-list
       )))
