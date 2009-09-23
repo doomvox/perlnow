@@ -5,7 +5,7 @@
 ;; Copyright 2004,2007 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.281 2009/09/22 10:40:03 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.282 2009/09/22 20:33:14 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -2104,13 +2104,9 @@ the indicated module."
     (switch-to-buffer original-buffer)
     import-string))
 
-;; TODO not there yet
-;; Symptom: inserts the full list of subs all over again,
-;; exclusion of stuff that's exported already isn't happening.
 (defun perlnow-revise-export-list ()
-  "NOT YET WORKING.  Intended to
-Find subs defined in the module that are not yet in the
-EXPORT lists, and add them to :all tag, and hence to @EXPORT_OK."
+  "Find subs defined in the module that are not yet in the
+EXPORT lists, and add them to the qw() list associated with %EXPORT_TAGS."
   (interactive)
   (unless (perlnow-module-code-p)
     (error "perlnow-generate-import-list expects to be run in a module buffer."))
@@ -2137,39 +2133,79 @@ EXPORT lists, and add them to :all tag, and hence to @EXPORT_OK."
            ;; skip to "qw(", and from there to ")"
            (re-search-forward open-quoted-words-pattern nil t)
            (re-search-forward closing-quoted-words-pattern nil t)
+           ;; capture whitespace to preserve indentation
+           (backward-word 1)
+           (let* ((end (point))
+                  (beg)
+                  (indent)
+                  )
+             (move-beginning-of-line 1)  ;; TODO make conditional upon add-list?
+             (setq beg (point))
+             (setq indent (buffer-substring-no-properties beg end))
            ;; insert the add-list
-           (move-beginning-of-line 1)
-           (open-line 1)
-           (insert (mapconcat 'identity add-list "\n"))
-           )))))
+           ;; (forward-word 1)
+             (move-beginning-of-line 1) ;; redundant
+             (next-line 1)
+             (open-line 1)  ;; TODO make conditional upon add-list?
+
+;;             (insert (mapconcat 'identity add-list (concat "\n" indent)))
+             (insert (mapconcat '(lambda (item)
+                                   (concat indent item))
+                                add-list "\n"))
+           ))))))
 
 
-;; TODO
-;; This isn't working right with strings snagged from a buffer.
-;; Though it might be text properties getting in the way, but no luck
-;; with the trick of clearing them... looks like they're still there.
+;; (mapcar (lambda (item)
+;;      (concat "Prefix: " item))
+;;       '("AAA" "BBB" "CCC")))
+
+
+;; ========
+;; set subtraction via a hash table
+
+(defun perlnow-string= (a b)
+  "Essentially just another string=.
+You may call it redundant, but it makes me feel beter."
+  (compare-strings a nil nil b nil nil nil))
+
+(defun perlnow-string-hash (key)
+  "Tries (and evidentally, fails) to strip text properties."
+  (let (( limit (- (length key) 1) ))
+    (sxhash
+     (progn
+       (set-text-properties 0 limit nil key)
+       key))))
+
+(define-hash-table-test 'perlnow-test
+ 'perlnow-string= 'perlnow-string-hash)
+
 (defun perlnow-subtract-lists (list1 list2)
   "Subtracts LIST2 from LIST1.
 Returns a list containing values of LIST1 that are not
 found in LIST2."
   (let* (
          ;; (seen (make-hash-table :test 'equal))
-          (seen (make-hash-table))
-          (difference ())
-          (value)
-          )
+         ;; (seen (make-hash-table))
+         (seen (make-hash-table :test 'perlnow-test))
+         (difference ())
+         (value)
+         )
     (dolist (item list2)
-      ;; trying to clear properties on this string
-      (set-text-properties 0 (- (length item) 1) nil item)
       (puthash item t seen))
     (dolist (item list1)
-      ;; trying to clear properties on this string
-      (set-text-properties 0 (- (length item) 1) nil item)
       (unless (gethash item seen)
         (setq difference (cons item difference)))
       )
     difference
     ))
+
+;; Verify that the above works with simple strings:
+;; (perlnow-subtract-lists (list "a" "d" "g")(list "a"))
+;; (perlnow-subtract-lists (list "a" "d" "g")(list "a" "g" "e"))
+
+;;; end set subtraction via a hash table
+
+
 
 ;;;; To begin with, in the following it's okay to assume a layout a lot like this:
 ;;;;
@@ -2205,7 +2241,7 @@ found in LIST2."
       (setq beg (+ (point) 1))
       (re-search-forward closing-quoted-words-pattern nil t)
       (setq end (- (point) 1))
-      (setq export-string-1 (buffer-substring beg end))
+      (setq export-string-1 (buffer-substring-no-properties beg end))
 
       ;;      (re-search-forward export-pattern nil t) ;; skip EXPORT_OK one
 
@@ -2214,7 +2250,7 @@ found in LIST2."
       (setq beg (+ (point) 1))
       (re-search-forward closing-quoted-words-pattern nil t)
       (setq end (- (point) 1))
-      (setq export-string-2 (buffer-substring beg end))
+      (setq export-string-2 (buffer-substring-no-properties beg end))
       )
 
     ;; split export-string-1 && export-string-2 on whitespace (including newlines)
@@ -2227,7 +2263,6 @@ found in LIST2."
     export-list
     ))
 
-
 (defun perlnow-list-all-exported-symbols-report ()
   ""
   (interactive)
@@ -2235,8 +2270,6 @@ found in LIST2."
           )
     (message "%s" list)
     ))
-
-
 
 (defun perlnow-list-all-subs ()
   "Extracts the sub names for all routines in the current buffer.
@@ -2259,15 +2292,13 @@ Presumes the current buffer is a perl module."
       (while
           (re-search-forward sub-pattern nil t) ;; uses current buffer
         (progn
-          (setq sub-name (match-string 1))
+          (setq sub-name (match-string-no-properties 1))
           ;; cons on the end of list
           ;; (push sub-name sub-list)
           (setq sub-list (cons sub-name sub-list))
           ))
       sub-list
       )))
-
-
 
 (defun perlnow-all-subs-report ()
   "Dump listing of all subs in current buffer."
@@ -2280,7 +2311,6 @@ Presumes the current buffer is a perl module."
 
 ;;=======
 ;; prompt functions
-
 
 (defun perlnow-prompt-for-module-to-create (where what)
   "Internally used by \\[perlnow-module-two-questions\] to ask the two questions.
@@ -2346,14 +2376,14 @@ Used by \\[perlnow-script-using-this-module]."
   (interactive)
   (let (return)
     (save-excursion
-                                        ; in case the cursor is *on top* of the keyword "sub", go forward a little.
+      ;; in case the cursor is *on top* of the keyword "sub", go forward a little.
       (forward-word 1)
       (forward-char)
       (setq return
             (catch 'HELL
               (unless (re-search-backward "^[ \t]*sub " nil t)
                 (throw 'HELL nil))
-                                        ; jump to start of name
+              ;; jump to start of name
               (forward-word 1)
               (forward-char)
               (let ((beg (point)))
