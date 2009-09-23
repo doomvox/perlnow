@@ -1,11 +1,12 @@
 ;;; perlnow.el --- Wed Jan 14 13:45:31 2004
+;;;           Rev: Tue Sep 22 16:37:27 2009
 
 ;;; Emacs extensions to speed development of perl code.
 
-;; Copyright 2004,2007 Joseph Brenner
+;; Copyright 2004, 2007, 2009 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.284 2009/09/22 23:24:58 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.285 2009/09/23 16:48:09 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
