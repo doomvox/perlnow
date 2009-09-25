@@ -6,7 +6,7 @@
 ;; Copyright 2004, 2007, 2009 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.285 2009/09/23 16:48:09 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.286 2009/09/25 02:17:31 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -41,10 +41,9 @@
 (eval-when-compile
   (require 'cl))
 
-(defconst perlnow-version "0.4"
+(defconst perlnow-version "0.41"
   "The version number of the installed perlnow.el package.
 Check <http://obsidianrook.com/perlnow/> for the latest.")
-
 
 (defvar perlnow-documentation t
   "The introductory documentation to the perlnow.el package.
@@ -1366,7 +1365,7 @@ instead of a single test file\)."
                      (setq perlnow-run-string perlnow-module-run-string))
                     ))))
      (t  ;;  assume it's a script since it's not a module.
-      ;; set-up intelligent default run string
+         ;; set-up intelligent default run string
       (unless perlnow-script-run-string
         (progn
           (setq perlnow-script-run-string
@@ -2035,6 +2034,7 @@ Return nil otherwise."
       )))
 
 (defun perlnow-exporter-code-report ()
+  "Echoes output of \\[perlnow-exporter-code-p] via message."
   (interactive) ;; DEBUG only
   (message "%s" (perlnow-exporter-code-p)))
 
@@ -2260,7 +2260,7 @@ found in LIST2."
     ))
 
 (defun perlnow-list-all-exported-symbols-report ()
-  ""
+  "Echoes output of \\[perlnow-list-all-exported-symbols] via message."
   (interactive)
   (let* ( (list (perlnow-list-all-exported-symbols) )
           )
@@ -3329,7 +3329,7 @@ a module's inc-spot."
 
 ;; DEBUG
 (defun perlnow-report-t-directories ()
-  ""
+  "Echoes output of \\[perlnow-find-t-directories] via message."
   (interactive)
   (let* (( t-list
            (perlnow-find-t-directories))
