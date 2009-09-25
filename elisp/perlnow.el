@@ -6,7 +6,7 @@
 ;; Copyright 2004, 2007, 2009 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.286 2009/09/25 02:17:31 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.287 2009/09/25 08:17:13 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -3125,17 +3125,6 @@ numeric sort-order prefix."
     last-item
     ))
 
-(defun perlnow-grep (pattern list)
-  "A simple implementation of perl's grep.
-Return a new list of elements from LIST that match PATTERN.
-LIST is presumed to be a list of strings."
-  (let ( (new-list) )
-    (dolist (item list)
-      (if (string-match pattern item)
-          (setq new-list (cons item new-list))
-        ))
-    new-list))
-
 ;; TODO re-write to find "latest numeric"? -- Mon Sep  7 13:38:35 2009
 ;; Possibly using: perlnow-latest-test-file
 (defun perlnow-search-through-test-path ()
@@ -3225,7 +3214,6 @@ Will warn if there appear to be redundant possible testfiles."
            (message "List appears to have negative length. Huh?")
            ))
     ))
-
 
 (defun perlnow-assoc-regexp (pattern alist &optional default)
   "Return first value from ALIST with key that matches PATTERN."
@@ -3344,6 +3332,29 @@ a module's inc-spot."
   (message "%s" list) ;; The %s form does automatic conversion of list (pp?)
   )
 
+;; TODO can this idea be blended with the job that
+;; perlnow-find-t-directories does (finding the most appropriate
+;; t-dir).  How do you prioritize these?
+(defun perlnow-find-all-t-directories (&optional root)
+  "Find all directories named \"t\" in the tree.
+Looks under the given ROOT, or under the `default-directory'.
+Note: at present, this has nothing to do with \\[perlnow-find-t-directories]."
+  (unless root
+    (setq root default-directory))
+  (perlnow-recursive-file-listing root "/t$" "d"))
+
+;; (perlnow-find-all-t-directories "/home/doom/End/Cave/EmacsPerl/Wall/")
+
+(defun perlnow-report-all-t-directories ()
+  "Echoes output of \\[perlnow-find-all-t-directories] via message."
+  (interactive)
+  (let* (( t-list
+           (perlnow-find-all-t-directories))
+         )
+    (message "%s" (mapconcat 'identity t-list "\n") ;; The %s form does automatic conversion of list (pp?)
+    )))
+
+
 
 
 
@@ -3408,6 +3419,7 @@ This is used internally by routines such as \\[perlnow-guess-script-run-string].
           (combine-and-quote-strings (list perl-command program-file)))
     runstring))
 
+;; TODO does this need "harder" awareness, like "guess-module'?
 (defun perlnow-guess-script-run-string ()
   "Return a good guess for `perlnow-script-run-string'.
 Also sets that global variable as a side-effect."
@@ -4093,6 +4105,77 @@ Perl package example: given \"/home/doom/lib/Taxed::Reb\" should return
           (t
            (message "match failed") ))
          (list directory fragment) ))
+
+;;;==========================================================
+;;; Some very general utilities (do they belong in this package?)
+;;;==========================================================
+
+(defun perlnow-grep (pattern list)
+  "A simple implementation of perl's grep.
+Return a new list of elements from LIST that match PATTERN.
+LIST is presumed to be a list of strings."
+  (let ( (new-list) )
+    (dolist (item list)
+      (if (string-match pattern item)
+          (setq new-list (cons item new-list))
+        ))
+    new-list))
+
+(defun perlnow-recursive-file-listing (dir &optional regexp type)
+  "Return a list of a tree of files beginning in location DIR.
+The optional REGEXP can be used to filter the returned names, and
+the option TYPE can be set to \"d\" to restrict the listing to
+directories or to \"f\" to restrict it to ordinary files.
+Note: this is a pure elisp implementation, without dependency on
+anything like an external \"find\" command."
+  (interactive "D")
+  (let* ((new-list))
+    (let* ((full-name    t)
+           (match-regexp nil)
+           (nosort       t)
+           (list (directory-files dir full-name match-regexp nosort))
+           )
+      ;; hack: pre-process to screen out "." and ".."
+      (let ((clean-list))
+            (mapc
+             (lambda (item)
+               (if (not (string-match "/\\.$\\|/\\.\\.$" item))
+                   (setq clean-list (cons item clean-list))
+                 )) list)
+            (setq list clean-list))
+      ;; go through list, add element to new-list if it matches
+      ;; optional criteria
+      (mapc
+       (lambda (item)
+         (if (and
+               (or
+                (not regexp)
+                (string-match regexp item))
+               (cond
+                ((not type)
+                 t)
+                ((string= type "f")
+                 (file-regular-p item)
+                 )
+                ((string= type "d")
+                 (file-directory-p item)
+                 )))
+             (setq new-list (cons item new-list))
+           )) list)
+      ;; loop over list again (yeah, I know) and call this routine
+      ;; recursively on any that are directories... append returned
+      ;; results to new-list
+      (mapc
+       (lambda (item)
+         (if (file-directory-p item)
+             (setq new-list
+                   (append
+                    new-list
+                    (perlnow-recursive-file-listing item regexp type)))
+           )) list)
+      new-list)))
+
+
 
 
 ;;;==========================================================
