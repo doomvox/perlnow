@@ -6,7 +6,7 @@
 ;; Copyright 2004, 2007, 2009 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.287 2009/09/25 08:17:13 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.288 2009/09/26 00:42:22 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -724,8 +724,6 @@ the default-directory or the ROOT setting."
 
 (defvar perlnow-template-location (perlnow-fixdir "$HOME/.templates")
   "Standard location for template.el templates.")
-;; TODO  if that doesn't exist, I could try falilng back to this:
-;;   (car template-default-directories)
 
 (defcustom perlnow-perl-script-template
   (concat perlnow-template-location "/" "TEMPLATE.perlnow-pl.tpl")
@@ -1014,6 +1012,10 @@ and vice-versa.  Used by \\[perlnow-back-to-code].")
 ;; (put 'perlnow-associated-code  'risky-local-variable t)
 (make-variable-buffer-local 'perlnow-associated-code)
 
+(defvar perlnow-metadata nil
+  "EXPERIMENTAL.  A cache of buffer metadata.")
+
+;;;==========================================================
 ;;; test file search and creation settings
 
 (defcustom perlnow-test-path (list "." "../t" "./t")
@@ -1058,8 +1060,32 @@ would be \"Style.t\".
 Used by \\[perlnow-edit-test-file].  See:
 `perlnow-documentation-test-file-strategies'.")
 
+;;;==========================================================
+;;; other policy settings
 
-;;; paths and names of external programs
+(defcustom perlnow-module-starter-builder "Module::Build"
+  "Base module for a cpan-style distribution.
+Should be one of: \"Module::Build\", \"Module::Install\", \"ExtUtils::MakeMaker\".")
+
+(defcustom perlnow-module-style "object"
+  "Type of module you usually prefer to create, e.g. \"object\", or \"exporter\".
+Defaults to \"object\", which for better or worse is the current
+standard.  Used by some routines, such as \\[perlnow-module-starter],
+to choose a code template.  Note, there is no restriction on the
+allowed values here, any arbitrary string can be used, provided
+you have appropriate code templates that use it.")
+
+(defvar perlnow-getter-prefix "get_"
+  "Defines the naming convention for getters for object-oriented code.
+Editorial: the default setting in perlnow.el is \"get_\", because that's
+very common, but if you never use the (now deprecated) mutators, doesn't
+it make more sense to use an empty string?")
+
+(defvar perlnow-setter-prefix "set_"
+  "Defines the naming convention for setters for object-oriented code.")
+
+;;;==========================================================
+;;; external programs, names and paths
 
 (defcustom perlnow-perl-program "perl"
   "Set this to provide a hint about your preferred perl binary.
@@ -1079,34 +1105,10 @@ when \\[perlnow-run-check] is invoked with a prefix argument.")
 Set this to the path and name of the program you would like to run
 when \\[perlnow-run-check] is invoked with a prefix argument.")
 
-
-(defcustom perlnow-module-starter-builder "Module::Build"
-  "Base module for a cpan-style distribution.
-Should be one of: \"Module::Build\", \"Module::Install\", \"ExtUtils::MakeMaker\".")
-
-(defcustom perlnow-module-style "object"
-  "Type of module you usually prefer to create, e.g. \"object\", or \"exporter\".
-Defaults to \"object\", which for better or worse is the current
-standard.  Used by some routines, such as
-\\[perlnow-module-starter], to choose a code template.
-Note, there is no restriction on the allowed values here, any
-arbitrary string can be used, provided you have appropriate code
-templates that use it.")
-
-
 (defcustom perlnow-simple-hash-bang-line "#!/usr/bin/perl -w"
   "A typical hash bang line for perl code.
 Used only by the somewhat deprecated \"simple\" functions:
 \\[perlnow-script-simple] \\[perlnow-perlify-this-buffer-simple]")
-
-(defvar perlnow-getter-prefix "get_"
-  "Defines the naming convention for getters for object-oriented code.
-Editorial: the default setting in perlnow.el is \"get_\", because that's
-very common, but if you never use the (now deprecated) mutators, doesn't
-it make more sense to use an empty string?")
-
-(defvar perlnow-setter-prefix "set_"
-  "Defines the naming convention for setters for object-oriented code.")
 
 ;;;==========================================================
 ;;; User Commands
@@ -1847,53 +1849,7 @@ window of the current frame, this will switch to that window."
           )
     ))
 
-
 ;;;==========================================================
-;;; Internally used functions
-;;;==========================================================
-
-
-(defun perlnow-file-extension (filename)
-  "Returns the file extension of the given FILENAME.
-\(I bet one of these has never been written before, eh?\)"
-  (let (just_file_name basename extension)
-    (setq just_file_name
-          (file-name-sans-versions
-           (file-name-nondirectory
-            filename)))
-    (setq basename (file-name-sans-extension just_file_name))
-    (setq extension (substring just_file_name (+ 1 (length basename))))))
-
-(defun perlnow-nth-file-path-level (level location)
-  "Return the LEVEL indicated from the given file-path.
-Usage examples:
-
-    (perlnow-nth-file-path-level 0 \"$HOME/End/Cave/Trial/Mod/Liar.pm\") ;; \"home\"
-    (perlnow-nth-file-path-level 2 \"$HOME/End/Cave/Trial/Mod/Liar.pm\") ;; \"End\"
-    (perlnow-nth-file-path-level 1 \"$HOME/End/Cave/Trial/Mod/Liar.pm\") ;; \"doom\"
-    (perlnow-nth-file-path-level 4 \"$HOME/End/Cave/Trial/Mod/Liar.pm\") ;; \"Trial\"
-    (perlnow-nth-file-path-level 6 \"$HOME/End/Cave/Trial/Mod/Liar.pm\") ;; \"Liar.pm\"
-
-    (perlnow-nth-file-path-level -1 \"$HOME/End/Cave/Trial/Mod/Liar.pm\") ;; \"Liar.pm\"
-    (perlnow-nth-file-path-level -2 \"$HOME/End/Cave/Trial/Mod/Liar.pm\") ;; \"Mod\"
-    (perlnow-nth-file-path-level -3 \"$HOME/End/Cave/Trial/Mod/Liar.pm\") ;; \"Trial\"
-
-"
-  (setq location (perlnow-fixdir location))
-  (let* (
-         (slash (convert-standard-filename "/"))
-         (list (split-string location slash t)) ;; omit-nulls is on
-         (retval)
-         )
-    (cond ( (>= level 0)
-            (setq retval (nth level list)))
-          ( (< level 0)
-            (setq level (+ 1 level))
-            (setq retval (nth (abs level) (reverse list))))
-          )
-    ))
-
-;;; =======
 ;;; window management
 
 ;;; Currently when I want to show a new window alongside the
@@ -1903,6 +1859,9 @@ Usage examples:
 ;;; TODO improve? Would be better to use smarter handling that
 ;;; would leave others open if there's enough room.
 ;;; Question: could both functions be fused together?
+
+;;; TODO need to adapt dynamically if the frame doesn't
+;;; have enough lines. (Swat a demo bug.)
 
 (defun perlnow-open-file-other-window (file &optional numblines template switchback)
   "Utility to open file in another window, leaving current
@@ -2811,7 +2770,6 @@ For example: \"August 8, 2009\" (which I realize is not *just* American)."
 ;;;==========================================================
 ;;; The following functions are used by perlnow-edit-test-file
 ;;; and it's relatives.
-;;;==========================================================
 
 (defun perlnow-get-test-file-name ()
   "Looks for the test file for the current perl code buffer."
@@ -2960,7 +2918,6 @@ Returns file names with full path if FULLPATH is t."
          (test-file "")
          (test-file-list ())
          )
-
     ;; module oriented info, calculated:
     (cond ; do only if module
      ((setq package-name (perlnow-get-package-name-from-module-buffer))
@@ -2974,7 +2931,6 @@ Returns file names with full path if FULLPATH is t."
           ((string= dotdef "incspot") ; only with modules
            (setq testloc-absolute
                  (perlnow-expand-dots-relative-to inc-spot testloc)))
-
           (t
            (error
             "Invalid perlnow-test-policy-dot-definition, should be fileloc, incspot or parallel")))
@@ -3267,7 +3223,7 @@ a module's inc-spot."
           (levels () )
           (t-list () )
           )
-    (cond ( (perlnow-module-code-p)
+    (cond ((perlnow-module-code-p)
             (let* (
                    (pm-file (buffer-file-name))
                    (pm-location (file-name-directory pm-file))
@@ -3294,7 +3250,6 @@ a module's inc-spot."
                   (if (file-directory-p candidate)
                       (setq t-list (cons candidate t-list)))
                   ))
-
               ))
           (t ;; assume it's a script then
            (let* ( (full-file (buffer-file-name))
@@ -3354,15 +3309,10 @@ Note: at present, this has nothing to do with \\[perlnow-find-t-directories]."
     (message "%s" (mapconcat 'identity t-list "\n") ;; The %s form does automatic conversion of list (pp?)
     )))
 
-
-
-
-
 ;;; The end of perlnow-edit-test-file family of functions
+
 ;;;==========================================================
 ;;; the something-or-other utilities    TODO
-;;;==========================================================
-
 
 (defun perlnow-how-to-perl ()
   "Define how to run perl for the current buffer.
@@ -3763,17 +3713,17 @@ current file buffer.  Used by \\[perlnow-do-script-from-module]."
     return))
 
 ;;;==========================================================
-;;; The following code is used by perlnow-module:
-;;; perlnow-prompt-for-new-module-in-one-step and relatives
-;;; are used to read in perlmodule path and names in one step
-;;; (A variant of the old perlnow-prompt-for-module-to-create.)
+;;; Read perlmodule path and names in one step
+;;; (used by perlnow-module)
 ;;;
-;;; Note: instead of completing-read this uses read-from-minibuffer
+;;; perlnow-prompt-for-new-module-in-one-step and relatives
+;;; are a variant of the old perlnow-prompt-for-module-to-create.
+;;;
+;;; Instead of completing-read this uses read-from-minibuffer
 ;;; with a customized keymap that totally transforms it's behavior.
 ;;;
 ;;; For a discussion of the following code, see this article:
-;;; http://obsidianrook.com/devnotes/elisp-prompt-new-file-part3.html
-;;;
+;;;   http://obsidianrook.com/devnotes/elisp-prompt-new-file-part3.html
 ;;;==========================================================
 
 
@@ -3995,8 +3945,6 @@ are sequential integers."
     (setq match-alist (reverse match-alist))  ;; maybe this isn't needed, but cargo cult programming is fun
     ))
 
-
-
 (defun perlnow-list-directories-as-alist (file-system-path pattern)
   "Generate a directory-only alist from the given FILE-SYSTEM-PATH.
 Returns an alist of the file names that match the given PATTERN, *and*
@@ -4025,8 +3973,6 @@ it only lists directories."
     ;; Reverse the order of the match-alist
     (setq match-alist (reverse match-alist))  ;; maybe this isn't needed, but cargo cult programming is fun
     ))
-
-
 
 (defun perlnow-split-perlish-package-name-with-path-to-inc-spot-and-name (string)
   "Split the hybrid form of a module path into the two components.
@@ -4107,8 +4053,7 @@ Perl package example: given \"/home/doom/lib/Taxed::Reb\" should return
          (list directory fragment) ))
 
 ;;;==========================================================
-;;; Some very general utilities (do they belong in this package?)
-;;;==========================================================
+;;; General utilities (which might not really belong in this package)
 
 (defun perlnow-grep (pattern list)
   "A simple implementation of perl's grep.
@@ -4175,21 +4120,58 @@ anything like an external \"find\" command."
            )) list)
       new-list)))
 
+(defun perlnow-file-extension (filename)
+  "Returns the file extension of the given FILENAME.
+\(I bet one of these has never been written before, eh?\)"
+  (let (just_file_name basename extension)
+    (setq just_file_name
+          (file-name-sans-versions
+           (file-name-nondirectory
+            filename)))
+    (setq basename (file-name-sans-extension just_file_name))
+    (setq extension (substring just_file_name (+ 1 (length basename))))))
+
+(defun perlnow-nth-file-path-level (level location)
+  "Return the LEVEL indicated from the given file-path.
+Usage examples:
+
+    (perlnow-nth-file-path-level 0 \"$HOME/End/Cave/Trial/Mod/Liar.pm\") ;; \"home\"
+    (perlnow-nth-file-path-level 2 \"$HOME/End/Cave/Trial/Mod/Liar.pm\") ;; \"End\"
+    (perlnow-nth-file-path-level 1 \"$HOME/End/Cave/Trial/Mod/Liar.pm\") ;; \"doom\"
+    (perlnow-nth-file-path-level 4 \"$HOME/End/Cave/Trial/Mod/Liar.pm\") ;; \"Trial\"
+    (perlnow-nth-file-path-level 6 \"$HOME/End/Cave/Trial/Mod/Liar.pm\") ;; \"Liar.pm\"
+
+    (perlnow-nth-file-path-level -1 \"$HOME/End/Cave/Trial/Mod/Liar.pm\") ;; \"Liar.pm\"
+    (perlnow-nth-file-path-level -2 \"$HOME/End/Cave/Trial/Mod/Liar.pm\") ;; \"Mod\"
+    (perlnow-nth-file-path-level -3 \"$HOME/End/Cave/Trial/Mod/Liar.pm\") ;; \"Trial\"
+
+"
+  (setq location (perlnow-fixdir location))
+  (let* (
+         (slash (convert-standard-filename "/"))
+         (list (split-string location slash t)) ;; omit-nulls is on
+         (retval)
+         )
+    (cond ( (>= level 0)
+            (setq retval (nth level list)))
+          ( (< level 0)
+            (setq level (+ 1 level))
+            (setq retval (nth (abs level) (reverse list))))
+          )
+    ))
+
 
 
 
 ;;;==========================================================
-;;; Experimental functions
-;;;==========================================================
-
-;; Insert boilerplate commands.
-;; There might be some reason to use skeleton.el or tempo.el for these.
+;;; Insert boilerplate commands.
+;;;
+;;; There might be some reason to use skeleton.el or tempo.el for these.
 
 ;; Note: the following presume interspersed pod style.
 
 ;; Ideally, there would be some way of customizing these, but then,
-;; just writing your own is easy enough.
-
+;; just writing your own routine is easy enough.
 
 (defun perlnow-insert-sub ()
  "Insert the framework for a new sub.
@@ -4343,8 +4325,8 @@ and \\[perlnow-setter-prefix]."
          (grep ack-command))))
 
 
+;;;==========================================================
 ;;; cheat check commands ("cheat" == automatically fix things so checks pass)
-
 
 (defun perlnow-revise-test-plan ()
   "Revise the test plan to match the current count of tests.
@@ -4446,7 +4428,6 @@ for people who don't don't agree that that's more convenient."
 
 ;;;==========================================================
 ;; The "simple" functions.  Older code that doesn't use template.el.
-;;;==========================================================
 
 (defun perlnow-script-simple ()
   "Quickly jump into development of a new perl script.
