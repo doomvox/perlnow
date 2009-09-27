@@ -6,7 +6,7 @@
 ;; Copyright 2004, 2007, 2009 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.288 2009/09/26 00:42:22 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.289 2009/09/27 11:34:38 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1212,7 +1212,7 @@ perlcritic in addition to a \"perl -cw\"."
     (compile compile-command);; this just returns buffer name "*compilation*"
     ))
 
-(defun perlnow-run (run-string)
+(defun perlnow-run-classic
   "Run the perl code in this file buffer.
 When run interactively, this uses a RUN-STRING determined from `perlnow-run-string'
 If it is nil, the function \\[perlnow-set-run-string] is called automatically.\n
@@ -1238,7 +1238,7 @@ the run \(e.g. a \"make test\" rather than running a single test file\)."
   (setq perlnow-run-string run-string) ;; redundant, but that's okay.
   (compile run-string))
 
-(defun perlnow-run-exp (run-string)
+(defun perlnow-run (run-string)
   "EXPERIMENTAL Run the perl code in this file buffer.
 This uses an interactively set RUN-STRING determined from
 `perlnow-run-string' which may have been set by using
