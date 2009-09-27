@@ -6,7 +6,7 @@
 ;; Copyright 2004, 2007, 2009 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.289 2009/09/27 11:34:38 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.290 2009/09/27 11:40:57 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1251,7 +1251,6 @@ is used instead, so that it can remember how it was
 run in either case."
   ;; this uses either perlnow-run-string or perlnow-run-string-harder,
   ;; or it calls (perlnow-set-run-string)
-  ;; TODO needs work... and perlnow-run is good enough, now.
   (interactive
    (let* (
           (harder-setting current-prefix-arg)
@@ -1271,8 +1270,13 @@ run in either case."
           )
      (list run-string)
      ))
-  ;; TODO why not save this run-string in a bufflocal here? -- Sep 12, 2009
-  ;;      is it done at a lower level?  why?
+  ;; saving the result (possibly redundant at this stage)
+  (cond ( harder-setting
+         (setq perlnow-run-string-harder run-string)
+          )
+        (t
+         (setq perlnow-run-string run-string)
+         ))
   (if run-string
       (compile run-string)
     ))
