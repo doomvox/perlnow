@@ -6,7 +6,7 @@
 ;; Copyright 2004, 2007, 2009 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.290 2009/09/27 11:40:57 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.291 2009/09/27 12:57:36 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1238,7 +1238,7 @@ the run \(e.g. a \"make test\" rather than running a single test file\)."
   (setq perlnow-run-string run-string) ;; redundant, but that's okay.
   (compile run-string))
 
-(defun perlnow-run (run-string)
+(defun perlnow-run (run-string &optional harder-flag)
   "EXPERIMENTAL Run the perl code in this file buffer.
 This uses an interactively set RUN-STRING determined from
 `perlnow-run-string' which may have been set by using
@@ -1268,10 +1268,11 @@ run in either case."
             (perlnow-set-run-string harder-setting)
             ))
           )
-     (list run-string)
+     (list run-string harder-setting)
      ))
-  ;; saving the result (possibly redundant at this stage)
-  (cond ( harder-setting
+  ;; saving the result
+  ;; ((redundant at this stage?  or am I correcting a problem here?))
+  (cond ( harder-flag
          (setq perlnow-run-string-harder run-string)
           )
         (t
