@@ -6,7 +6,7 @@
 ;; Copyright 2004, 2007, 2009 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.292 2009/09/28 18:36:12 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.293 2009/09/28 21:43:07 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -676,10 +676,9 @@ Next:
 
 
 
-;;;;##########################################################################
+;;;==========================================================
 ;;  User Options, Variables
-;;;;##########################################################################
-
+;;;==========================================================
 
 (defun perlnow-fixdir (dir &optional root)
   "Fixes the DIR.
@@ -1406,6 +1405,16 @@ assumes it's a perl script.  The heuristics for setting a default
     ;; tell perlnow-alt-run to do it that way
     (setq perlnow-alt-run-string perlnow-script-alt-run-string))))
 
+;; TODO: uses grep-find internally, but probably should have it's own history.
+;; But note: ack.el exists already.
+(defun perlnow-ack (ack-search)
+  "Does searches with the utility ack, ala grep-find."
+  (interactive "sDo ack search: ")
+  (let (
+        (ack-command (format "ack --nocolor --nogroup %s" ack-search))
+        )
+       (let ((null-device nil))		;; see grep
+         (grep ack-command))))
 
 ;;;==========================================================
 ;;; user level creation functions (script, module, h2xs...)
@@ -1897,8 +1906,7 @@ a buffer object."
   )
 
 ;;=======
-;; internal routines: lower-level code used by the external
-;; "entry point" functions
+;; internal, lower-level routines used by the external "entry point" functions
 
 (defun perlnow-do-script (filename)
   "Quickly jump into development of a new perl script.
@@ -2193,6 +2201,28 @@ otherwise they're skipped." ;; TODO implement internals feature
          )
     (message "%s" sub-list)
     ))
+
+
+(defun perlnow-sync-save-run-string (run-string &optional harder-setting)
+  "Save RUN-STRING value consistently in the appropriate locations.
+Assigns the given string to the run-string of the current
+buffer, and also of the \\[perlnow-associated-code] buffer.
+Sets either \\[perlnow-run-string] or \\[perlnow-run-string-harder]
+depending on the value of the given HARDER-SETTING."
+  (perlnow-save-run-string-harder run-string harder-setting)
+  (save-excusrion
+    (perlnow-back-to-code)
+    (perlnow-save-run-string-hard-aware run-string harder-setting)
+    ))
+
+(defun perlnow-save-run-string-hard-aware (run-string &optional harder-setting)
+  "Save the RUN-STRING for the current buffer for the given HARDER-SETTING."
+  (cond ( harder-setting
+          (setq perlnow-run-string-harder run-string)
+          )
+        (t
+         (setq perlnow-run-string run-string)
+         )))
 
 
 ;;=======
@@ -2698,8 +2728,7 @@ For example: \"August 8, 2009\" (which I realize is not *just* American)."
     ))
 
 ;;;==========================================================
-;;; The following functions are used by perlnow-edit-test-file
-;;; and it's relatives.
+;;; internal routines for perlnow-edit-test-file (and relatives)
 
 (defun perlnow-get-test-file-name ()
   "Looks for the test file for the current perl code buffer."
@@ -4094,7 +4123,7 @@ Usage examples:
 ;;;==========================================================
 ;;; Insert boilerplate commands.
 ;;;
-;;; There might be some reason to use skeleton.el or tempo.el for these.
+;;; There might be some reason to use skeleton.el or tempo.el for these. TODO
 
 ;; Note: the following presume interspersed pod style.
 
@@ -4232,27 +4261,6 @@ and \\[perlnow-setter-prefix]."
   (forward-line 3)
   ))
 
-
-;;; Wrappers around external commands
-;; another proof-of-concept
-;; TODO:
-;; o  uses grep-find internally, but really needs it's own history. ((Why?))
-;;    Look at how grep-find is written, and use those constructs.
-;; o  Presumes --nocolor and --nogroup aren't entered in ack-search
-;;    forcibly remove if they're there?  Does that matter? Check.
-;; o  Really this isn't just for running perl code.
-;;    Maybe, write a package of external command wrappers?
-
-(defun perlnow-ack (ack-search)
-  "Does searches with the utility ack, ala grep-find."
-  (interactive "sDo ack search: ")
-  (let (
-        (ack-command (format "ack --nocolor --nogroup %s" ack-search))
-        )
-       (let ((null-device nil))		; see grep
-         (grep ack-command))))
-
-
 ;;;==========================================================
 ;;; cheat commands ("cheat" == automatically fix things so checks pass)
 
@@ -4366,7 +4374,7 @@ EXPORT lists, and add them to the qw() list associated with %EXPORT_TAGS."
 If the module is not in perl's search path \(@INC\), then an
 appropriate \"use lib\" statement will be added. \n
 Note: if multiple packages exist in the file \\(and that's
-never really done\\) then this function will see the first
+hardly ever really done\\) then this function will see the first
 package name."
   (interactive
    (perlnow-prompt-user-for-file-to-create
