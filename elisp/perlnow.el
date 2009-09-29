@@ -6,7 +6,7 @@
 ;; Copyright 2004, 2007, 2009 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.291 2009/09/27 12:57:36 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.292 2009/09/28 18:36:12 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1212,32 +1212,6 @@ perlcritic in addition to a \"perl -cw\"."
     (compile compile-command);; this just returns buffer name "*compilation*"
     ))
 
-(defun perlnow-run-classic
-  "Run the perl code in this file buffer.
-When run interactively, this uses a RUN-STRING determined from `perlnow-run-string'
-If it is nil, the function \\[perlnow-set-run-string] is called automatically.\n
-This default run string can always be changed later by running
-\\[perlnow-set-run-string] manually.  If this is run with a numeric
-prefix \(\"C-u\"\) it will try to find a more through way of doing
-the run \(e.g. a \"make test\" rather than running a single test file\)."
-  ;; currently: if harder is set, we always regenerate the run-string.
-  ;; We use the perlnow-run-string var only in the ordinary case.
-  ;;
-  (interactive
-   (let* ( (harder-setting current-prefix-arg)
-           (input
-            (cond (harder-setting
-                   (perlnow-set-run-string harder-setting))
-                  (t
-                   (cond ((eq perlnow-run-string nil)
-                          (perlnow-set-run-string))
-                         (t
-                          perlnow-run-string))))))
-     (list input)
-     ))
-  (setq perlnow-run-string run-string) ;; redundant, but that's okay.
-  (compile run-string))
-
 (defun perlnow-run (run-string &optional harder-flag)
   "EXPERIMENTAL Run the perl code in this file buffer.
 This uses an interactively set RUN-STRING determined from
@@ -1282,7 +1256,6 @@ run in either case."
       (compile run-string)
     ))
 
-
 (defun perlnow-alt-run (alt-run-string)
   "Run the perl code in this file buffer.
 This uses an interractively set ALT-RUN-STRING determined
@@ -1299,7 +1272,6 @@ The alt run string can always be changed later by running
      (list input)
      ))
   (perlnow-run alt-run-string)) ; Note: uses perlnow-run rather than running compile directly
-
 
 (defun perlnow-perldb (run-string)
   "Run the perl debugger on the code in this file buffer.
@@ -1338,16 +1310,18 @@ This sets the global variable `perlnow-run-string' that
 To manually change the run string, the user needs to run this
 function directly, but it is also called indirectly by \\[perlnow-run]
 if the run string is not yet defined.\n
-This function uses \\\[perlnow-module-code-p] to see if the code looks like a
-module (i.e. does it have a package line), otherwise it
-assumes it's a perl script.
-From within an elisp program, it may be better to set these variables
-directly: `perlnow-script-run-string' and/or `perlnow-module-run-string'.
 When run with a \"C-u\" prefix \(or non-interactively, with an arg of \"t\"\)
 this works with the `perlnow-run-string-harder' variable, and
 tries to guess a more thorough way to run the code \(e.g. a test suite
-instead of a single test file\)."
-  ;; TODO  documentation needs more work?
+instead of a single test file\).\n
+From within an elisp program, it may be better to set these variables
+directly: `perlnow-script-run-string' and/or `perlnow-module-run-string'."
+;; TODO though for the life of me, I can never remember why.
+;; if that's true, explain it somewhere so that even I can understand.
+;;
+;; This function uses \\\[perlnow-module-code-p] to see if the code looks like a
+;; module (i.e. does it have a package line), otherwise it
+;; assumes it's a perl script.
   (interactive)
   (let* ( (harder-flag (or harder-setting current-prefix-arg))
           )
@@ -1923,6 +1897,8 @@ a buffer object."
   )
 
 ;;=======
+;; internal routines: lower-level code used by the external
+;; "entry point" functions
 
 (defun perlnow-do-script (filename)
   "Quickly jump into development of a new perl script.
@@ -2068,57 +2044,6 @@ the indicated module."
       )
     (switch-to-buffer original-buffer)
     import-string))
-
-(defun perlnow-revise-export-list ()
-  "Find subs defined in the module that are not yet in the
-EXPORT lists, and add them to the qw() list associated with %EXPORT_TAGS."
-  (interactive)
-  (unless (perlnow-module-code-p)
-    (error "perlnow-generate-import-list expects to be run in a module buffer."))
-  (let* ((sub-list    (perlnow-list-all-subs))
-         (export-list ())
-         (add-list    ())
-         ;; Searching for a line like this:
-         ;;  our %EXPORT_TAGS = ( 'all' => [
-         (all-tag-pattern
-          "\\bEXPORT_TAGS[ \t]*=[ \t]*(.*?\\ball\\b")  ; allowing alt quotes,
-         ;; requiring first paren
-         (open-quoted-words-pattern
-          "qw(")
-         (closing-quoted-words-pattern
-          ")")
-         )
-    (cond ((perlnow-exporter-code-p)
-         (setq export-list (perlnow-list-all-exported-symbols))
-         ;; add-list = sub-list - export-list
-         (setq add-list (perlnow-subtract-lists sub-list export-list))
-         (save-excursion
-           (goto-char (point-min))
-           (re-search-forward all-tag-pattern nil t)
-           ;; skip to "qw(", and from there to ")"
-           (re-search-forward open-quoted-words-pattern nil t)
-           (re-search-forward closing-quoted-words-pattern nil t)
-           ;; capture whitespace to preserve indentation
-           (backward-word 1)
-           (let* ((end (point))
-                  (beg)
-                  (indent)
-                  )
-             (move-beginning-of-line 1)  ;; TODO make conditional upon add-list?
-             (setq beg (point))
-             (setq indent (buffer-substring-no-properties beg end))
-           ;; insert the add-list
-           ;; (forward-word 1)
-             (move-beginning-of-line 1) ;; redundant
-             (next-line 1)
-             (open-line 1)  ;; TODO make conditional upon add-list?
-             (insert (mapconcat '(lambda (item)
-                                   (concat indent item))
-                                add-list "\n"))
-           ))))))
-
-
-
 
 ;; ========
 ;; set subtraction via a hash table
@@ -3409,7 +3334,6 @@ Also sets that global variable as a side-effect."
     (setq perlnow-script-run-string run-line)
     run-line))
 
-
 (defun perlnow-find-cpan-style-staging-area ()
   "Determines if the current file buffer is located in an cpan-style tree.
 Should return the path to the current cpan-style staging area, or nil
@@ -3547,16 +3471,16 @@ passes it through unchanged."
   ;; TODO -- the regexps here probably need improvement.
   ;; Get a definitive list of cases of perl versions that it
   ;; should handle, write a unit test, and refactor this
-  (let ( (old-version-pat "^\\([0-9]\\)\\.\\([0-9][0-9][0-9]\\)$")
-         (new-version-pat "^\\([0-9]\\)\\.\\([0-9][0-9]*\\)\\.\\([0-9][0-9]*\\)")
-         major
-         mantissa
-         minor1)
+  (let ((old-version-pat "^\\([0-9]\\)\\.\\([0-9][0-9][0-9]\\)$")
+        (new-version-pat "^\\([0-9]\\)\\.\\([0-9][0-9]*\\)\\.\\([0-9][0-9]*\\)")
+        major
+        mantissa
+        minor1)
     (cond
-     ( (string-match new-version-pat given-version)
+     ((string-match new-version-pat given-version)
        ;;       (message "Looks like minimum perl version is in the new style: %s" given-version) ;; DEBUG
        given-version )
-     ( (string-match old-version-pat given-version)
+     ((string-match old-version-pat given-version)
        (setq major (match-string 1 given-version))
        (setq mantissa (match-string 2 given-version))
        (setq minor1 (substring mantissa 2))
@@ -3730,7 +3654,6 @@ current file buffer.  Used by \\[perlnow-do-script-from-module]."
 ;;; For a discussion of the following code, see this article:
 ;;;   http://obsidianrook.com/devnotes/elisp-prompt-new-file-part3.html
 ;;;==========================================================
-
 
 (defvar perlnow-read-minibuffer-map
   (let ((map (make-sparse-keymap)))
@@ -4331,7 +4254,7 @@ and \\[perlnow-setter-prefix]."
 
 
 ;;;==========================================================
-;;; cheat check commands ("cheat" == automatically fix things so checks pass)
+;;; cheat commands ("cheat" == automatically fix things so checks pass)
 
 (defun perlnow-revise-test-plan ()
   "Revise the test plan to match the current count of tests.
@@ -4385,7 +4308,53 @@ modifies the *.t file's plan to match."
              (message "Test::More plan not found."))
             ))))
 
-
+(defun perlnow-revise-export-list ()
+  "Find subs defined in the module that are not yet in the
+EXPORT lists, and add them to the qw() list associated with %EXPORT_TAGS."
+  (interactive)
+  (unless (perlnow-module-code-p)
+    (error "perlnow-generate-import-list expects to be run in a module buffer."))
+  (let* ((sub-list    (perlnow-list-all-subs))
+         (export-list ())
+         (add-list    ())
+         ;; Searching for a line like this:
+         ;;  our %EXPORT_TAGS = ( 'all' => [
+         (all-tag-pattern
+          "\\bEXPORT_TAGS[ \t]*=[ \t]*(.*?\\ball\\b")  ; allowing alt quotes,
+         ;; requiring first paren
+         (open-quoted-words-pattern
+          "qw(")
+         (closing-quoted-words-pattern
+          ")")
+         )
+    (cond ((perlnow-exporter-code-p)
+         (setq export-list (perlnow-list-all-exported-symbols))
+         ;; add-list = sub-list - export-list
+         (setq add-list (perlnow-subtract-lists sub-list export-list))
+         (save-excursion
+           (goto-char (point-min))
+           (re-search-forward all-tag-pattern nil t)
+           ;; skip to "qw(", and from there to ")"
+           (re-search-forward open-quoted-words-pattern nil t)
+           (re-search-forward closing-quoted-words-pattern nil t)
+           ;; capture whitespace to preserve indentation
+           (backward-word 1)
+           (let* ((end (point))
+                  (beg)
+                  (indent)
+                  )
+             (move-beginning-of-line 1)  ;; TODO make conditional upon add-list?
+             (setq beg (point))
+             (setq indent (buffer-substring-no-properties beg end))
+           ;; insert the add-list
+           ;; (forward-word 1)
+             (move-beginning-of-line 1) ;; redundant
+             (next-line 1)
+             (open-line 1)  ;; TODO make conditional upon add-list?
+             (insert (mapconcat '(lambda (item)
+                                   (concat indent item))
+                                add-list "\n"))
+           ))))))
 
 
 
