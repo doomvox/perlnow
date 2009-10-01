@@ -6,7 +6,7 @@
 ;; Copyright 2004, 2007, 2009 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.294 2009/10/01 06:12:18 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.295 2009/10/01 07:27:40 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -956,8 +956,8 @@ may be set differently for different files.")
 
 (defvar perlnow-run-string-exp nil
   "Trying to verify that the distinction between perlnow-module-run-string
-and perlnow-script-run-string is fairly useless.  I'm going to swap this
-in place for the above two, and see if anything breaks.")
+and perlnow-script-run-string is fairly useless.  I'm toying with the idea of
+swapping this in place for the above two, and see if anything breaks.")
 (put 'perlnow-run-string-exp  'risky-local-variable t)
 (make-variable-buffer-local 'perlnow-run-string-exp)
 
@@ -1219,7 +1219,7 @@ perlcritic in addition to a \"perl -cw\"."
     ))
 
 (defun perlnow-run (run-string &optional harder-setting)
-  "EXPERIMENTAL Run the perl code in this file buffer.
+  "Run the perl code in this file buffer.
 This uses an interactively set RUN-STRING determined from
 `perlnow-run-string' which may have been set by using
 \\[perlnow-set-run-string].  If `perlnow-run-string' is nil,
@@ -1352,13 +1352,8 @@ directly: `perlnow-script-run-string' and/or `perlnow-module-run-string'."
                      "Set the run string for this module: "
                      perlnow-module-run-string))
               ;; tell perlnow-run how to do it
-              (perlnow-sync-save-run-string perlnow-module-run-string harder-setting) ;; New style
-;; Older-style:
-;;               (cond ( harder-setting
-;;                       (setq perlnow-run-string-harder perlnow-module-run-string))
-;;                     (t
-;;                      (setq perlnow-run-string perlnow-module-run-string))
-;;                     )
+              (perlnow-sync-save-run-string
+               perlnow-module-run-string harder-setting)
               )))
      (t  ;;  assume it's a script since it's not a module.
          ;; set-up intelligent default run string
@@ -1373,9 +1368,7 @@ directly: `perlnow-script-run-string' and/or `perlnow-module-run-string'."
              "Set the run string for this script: "
              perlnow-script-run-string))
       ;; tell perlnow-run to do it that way
-      (perlnow-sync-save-run-string perlnow-script-run-string harder-setting) ;; New style
-;; Older-style
-;;      (setq perlnow-run-string perlnow-script-run-string)
+      (perlnow-sync-save-run-string perlnow-script-run-string harder-setting)
       ))))
 
 
@@ -1475,9 +1468,7 @@ can find the module."
 ;;;    Could use this to do the check:
 ;;;      (setq pm-file (perlnow-module-found-in-INC package-name))
 ;;;         ; given colon-ized, returns first pm found, or nil if none
-
-
-
+;;;
 (defun perlnow-module (inc-spot package-name)
   "Quickly jump into development of a new perl module.
 In interactive use, gets the path INC-SPOT and PACKAGE-NAME
@@ -1503,13 +1494,14 @@ creation."
          ;; The keymap is key: transforms read-from-minibuffer.
          (keymap perlnow-read-minibuffer-map)
          (history 'perlnow-package-name-history)
-         result filename return
+         result filename retval
          )
      (setq result
            (read-from-minibuffer
             "New module to create \(e.g. /tmp/dev/New::Mod\): "
             initial keymap nil history nil nil))
-     (setq result (replace-regexp-in-string "\.pm$" "" result)) ; remove accidentally typed ".pm"
+     (setq result (replace-regexp-in-string "\.pm$" "" result))
+        ;; remove accidentally typed ".pm"
      (setq filename
            (concat (replace-regexp-in-string "::" perlnow-slash result) ".pm"))
      (while (file-exists-p filename)
@@ -1518,13 +1510,16 @@ creation."
               "This name is in use, choose another \(e.g. /tmp/dev/New::Mod\): "
               result keymap nil history nil nil))
        (setq filename
-             (concat (replace-regexp-in-string "::" perlnow-slash result) ".pm")))
-
-     (setq return
-           (perlnow-split-perlish-package-name-with-path-to-inc-spot-and-name result))
-     return))
+             (concat
+              (replace-regexp-in-string "::" perlnow-slash result)
+              ".pm")))
+     (setq retval
+           (perlnow-split-perlish-package-name-with-path-to-inc-spot-and-name
+            result))
+     retval))
   (require 'template)
-  (setq perlnow-perl-package-name package-name) ; global used to pass value into template
+  ;; global used to pass value into template
+  (setq perlnow-perl-package-name package-name)
   (let ( (filename (perlnow-full-path-to-module inc-spot package-name)) )
     (perlnow-create-with-template filename perlnow-perl-module-template)))
 
@@ -1768,11 +1763,7 @@ The test policy is defined by this trio of variables:
   "Follow-up to interactive functions such as \\[perlnow-edit-test-file].
 Presumes that when it is called, the current buffer contains code which
 will be associated with the TESTFILE."  ;; TODO expand docs
-  ;; set some buffer-local variables before we go any where
-
-  ;; older style:
-  ;; (setq perlnow-run-string (perlnow-generate-run-string testfile))
-  (let* ((harder-setting current-prefix-arg)) ;; Newer style
+  (let* ((harder-setting current-prefix-arg))
     (setq perlnow-associated-code testfile)
     (let* ( (package-name)
             (new-file-p (not (file-exists-p testfile)))
@@ -1786,12 +1777,15 @@ will be associated with the TESTFILE."  ;; TODO expand docs
                 (package-name (perlnow-get-package-name-from-module-buffer))
                 (inc-spot (perlnow-get-inc-spot package-name pm-location))
                 )
-          (setq perlnow-perl-package-name package-name) ; global to pass value to template
-          (perlnow-open-file-other-window testfile 30 perlnow-perl-test-module-template)
+          (setq perlnow-perl-package-name package-name)
+                   ;; global to pass value to template
+          (perlnow-open-file-other-window
+             testfile 30 perlnow-perl-test-module-template)
           (funcall (perlnow-lookup-preferred-perl-mode))
           (if new-file-p
               (save-excursion
-                (let* ((import-string (perlnow-import-string-from package-name inc-spot))
+                (let* ((import-string
+                        (perlnow-import-string-from package-name inc-spot))
                        (whitespace
                         (perlnow-jump-to-use package-name import-string) ))
                   (perlnow-endow-script-with-access-to inc-spot whitespace))))
@@ -1799,18 +1793,21 @@ will be associated with the TESTFILE."  ;; TODO expand docs
           ))
        ;; if script
        ((perlnow-script-p)
-        (setq perlnow-perl-script-name (buffer-file-name)) ; global to pass value to template
-        (perlnow-open-file-other-window testfile 30 perlnow-perl-test-script-template)
+        (setq perlnow-perl-script-name (buffer-file-name))
+                  ;; global to pass value to template
+        (perlnow-open-file-other-window
+           testfile 30 perlnow-perl-test-script-template)
         (funcall (perlnow-lookup-preferred-perl-mode))
         (save-buffer))
        (t
         (let ((extension (perlnow-file-extension (buffer-file-name))))
           (cond ((string= extension "t")
-                 (message "Perlnow error: You're already inside of a test file."))
+                 (message "Perlnow: You're already inside of a test file."))
                 (t
-                 (message "This doesn't look like a perl buffer. Perlnow can't edit it's test file.")
+                 (message "Perlnow: Not a perl buffer.")
                  )))))
-      (perlnow-sync-save-run-string (perlnow-generate-run-string testfile) harder-setting) ;; Newer style
+      (perlnow-sync-save-run-string
+       (perlnow-generate-run-string testfile) harder-setting)
       (setq perlnow-associated-code original-code)
       )))
 
@@ -1818,25 +1815,20 @@ will be associated with the TESTFILE."  ;; TODO expand docs
   "Given the PACKAGE-NAME, jumps to the point before the \'use\' line.
 Specifically, these leaves the cursor at the start of the line
 that does a \"use\" or \"use_ok\" of the named module specified in
-perl's double-colon seperated form, e.g. \"Modular::Stuff\"."
-  ;; experimental: if given optional import-string, modify the use line to use it
-  (let ( ( pattern (format "^\\([ \t]*\\)use.*?\\b%s\\b" package-name) )
-         ( whitespace "" )
-         )
+perl's double-colon seperated form, e.g. \"Modular::Stuff\".
+If given the optional IMPORT-STRING, incorporates it into the use line."
+  (let (( pattern (format "^\\([ \t]*\\)use.*?\\b%s\\b" package-name))
+        ( whitespace "" ))
     (goto-char (point-min))
     (re-search-forward pattern nil t)
     (setq whitespace (match-string 1))
-
     (cond (import-string
            (if (re-search-forward "'[ \t]*" nil t)
                (insert ", "))
            (insert import-string)
            ))
-
     (move-beginning-of-line 1)
     whitespace))
-
-
 
 (defun perlnow-back-to-code ()
   "Return to the buffer that the current buffer is presently
@@ -1846,13 +1838,15 @@ variable.  For example, if you use a perlnow command to open a
 test file from a module, both buffers will be pointing at each
 other, so that this command can easily be used to switch back and
 forth between them, even in cases where \\[switch-to-buffer]
-would be confused.  If the buffer is already displayed in another
+would take you elsewhere.  If the buffer is already displayed in another
 window of the current frame, this will switch to that window."
   ;; Note perlnow-associated-code is automatically updated by
   ;; perlnow-open-file-other-window.
   (interactive)
   (let* ( (other-buffer perlnow-associated-code)
-          (existing-window (get-buffer-window other-buffer nil)) ;; checks *this* frame only
+          (search-other-frames nil)
+          (existing-window (get-buffer-window other-buffer search-other-frames))
+            ;; checks the selected frame only
           )
     (cond ( existing-window
             (select-window existing-window))
@@ -1883,18 +1877,17 @@ template.el template to be used in creating a new file
 buffer.  If SWITCHBACK is true, the cursor is left in the
 original window, not the new one."
   ;; before you open, point at where you're going to be from here
-  (setq perlnow-associated-code file)    ;; bufloc, used by "C-c/b"
+  (setq perlnow-associated-code file)
   ;; and save name of what we're looking at
-  (setq original-file-displayed (buffer-file-name)) ; Doesn't work if just a buffer without file...
+  (setq original-file-displayed (buffer-file-name))
+      ;; n.g. if a display buffer without a file
   (unless numblines
-    (setq numblines (- (/ (screen-height) 2) 1) )) ; new window defaults to half of frame height
+    (setq numblines (- (/ (screen-height) 2) 1) )) ;; default: half frame height
   (delete-other-windows)
   (setq numblines (- numblines))
-  (split-window-vertically numblines) ; Number of lines to display
+  (split-window-vertically numblines) ;; Number of lines to display
   (other-window 1)
   (let ((location (file-name-directory file)))
-    ;;; TODO consider moving global variable set for template pass biz down here?
-    ;;; (probably not workable without dorking out the calling interface)
     (cond ((file-exists-p file)
            (find-file file))
           (t ;; file does not exist yet
@@ -1904,8 +1897,9 @@ original window, not the new one."
            (if template
                (perlnow-create-with-template file template)
              (find-file file))))
+    (funcall (perlnow-lookup-preferred-perl-mode))
     ;; after opening, point back from new place to where we were
-    (setq perlnow-associated-code original-file-displayed) ; bufloc, used by "C-c/b"
+    (setq perlnow-associated-code original-file-displayed)
     (if switchback
         (other-window 1))
     ))
@@ -1965,14 +1959,15 @@ Currently always returns t, but future versions may return nil for failure."
    script-name
    nil
    perlnow-perl-script-template)
-  ;; forget about a "use" line for things that don't look much perl modules.
+  ;; forget about a "use" line for things that don't look like perl modules.
   (let ( (case-fold-search nil)
-         (import-string "" )      )
-    (if (string-match "^[A-Z]" package-name)
+         (import-string "" ) )
+    (if (string-match "^[A-Z]" package-name) ;; Module::Names are capitalized
         (progn
           (unless (eq inc-spot nil)
             (perlnow-endow-script-with-access-to inc-spot)
-            (setq import-string (perlnow-import-string-from package-name inc-spot))
+            (setq import-string
+                  (perlnow-import-string-from package-name inc-spot))
             )
           ;; insert the "use Modular::Stuff;" line
           (insert (format "use %s%s;" package-name import-string))
@@ -1986,8 +1981,7 @@ Currently always returns t, but future versions may return nil for failure."
     (let* ((script-name (buffer-file-name))
            (relative-path
             (file-relative-name location (file-name-directory script-name))))
-      (unless (> (length whitespace) 0) ;; Default to empty string (TODO better way?)
-        (setq whitespace ""))
+      (unless whitespace (setq whitespace "")) ;; Default to empty string
       (insert (format "%suse FindBin qw\($Bin\);\n" whitespace))
       (insert (format "%suse lib \(\"$Bin/" whitespace))
       (insert relative-path)
@@ -2011,26 +2005,19 @@ Return nil otherwise."
   (message "%s" (perlnow-exporter-code-p)))
 
 
+;; TODO really should handle exported lists without an ":all" tag;
+;; also should have option to prefer expicit lists, even if ":all" is present
 (defun perlnow-import-string ()
   "Determine a good import string for using the current module.
 Returns the ':all' tag if the current buffer shows an Exporter-based
 module, and an empty string if it's an OOP module.  Errors out
 if it's not called on a module buffer.
-
-Note: this is a quick-and-dirty experiment: the precise behavior
-of this routine is subject to change."
+EXPERIMENTAL: precise behavior is subject to change."
+;; used by perlnow-import-string-from
   (interactive) ;; DEBUG only
   (unless (perlnow-module-code-p)
-    (error "perlnow-generate-import-list expects to be run in a module buffer."))
+    (error "perlnow-import-string expects to be run in a module buffer."))
   (let* ((import-string "")
-         ;; Searching for a line like this:
-         ;;  our %EXPORT_TAGS = ( 'all' => [
-
-         ;; Does not work because of the '%'. Why?  Backwhack(s): no help.
-         ;;          (all-tag-pattern
-         ;;           "\\b%EXPORT_TAGS[ \t]*=[ \t]*(.*?\\ball\\b") ; allowing alt quotes,
-         ;;                                                        ; requiring first paren
-
          (all-tag-pattern
           "\\bEXPORT_TAGS[ \t]*=[ \t]*(.*?\\ball\\b")  ; allowing alt quotes,
          ;; requiring first paren
@@ -2051,16 +2038,19 @@ of this routine is subject to change."
     import-string
     ))
 
+;; Used by:
+;;   perlnow-open-test-file
+;;   perlnow-do-script-from-module
 (defun perlnow-import-string-from (package-name &optional inc-spot)
   "Get a workable import string from the module PACKAGE-NAME.
-At present this will just be ':all' \(if the module is Exporter\)
+This will just be ':all' \(if the module is Exporter\)
 based, or the empty string if not.  If the module is installed,
 this can work just with the PACKAGE-NAME, otherwise, the optional
-INC-SPOT is needed to point at it.
-TODO: Someday, this module might return something like
-   \"qw( routine1 routine2 routine3 )\"
-where the three routines are exported \(optionally or not\) from
-the indicated module."
+INC-SPOT is needed to point at it."
+;; TODO: Someday, this module might return something like
+;;    \"qw( routine1 routine2 routine3 )\"
+;; where the three routines are exported \(optionally or not\) from
+;; the indicated module.
   (let* ((module-file
           (cond (inc-spot
                  (perlnow-full-path-to-module inc-spot package-name)
@@ -2079,7 +2069,7 @@ the indicated module."
     import-string))
 
 ;; ========
-;; set subtraction via a hash table
+;; efficient set subtraction (using a hash table)
 
 (defun perlnow-string= (a b)
   "Essentially just another string=.
@@ -2116,28 +2106,24 @@ found in LIST2."
       )
     difference
     ))
+;;; end  efficient set subtraction (using a hash table)
 
-;; Verify that the above works with simple strings:
-;; (perlnow-subtract-lists (list "a" "d" "g")(list "a"))
-;; (perlnow-subtract-lists (list "a" "d" "g")(list "a" "g" "e"))
-
-;;; end set subtraction via a hash table
-
-
-
-;;;; To begin with, in the following it's okay to assume a layout a lot like this:
-;;;;
-;; our %EXPORT_TAGS = ( 'all' => [
-;;   # names of items to export
-;;   qw(
-;;      nada
-;;      slackoff
-;;     ) ] );
-;; # The above allows declaration	use Bookem::Baby::Bumpers ':all';
-;; # Moving things directly into @EXPORT or (better) @EXPORT_OK saves some memory.
-;; our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
-;; our @EXPORT = qw(  ); # items to export into callers namespace by default.
-;;                       # (don't use this without a very good reason.)
+;;=======
+;; implemented for perlnow-revise-export-list
+;;
+;; At present: the following assumes a layout like this:
+;;
+;;   our %EXPORT_TAGS = ( 'all' => [
+;;     # names of items to export
+;;     qw(
+;;        nada
+;;        slackoff
+;;       ) ] );
+;;   # The above allows declaration	use Bookem::Baby::Bumpers ':all';
+;;
+;;   our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
+;;   our @EXPORT = qw(  ); # items to export into callers namespace by default.
+;;                         # (don't use this without a very good reason.)
 
 (defun perlnow-list-all-exported-symbols ()
   "Extracts the exported symbols."
@@ -2227,6 +2213,10 @@ otherwise they're skipped." ;; TODO implement internals feature
     (message "%s" sub-list)
     ))
 
+;; end  perlnow-revise-export-list
+
+;; ========
+;; internal utilities, generalizing common tasks to improve consistency
 
 (defun perlnow-sync-save-run-string (run-string &optional harder-setting)
   "Save RUN-STRING value consistently in the appropriate locations.
@@ -2306,6 +2296,28 @@ different message.  Returns a two element list, location and package-name."
     "sName of new module \(e.g. New::Module\)? " ))
   (list where what))
 
+(defun perlnow-prompt-user-for-file-to-create (ask-mess default-location)
+  "Ask for the name of the file to create.
+Check to see if one exists already, and if so, ask for another name.
+Asks the question ASK-MESS, and defaults to the using the location
+DEFAULT-LOCATION.  Returns a list of a single string, full file name
+with path."
+  (let ( filename )
+    (setq default-location (file-name-as-directory default-location))
+    (while (progn
+             (setq filename
+                   (expand-file-name
+                    (read-file-name ask-mess default-location)))
+             (setq ask-mess
+                   "That name is already in use, please use another name: " )
+             (file-exists-p filename)))
+    (list filename)
+    ))
+
+;; end  prompt functions
+
+;;=======
+;;
 
 (defun perlnow-sub-name-to-kill-ring ()
   "Pushes the name of the current perl sub on to the `kill-ring'.
@@ -2343,20 +2355,24 @@ Used by \\[perlnow-script-using-this-module]."
   "Given a perl PACKAGE-NAME \(in double-colon separated form\)
 return the first module file location found in perl's @INC
 array, or nil if it is not found."
-  (let* (  full return
-                (module-file-tail
-                 (concat (replace-regexp-in-string "::" perlnow-slash package-name) ".pm"))
-                (perl-inc
-                 (shell-command-to-string "perl -e 'foreach (@INC) {print \"$_\t\"}'" ))
-                (inc-path-list (split-string perl-inc "\t"))
-                )
-    (setq return
+  (let* ((full)
+         (retval)
+         (module-file-tail
+          (concat
+           (replace-regexp-in-string "::" perlnow-slash package-name)
+           ".pm"))
+         (perl-inc
+          (shell-command-to-string
+           "perl -e 'foreach (@INC) {print \"$_\t\"}'" ))
+         (inc-path-list (split-string perl-inc "\t"))
+         )
+    (setq retval
           (catch 'TANTRUM
             (dolist (inc-path inc-path-list)
               (setq full (concat (perlnow-fixdir inc-path) module-file-tail))
               (if (file-exists-p full)
                   (throw 'TANTRUM full)))))
-    return))
+    retval))
 
 
 (defun perlnow-insert-spaces-the-length-of-this-string (string)
@@ -2395,31 +2411,10 @@ This is to make sure that the file actually exists."
          (filename (buffer-file-name))
          (file-permissions (file-modes filename))
          (new-file-permissions
-          (+ (logand file-permissions all-but-execute-mask) perlnow-executable-setting)
+          (+ (logand file-permissions all-but-execute-mask)
+             perlnow-executable-setting)
           ))
     (set-file-modes filename new-file-permissions)))
-
-
-
-(defun perlnow-prompt-user-for-file-to-create (ask-mess default-location)
-  "Ask for the name of the file to create.
-Check to see if one exists already, and if so, ask for another name.
-Asks the question ASK-MESS, and defaults to the using the location
-DEFAULT-LOCATION.  Returns a list of a single string, full file name
-with path."
-  (let ( filename )
-    (setq default-location (file-name-as-directory default-location))
-    (while (progn
-             (setq filename
-                   (expand-file-name
-                    (read-file-name ask-mess default-location)))
-             (setq ask-mess
-                   "That name is already in use, please use another name: " )
-             (file-exists-p filename)))
-    (list filename)
-    ))
-
-
 
 (defun perlnow-create-with-template (filename template)
   "Create a new file with a template.el template.
@@ -2465,8 +2460,6 @@ This looks for the package line near the top."
       (looking-at package-line-pat) )))
 
 
-;; Just a wrapper provided for backwards compatibility (and for forwards
-;; compatibility with my likely expectation that this function will exist).
 (defun perlnow-cpan-style-code-p ()
   "Determine if this file looks like it's in a cpan-style dev tree.
 Returns the staging-area name, or nil if not found.
@@ -2477,20 +2470,21 @@ with a Makefile.PL or a Build.PL."
           )
     staging-area))
 
+
 (defun perlnow-get-package-name-from-module-buffer ()
   "Get the module name from the package line.
 This will be in perl's double colon separated form, or it will
 return nil if none is found."
   (save-excursion
-    (let ((package-line-pat "^[ \t]*package[ \t]+\\(.*?\\)[ \t;]") ;; captures "Module::Name"
+    (let ((package-line-pat "^[ \t]*package[ \t]+\\(.*?\\)[ \t;]")
+              ;; captures "Module::Name"
           (comment-line-pat "^[ \t]*$\\|^[ \t]*#")
           return)
       (goto-char (point-min))
       (while (looking-at comment-line-pat) (forward-line 1))
       (if (looking-at package-line-pat)
-          (setq return (match-string 1))
+          (setq return (match-string-no-properties 1))
         (setq return nil))
-      (set-text-properties 0 (length return) nil return) ; remove all text properties
       return)))
 
 
@@ -2542,7 +2536,6 @@ it's best guess."
        (t
         (setq return nil))))))
 
-
 (defun perlnow-vote-on-candidates (candidate-list)
   "Pick the most commonly occuring string from a list of strings.
 The list should be given as the argument CANDIDATE-LIST,
@@ -2584,11 +2577,6 @@ Relative locations are resolved by pre-pending the default-directory."
                 ))
     location))
 
-;; DEBUG
-;; (perlnow-one-up "/home/doom/tmp/Whatever/")  =>  /home/doom/tmp/
-;; (perlnow-one-up "/home/doom/tmp/Whatever")   =>  /home/doom/tmp/
-;; (perlnow-one-up "/home/")                    =>  /
-;; (perlnow-one-up "")                          =>  /
 
 (defun perlnow-expand-dots-relative-to (dot_means given_path)
   "Using the dot definition DOT_MEANS, expand the GIVEN_PATH.
@@ -2598,12 +2586,15 @@ the value for \".\".  Note: currently this is limited to
 *leading* dot expressions, and can not handle weirder stuff
 like: \"/home/doom/tmp/../bin\"."
   (let ((two-dot-pat "^\\.\\.")
-        (one-dot-pat "^\\.")   ; must check two-dot-pat first or this could match there
+        (one-dot-pat "^\\.")
+           ;; must check two-dot-pat first or this could match there
         newpath  )
     (setq dot_means (perlnow-fixdir dot_means))
     (setq newpath
-          (replace-regexp-in-string two-dot-pat (perlnow-one-up dot_means) given_path))
-    ;; because perlnow-one-up uses perlnow-fixdir, no need to call it, (or to append "/" here)
+          (replace-regexp-in-string
+           two-dot-pat
+           (perlnow-one-up dot_means)
+           given_path))
     (setq newpath
           (replace-regexp-in-string one-dot-pat dot_means newpath))
     (setq newpath (perlnow-fixdir newpath))
@@ -2640,7 +2631,7 @@ invoked with a double prefix (C-u C-u), instead of running
 \"prove\" it will run \"prove -r \"."
 
   (unless (perlnow-module-code-p)
-    (error "This buffer does not look like a perl module (no \"package\" line)"))
+    (error "This buffer isn't a perl module (no \"package\" line)."))
   (let* ( (package-name (perlnow-get-package-name-from-module-buffer))
           (module-file-location
            (file-name-directory (buffer-file-name)))
@@ -2649,15 +2640,17 @@ invoked with a double prefix (C-u C-u), instead of running
           (hyphenized-package-name
            (mapconcat 'identity (split-string package-name "::") "-"))
           (pm-basename
-           (file-name-sans-extension (file-name-nondirectory (buffer-file-name))))
-
-          staging-area      ; The location of an h2xs-style dev structure
-          staging-area-candidate staging-area-candidate-name
-          test-search-list ;; A listing of possible absolute locations to look for the test file,
+           (file-name-sans-extension
+            (file-name-nondirectory (buffer-file-name))))
+          ;;
+          (staging-area)     ;; The location of an h2xs-style dev structure
+          (staging-area-candidate)
+          (staging-area-candidate-name)
+          (test-search-list) ;; possible absolute locations for the test file
           ;; built up from relative locations in perlnow-test-path
-          testloc
-          testfile
-          run-string            ; the return value
+          (testloc)
+          (testfile)
+          (run-string) ;; the return value
           )
     (cond ( harder-setting
             ;; the cpan-style case
@@ -2709,17 +2702,19 @@ invoked with a double prefix (C-u C-u), instead of running
                          ;; (perlnow-ensure-test-file-exists testfile)
                          (cond ( (not (file-exists-p testfile))
                                  (perlnow-edit-test-file testfile)
-                                 (setq run-string nil) ;; TODO is this Okay?  Don't *want* it to run yet.
+                                 (setq run-string nil)
+                                 ;; TODO  Okay?  Don't *want* to run yet.
                                  )
                                (t
-                                (setq run-string (perlnow-generate-run-string testfile))
+                                (setq run-string
+                                      (perlnow-generate-run-string testfile))
                                 ))
                          )
                         )))))
     run-string))
 
 
-;; experimental
+;; experimental -- currently not in use
 (defun perlnow-ensure-test-file-exists (test-file)
   "If the given TEST-FILE doesn't exist, creates it using the test template.
 The template used is specified by the variable `perlnow-perl-test-module-template'."
