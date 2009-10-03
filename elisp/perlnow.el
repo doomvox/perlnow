@@ -6,7 +6,7 @@
 ;; Copyright 2004, 2007, 2009 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.299 2009/10/03 01:03:00 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.300 2009/10/03 02:42:12 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -923,8 +923,8 @@ as \"5.008002\" rather than \"5.8.2\".")
        template-expansion-alist))
 
 ;;; The following variables are always buffer-local.  While there
-;;; is an admonition against this in the emacs lisp reference, I
-;;; don't believe the reasoning applies here.
+;;; is an admonition against this in the emacs lisp reference,
+;;; the reasoning deosn't appy here.
 ;;; (1) this makes the code a little simpler (I don't want to have
 ;;; to remember to use make-local-variable in different places);
 ;;; (2) I can't think of a case where the user would be annoyed
@@ -984,6 +984,7 @@ code (e.g. a full barrage of tests, rather than just one test file).")
 ;;; having two separate concurrently defined ways of running the
 ;;; the perl code in the current buffer.  The heuristics for
 ;;; guessing what run string to use remain identical.
+;;; (( TODO -- maybe they will become identical again someday ))
 
 (defvar perlnow-script-alt-run-string nil
   "The alternative run string for perl scripts, used by \\[perlnow-alt-run].
@@ -1955,6 +1956,7 @@ invoked with a double prefix (C-u C-u), instead of running
           ;; built up from relative locations in perlnow-test-path
           (testloc)
           (testfile)
+          (runfile)
           (run-string) ;; the return value
           )
     (cond ( harder-setting
@@ -1966,14 +1968,11 @@ invoked with a double prefix (C-u C-u), instead of running
                    (setq run-string (perlnow-test-run-string-harder harder-setting))
                    )))
           (t ;; harder not set, so run standard test
-           ;; if there's an associated *.t file already, just use that.
-           (cond ((and
-                   (setq testfile perlnow-associated-code)
-                   (string-match "\.t$" perlnow-associated-code)
-                   )
-                  (setq run-string (perlnow-generate-run-string-and-associate testfile))
+           ;; if there's associated code already, just use that.
+           (cond ((setq runfile perlnow-associated-code)
+                  (setq run-string (perlnow-generate-run-string-and-associate runfile))
                   )
-                 (t ;; have to scrounge around for a *.t file to use
+                 (t ;; scrounge around for a *.t file to use
                   ;; the cpan-style case
                   (cond ((setq staging-area (perlnow-find-cpan-style-staging-area))
                          (setq run-string (perlnow-generate-run-string-and-associate
@@ -1987,7 +1986,6 @@ invoked with a double prefix (C-u C-u), instead of running
                          )
                         (t ; non-cpan-style module
                          (setq testfile (perlnow-get-test-file-name))
-                         ;; (perlnow-ensure-test-file-exists testfile)
                          (cond ( (not (file-exists-p testfile))
                                  (perlnow-edit-test-file testfile)
                                  (setq run-string nil)
@@ -2015,6 +2013,7 @@ Also sets that global variable as a side-effect."
          (staging-area)
          (filename (buffer-file-name))
          (testfile)
+         (runfile)
          )
     (cond ( harder-setting
             ;; the cpan-style case
@@ -2025,16 +2024,15 @@ Also sets that global variable as a side-effect."
                    (setq run-string (perlnow-test-run-string-harder harder-setting))
                    ))
             (t ;; harder not set, so run standard test
-             (cond ((and ;; if there's an associated *.t file already, just use that.
-                     (setq testfile perlnow-associated-code)
-                     (string-match "\.t$" perlnow-associated-code)
-                     )
-                    (setq run-string (perlnow-generate-run-string-and-associate testfile))
+
+             ;; if there's associated code already, just use that.
+             (cond ((setq runfile perlnow-associated-code)
+                    (setq run-string (perlnow-generate-run-string-and-associate runfile))
                     )
-                   ((string-match "\.t$"  filename) ; this is a test file
+                   ((string-match "\.t$"  filename) ; this is a test file (so don't look for another)
                     (setq run-string (perlnow-generate-run-string-and-associate filename))
                     )
-                   (t ;; have to scrounge around for a *.t file to use
+                   (t ;; scrounge around for a *.t file to use
                     ;; the cpan-style case
                     (cond ((setq staging-area (perlnow-find-cpan-style-staging-area))
                            (setq run-string (perlnow-generate-run-string-and-associate
@@ -2376,6 +2374,8 @@ Opens the file, if not open already."
          (here (or here (buffer-file-name)))
          )
     ;; TODO requiring HERE and THERE to be paths to existing files. Okay?
+    ;; TODO ensure we're pointing at "code"?  (perlnow-perl-code-p file)
+    ;;      problem with non-unix scripts, though
     (unless (file-exists-p there)
       (error (concat "perlnow-set-associated-code-pointers "
                      "needs THERE to be path to existing file: "
@@ -2400,14 +2400,14 @@ Opens the file, if not open already."
 This is used internally by routines such as \\[perlnow-guess-script-run-string].
 This version is a convienience routine which also associates the
 given PROGRAM-FILE with the current buffer's file."
-  ;; a centralized place to apply shell quoting, etc.
-  (let* ( (perl-command (perlnow-how-to-perl))
-          (runstring "") )
+  (let* ( (runstring "") )
     (setq runstring
-          (combine-and-quote-strings (list perl-command program-file)))
+          (perlnow-generate-run-string program-file))
     (perlnow-set-associated-code-pointers program-file)
     runstring))
 
+;; TODO might be a good idea to verify that program-file is code
+;;        (perlnow-perl-code-p file)  problem: non-unix scripts
 (defun perlnow-generate-run-string (program-file)
   "Generates a direct run-string for the perl PROGRAM-FILE.
 This is used internally by routines such as \\[perlnow-guess-script-run-string]."
@@ -2416,7 +2416,6 @@ This is used internally by routines such as \\[perlnow-guess-script-run-string].
           (runstring "") )
     (setq runstring
           (combine-and-quote-strings (list perl-command program-file)))
-;;    (perlnow-set-associated-code-pointers program-file)
     runstring))
 
 ;;=======
@@ -2498,30 +2497,6 @@ with path."
 ;;;========
 ;;; TODO categorize?
 
-(defun perlnow-module-found-in-INC (package-name)
-  "Given a perl PACKAGE-NAME \(in double-colon separated form\)
-return the first module file location found in perl's @INC
-array, or nil if it is not found."
-  (let* ((full)
-         (retval)
-         (module-file-tail
-          (concat
-           (replace-regexp-in-string "::" perlnow-slash package-name)
-           ".pm"))
-         (perl-inc
-          (shell-command-to-string
-           "perl -e 'foreach (@INC) {print \"$_\t\"}'" ))
-         (inc-path-list (split-string perl-inc "\t"))
-         )
-    (setq retval
-          (catch 'TANTRUM
-            (dolist (inc-path inc-path-list)
-              (setq full (concat (perlnow-fixdir inc-path) module-file-tail))
-              (if (file-exists-p full)
-                  (throw 'TANTRUM full)))))
-    retval))
-
-
 (defun perlnow-insert-spaces-the-length-of-this-string (string)
   "Insert as many spaces as characters in the given STRING.
 Used by the template.el expansion PNFS."
@@ -2565,7 +2540,7 @@ side-effect, it sets the global `template-file' here."
 ;; end  file creation
 
 ;;========
-;; buffer probes -- what kind of code is displayed?
+;; buffer/file probes -- what kind of code is displayed?
 
 (defun perlnow-nix-script-p ()
   "Determine if the buffer looks like a 'nix style executable script.
@@ -2590,7 +2565,8 @@ e.g. test files \(*.t\) or scripts on non-unix-like systems."
 
 (defun perlnow-module-code-p ()
   "Determine if the buffer looks like a perl module.
-This looks for the package line near the top."
+This looks for the package line near the top.
+Note: it's usually more useful to just do a \\[perlnow-get-package-name]."
   (save-excursion
     (let ( (package-line-pat "^[ \t]*package\\b")
            (comment-line-pat "^[ \t]*$\\|^[ \t]*#") )
@@ -2619,6 +2595,29 @@ with a Makefile.PL or a Build.PL."
   (let* ( (staging-area (perlnow-find-cpan-style-staging-area) )
           )
     staging-area))
+
+
+(defun perlnow-perl-code-p (file)
+  "Return t if FILE seems to be perl code.
+Checks for the usual perl file extensions, and if need
+be opens the file to look for a package line or a hashbang line.
+Not *quite* fool proof: see \\[perlnow-script-p]"
+;; TODO try running it through "perl -cw"?
+  (let* ((retval
+          (cond
+           ((string-match "\.t$"  filename))
+           ((string-match "\.pm$"  filename))
+           ((string-match "\.pl$"  filename))
+           )))
+    (unless retval
+      (progn
+        (file-find file)
+        (setq retval
+              (cond
+               ((perlnow-module-code-p))
+               ((perlnow-script-p))
+               ))))
+    retval))
 
 ;; end  buffer probes
 
@@ -3530,9 +3529,9 @@ Note: at present, this has nothing to do with \\[perlnow-find-t-directories]."
 
 ;;; The end of perlnow-edit-test-file family of functions
 
+
 ;;;==========================================================
-;;; the something-or-other utilities    TODO
-;;;   probe environment?
+;;;  file-system probes (etc.)
 
 (defun perlnow-how-to-perl ()
   "Define how to run perl for the current buffer.
@@ -3591,7 +3590,6 @@ for the \"MANIFEST\" and either a \"Makefile.PL\" or a \"Build.PL\"\)."
     (if return ;; skip if nothing found (and dir is "/").
         (perlnow-cpan-style-build dir))
     return))
-
 
 ;; replaces perlnow-run-perl-makefile-pl-if-needed & perlnow-run-perl-build-pl
 ;; TODO -- should this bring the display-buffer up front? (you can do this
@@ -3870,6 +3868,29 @@ current file buffer.  Used by \\[perlnow-do-script-from-module]."
               (if (string= path inc-spot)
                   (throw 'UP t)))))
     return))
+
+(defun perlnow-module-found-in-INC (package-name)
+  "Given a perl PACKAGE-NAME \(in double-colon separated form\)
+return the first module file location found in perl's @INC
+array, or nil if it is not found."
+  (let* ((full)
+         (retval)
+         (module-file-tail
+          (concat
+           (replace-regexp-in-string "::" perlnow-slash package-name)
+           ".pm"))
+         (perl-inc
+          (shell-command-to-string
+           "perl -e 'foreach (@INC) {print \"$_\t\"}'" ))
+         (inc-path-list (split-string perl-inc "\t"))
+         )
+    (setq retval
+          (catch 'TANTRUM
+            (dolist (inc-path inc-path-list)
+              (setq full (concat (perlnow-fixdir inc-path) module-file-tail))
+              (if (file-exists-p full)
+                  (throw 'TANTRUM full)))))
+    retval))
 
 ;;;==========================================================
 ;;; Read perlmodule path and names in one step
