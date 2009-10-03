@@ -6,7 +6,7 @@
 ;; Copyright 2004, 2007, 2009 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.300 2009/10/03 02:42:12 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.301 2009/10/03 04:23:01 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1170,7 +1170,7 @@ cperl-perldoc-at-point, comment-region and narrow-to-defun."
     ))
 
 ;;;==========================================================
-;;; functions to run perl scripts
+;;; functions to run perl scripts        TODO BOOKMARK REAL CODE
 
 (defun perlnow-run-check (arg)
   "Run a perl check on the current buffer.
@@ -1220,17 +1220,15 @@ perlcritic in addition to a \"perl -cw\"."
     ))
 
 (defun perlnow-run (run-string &optional harder-setting)
-  "EXPERIMENTAL.      TODO revise documentation.
-Run the perl code in this file buffer.
-This uses an interactively set RUN-STRING determined from
-`perlnow-run-string' which may have been set by using
-\\[perlnow-set-run-string].  If `perlnow-run-string' is nil,
-\\[perlnow-set-run-string] is called automatically.\n
-The run string can always be changed later by running
-\\[perlnow-set-run-string] manually.\n
-When run with a \"C-u\" prefix, the variable `perlnow-run-string-harder'
-is used instead, so that it can remember how it was
-run in either case."
+  "Run the perl code in this file buffer.
+This uses a RUN-STRING which may be determined from
+from the numeric HARDER-SETTING \(C-u means \"do it harder\"\)
+and some buffer-local variables which remember previous settings
+`perlnow-run-string' and `perlnow-run-string-harder'.
+If those variables are nil, it will run a routine to try
+to guess a good RUN-STRING  -- TODO fill that in --
+The user will be asked to confirm a run-string the first
+time it is used \(this happens via \\[perlnow-set-run-string]\)."
   (interactive
    (let* (
           (harder-setting current-prefix-arg)
@@ -1374,19 +1372,7 @@ such as \\[perlnow-run] if the run string is not yet defined.\n
 When run with a \"C-u\" prefix \(or non-interactively, with
 HARDER-SETTING passed in\) tries to guess a more thorough way to
 run the code \(e.g. a test suite instead of a single test file\),
-and works with the `perlnow-run-string-harder' variable.  \n
-From within an elisp program, it may be better to set these variables
-directly: `perlnow-script-run-string' and/or `perlnow-module-run-string'."
-;; TODO though for the life of me, I can never remember why.
-;; if that's true, explain it somewhere so that even I can understand.
-;;
-;; This function uses \\\[perlnow-module-code-p] to see if the code looks like a
-;; module (i.e. does it have a package line), otherwise it
-;; assumes it's a perl script.
-;;
-;; So why is it important to distinguish internally here between
-;; the script and module run-string?  If they're buffer locals,
-;; only one will ever be used, right?  So why not just have one?
+and works with the `perlnow-run-string-harder' variable."
   (interactive)
   (let* ( (harder-setting (or harder-setting current-prefix-arg))
           (module-p (perlnow-module-code-p))
@@ -1935,30 +1921,30 @@ a likely \"t\" directory in which to run \"prove\".  In that
 case, if the HARDER-SETTING argument looks as though things were
 invoked with a double prefix (C-u C-u), instead of running
 \"prove\" it will run \"prove -r \"."
-
   (unless (perlnow-module-code-p)
     (error "This buffer isn't a perl module (no \"package\" line)."))
-  (let* ( (package-name (perlnow-get-package-name-from-module-buffer))
-          (module-file-location
-           (file-name-directory (buffer-file-name)))
-          (inc-spot
-           (perlnow-get-inc-spot package-name module-file-location ))
-          (hyphenized-package-name
-           (mapconcat 'identity (split-string package-name "::") "-"))
-          (pm-basename
-           (file-name-sans-extension
-            (file-name-nondirectory (buffer-file-name))))
-          ;;
-          (staging-area)     ;; The location of an h2xs-style dev structure
-          (staging-area-candidate)
-          (staging-area-candidate-name)
-          (test-search-list) ;; possible absolute locations for the test file
-          ;; built up from relative locations in perlnow-test-path
-          (testloc)
-          (testfile)
-          (runfile)
-          (run-string) ;; the return value
-          )
+  (let* (
+         ;;           (package-name (perlnow-get-package-name-from-module-buffer))
+         ;;           (module-file-location
+         ;;            (file-name-directory (buffer-file-name)))
+         ;;           (inc-spot
+         ;;            (perlnow-get-inc-spot package-name module-file-location ))
+         ;;           (hyphenized-package-name
+         ;;            (mapconcat 'identity (split-string package-name "::") "-"))
+         ;;           (pm-basename
+         ;;            (file-name-sans-extension
+         ;;             (file-name-nondirectory (buffer-file-name))))
+         ;;
+         (staging-area)     ;; The location of an h2xs-style dev structure
+         ;;          (staging-area-candidate)
+         ;;          (staging-area-candidate-name)
+         ;;          (test-search-list) ;; possible absolute locations for the test file
+         ;; built up from relative locations in perlnow-test-path
+         ;;          (testloc)
+         (testfile)
+         (associated perlnow-associated-code)
+         (run-string) ;; the return value
+         )
     (cond ( harder-setting
             ;; the cpan-style case
             (cond ((setq staging-area (perlnow-find-cpan-style-staging-area))
@@ -1968,21 +1954,22 @@ invoked with a double prefix (C-u C-u), instead of running
                    (setq run-string (perlnow-test-run-string-harder harder-setting))
                    )))
           (t ;; harder not set, so run standard test
-           ;; if there's associated code already, just use that.
-           (cond ((setq runfile perlnow-associated-code)
-                  (setq run-string (perlnow-generate-run-string-and-associate runfile))
+           ;; if there's an associated script already, just use that.
+           (cond ((and associated
+                       (not (perlnow-module-file-p associated)))
+                  (setq run-string (perlnow-generate-run-string associated))
                   )
                  (t ;; scrounge around for a *.t file to use
                   ;; the cpan-style case
                   (cond ((setq staging-area (perlnow-find-cpan-style-staging-area))
                          (setq run-string (perlnow-generate-run-string-and-associate
-                                                  (perlnow-latest-test-file
-                                                   (perlnow-list-test-files
-                                                    "../t"
-                                                    "incspot"
-                                                    "numeric"
-                                                    t
-                                                    ))))
+                                           (perlnow-latest-test-file
+                                            (perlnow-list-test-files
+                                             "../t"
+                                             "incspot"
+                                             "numeric"
+                                             t
+                                             ))))
                          )
                         (t ; non-cpan-style module
                          (setq testfile (perlnow-get-test-file-name))
@@ -2024,13 +2011,13 @@ Also sets that global variable as a side-effect."
                    (setq run-string (perlnow-test-run-string-harder harder-setting))
                    ))
             (t ;; harder not set, so run standard test
-
-             ;; if there's associated code already, just use that.
-             (cond ((setq runfile perlnow-associated-code)
-                    (setq run-string (perlnow-generate-run-string-and-associate runfile))
+             ;; if there's an associated script already, just use that.
+             (cond ((and associated
+                         (not (perlnow-module-file-p associated)))
+                    (setq run-string (perlnow-generate-run-string associated))
                     )
                    ((string-match "\.t$"  filename) ; this is a test file (so don't look for another)
-                    (setq run-string (perlnow-generate-run-string-and-associate filename))
+                    (setq run-string (perlnow-generate-run-string filename))
                     )
                    (t ;; scrounge around for a *.t file to use
                     ;; the cpan-style case
@@ -2059,7 +2046,7 @@ Also sets that global variable as a side-effect."
                            )
                           )))))
           (t ; When all else fails, just feed it to perl and hope for the best
-           (setq run-string (perlnow-generate-run-string-and-associate filename))
+           (setq run-string (perlnow-generate-run-string filename))
            ))
     run-string))
 
@@ -2412,10 +2399,15 @@ given PROGRAM-FILE with the current buffer's file."
   "Generates a direct run-string for the perl PROGRAM-FILE.
 This is used internally by routines such as \\[perlnow-guess-script-run-string]."
   ;; a centralized place to apply shell quoting, etc.
-  (let* ( (perl-command (perlnow-how-to-perl))
-          (runstring "") )
+  (let* ((perl-command (perlnow-how-to-perl))
+         (runstring ""))
+;; This is no good: "perl -T" is wrong.
+;;     (setq runstring
+;;           (combine-and-quote-strings (list perl-command program-file)))
     (setq runstring
-          (combine-and-quote-strings (list perl-command program-file)))
+          (concat perl-command " "
+                  (combine-and-quote-strings
+                   (list program-file))))
     runstring))
 
 ;;=======
@@ -2605,9 +2597,9 @@ Not *quite* fool proof: see \\[perlnow-script-p]"
 ;; TODO try running it through "perl -cw"?
   (let* ((retval
           (cond
-           ((string-match "\.t$"  filename))
-           ((string-match "\.pm$"  filename))
-           ((string-match "\.pl$"  filename))
+           ((string-match "\.t$"  file))
+           ((string-match "\.pm$"  file))
+           ((string-match "\.pl$"  file))
            )))
     (unless retval
       (progn
@@ -2617,6 +2609,20 @@ Not *quite* fool proof: see \\[perlnow-script-p]"
                ((perlnow-module-code-p))
                ((perlnow-script-p))
                ))))
+    retval))
+
+(defun perlnow-module-file-p (file)
+  "Determine if the FILE looks like a perl module."
+  (let* (retval)
+    ;; if it's nil, it ain't a module
+    (if (not file)
+        (setq reval nil)
+      ((setq retval
+          (cond
+           ((string-match "\.pm$"  file)
+            (t
+             (file-find file)
+             (perlnow-module-code-p)))))))
     retval))
 
 ;; end  buffer probes
