@@ -6,7 +6,7 @@
 ;; Copyright 2004, 2007, 2009 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.297 2009/10/02 22:10:47 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.298 2009/10/02 22:36:19 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -2352,7 +2352,7 @@ depending on the value of the given HARDER-SETTING."
       (perlnow-save-run-string-hard-aware run-string harder-setting)
       )
     (switch-to-buffer initial)
-    ))
+    run-string))
 
 (defun perlnow-save-run-string-hard-aware (run-string &optional harder-setting)
   "Save the RUN-STRING for the current buffer for the given HARDER-SETTING."
@@ -2366,7 +2366,8 @@ depending on the value of the given HARDER-SETTING."
 (defun perlnow-set-associated-code-pointers (there &optional here)
   "Make THERE the associated code for HERE (default: current buffer's file).
 Revises the buffer-local variable \\[perlnow-associated-code] in
-both locations. Note: expects that THERE will be an existing file."
+both locations. Note: expects that THERE will be an existing file.
+Opens the file, if not open already."
   (let* ((initial (current-buffer))
          (here (or here (buffer-file-name)))
          )
@@ -2383,11 +2384,17 @@ both locations. Note: expects that THERE will be an existing file."
                      )))
     (setq perlnow-associated-code there)
     (save-excursion ;; only a fool trusts this, eh?
-      (set-buffer there)
+      (find-file there)
+      ;; (set-buffer there)
       (setq perlnow-associated-code here)
       )
     (switch-to-buffer initial)
     ))
+
+
+
+
+
 
 ;;=======
 ;; prompt functions
