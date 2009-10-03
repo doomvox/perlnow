@@ -6,7 +6,7 @@
 ;; Copyright 2004, 2007, 2009 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.301 2009/10/03 04:23:01 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.302 2009/10/03 04:40:38 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1254,113 +1254,6 @@ time it is used \(this happens via \\[perlnow-set-run-string]\)."
       (compile run-string)
     ))
 
-(defun perlnow-alt-run (alt-run-string)
-  "Run the perl code in this file buffer.
-This uses an interractively set ALT-RUN-STRING determined
-from `perlnow-alt-run-string' which may have been set by using
-\\[perlnow-set-alt-run-string].  If `perlnow-alt-run-string' is nil,
-\\[perlnow-set-alt-run-string] is called automatically.\n
-The alt run string can always be changed later by running
-\\[perlnow-set-alt-run-string] manually."
-  (interactive
-   (let (input)
-     (if (eq perlnow-alt-run-string nil)
-         (setq input (perlnow-set-alt-run-string))
-       (setq input perlnow-alt-run-string))
-     (list input)
-     ))
-  (perlnow-run alt-run-string)) ; Note: uses perlnow-run rather than running compile directly
-
-(defun perlnow-perldb (run-string)
-  "Run the perl debugger on the code in this file buffer.
-This uses an interactively set RUN-STRING determined from
-`perlnow-run-string' which may have been set by using
-\\[perlnow-set-run-string].  If `perlnow-run-string' is nil,
-\\[perlnow-set-run-string] is called automatically.
-It can always be changed later by running \\[perlnow-set-run-string]
-manually.  \n
-There's a big advantage that this command has over running
-\\[perldb] directly: you can have different `perlnow-run-string'
-settings for different file buffers \(that is to say it's a buffer
-local variable\).  Unfortunately \(as of this writing\) \\[perldb]
-used directly always re-uses it's previous run-string as a
-default, and that's guaranteed to be wrong if you've switched
-to a different file."
-  (interactive
-   (let (input)
-     (if (eq perlnow-run-string nil)
-         (setq input (perlnow-set-run-string))
-       (setq input perlnow-run-string))
-     (list input)
-     ))
-  (let* ((modified-run-string
-          (replace-regexp-in-string "\\bperl " "perl -d " run-string))
-         ;;;; TODO old dequote operation. Better: split-string-and-unquote
-         (hacked-run-string
-          (replace-regexp-in-string "'" "" modified-run-string))
-         )
-    (perldb hacked-run-string)))
-
-(defun perlnow-set-run-string-old (&optional harder-setting)
-  "Prompt the user for a new run string for the current buffer.
-This sets the global variable `perlnow-run-string' that
-\\[perlnow-run] will use to run the code in the current buffer.
-To manually change the run string, the user needs to run this
-function directly, but it is also called indirectly by commands
-such as \\[perlnow-run] if the run string is not yet defined.\n
-When run with a \"C-u\" prefix \(or non-interactively, with
-HARDER-SETTING passed in\) tries to guess a more thorough way to
-run the code \(e.g. a test suite instead of a single test file\),
-and works with the `perlnow-run-string-harder' variable.  \n
-From within an elisp program, it may be better to set these variables
-directly: `perlnow-script-run-string' and/or `perlnow-module-run-string'."
-;; TODO though for the life of me, I can never remember why.
-;; if that's true, explain it somewhere so that even I can understand.
-;;
-;; This function uses \\\[perlnow-module-code-p] to see if the code looks like a
-;; module (i.e. does it have a package line), otherwise it
-;; assumes it's a perl script.
-;;
-;; So why is it important to distinguish internally here between
-;; the script and module run-string?  If they're buffer locals,
-;; only one will ever be used, right?  So why not just have one?
-  (interactive)
-  (let* ( (harder-setting (or harder-setting current-prefix-arg))
-          )
-    (cond
-     ((perlnow-module-code-p)
-      ;; set-up a decent default value
-      (unless perlnow-module-run-string
-        (progn
-          (setq perlnow-module-run-string
-                (perlnow-guess-module-run-string harder-setting))))
-      ;; experimental hack: skip this all if the "guess" was nil
-      (cond ( perlnow-module-run-string
-              ;; ask user how to run this module (use as default next time)
-              (setq perlnow-module-run-string
-                    (read-from-minibuffer
-                     "Set the run string for this module: "
-                     perlnow-module-run-string))
-              ;; tell perlnow-run how to do it
-              (perlnow-sync-save-run-string
-               perlnow-module-run-string harder-setting)
-              )))
-     (t  ;;  assume it's a script since it's not a module.
-         ;; set-up intelligent default run string
-      (unless perlnow-script-run-string
-        (progn
-          (setq perlnow-script-run-string
-                (perlnow-guess-script-run-string harder-setting))
-          ))
-      ;; ask user how to run this script (use as default next time)
-      (setq perlnow-script-run-string
-            (read-from-minibuffer
-             "Set the run string for this script: "
-             perlnow-script-run-string))
-      ;; tell perlnow-run to do it that way
-      (perlnow-sync-save-run-string perlnow-script-run-string harder-setting)
-      ))))
-
 ;; Note: this version tries to downplay the use of the "script"/"module" vars.
 (defun perlnow-set-run-string (&optional harder-setting)
   "Prompt the user for a new run string for the current buffer.
@@ -1401,50 +1294,35 @@ and works with the `perlnow-run-string-harder' variable."
     ;; tell perlnow-run how to do it
     (perlnow-sync-save-run-string run-string harder-setting)))
 
-(defun perlnow-set-alt-run-string ()
-  "Prompt the user for a new alternative run string for the current buffer.
-This sets the global variable `perlnow-alt-run-string' that \\[perlnow-alt-run]
-will use to run the code in future in the current buffer.
-Frequently, the user will prefer to use \\[perlnow-alt-run] and let it
-urun this command indirectly if need be; however using this command
-directly is necessary to change the alt-run command string later.  \n
-From within a program, it's probably best to set some variables
-directly, see `perlnow-script-alt-run-string' and `perlnow-module-alt-run-string'.\n
-This function uses \\\[perlnow-module-code-p] to see if the code looks like a
-module (i.e. does it have a package line), otherwise it
-assumes it's a perl script.  The heuristics for setting a default
-\"alt\"-run string are identical to those used for setting the
-`perlnow-run-string'."
-;;; perlnow-set-alt-run-string is a minor variation of perlnow-set-run-string
-  (interactive)
-  (cond
-   ((perlnow-module-code-p)
-    ;; set-up a decent default value
-    (unless perlnow-module-alt-run-string
-      (progn
-        (setq perlnow-module-alt-run-string
-              (perlnow-guess-module-run-string))))
-    ;; ask user the alternative way to run this module (use as default next time)
-    (setq perlnow-module-alt-run-string
-          (read-from-minibuffer
-           "Set the alternative run string for this module: "
-           perlnow-module-alt-run-string))
-    ;; tell perlnow-alt-run how to do it
-    (setq perlnow-alt-run-string perlnow-module-alt-run-string))
-   (t  ;;  assume it's a script since it's not a module.
-    ;; set-up intelligent default alt run string
-    (unless perlnow-script-alt-run-string
-      (progn
-        (setq perlnow-script-alt-run-string
-              (perlnow-guess-script-run-string))
-        ))
-    ;; ask user the alternative way to run this script (use as default next time)
-    (setq perlnow-script-alt-run-string
-          (read-from-minibuffer
-           "Set the alternative run string for this script: "
-           perlnow-script-alt-run-string))
-    ;; tell perlnow-alt-run to do it that way
-    (setq perlnow-alt-run-string perlnow-script-alt-run-string))))
+(defun perlnow-perldb (run-string)
+  "Run the perl debugger on the code in this file buffer.
+This uses an interactively set RUN-STRING determined from
+`perlnow-run-string' which may have been set by using
+\\[perlnow-set-run-string].  If `perlnow-run-string' is nil,
+\\[perlnow-set-run-string] is called automatically.
+It can always be changed later by running \\[perlnow-set-run-string]
+manually.  \n
+There's a big advantage that this command has over running
+\\[perldb] directly: you can have different `perlnow-run-string'
+settings for different file buffers \(that is to say it's a buffer
+local variable\).  Unfortunately \(as of this writing\) \\[perldb]
+used directly always re-uses it's previous run-string as a
+default, and that's guaranteed to be wrong if you've switched
+to a different file."
+  (interactive
+   (let (input)
+     (if (eq perlnow-run-string nil)
+         (setq input (perlnow-set-run-string))
+       (setq input perlnow-run-string))
+     (list input)
+     ))
+  (let* ((modified-run-string
+          (replace-regexp-in-string "\\bperl " "perl -d " run-string))
+         ;;;; TODO old dequote operation. Better: split-string-and-unquote
+         (hacked-run-string
+          (replace-regexp-in-string "'" "" modified-run-string))
+         )
+    (perldb hacked-run-string)))
 
 ;; TODO: uses grep-find internally, but probably should have it's own history.
 ;; But note: ack.el exists already.
@@ -2412,7 +2290,6 @@ This is used internally by routines such as \\[perlnow-guess-script-run-string].
 
 ;;=======
 ;; prompt functions
-
 (defun perlnow-prompt-for-module-to-create (where what)
   "Internally used by \\[perlnow-module-two-questions\] to ask the two questions.
 Asks for the WHERE, i.e. the \"module root\" location, and the WHAT, the name
@@ -2428,8 +2305,6 @@ Note: This is all used only by the mildly deprecated \\[perlnow-module-two-quest
             (read-from-minibuffer "That module name is already in use. Please choose another: " what))
       (setq filename (perlnow-full-path-to-module where what)))
     (list where what)))
-
-
 
 (defun perlnow-prompt-for-cpan-style (where what)
   "For Internal use only: ask the two questions needed for cpan-style dev.
@@ -2452,7 +2327,6 @@ two element list, dev-location and package-name."
       (setq staging-area (perlnow-staging-area where what))
       )
     (list where what)))
-
 
 (defun perlnow-prompt-for-cpan-style-again (where what)
   "For internal use only: the \"ask again\" for \\[perlnow-h2xs\].
@@ -2483,19 +2357,7 @@ with path."
              (file-exists-p filename)))
     (list filename)
     ))
-
 ;; end  prompt functions
-
-;;;========
-;;; TODO categorize?
-
-(defun perlnow-insert-spaces-the-length-of-this-string (string)
-  "Insert as many spaces as characters in the given STRING.
-Used by the template.el expansion PNFS."
-  (insert
-   (make-string (length
-                 (file-name-nondirectory string)
-                 ) ?\ )))
 
 ;;========
 ;; file creation
@@ -2532,8 +2394,7 @@ side-effect, it sets the global `template-file' here."
 ;; end  file creation
 
 ;;========
-;; buffer/file probes -- what kind of code is displayed?
-
+;; buffer/file probes (determine what kind of code it is, etc)
 (defun perlnow-nix-script-p ()
   "Determine if the buffer looks like a 'nix style executable script.
 Looks for the hash-bang line at the top."
@@ -2542,7 +2403,6 @@ Looks for the hash-bang line at the top."
       (goto-char (point-min))
       (looking-at hash-bang-line-pat)
       )))
-
 
 (defun perlnow-script-p ()
   "Determine if the buffer looks like a perl script.
@@ -2553,7 +2413,6 @@ e.g. test files \(*.t\) or scripts on non-unix-like systems."
     (let ( (hash-bang-line-pat "^[ \t]*#!.*perl\\b") ) ; note, presumes an explicit "perl"
       (goto-char (point-min))
       (looking-at hash-bang-line-pat))))
-
 
 (defun perlnow-module-code-p ()
   "Determine if the buffer looks like a perl module.
@@ -2587,7 +2446,6 @@ with a Makefile.PL or a Build.PL."
   (let* ( (staging-area (perlnow-find-cpan-style-staging-area) )
           )
     staging-area))
-
 
 (defun perlnow-perl-code-p (file)
   "Return t if FILE seems to be perl code.
@@ -2624,7 +2482,6 @@ Not *quite* fool proof: see \\[perlnow-script-p]"
              (file-find file)
              (perlnow-module-code-p)))))))
     retval))
-
 ;; end  buffer probes
 
 ;;========
@@ -2882,9 +2739,8 @@ otherwise they're skipped." ;; TODO implement internals feature
 
 ;; end  implemented for perlnow-revise-export-list
 
-
 ;;=======
-;;  path crunching (( TODO refine category, move more defuns here ))
+;;  path crunching
 
 (defun perlnow-full-path-to-module (inc-spot package-name)
   "Piece together a INC-SPOT and a PACKAGE-NAME into a full file name.
@@ -3058,7 +2914,8 @@ and the NAMESTYLE \(see `perlnow-test-policy-naming-style'\)."
     (cond ;; do only if module
      ((setq package-name (perlnow-get-package-name-from-module-buffer))
       (setq inc-spot (perlnow-get-inc-spot package-name file-location))
-      (setq hyphenized-package-name (mapconcat 'identity (split-string package-name "::") "-"))
+      (setq hyphenized-package-name
+            (mapconcat 'identity (split-string package-name "::") "-"))
       ))
     ;; define testloc-absolute
     (cond ((string= dotdef "fileloc") ;; might be script or module
@@ -3069,7 +2926,8 @@ and the NAMESTYLE \(see `perlnow-test-policy-naming-style'\)."
                  (perlnow-expand-dots-relative-to inc-spot testloc)))
           (t
            (error
-            "Invalid perlnow-test-policy-dot-definition setting, should be 'fileloc' or 'incspot'")))
+            (concat "Invalid perlnow-test-policy-dot-definition setting,"
+                    " should be 'fileloc' or 'incspot'"))))
     ;; define test-file-from-policy
     (cond ((string= namestyle "hyphenized")  ;; only with modules
            (setq test-file-from-policy
@@ -3088,10 +2946,11 @@ and the NAMESTYLE \(see `perlnow-test-policy-naming-style'\)."
                  (concat testloc-absolute basename ".t"))
            )
           (t
-           (error
-            (format
-             "Invalid namestyle argument: %s, must be hyphenized, basename or numeric."
-             namestyle))))
+           (error (concat
+             "Invalid namestyle argument: "
+             namestyle
+             ", must be hyphenized, basename or numeric."))
+             ))
     ;; If this result is good, return it, if not, keep looking
     ;; If nothing found though, return this as name to be created.
     (cond ((file-exists-p test-file-from-policy) ;; if test-policy finds test-file, stop looking
@@ -3102,7 +2961,6 @@ and the NAMESTYLE \(see `perlnow-test-policy-naming-style'\)."
            (setq test-file test-file-from-policy))
           )
     test-file))
-
 
 ;;; TODO check if this is limited to cpan-style
 ;;; TODO somewhere need to be able to do recursive decent through a project tree
@@ -3160,7 +3018,6 @@ Returns file names with full path if FULLPATH is t."
           (directory-files testloc-absolute fullpath "\.t$"))
     test-file-list))
 
-
 (define-derived-mode perlnow-select-mode
   text-mode "desktop-recover"
   "Major mode to display items from which user can make a selection.
@@ -3174,6 +3031,14 @@ Returns file names with full path if FULLPATH is t."
 (define-key perlnow-select-mode-map "p"    'previous-line)
 
 
+;; TODO there's a bug in here -- starting from a *.t, bring up menu,
+;; choose another *.t, you end up with both pointing at each other.
+;; TODO note that this code doesn't use the newer "associated" routines:
+;;     perlnow-sync-save-run-string
+;;     perlnow-set-associated-code-pointers
+;;     perlnow-generate-run-string-and-associate
+;;     perlnow-generate-run-string
+;; ;; TODO edit this psuedocode:
 ;; trace the buffer local var back to the original calling context.
 ;;   follow perlnow-associated-code, then set it to the newly opened file
 ;; revise run-string in original context
@@ -3222,7 +3087,7 @@ Returns file names with full path if FULLPATH is t."
 
 ;; TODO Any use for this trick?
 ;;   (perlnow-open-test-file testfile)
-
+;;
 ;; Adding "harder" awareness to:  perlnow-edit-test-file
 ;;    C-u C-c \ t
 (defun perlnow-edit-test-file-harder (harder-setting)
@@ -4458,6 +4323,15 @@ and \\[perlnow-setter-prefix]."
   (forward-line 3)
   ))
 
+(defun perlnow-insert-spaces-the-length-of-this-string (string)
+  "Insert as many spaces as characters in the given STRING.
+Used by the template.el expansion PNFS."
+  (insert
+   (make-string (length
+                 (file-name-nondirectory string)
+                 ) ?\ )))
+
+
 ;;;==========================================================
 ;;; cheat commands ("cheat" == automatically fix things so checks pass)
 
@@ -4564,6 +4438,77 @@ EXPORT lists, and add them to the qw() list associated with %EXPORT_TAGS."
                                 add-list "\n"))
            ))))))
 
+
+
+;;;==========================================================
+;;; Intentionally neglected commands (the "alt").  Bumping 'em down
+;;; here where I can forget about them for now.
+;;; Reimplement later.  Maybe:
+;;; work out a way to extend the main routines to do the "alt"
+;;; handling?
+
+(defun perlnow-alt-run (alt-run-string)
+  "Run the perl code in this file buffer.
+This uses an interractively set ALT-RUN-STRING determined
+from `perlnow-alt-run-string' which may have been set by using
+\\[perlnow-set-alt-run-string].  If `perlnow-alt-run-string' is nil,
+\\[perlnow-set-alt-run-string] is called automatically.\n
+The alt run string can always be changed later by running
+\\[perlnow-set-alt-run-string] manually."
+  (interactive
+   (let (input)
+     (if (eq perlnow-alt-run-string nil)
+         (setq input (perlnow-set-alt-run-string))
+       (setq input perlnow-alt-run-string))
+     (list input)
+     ))
+  (perlnow-run alt-run-string)) ; Note: uses perlnow-run rather than running compile directly
+
+
+(defun perlnow-set-alt-run-string ()
+  "Prompt the user for a new alternative run string for the current buffer.
+This sets the global variable `perlnow-alt-run-string' that \\[perlnow-alt-run]
+will use to run the code in future in the current buffer.
+Frequently, the user will prefer to use \\[perlnow-alt-run] and let it
+urun this command indirectly if need be; however using this command
+directly is necessary to change the alt-run command string later.  \n
+From within a program, it's probably best to set some variables
+directly, see `perlnow-script-alt-run-string' and `perlnow-module-alt-run-string'.\n
+This function uses \\\[perlnow-module-code-p] to see if the code looks like a
+module (i.e. does it have a package line), otherwise it
+assumes it's a perl script.  The heuristics for setting a default
+\"alt\"-run string are identical to those used for setting the
+`perlnow-run-string'."
+;;; perlnow-set-alt-run-string is a minor variation of perlnow-set-run-string
+  (interactive)
+  (cond
+   ((perlnow-module-code-p)
+    ;; set-up a decent default value
+    (unless perlnow-module-alt-run-string
+      (progn
+        (setq perlnow-module-alt-run-string
+              (perlnow-guess-module-run-string))))
+    ;; ask user the alternative way to run this module (use as default next time)
+    (setq perlnow-module-alt-run-string
+          (read-from-minibuffer
+           "Set the alternative run string for this module: "
+           perlnow-module-alt-run-string))
+    ;; tell perlnow-alt-run how to do it
+    (setq perlnow-alt-run-string perlnow-module-alt-run-string))
+   (t  ;;  assume it's a script since it's not a module.
+    ;; set-up intelligent default alt run string
+    (unless perlnow-script-alt-run-string
+      (progn
+        (setq perlnow-script-alt-run-string
+              (perlnow-guess-script-run-string))
+        ))
+    ;; ask user the alternative way to run this script (use as default next time)
+    (setq perlnow-script-alt-run-string
+          (read-from-minibuffer
+           "Set the alternative run string for this script: "
+           perlnow-script-alt-run-string))
+    ;; tell perlnow-alt-run to do it that way
+    (setq perlnow-alt-run-string perlnow-script-alt-run-string))))
 
 
 ;;;==========================================================
