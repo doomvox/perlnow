@@ -6,7 +6,7 @@
 ;; Copyright 2004, 2007, 2009 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.298 2009/10/02 22:36:19 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.299 2009/10/03 01:03:00 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1487,21 +1487,19 @@ can find the module."
    (perlnow-prompt-user-for-file-to-create
     "Name for the new perl script? " perlnow-script-location))
   (require 'template)
-  (let ( package-name)
+  (let (package-name)
     (cond
-     ( (setq package-name (perlnow-get-package-name-from-module-buffer))
-       (let* ( (pm-file (buffer-file-name))
-               (pm-location (file-name-directory pm-file))
-               (inc-spot (perlnow-get-inc-spot package-name pm-location)) )
-         (setq perlnow-perl-package-name package-name) ; global used to pass value into template
-         (perlnow-do-script-from-module script-name package-name inc-spot) ))
-     ( (setq package-name (perlnow-get-package-name-from-man))
-       (setq perlnow-perl-package-name package-name) ; global used to pass value into template
-       (perlnow-do-script-from-module script-name package-name))
+     ((setq package-name (perlnow-get-package-name-from-module-buffer)) ;; and this is a module
+      (let* ((pm-file (buffer-file-name)) ;;
+             (pm-location (file-name-directory pm-file))
+             (inc-spot (perlnow-get-inc-spot package-name pm-location)))
+        (setq perlnow-perl-package-name package-name) ; global used to pass value into template
+        (perlnow-do-script-from-module script-name package-name inc-spot)))
+     ((setq package-name (perlnow-get-package-name-from-man)) ;; if so, it's a man page...
+      (setq perlnow-perl-package-name package-name) ; global used to pass value into template
+      (perlnow-do-script-from-module script-name package-name))
      (t ;; no package name found, so we're working with a script
-        ;; (someday, might use perlnow-script-p)
       (perlnow-do-script script-name)))))
-
 ;;;   TODO
 ;;;    Someday: check if module is in INC (when starting from man)
 ;;;    and report any problems, say by
@@ -1510,7 +1508,8 @@ can find the module."
 ;;;    Could use this to do the check:
 ;;;      (setq pm-file (perlnow-module-found-in-INC package-name))
 ;;;         ; given colon-ized, returns first pm found, or nil if none
-;;;
+
+
 (defun perlnow-module (inc-spot package-name)
   "Quickly jump into development of a new perl module.
 In interactive use, gets the path INC-SPOT and PACKAGE-NAME
@@ -1972,12 +1971,12 @@ invoked with a double prefix (C-u C-u), instead of running
                    (setq testfile perlnow-associated-code)
                    (string-match "\.t$" perlnow-associated-code)
                    )
-                  (setq run-string (perlnow-generate-run-string testfile))
+                  (setq run-string (perlnow-generate-run-string-and-associate testfile))
                   )
                  (t ;; have to scrounge around for a *.t file to use
                   ;; the cpan-style case
                   (cond ((setq staging-area (perlnow-find-cpan-style-staging-area))
-                         (setq run-string (perlnow-generate-run-string
+                         (setq run-string (perlnow-generate-run-string-and-associate
                                                   (perlnow-latest-test-file
                                                    (perlnow-list-test-files
                                                     "../t"
@@ -1996,7 +1995,7 @@ invoked with a double prefix (C-u C-u), instead of running
                                  )
                                (t
                                 (setq run-string
-                                      (perlnow-generate-run-string testfile))
+                                      (perlnow-generate-run-string-and-associate testfile))
                                 ))
                          )
                         )))))
@@ -2030,15 +2029,15 @@ Also sets that global variable as a side-effect."
                      (setq testfile perlnow-associated-code)
                      (string-match "\.t$" perlnow-associated-code)
                      )
-                    (setq run-string (perlnow-generate-run-string testfile))
+                    (setq run-string (perlnow-generate-run-string-and-associate testfile))
                     )
                    ((string-match "\.t$"  filename) ; this is a test file
-                    (setq run-string (perlnow-generate-run-string filename))
+                    (setq run-string (perlnow-generate-run-string-and-associate filename))
                     )
                    (t ;; have to scrounge around for a *.t file to use
                     ;; the cpan-style case
                     (cond ((setq staging-area (perlnow-find-cpan-style-staging-area))
-                           (setq run-string (perlnow-generate-run-string
+                           (setq run-string (perlnow-generate-run-string-and-associate
                                              (perlnow-latest-test-file
                                               (perlnow-list-test-files
                                                "../t"
@@ -2057,14 +2056,13 @@ Also sets that global variable as a side-effect."
                                    )
                                  (t
                                   (setq run-string
-                                        (perlnow-generate-run-string testfile))
+                                        (perlnow-generate-run-string-and-associate testfile))
                                   ))
                            )
                           )))))
           (t ; When all else fails, just feed it to perl and hope for the best
-           (setq run-string (perlnow-generate-run-string filename))
+           (setq run-string (perlnow-generate-run-string-and-associate filename))
            ))
-;;    (setq perlnow-script-run-string run-string)
     run-string))
 
 (defun perlnow-cpan-style-test-run-string (staging-area)
@@ -2190,35 +2188,41 @@ which are all explained in `perlnow-documentation-terminology'.
 If INC-SPOT is nil, it skips adding the FindBin/use lib lines.
 It's expected that the user will not usually run this directly.
 See the wrapper function: \\[perlnow-script] (or possibly the older
-\\[perlnow-script-using-this-module]).
-Currently always returns t, but future versions may return nil for failure."
+\\[perlnow-script-using-this-module])."
   ;; Presumption: if inc-spot is nil, then we got here from a man page buffer,
   ;; and we can assume the module is installed (or the man page most
   ;; likely wouldn't be there).  TODO check that and warn otherwise?
-  ;;
-  ;; Make the script we're creating the default run-string for this module.
-  (setq perlnow-module-run-string (perlnow-generate-run-string script-name))
-  (perlnow-sub-name-to-kill-ring)
-  ;; module currently displayed, now want to open script, display in paralel
-  (perlnow-open-file-other-window
-   script-name
-   nil
-   perlnow-perl-script-template)
-  ;; forget about a "use" line for things that don't look like perl modules.
-  (let ( (case-fold-search nil)
-         (import-string "" ) )
-    (if (string-match "^[A-Z]" package-name) ;; Module::Names are capitalized
-        (progn
-          (unless (eq inc-spot nil)
-            (perlnow-endow-script-with-access-to inc-spot)
-            (setq import-string
-                  (perlnow-import-string-from package-name inc-spot))
-            )
-          ;; insert the "use Modular::Stuff;" line
-          (insert (format "use %s%s;" package-name import-string))
-          (insert "\n")
-          )))
-  t)
+  (let* ((initial (current-buffer))
+         (created))
+    (perlnow-sub-name-to-kill-ring)
+    ;; module is displayed, now want to open script, show in paralel
+    (perlnow-open-file-other-window
+     script-name
+     nil
+     perlnow-perl-script-template)
+    (setq created (current-buffer))
+
+    (switch-to-buffer initial) ;; TODO make sense?
+    ;; Make the script we've created the default run-string for this module.
+    ;;;;;(setq perlnow-module-run-string (perlnow-generate-run-string-and-associate script-name))
+    (setq perlnow-run-string (perlnow-generate-run-string-and-associate script-name))
+
+    (switch-to-buffer created)
+    ;; forget about a "use" line for things that don't look like perl modules.
+    (let ( (case-fold-search nil)
+           (import-string "" ) )
+      (if (string-match "^[A-Z]" package-name) ;; Module::Names are capitalized
+          (progn
+            (unless (eq inc-spot nil)
+              (perlnow-endow-script-with-access-to inc-spot)
+              (setq import-string
+                    (perlnow-import-string-from package-name inc-spot))
+              )
+            ;; insert the "use Modular::Stuff;" line
+            (insert (format "use %s%s;" package-name import-string))
+            (insert "\n")
+            )))
+    script-name))
 
 (defun perlnow-endow-script-with-access-to (location &optional whitespace)
   "Insert appropriate \"use lib\" line so script will see given LOCATION."
@@ -2391,10 +2395,29 @@ Opens the file, if not open already."
     (switch-to-buffer initial)
     ))
 
+(defun perlnow-generate-run-string-and-associate (program-file)
+  "Generates a direct run-string for the perl PROGRAM-FILE.
+This is used internally by routines such as \\[perlnow-guess-script-run-string].
+This version is a convienience routine which also associates the
+given PROGRAM-FILE with the current buffer's file."
+  ;; a centralized place to apply shell quoting, etc.
+  (let* ( (perl-command (perlnow-how-to-perl))
+          (runstring "") )
+    (setq runstring
+          (combine-and-quote-strings (list perl-command program-file)))
+    (perlnow-set-associated-code-pointers program-file)
+    runstring))
 
-
-
-
+(defun perlnow-generate-run-string (program-file)
+  "Generates a direct run-string for the perl PROGRAM-FILE.
+This is used internally by routines such as \\[perlnow-guess-script-run-string]."
+  ;; a centralized place to apply shell quoting, etc.
+  (let* ( (perl-command (perlnow-how-to-perl))
+          (runstring "") )
+    (setq runstring
+          (combine-and-quote-strings (list perl-command program-file)))
+;;    (perlnow-set-associated-code-pointers program-file)
+    runstring))
 
 ;;=======
 ;; prompt functions
@@ -2658,7 +2681,7 @@ it's best guess."
         (if (re-search-forward "SYNOPSIS[ \t\n]*use \\(.*\\)[ ;]" nil t)
             (progn
               (setq candidate-3 (match-string 1))
-              (setq candidate-list (cons candidate-2 candidate-list))))
+              (setq candidate-list (cons candidate-3 candidate-list))))
         (setq return
               (perlnow-vote-on-candidates candidate-list))
         )
@@ -3509,6 +3532,7 @@ Note: at present, this has nothing to do with \\[perlnow-find-t-directories]."
 
 ;;;==========================================================
 ;;; the something-or-other utilities    TODO
+;;;   probe environment?
 
 (defun perlnow-how-to-perl ()
   "Define how to run perl for the current buffer.
@@ -3527,17 +3551,6 @@ falls back to just \"perl\"."
           (t
            (setq how-to-perl "perl")))
     how-to-perl))
-
-(defun perlnow-generate-run-string (program-file)
-  "Generates a direct run-string for the perl PROGRAM-FILE.
-This is used internally by routines such as \\[perlnow-guess-script-run-string]."
-  ;; a centralized place to apply shell quoting, etc.
-  (let* ( (perl-command (perlnow-how-to-perl))
-          (runstring "") )
-    (setq runstring
-          (combine-and-quote-strings (list perl-command program-file)))
-    (perlnow-set-associated-code-pointers program-file)
-    runstring))
 
 (defun perlnow-find-cpan-style-staging-area ()
   "Determines if the current file buffer is located in an cpan-style tree.
