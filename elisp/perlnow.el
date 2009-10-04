@@ -6,7 +6,7 @@
 ;; Copyright 2004, 2007, 2009 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.302 2009/10/03 04:40:38 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.303 2009/10/04 13:29:32 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -922,13 +922,9 @@ as \"5.008002\" rather than \"5.8.2\".")
        '("MINIMUM_PERL_VERSION" (insert perlnow-minimum-perl-version))
        template-expansion-alist))
 
-;;; The following variables are always buffer-local.  While there
-;;; is an admonition against this in the emacs lisp reference,
-;;; the reasoning deosn't appy here.
-;;; (1) this makes the code a little simpler (I don't want to have
-;;; to remember to use make-local-variable in different places);
-;;; (2) I can't think of a case where the user would be annoyed
-;;; by this.
+;;; The following variables are always buffer-local (the
+;;; reasoning behind the admonition against this in the emacs
+;;; lisp reference doesn't seem to apply here).
 
 ;;; TODO refactor - are there too many of these buffer-local vars?
 ;;;  E.g. I have separate module and script runstrings variables
@@ -953,13 +949,6 @@ the current script.  This is a buffer local variable, i.e. it
 may be set differently for different files.")
 (put 'perlnow-module-run-string  'risky-local-variable t)
 (make-variable-buffer-local 'perlnow-module-run-string)
-
-(defvar perlnow-run-string-exp nil
-  "Trying to verify that the distinction between perlnow-module-run-string
-and perlnow-script-run-string is fairly useless.  I'm toying with the idea of
-swapping this in place for the above two, and see if anything breaks.")
-(put 'perlnow-run-string-exp  'risky-local-variable t)
-(make-variable-buffer-local 'perlnow-run-string-exp)
 
 (defvar perlnow-run-string nil
   "Tells \\[perlnow-run] how to run the code in a particular file buffer.
@@ -1018,9 +1007,6 @@ Typicially a module might be associated with it's test file,
 and vice-versa.  Used by \\[perlnow-back-to-code].")
 ;; (put 'perlnow-associated-code  'risky-local-variable t)
 (make-variable-buffer-local 'perlnow-associated-code)
-
-(defvar perlnow-metadata nil
-  "EXPERIMENTAL.  A cache of buffer metadata.")
 
 ;;;==========================================================
 ;;; test file search and creation settings
@@ -1770,6 +1756,67 @@ window of the current frame, this will switch to that window."
 ;; guess run-string routines
 ;;   key routines for determining appropriate run-strings.
 
+;; TODO this is a new version, no longer script/module specific.
+;; roll it out in place of the old, and do some trial runs.
+(defun perlnow-guess-run-string (&optional harder-setting)
+  "Return a good guess for the perl run string for the current buffer.
+The current buffer is presumed to display a file of perl code."
+;; TODO document in more detail?  Or is that better done higher up?
+  (let (
+        (staging-area)
+        (filename (buffer-file-name))
+        (testfile)
+        (run-string) ;; the returned value
+        )
+    (cond ( harder-setting
+            ;; the cpan-style case
+            (cond ((setq staging-area (perlnow-find-cpan-style-staging-area))
+                   (setq run-string (perlnow-cpan-style-test-run-string staging-area))
+                   )
+                  (t ; non-cpan-style code
+                   (setq run-string (perlnow-test-run-string-harder harder-setting))
+                   ))
+            (t ;; harder not set, so run standard test
+             ;; if there's an associated script already, just use that.
+             (cond ((and associated
+                         (not (perlnow-module-file-p associated)))
+                    (setq run-string (perlnow-generate-run-string associated))
+                    )
+                   ((string-match "\.t$"  filename) ;; we are a test, so don't look for another
+                    (setq run-string (perlnow-generate-run-string filename))
+                    )
+                   (t ;; scrounge around for a *.t file to use
+                    ;; the cpan-style case
+                    (cond ((setq staging-area (perlnow-find-cpan-style-staging-area))
+                           (setq run-string (perlnow-generate-run-string-and-associate
+                                             (perlnow-latest-test-file
+                                              (perlnow-list-test-files
+                                               "../t"
+                                               "incspot"
+                                               "numeric"
+                                               t
+                                               ))))
+                           )
+                          (t ; non-cpan-style module
+                           (setq testfile (perlnow-get-test-file-name))
+                           (cond ( (not (file-exists-p testfile))
+                                   (perlnow-edit-test-file testfile)
+                                   (setq run-string nil) ;; TODO Okay? Don't *want* to run yet.
+                                   )
+                                 (t
+                                  (setq run-string
+                                        (perlnow-generate-run-string-and-associate testfile))
+                                  ))
+                           )
+                          )))))
+          (t ; When all else fails, just feed it to perl and hope for the best
+           (setq run-string (perlnow-generate-run-string filename))
+           ))
+    run-string))
+
+;; TODO the following "script" and "module" specific "guess" routines
+;; are now deprecated.
+
 ;; TODO improve the following documentation:
 ;; A snippet from the old docs (not sure how true this is now):
 ;; The code searches the paths in `perlnow-test-path', which uses a familiar
@@ -1802,23 +1849,7 @@ invoked with a double prefix (C-u C-u), instead of running
   (unless (perlnow-module-code-p)
     (error "This buffer isn't a perl module (no \"package\" line)."))
   (let* (
-         ;;           (package-name (perlnow-get-package-name-from-module-buffer))
-         ;;           (module-file-location
-         ;;            (file-name-directory (buffer-file-name)))
-         ;;           (inc-spot
-         ;;            (perlnow-get-inc-spot package-name module-file-location ))
-         ;;           (hyphenized-package-name
-         ;;            (mapconcat 'identity (split-string package-name "::") "-"))
-         ;;           (pm-basename
-         ;;            (file-name-sans-extension
-         ;;             (file-name-nondirectory (buffer-file-name))))
-         ;;
          (staging-area)     ;; The location of an h2xs-style dev structure
-         ;;          (staging-area-candidate)
-         ;;          (staging-area-candidate-name)
-         ;;          (test-search-list) ;; possible absolute locations for the test file
-         ;; built up from relative locations in perlnow-test-path
-         ;;          (testloc)
          (testfile)
          (associated perlnow-associated-code)
          (run-string) ;; the return value
@@ -2067,7 +2098,6 @@ See the wrapper function: \\[perlnow-script] (or possibly the older
 
     (switch-to-buffer initial) ;; TODO make sense?
     ;; Make the script we've created the default run-string for this module.
-    ;;;;;(setq perlnow-module-run-string (perlnow-generate-run-string-and-associate script-name))
     (setq perlnow-run-string (perlnow-generate-run-string-and-associate script-name))
 
     (switch-to-buffer created)
@@ -2099,8 +2129,8 @@ See the wrapper function: \\[perlnow-script] (or possibly the older
       (insert relative-path)
       (insert "\");\n"))))
 
-;; TODO really should handle exported lists without an ":all" tag;
-;; also should have option to prefer expicit lists, even if ":all" is present
+;; TODO really should be able to handle exported lists without an ":all" tag;
+;;      also should have option to prefer expicit lists, even if ":all" is present
 (defun perlnow-import-string ()
   "Determine a good import string for using the current module.
 Returns the ':all' tag if the current buffer shows an Exporter-based
@@ -2361,7 +2391,6 @@ with path."
 
 ;;========
 ;; file creation
-
 (defun perlnow-make-sure-file-exists ()
   "Forcibly save the current buffer to it's associated file.
 This is to make sure that the file actually exists."
@@ -2486,7 +2515,6 @@ Not *quite* fool proof: see \\[perlnow-script-p]"
 
 ;;========
 ;; buffer scraping -- get metadata about the code buffer
-
 (defun perlnow-get-package-name-from-module-buffer ()
   "Get the module name from the package line.
 This will be in perl's double colon separated form, or it will
@@ -2579,7 +2607,6 @@ this favors the earlier occurrence in the list."
 
 ;;=======
 ;; buffer scraping -- extracting info from code buffer
-
 (defun perlnow-hashbang ()
   "What is the hash bang line for this file buffer?
 Returns nil if there is none."
@@ -3161,8 +3188,11 @@ numeric sort-order prefix."
     last-item
     ))
 
-;; TODO re-write to find "latest numeric"? -- Mon Sep  7 13:38:35 2009
+;; TODO SOON re-write to find "latest numeric"? -- Mon Sep  7 13:38:35 2009
 ;; Possibly using: perlnow-latest-test-file
+;; Or logicially, should it be a search for any numeric?
+;; Probably better to return a list of all hits, prioritized so you can car
+;; it to get a good guess...
 (defun perlnow-search-through-test-path ()
   "Searches the test path for test files for the current code buffer.
 Returns the full-path and name of one test file found.
@@ -3185,11 +3215,6 @@ Will warn if there appear to be redundant possible testfiles."
           hyphenized-package-name
           test-file-check-list
           )
-      ;;; This block of code was c&p from above, and ported outside of
-      ;;; the let* to allow for cond usage.  Fugliness, eh?
-      ;;; TODO - routine that probes for all possible info like this
-      ;;; you could want, and stashes it in a data structure like an alist
-      ;;; which you can then pass around if you like.
     ;; script oriented info:
     (setq file-location
           (file-name-directory (buffer-file-name)))
@@ -3206,7 +3231,7 @@ Will warn if there appear to be redundant possible testfiles."
     ;; This is a listing of possible names for the test file:
     (setq test-file-check-list (list
                                 (concat hyphenized-package-name ".t")
-                                (concat "01-" hyphenized-package-name ".t")
+                                (concat "01-" hyphenized-package-name ".t")  ;; TODO huh?
                                 (concat basename ".t")
                                 ))
    ;;; TODO NOW
