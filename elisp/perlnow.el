@@ -6,7 +6,7 @@
 ;; Copyright 2004, 2007, 2009 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.309 2009/10/05 03:25:38 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.310 2009/10/05 03:35:27 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -130,7 +130,7 @@ Briefly these are:
 (defvar perlnow-documentation-installation t
   "Instructions on installation of the perlnow package.
 
-Put the perlnow.el file somewhere that's included in your `load-path'.
+The perlnow.el file must be placed somewhere that's in your `load-path'.
 
 Also install template.el if at all possible, because many
 features of this package depend on template.el.  The latest
@@ -158,7 +158,7 @@ Add something like the following to your ~/.emacs file:
    \(perlnow-define-standard-keymappings\)
 
 Alternately, if you'd like a different prefix than the
-default \"C-c\\\", you can supply it as an argument:
+default \"C-c/\", you can supply it as an argument:
 
    \(perlnow-define-standard-keymappings \"C-c'\"\)
 
@@ -575,17 +575,15 @@ Originally I found that approach to be a little easier to get
 used to than the \\[perlnow-script] approach, but
 pretty quickly I abandoned it and switched over.
 
-Note that template.el plus a good perl template, plus that
-new emacs 21 trick for making scripts executable
-automatically all gets you very close to having this
-functionality without any help from perlnow.el... except for
-one little gotcha: most of us do not use a standard file
-extension (like '.pl') on our perl scripts.  That makes it a
-little hard for template.el to spot that you're creating
-one.  Though if you can get into the habit of doing a
-\\[template-new-file] instead of \\[find-file], and don't
-mind selecting the correct template after you enter the file
-name then you're pretty much there.
+Note that template.el plus a good perl template, plus that new
+emacs 21 trick for making scripts executable automatically all
+gets you very close to having this functionality without any help
+from perlnow.el... except for one little gotcha: most of us do
+not use a standard file extension (like '.pl') on our perl
+scripts.  That makes it a little hard for template.el to spot
+that you're creating one.  You would need to always do a
+\\[template-new-file] instead of \\[find-file], and carefully
+select the correct template as well as the file name.
 
 Misc topic 3 - the \"alternative\" way of running a script:
 
@@ -617,9 +615,9 @@ First of all, test files all end with the \".t\" extension.
 There are several possibilities considered for the name of the
 basename of the test file.
 
-For example, in the case of \"Modular::Silliness\", the name
-might be \"Silliness.t\", or \"Modular-Silliness.t\" or
-\"01-Modular-Silliness.t\" \(which is the initial name used by
+For example, in the case of \"Modular::Stuff\", the name
+might be \"Stuff.t\", or \"Modular-Stuff.t\" or
+\"01-Modular-Stuff.t\" \(which is the initial name used by
 module_starter\).
 
 Secondly, a test file might be located in the same place that a
@@ -635,12 +633,12 @@ work well with perlnow.el.
 An example of a good practice (and the default currently used by
 perlnow) would be to always use the hyphenized base name form,
 and always put test files in a directory called \"t\", a
-subdirectory of the place where \".pm\" file is located.
-So if you've got a module called \"Modular::Silliness\", which
-is really the file: ~/perldev/lib/Modular/Silliness.pm For an
+subdirectory of the place where the \".pm\" file is located.
+So if you've got a module called \"Modular::Stuff\", which
+is really the file: ~/perldev/lib/Modular/Stuff.pm For an
 initial test file name, you would have:
 
-  ~/perldev/lib/Modular/t/Modular-Silliness.t
+  ~/perldev/lib/Modular/t/Modular-Stuff.t
 
 There is a \\[perlnow-edit-test-file] command that will create this
 new test file if it does not already exist.  The user defineable
@@ -650,22 +648,22 @@ new test file if it does not already exist.  The user defineable
 With a different policy, you might put your initial test file
 in any of these locations:
 
-  ~/perldev/lib/t/Modular-Silliness.t
-  ~/perldev/lib/Modular/t/Silliness.t
-  ~/perldev/lib/Modular-Silliness.t
-  ~/perldev/lib/Modular/Silliness.t
-  ~/perldev/t/Modular-Silliness.t
+  ~/perldev/lib/t/Modular-Stuff.t
+  ~/perldev/lib/Modular/t/Stuff.t
+  ~/perldev/lib/Modular-Stuff.t
+  ~/perldev/lib/Modular/Stuff.t
+  ~/perldev/t/Modular-Stuff.t
 
 It is also possible, though not recommended to use a policy that
 would do something like this:
 
-  ~/perldev/lib/t/Silliness.t
-  ~/perldev/lib/Silliness.t
-  ~/perldev/t/Silliness.t
+  ~/perldev/lib/t/Stuff.t
+  ~/perldev/lib/Stuff.t
+  ~/perldev/t/Stuff.t
 
 There's too much potential for name collisions if you use
-the short \"basename\" form high up in the tree. Modular::Silliness
-and Monolithic::Silliness would fight to use the same name.
+the short \"basename\" form high up in the tree. Modular::Stuff
+and Monolithic::Stuff would fight to use the same name.
 
 Note that perlnow \(at least currently\) does not care if you're
 consistent about this choice.
