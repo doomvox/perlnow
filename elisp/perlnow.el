@@ -6,7 +6,7 @@
 ;; Copyright 2004, 2007, 2009 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.308 2009/10/05 03:22:36 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.309 2009/10/05 03:25:38 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -2763,55 +2763,6 @@ like: \"/home/doom/tmp/../bin\"."
     (setq newpath (perlnow-fixdir newpath))
     newpath))
 
-;;========
-;; TODO category?
-
-
-;; experimental -- currently not in use
-(defun perlnow-ensure-test-file-exists (test-file)
-  "If the given TEST-FILE doesn't exist, creates it using the test template.
-The template used is specified by the variable `perlnow-perl-test-module-template'."
-  (cond ( (not (file-exists-p test-file))
-          (let* ( (location (file-name-directory test-file))
-                  )
-            (unless (file-exists-p location)
-              (make-directory location t))
-            (save-excursion
-              (perlnow-create-with-template
-               test-file
-               perlnow-perl-test-module-template)
-              (funcall (perlnow-lookup-preferred-perl-mode)) ;; TODO why isn't this done inside perlnow-create-with-template
-              (save-buffer)
-              )))))
-
-(defun perlnow-american-date ()
-  "Return the date in the common American format: MM/DD/YY.
-Much derided though it may be.  Note: no leading zeros on MM or DD."
-  (let* (
-         (tl (decode-time (current-time)))
-         (day   (nth 3 tl))
-         (month (nth 4 tl))
-         (year  (nth 5 tl))
-         (year-str (format "%d" year))
-         (year2 (substring year-str 2))
-         (merkin-date (format "%d/%d/%s" month day year2))
-         )
-    merkin-date))
-
-(defun perlnow-full-date ()
-  "Return the date in the fully-spelled out American format.
-For example: \"August 8, 2009\" (which I realize is not *just* American)."
-  ;;  (interactive) ;; DEBUG
-  (let* (
-         (month (format-time-string "%B"))
-         (day   (format "%d" (nth 3 (decode-time (current-time)))))
-         (year (format-time-string "%Y"))
-         (fulldate (format "%s %s, %s" month day year))
-         )
-    fulldate
-    ;;    (message fulldate)
-    ))
-
 ;;;==========================================================
 ;;; internal routines for perlnow-edit-test-file (and relatives)
 
@@ -3366,6 +3317,23 @@ Note: at present, this has nothing to do with \\[perlnow-find-t-directories]."
          )
     (message "%s" (mapconcat 'identity t-list "\n"))
     ))
+
+;; experimental -- currently not in use
+(defun perlnow-ensure-test-file-exists (test-file)
+  "If the given TEST-FILE doesn't exist, creates it using the test template.
+The template used is specified by the variable `perlnow-perl-test-module-template'."
+  (cond ( (not (file-exists-p test-file))
+          (let* ( (location (file-name-directory test-file))
+                  )
+            (unless (file-exists-p location)
+              (make-directory location t))
+            (save-excursion
+              (perlnow-create-with-template
+               test-file
+               perlnow-perl-test-module-template)
+              (funcall (perlnow-lookup-preferred-perl-mode)) ;; TODO why isn't this done inside perlnow-create-with-template
+              (save-buffer)
+              )))))
 
 ;;; The end of perlnow-edit-test-file family of functions
 
@@ -4290,6 +4258,9 @@ and \\[perlnow-setter-prefix]."
   (forward-line 3)
   ))
 
+;;========
+;; template expansion definitions
+
 (defun perlnow-insert-spaces-the-length-of-this-string (string)
   "Insert as many spaces as characters in the given STRING.
 Used by the template.el expansion PNFS."
@@ -4298,6 +4269,36 @@ Used by the template.el expansion PNFS."
                  (file-name-nondirectory string)
                  ) ?\ )))
 
+;; --------
+;; date strings
+
+(defun perlnow-american-date ()
+  "Return the date in the common American format: MM/DD/YY.
+Much derided though it may be.  Note: no leading zeros on MM or DD."
+  (let* (
+         (tl (decode-time (current-time)))
+         (day   (nth 3 tl))
+         (month (nth 4 tl))
+         (year  (nth 5 tl))
+         (year-str (format "%d" year))
+         (year2 (substring year-str 2))
+         (merkin-date (format "%d/%d/%s" month day year2))
+         )
+    merkin-date))
+
+(defun perlnow-full-date ()
+  "Return the date in the fully-spelled out American format.
+For example: \"August 8, 2009\" (which I realize is not *just* American)."
+  ;;  (interactive) ;; DEBUG
+  (let* (
+         (month (format-time-string "%B"))
+         (day   (format "%d" (nth 3 (decode-time (current-time)))))
+         (year (format-time-string "%Y"))
+         (fulldate (format "%s %s, %s" month day year))
+         )
+    fulldate
+    ;;    (message fulldate)
+    ))
 
 ;;;==========================================================
 ;;; cheat commands ("cheat" == automatically fix things so checks pass)
