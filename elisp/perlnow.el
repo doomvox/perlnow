@@ -6,7 +6,7 @@
 ;; Copyright 2004, 2007, 2009 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.307 2009/10/05 00:11:06 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.308 2009/10/05 03:22:36 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -2927,8 +2927,9 @@ and the NAMESTYLE \(see `perlnow-test-policy-naming-style'\)."
     ;; If nothing found though, return this as name to be created.
     (cond ((file-exists-p test-file-from-policy) ;; if test-policy finds test-file, stop looking
            (setq test-file test-file-from-policy) )
-          ((setq test-file (perlnow-search-through-test-path)) ) ;; warns if redundant matches exist,
-                                                                 ;; but returns the first.  nil if none.
+          ((setq test-file (perlnow-search-through-test-path)) ) ;; warns if redundant matches
+                                                                 ;; exist, but returns the
+                                                                 ;; first.  nil if none.
           (t
            (setq test-file test-file-from-policy))
           )
@@ -3077,7 +3078,7 @@ A stub, oriented toward cpan-style code trees, which should."
      (perlnow-list-test-files testloc dotdef namestyle t))))
 
 ;; TODO UI  C-c \ T => cap T means create a new test, numbered in sequence.
-;; TODO interpret C-u C-u to mean recursive search
+;; TODO interpret C-u C-u to mean recursive directory search
 ;; TODO clean-up display: remove redundancy on paths.
 (defun perlnow-test-file-menu (test-file-list)
   "Show a list of test files, allow the user to choose one.
@@ -3095,16 +3096,12 @@ to anything."
          (location (file-name-directory original-file))
          (filename (file-name-nondirectory original-file))
          (extension (perlnow-file-extension filename))
-
          (menu-buffer-name "*select test file*")
          (selection-buffer-label
           (format "Tests related to %s.  To choose one, cursor to it and hit return." filename))
          )
     (perlnow-show-buffer-other-window menu-buffer-name)
-    ;;    (switch-to-buffer menu-buffer-name)
     (setq buffer-read-only nil)
-    ;; (mark-whole-buffer)               ;; TODO find more elispy way?
-    ;; (delete-region (mark) (point))
     (delete-region (point-min) (point-max))
     (insert selection-buffer-label)
     (insert "\n")
@@ -3138,12 +3135,14 @@ numeric sort-order prefix."
 ;; Or logicially, should it be a search for any numeric?
 ;; Probably better to return a list of all hits, prioritized so you can car
 ;; it to get a good guess...
+;; Note: this is called by perlnow-get-test-file-name-given-policy (and only that)
 (defun perlnow-search-through-test-path ()
   "Searches the test path for test files for the current code buffer.
 Returns the full-path and name of one test file found.
 Will warn if there appear to be redundant possible testfiles."
 ;;; *Might* be better to return a list of all matches, let other
 ;;; code check for and complain about the problem of multiple finds.
+  (message "perlnow-search-through-test-path called.")
   (let*  (
           (test-search-list ())  ; A listing of possible absolute locations to look for the test file,
           ;; built up from relative locations in perlnow-test-path
@@ -3179,8 +3178,8 @@ Will warn if there appear to be redundant possible testfiles."
                                 (concat "01-" hyphenized-package-name ".t")  ;; TODO huh?
                                 (concat basename ".t")
                                 ))
-   ;;; TODO NOW
-   ;;; Question: is the following general code that would work on a script *or* a module file?
+   ;;;   TODO NOW
+   ;;;   Is the following general code that would work on a script *or* a module file?
     ;; load test-search-list:
     ;;    do munging of dots, deal with different possible meanings of "here"
     (dolist (testloc-dotform perlnow-test-path)
@@ -3402,7 +3401,6 @@ for the \"MANIFEST\" and either a \"Makefile.PL\" or a \"Build.PL\"\)."
   ;; Two important cases to cover are:
   ;;   ~/perldev/Horror-Grossout/lib/Horror/Grossout.pm
   ;;   ~/perldev/Horror-Grossout/t/Horror-Grossout.t
-  (message "perlnow-find-cpan-style-staging-area called")
   (let* ( ;; args for directory-files function:
          (dir "")     ;; candidate directory under examination
          (full-names nil)
@@ -3443,7 +3441,6 @@ for the \"MANIFEST\" and either a \"Makefile.PL\" or a \"Build.PL\"\)."
 Specifically, this runs Makefile.PL and/or Build.PL.
 Output is appended to the *perlnow-build* window."
   ;; Note: relies on naming convention, "perl *.PL" creates target "*".
-  (message "perlnow-cpan-style-build called")
   (let* ( (display-buffer-name "*perlnow-build*")
           (display-buffer)
           (builders (list "Makefile.PL" "Build.PL"))
