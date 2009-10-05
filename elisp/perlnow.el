@@ -6,7 +6,7 @@
 ;; Copyright 2004, 2007, 2009 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.305 2009/10/04 17:35:56 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.306 2009/10/05 00:09:12 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1217,7 +1217,7 @@ The user will be asked to confirm a run-string the first
 time it is used \(this happens via \\[perlnow-set-run-string]\)."
   (interactive
    (let* (
-          (harder-setting current-prefix-arg)
+          (harder-setting (car current-prefix-arg))
           (existing-run-string
            (cond ( harder-setting
                    perlnow-run-string-harder
@@ -1253,7 +1253,7 @@ HARDER-SETTING passed in\) tries to guess a more thorough way to
 run the code \(e.g. a test suite instead of a single test file\),
 and works with the `perlnow-run-string-harder' variable."
   (interactive)
-  (let* ( (harder-setting (or harder-setting current-prefix-arg))
+  (let* ( (harder-setting (or harder-setting (car current-prefix-arg)))
           (module-p (perlnow-module-code-p))
           (run-string)
           )
@@ -1263,12 +1263,12 @@ and works with the `perlnow-run-string-harder' variable."
       (setq run-string
             (cond (perlnow-module-run-string)
                   (t
-                   (perlnow-guess-run-string harder-setting))))) ;;;; perlnow-guess-module-run-string
+                   (perlnow-guess-run-string harder-setting)))))
       (t  ;;  assume it's a script since it's not a module.
        (setq run-string
              (cond (perlnow-script-run-string)
                    (t
-                    (perlnow-guess-run-string harder-setting)   ;;;; perlnow-guess-script-run-string
+                    (perlnow-guess-run-string harder-setting)
                     )))))
     (progn
       ;; ask user how to run this code (perlnow-run handles making this the default next time)
@@ -1646,7 +1646,7 @@ The test policy is defined by this trio of variables:
   ;; Remember the *run-string* is a bit different for
   ;; a cpan-style module than a regular module.
   (interactive
-   (let* ((harder-setting current-prefix-arg))
+   (let* ((harder-setting (car current-prefix-arg)))
      (list
       (cond (harder-setting
              (perlnow-edit-test-file-harder harder-setting))
@@ -1660,53 +1660,57 @@ The test policy is defined by this trio of variables:
   "Follow-up to interactive functions such as \\[perlnow-edit-test-file].
 Presumes that when it is called, the current buffer contains code which
 will be associated with the TESTFILE."  ;; TODO expand docs
-  (let* ((harder-setting current-prefix-arg))
-    (setq perlnow-associated-code testfile)
-    (let* ( (package-name)
-            (new-file-p (not (file-exists-p testfile)))
-            (original-code (buffer-file-name)) )
-      (cond
-       ;; if module
-       ((setq package-name (perlnow-get-package-name-from-module-buffer))
-        ;; define module inc-spot now, before opening test file buffer
-        (let* ( (pm-file (buffer-file-name))
-                (pm-location (file-name-directory pm-file))
-                (package-name (perlnow-get-package-name-from-module-buffer))
-                (inc-spot (perlnow-get-inc-spot package-name pm-location))
-                )
-          (setq perlnow-perl-package-name package-name)
-                   ;; global to pass value to template
-          (perlnow-open-file-other-window
-             testfile 30 perlnow-perl-test-module-template)
-          (funcall (perlnow-lookup-preferred-perl-mode))
-          (if new-file-p
-              (save-excursion
-                (let* ((import-string
-                        (perlnow-import-string-from package-name inc-spot))
-                       (whitespace
-                        (perlnow-jump-to-use package-name import-string) ))
-                  (perlnow-endow-script-with-access-to inc-spot whitespace))))
-          (save-buffer)
-          ))
-       ;; if script
-       ((perlnow-script-p)
-        (setq perlnow-perl-script-name (buffer-file-name))
-                  ;; global to pass value to template
+;;;  (setq perlnow-associated-code testfile) ;; associates existing buffer with given *.t
+  (let* ((harder-setting (car current-prefix-arg))
+         (new-file-p (not (file-exists-p testfile)))
+         (original-code (buffer-file-name))
+         (package-name)
+         )
+
+    (cond
+     ;; if module
+     ((setq package-name (perlnow-get-package-name-from-module-buffer))
+      ;; define module inc-spot now, before opening test file buffer
+      (let* ( (pm-file (buffer-file-name))
+              (pm-location (file-name-directory pm-file))
+              (package-name (perlnow-get-package-name-from-module-buffer))
+              (inc-spot (perlnow-get-inc-spot package-name pm-location))
+              )
+        (setq perlnow-perl-package-name package-name)
+        ;; global to pass value to template
         (perlnow-open-file-other-window
-           testfile 30 perlnow-perl-test-script-template)
+         testfile 30 perlnow-perl-test-module-template)
         (funcall (perlnow-lookup-preferred-perl-mode))
-        (save-buffer))
-       (t
-        (let ((extension (perlnow-file-extension (buffer-file-name))))
-          (cond ((string= extension "t")
-                 (message "Perlnow: You're already inside of a test file."))
-                (t
-                 (message "Perlnow: Not a perl buffer.")
-                 )))))
-      (perlnow-sync-save-run-string
-       (perlnow-generate-run-string testfile) harder-setting)
-      (setq perlnow-associated-code original-code)
-      )))
+        (if new-file-p
+            (save-excursion
+              (let* ((import-string
+                      (perlnow-import-string-from package-name inc-spot))
+                     (whitespace
+                      (perlnow-jump-to-use package-name import-string) ))
+                (perlnow-endow-script-with-access-to inc-spot whitespace))))
+        (save-buffer)
+        ))
+     ;; if script
+     ((perlnow-script-p)
+      (setq perlnow-perl-script-name (buffer-file-name))
+      ;; global to pass value to template
+      (perlnow-open-file-other-window
+       testfile 30 perlnow-perl-test-script-template)
+      (funcall (perlnow-lookup-preferred-perl-mode))
+      (save-buffer))
+     (t
+      (let ((extension (perlnow-file-extension (buffer-file-name))))
+        (cond ((string= extension "t")
+               (message "Perlnow: You're already inside of a test file."))
+              (t
+               (message "Perlnow: Not a perl buffer.")
+               )))))
+
+    (perlnow-sync-save-run-string
+     (perlnow-generate-run-string testfile) harder-setting)
+;;    (setq perlnow-associated-code original-code)
+    (perlnow-set-associated-code-pointers testfile original-code)
+    ))
 
 (defun perlnow-jump-to-use (package-name &optional import-string)
   "Given the PACKAGE-NAME, jumps to the point before the \'use\' line.
@@ -1778,40 +1782,45 @@ The current buffer is presumed to display a file of perl code."
                   (setq run-string (perlnow-test-run-string-harder harder-setting))
                   )))
           (t ;; harder not set, so run standard test
-           ;; if there's an associated script already, just use that.
-           (cond ((and associated
-                       (not (perlnow-module-file-p associated)))
-                  (setq run-string (perlnow-generate-run-string associated))
-                  )
-                 ((string-match "\.t$"  filename) ;; we are a test, so don't look for another
-                  (setq run-string (perlnow-generate-run-string filename))
-                  )
-                 (t ;; scrounge around for a *.t file to use
-                  ;; the cpan-style case
-                  (cond (staging-area
-                         (setq run-string (perlnow-generate-run-string-and-associate
-                                           (perlnow-latest-test-file
-                                            (perlnow-list-test-files
-                                             "../t"
-                                             "incspot"
-                                             "numeric"
-                                             t
-                                             ))))
-                         )
-                        (t ; non-cpan-style
-                         (setq testfile (perlnow-get-test-file-name))
-                         (cond ( (not (file-exists-p testfile))
-                                 (perlnow-edit-test-file testfile) ;; creates a new test
-                                 (setq run-string (perlnow-generate-run-string filename))
-                                 ;; That's odd, but better than nothing, this is silly:
-                                 ;; (setq run-string nil) ;; TODO Okay? Don't *want* to run yet.
-                                 )
-                               (t
-                                (setq run-string
-                                      (perlnow-generate-run-string-and-associate testfile))
-                                ))
-                         )
-                        ))))
+           (cond
+            ;; if we are a test, don't look for another
+            ((string-match "\.t$"  filename)
+             (setq run-string (perlnow-generate-run-string filename)))
+            ;; if there's an associated script already, just use that.
+            ((perlnow-script-file-p associated)
+             (setq run-string (perlnow-generate-run-string associated)))
+
+            ;; if we are a script... perhaps we should just run ourselves
+            ((perlnow-script-p)
+             (setq run-string (perlnow-generate-run-string filename)))
+            ;; TODO if we do it this way, how will we ever find a *.t that tests the script?
+
+            (t ;; scrounge around for a *.t file to use
+             ;; the cpan-style case
+             (cond (staging-area
+                    (setq run-string (perlnow-generate-run-string-and-associate
+                                      (perlnow-latest-test-file
+                                       (perlnow-list-test-files
+                                        "../t"
+                                        "incspot"
+                                        "numeric"
+                                        t
+                                        ))))
+                    )
+                   (t ; non-cpan-style
+                    (setq testfile (perlnow-get-test-file-name))
+                    (cond ( (not (file-exists-p testfile))
+                            (perlnow-edit-test-file testfile) ;; creates a new test
+                            (setq run-string (perlnow-generate-run-string filename))
+                            ;; That's odd, but better than nothing, this is silly:
+                            ;; (setq run-string nil) ;; TODO Okay? Don't *want* to run yet.
+                            )
+                          (t
+                           (setq run-string
+                                 (perlnow-generate-run-string-and-associate testfile))
+                           ))
+                    )
+                   ))))
           (t ; When all else fails, just feed it to perl and hope for the best
            (unless (perlnow-module-file-p filename)
              (setq run-string (perlnow-generate-run-string filename)))
@@ -1989,9 +1998,9 @@ Uses the HARDER-SETTING \(4 or 16\) to choose whether to do a
          )
     (setq run-string
           (cond ( (>= harder-setting 16) ;; even harder!
-                  (concat "cd " t-list "; prove -r"))
+                  (concat "cd " t-dir "; prove -r"))
                 ( t
-                  (concat "cd " t-list "; prove"))
+                  (concat "cd " t-dir "; prove"))
                 ))
     run-string
     ))
@@ -2440,15 +2449,34 @@ Looks for the hash-bang line at the top."
       (looking-at hash-bang-line-pat)
       )))
 
+;; TODO re-write to use  perlnow-perl-mode-p
 (defun perlnow-script-p ()
   "Determine if the buffer looks like a perl script.
-Looks for the hash-bang line at the top.  Note: this is probably not
-a reliable test, since some perl scripts will not have a hash-bang line,
-e.g. test files \(*.t\) or scripts on non-unix-like systems."
+Checks for a perl hash-bang line at the top of the script,
+looks to see if it's in a perl mode, and makes sure it
+doesn't look like a module."
   (save-excursion
-    (let ( (hash-bang-line-pat "^[ \t]*#!.*perl\\b") ) ; note, presumes an explicit "perl"
-      (goto-char (point-min))
-      (looking-at hash-bang-line-pat))))
+    (let ((hash-bang-line-pat "^[ \t]*#!.*perl\\b") ;; note, presumes an explicit "perl"
+          ;; this matches perl-mode, cperl-mode, and also sepia-mode
+          (perl-mode-pat "^sepia-mode$\\|perl.*?-mode$")
+          (mode (pp-to-string major-mode))
+          )
+      (or
+       (progn
+         (goto-char (point-min))
+         (looking-at hash-bang-line-pat))
+       (and (string-match perl-mode-pat mode)
+            (not (perlnow-module-code-p)))
+       )
+      )))
+
+;; DEBUG
+(defun perlnow-report-script-p ()
+  "Report whether the current buffer looks like a script."
+  (interactive)
+  (if (perlnow-script-p)
+      (message "script!")
+    (message "not.")))
 
 (defun perlnow-module-code-p ()
   "Determine if the buffer looks like a perl module.
@@ -2483,12 +2511,26 @@ with a Makefile.PL or a Build.PL."
           )
     staging-area))
 
+(defun perlnow-perl-mode-p ()
+  "Does the current buffer's major mode look like a perl mode?
+Should match  \"sepia-mode\" as well as \"perl-mode\" and \"cperl-mode\"."
+  (let* (
+        (perl-mode-pat "^sepia-mode$\\|perl.*?-mode$")
+        (mode (pp-to-string major-mode))
+        (retval (string-match perl-mode-pat mode))
+        )
+    retval
+    ))
+
 (defun perlnow-perl-code-p (file)
   "Return t if FILE seems to be perl code.
 Checks for the usual perl file extensions, and if need
-be opens the file to look for a package line or a hashbang line.
-Not *quite* fool proof: see \\[perlnow-script-p]"
-;; TODO try running it through "perl -cw"?
+be opens the file to look for a package line or a hashbang line
+or to see if a perl mode has \(somehow\) been enabled."
+;; TODO almost foolproof... but what about scripts without extensions
+;; on non-unix systems?  What if someone else has claimed the *.t extension?
+;; One last trick: try running it through "perl -cw" to see if it parses...
+;; (note: that would fail on buggy code).
   (let* ((retval
           (cond
            ((string-match "\.t$"  file))
@@ -2502,6 +2544,7 @@ Not *quite* fool proof: see \\[perlnow-script-p]"
               (cond
                ((perlnow-module-code-p))
                ((perlnow-script-p))
+               ((perlnow-perl-mode-p))
                ))))
     retval))
 
@@ -2512,11 +2555,28 @@ Not *quite* fool proof: see \\[perlnow-script-p]"
           (cond ((not file) nil) ;; if file is nil, it ain't a module
                 ((string-match "\.pm$"  file)) ;; right extension: pass
                 ((file-exists-p file)
+                 ;; TODO do a save-excursion?
                  (find-file file)
                  (perlnow-module-code-p)) ;; has "package" line: pass
                 (t
                  nil)))
     retval))
+
+(defun perlnow-script-file-p (file)
+  "Determine if the FILE looks like a perl script."
+  (let ((retval
+         (cond ((not file) nil) ;; if file is nil, it ain't a script
+               ((string-match "\.t$\\|\.pl$"  file)) ;; right extension: pass
+               ((file-exists-p file)
+                (save-excursion
+                  (find-file file)
+                  (perlnow-script-p))) ;; pass: hashbang || perl mode && no package line
+               (t
+                nil))))
+    retval))
+
+
+
 ;; end  buffer probes
 
 ;;========
@@ -3127,7 +3187,7 @@ Returns file names with full path if FULLPATH is t."
   "Open a menu of all likely test files for user to choose from.
 A stub, oriented toward cpan-style code trees, which should."
   (interactive
-   (setq harder-setting current-prefix-arg))
+   (setq harder-setting (car current-prefix-arg)))
   (let (
         ;; stub, cpan-style make this conditional on context TODO
         (testloc   "../t" )
