@@ -6,7 +6,7 @@
 ;; Copyright 2004, 2007, 2009 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.304 2009/10/04 17:29:10 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.305 2009/10/04 17:35:56 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -2510,14 +2510,12 @@ Not *quite* fool proof: see \\[perlnow-script-p]"
   (let (retval)
     (setq retval
           (cond ((not file) nil) ;; if file is nil, it ain't a module
+                ((string-match "\.pm$"  file)) ;; right extension: pass
+                ((file-exists-p file)
+                 (find-file file)
+                 (perlnow-module-code-p)) ;; has "package" line: pass
                 (t
-                 (cond ((string-match "\.pm$"  file)) ;; right extension: pass
-                       (t
-                        (cond ((file-exists-p file)
-                               (find-file file)
-                               (perlnow-module-code-p)) ;; has "package" line: pass
-                              (t nil)
-                              ))))))
+                 nil)))
     retval))
 ;; end  buffer probes
 
