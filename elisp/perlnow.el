@@ -6,7 +6,7 @@
 ;; Copyright 2004, 2007, 2009 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.310 2009/10/05 03:35:27 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.311 2009/10/05 18:29:45 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1650,21 +1650,23 @@ The test policy is defined by this trio of variables:
              (perlnow-edit-test-file-harder harder-setting))
             (t
              (perlnow-get-test-file-name))))))
-  (unless
-      (string-match "^\*" testfile)
-    (perlnow-open-test-file testfile)))
+  (let* ((indirect (cond ((string-match "some-pat" oh-hell)) ));; TODO REALLY NOW
+         )
+    (unless
+        (string-match "^\*" testfile)
+      (perlnow-open-test-file testfile indirect))))
 
-(defun perlnow-open-test-file (testfile)
+;; TODO NOW with flag indirect, associate with the association of the
+;; current buffer...
+(defun perlnow-open-test-file (testfile &optional indirect)
   "Follow-up to interactive functions such as \\[perlnow-edit-test-file].
 Presumes that when it is called, the current buffer contains code which
 will be associated with the TESTFILE."  ;; TODO expand docs
-;;;  (setq perlnow-associated-code testfile) ;; associates existing buffer with given *.t
   (let* ((harder-setting (car current-prefix-arg))
          (new-file-p (not (file-exists-p testfile)))
          (original-code (buffer-file-name))
          (package-name)
          )
-
     (cond
      ;; if module
      ((setq package-name (perlnow-get-package-name-from-module-buffer))
@@ -1706,8 +1708,7 @@ will be associated with the TESTFILE."  ;; TODO expand docs
 
     (perlnow-sync-save-run-string
      (perlnow-generate-run-string testfile) harder-setting)
-;;    (setq perlnow-associated-code original-code)
-    (perlnow-set-associated-code-pointers testfile original-code)
+    (perlnow-set-associated-code-pointers testfile original-code indirect)
     ))
 
 (defun perlnow-jump-to-use (package-name &optional import-string)
@@ -2153,7 +2154,47 @@ depending on the value of the given HARDER-SETTING."
          (setq perlnow-run-string run-string)
          )))
 
-(defun perlnow-set-associated-code-pointers (there &optional here)
+
+;; TODO NOW test this exp version, uses indirect flag to indicate that
+;; there should be connected to the association of here, rather than
+;; here itself.
+    ;; TODO should we ensure we're pointing at "code"?
+    ;;      (perlnow-perl-code-p file) problem with non-unix
+    ;;      scripts, though
+(defun perlnow-set-associated-code-pointers (there &optional here indirect)
+  "Make THERE the associated code for HERE (default: current buffer's file).
+Revises the buffer-local variable \\[perlnow-associated-code] in
+both locations. Note: expects that THERE will be an existing file.
+Opens the file, if not open already."
+  (let* ((initial (current-buffer))
+         (here (or here (buffer-file-name)))
+         (ass_of_mess (cond (indirect "association of ") (t "")))
+         (indirect-here perlnow-associated-code)
+         )
+    (cond (indirect
+           (setq here indirect-here)
+           (find-file here)
+           )
+          )
+    (unless (file-exists-p there)
+      (error (concat "perlnow-set-associated-code-pointers "
+                     "needs THERE to be path to existing file: "
+                     (pp-to-string there)
+                     )))
+    (unless (file-exists-p here)
+      (error (concat "perlnow-set-associated-code-pointers "
+                     "needs " ass_of_mess  "HERE to be path to existing file: "
+                     (pp-to-string here)
+                     )))
+    (setq perlnow-associated-code there)
+    (save-excursion ;; only a fool trusts this, eh?
+      (find-file there)
+      (setq perlnow-associated-code here)
+      )
+    (switch-to-buffer initial)
+    ))
+
+(defun perlnow-set-associated-code-pointers-old (there &optional here)
   "Make THERE the associated code for HERE (default: current buffer's file).
 Revises the buffer-local variable \\[perlnow-associated-code] in
 both locations. Note: expects that THERE will be an existing file.
@@ -2161,9 +2202,6 @@ Opens the file, if not open already."
   (let* ((initial (current-buffer))
          (here (or here (buffer-file-name)))
          )
-    ;; TODO requiring HERE and THERE to be paths to existing files. Okay?
-    ;; TODO ensure we're pointing at "code"?  (perlnow-perl-code-p file)
-    ;;      problem with non-unix scripts, though
     (unless (file-exists-p there)
       (error (concat "perlnow-set-associated-code-pointers "
                      "needs THERE to be path to existing file: "
@@ -2177,7 +2215,6 @@ Opens the file, if not open already."
     (setq perlnow-associated-code there)
     (save-excursion ;; only a fool trusts this, eh?
       (find-file there)
-      ;; (set-buffer there)
       (setq perlnow-associated-code here)
       )
     (switch-to-buffer initial)
