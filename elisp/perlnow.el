@@ -6,7 +6,7 @@
 ;; Copyright 2004, 2007, 2009 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.313 2009/10/06 03:11:45 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.314 2009/10/06 04:16:09 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -3048,12 +3048,11 @@ Returns file names with full path if FULLPATH is t."
 ;; Adding "harder" awareness to:  perlnow-edit-test-file
 ;;    C-u C-c \ t
 (defun perlnow-edit-test-file-harder (harder-setting)
-  "Open a menu of all likely test files for user to choose from.
-A stub, oriented toward cpan-style code trees, which should."
+  "Open a menu of all likely test files for user to choose from."
   (interactive
    (setq harder-setting (car current-prefix-arg)))
   (let (
-        ;; stub, cpan-style make this conditional on context TODO
+        ;; TODO really, this is cpan-style. Make this conditional on context?
         (testloc   "../t" )
         (dotdef    "incspot" )
         (namestyle "numbered")
@@ -3061,8 +3060,9 @@ A stub, oriented toward cpan-style code trees, which should."
     (perlnow-test-file-menu
      (perlnow-list-test-files testloc dotdef namestyle t))))
 
-;; TODO UI  C-c \ T => cap T means create a new test, numbered in sequence.
+;; TODO UI  C-c \ T, or locally cap T should mean create a new test, numbered in sequence.
 ;; TODO interpret C-u C-u to mean recursive directory search
+;;      A piece of that puzzle: perlnow-find-all-t-directories
 ;; TODO clean-up display: remove redundancy on paths.
 (defun perlnow-test-file-menu (test-file-list)
   "Show a list of test files, allow the user to choose one.
@@ -3074,7 +3074,8 @@ Where the policy trio testloc, dotdef, namestyle can be set
 to anything."
   (interactive
    (list
-    (perlnow-list-test-files "../t" "incspot" "numbered" t)))
+    (perlnow-list-test-files "../t" "incspot" "numbered" t)
+    ))
   (let* (
          (original-file (buffer-file-name))
          (location (file-name-directory original-file))
@@ -3082,7 +3083,8 @@ to anything."
          (extension (perlnow-file-extension filename))
          (menu-buffer-name perlnow-select-test-file-buffer-name) ;; "*select test file*"
          (selection-buffer-label
-          (format "Tests related to %s.  To choose one, cursor to it and hit return." filename))
+          (format "Tests related to %s. To choose one, cursor to it and hit return."
+                  filename))
          )
     (perlnow-show-buffer-other-window menu-buffer-name)
     (setq buffer-read-only nil)
@@ -3096,6 +3098,8 @@ to anything."
     (goto-char (point-min))
     (next-line 1)
     menu-buffer-name)) ;; just to return something.
+
+
 
 (defun perlnow-latest-test-file (test-file-list)
   "Given a list of test files, select the \"latest\" one.
@@ -3231,13 +3235,18 @@ has been chosen as the default to work on perl code."
     mode))
 
 
+  ;;; TODO how would you do recursive descent if that's what you want?
+  ;;;      could make that a flag on this code?
+  ;;; TODO think about using test policy somehow: run the code to do
+  ;;; a best pick of *.t files, then give it's location priority in
+  ;;; this list.
+  ;;;
 ;; concept: if given a module, you can get the module root
 ;; and from there, you peek up one level (check for "../t"),
 ;; and scan downwards, adding the "t"s found to the list.
 ;; Order should be top to bottom.;; (and how to deal with scripts?
 ;; for now: use script location in place of module root.
 ;; exception: if it's inside a cpan-style package).
-;; TODO needs trial and debug
 (defun perlnow-find-t-directories ()
   "Find 't' directories associated with current file.
 Order them in rough order of likely priority. At present, that is
@@ -3246,11 +3255,6 @@ policy settings.  Note: this code looks for \"t\" files directly
 adjacent to one of the significant levels of the code's path,
 it does not, for example, do a full recursive descent from
 a module's inc-spot."
-  ;; TODO how would you do recursive descent if that's what you want?
-  ;;      could make that a flag on this code?
-  ;; TODO think about using test policy somehow: run the code to do
-  ;; a best pick of *.t files, then give it's location priority in
-  ;; this list.
   (let* ( (slash (convert-standard-filename "/"))
           (levels () )
           (t-list () )
