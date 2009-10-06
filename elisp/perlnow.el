@@ -6,7 +6,7 @@
 ;; Copyright 2004, 2007, 2009 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.312 2009/10/05 23:58:58 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.313 2009/10/06 03:11:45 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -2999,11 +2999,14 @@ Returns file names with full path if FULLPATH is t."
   (use-local-map perlnow-select-mode-map)
   )
 
+;; TODO need a "create new test file" command, bound to something in this buffer
+;; as well as (probably) "C-c \ T".  Maybe "T" for consistency?
+;; in this buffer, use current line to get the directory to put new file.
+;; TODO need a rename command (but don't go too crazy replicating dired...)
 ;; TODO Ideally, have features to visit files, as well as to choose/edit one.
 (define-key perlnow-select-mode-map "\C-m" 'perlnow-select-file)
 (define-key perlnow-select-mode-map "n"    'next-line)
 (define-key perlnow-select-mode-map "p"    'previous-line)
-
 
 (defun perlnow-select-file ()
   "Choose the item on the current line."
