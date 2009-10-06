@@ -6,7 +6,7 @@
 ;; Copyright 2004, 2007, 2009 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.314 2009/10/06 04:16:09 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.315 2009/10/06 04:19:53 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -41,7 +41,7 @@
 (eval-when-compile
   (require 'cl))
 
-(defconst perlnow-version "0.41"
+(defconst perlnow-version "0.42"
   "The version number of the installed perlnow.el package.
 Check <http://obsidianrook.com/perlnow/> for the latest.")
 
