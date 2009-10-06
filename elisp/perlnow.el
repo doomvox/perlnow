@@ -6,7 +6,7 @@
 ;; Copyright 2004, 2007, 2009 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.311 2009/10/05 18:29:45 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.312 2009/10/05 23:58:58 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -1006,6 +1006,10 @@ and vice-versa.  Used by \\[perlnow-back-to-code].")
 ;; (put 'perlnow-associated-code  'risky-local-variable t)
 (make-variable-buffer-local 'perlnow-associated-code)
 
+
+(defvar perlnow-select-test-file-buffer-name "*select test file*"
+  "Name of buffer to display lists of test files.")
+
 ;;;==========================================================
 ;;; test file search and creation settings
 
@@ -1650,15 +1654,13 @@ The test policy is defined by this trio of variables:
              (perlnow-edit-test-file-harder harder-setting))
             (t
              (perlnow-get-test-file-name))))))
-  (let* ((indirect (cond ((string-match "some-pat" oh-hell)) ));; TODO REALLY NOW
+  (let* ((context (buffer-file-name))
          )
     (unless
         (string-match "^\*" testfile)
-      (perlnow-open-test-file testfile indirect))))
+      (perlnow-open-test-file testfile))))
 
-;; TODO NOW with flag indirect, associate with the association of the
-;; current buffer...
-(defun perlnow-open-test-file (testfile &optional indirect)
+(defun perlnow-open-test-file (testfile)
   "Follow-up to interactive functions such as \\[perlnow-edit-test-file].
 Presumes that when it is called, the current buffer contains code which
 will be associated with the TESTFILE."  ;; TODO expand docs
@@ -1708,7 +1710,8 @@ will be associated with the TESTFILE."  ;; TODO expand docs
 
     (perlnow-sync-save-run-string
      (perlnow-generate-run-string testfile) harder-setting)
-    (perlnow-set-associated-code-pointers testfile original-code indirect)
+;;    (perlnow-set-associated-code-pointers testfile original-code indirect)
+    (perlnow-set-associated-code-pointers testfile original-code)
     ))
 
 (defun perlnow-jump-to-use (package-name &optional import-string)
@@ -2128,7 +2131,7 @@ found in LIST2."
 ;;; end  efficient set subtraction (using a hash table)
 
 ;; ========
-;; internal utilities to manipulate associated code files in sync
+;; manipulate associated code files in sync
 
 (defun perlnow-sync-save-run-string (run-string &optional harder-setting)
   "Save RUN-STRING value consistently in the appropriate locations.
@@ -2154,47 +2157,30 @@ depending on the value of the given HARDER-SETTING."
          (setq perlnow-run-string run-string)
          )))
 
-
-;; TODO NOW test this exp version, uses indirect flag to indicate that
-;; there should be connected to the association of here, rather than
-;; here itself.
-    ;; TODO should we ensure we're pointing at "code"?
-    ;;      (perlnow-perl-code-p file) problem with non-unix
-    ;;      scripts, though
-(defun perlnow-set-associated-code-pointers (there &optional here indirect)
-  "Make THERE the associated code for HERE (default: current buffer's file).
-Revises the buffer-local variable \\[perlnow-associated-code] in
-both locations. Note: expects that THERE will be an existing file.
-Opens the file, if not open already."
+(defun perlnow-follow-associations-to-non-test-code (&optional here)
+  "Follow the chain of associations to a code file that is not a test.
+Associations are defined by the \\[perlnow-associated-code] buffer-local
+variable."
   (let* ((initial (current-buffer))
          (here (or here (buffer-file-name)))
-         (ass_of_mess (cond (indirect "association of ") (t "")))
-         (indirect-here perlnow-associated-code)
+         (target)
          )
-    (cond (indirect
-           (setq here indirect-here)
-           (find-file here)
-           )
-          )
-    (unless (file-exists-p there)
-      (error (concat "perlnow-set-associated-code-pointers "
-                     "needs THERE to be path to existing file: "
-                     (pp-to-string there)
-                     )))
-    (unless (file-exists-p here)
-      (error (concat "perlnow-set-associated-code-pointers "
-                     "needs " ass_of_mess  "HERE to be path to existing file: "
-                     (pp-to-string here)
-                     )))
-    (setq perlnow-associated-code there)
-    (save-excursion ;; only a fool trusts this, eh?
-      (find-file there)
-      (setq perlnow-associated-code here)
+    (save-excursion
+      (if here
+          (find-file here))
+      (let (next)
+        (while (not(perlnow-code-but-not-test-p))
+          (progn
+            (setq next perlnow-associated-code)
+            (find-file next)
+            ))
+        (setq target next))
       )
-    (switch-to-buffer initial)
-    ))
+    (switch-to-buffer initial) ;; save-excursion doesn't always work
+    target))
 
-(defun perlnow-set-associated-code-pointers-old (there &optional here)
+ ;; TODO check we're looking at "code"?  (perlnow-perl-code-p file)
+(defun perlnow-set-associated-code-pointers (there &optional here)
   "Make THERE the associated code for HERE (default: current buffer's file).
 Revises the buffer-local variable \\[perlnow-associated-code] in
 both locations. Note: expects that THERE will be an existing file.
@@ -2231,17 +2217,14 @@ given PROGRAM-FILE with the current buffer's file."
     (perlnow-set-associated-code-pointers program-file)
     runstring))
 
-;; TODO might be a good idea to verify that program-file is code
-;;        (perlnow-perl-code-p file)  problem: non-unix scripts
+;; TODO verify that program-file is code? (perlnow-perl-code-p file)
 (defun perlnow-generate-run-string (program-file)
   "Generates a direct run-string for the perl PROGRAM-FILE.
 This is used internally by routines such as \\[perlnow-guess-run-string]."
   ;; a centralized place to apply shell quoting, etc.
   (let* ((perl-command (perlnow-how-to-perl))
          (runstring ""))
-;; This is no good: "perl -T" is wrong.
-;;     (setq runstring
-;;           (combine-and-quote-strings (list perl-command program-file)))
+    ;; Can't run perl-command through quote, handles "perl -T" wrong.
     (setq runstring
           (concat perl-command " "
                   (combine-and-quote-strings
@@ -2321,6 +2304,7 @@ with path."
 
 ;;========
 ;; file creation
+
 (defun perlnow-make-sure-file-exists ()
   "Forcibly save the current buffer to it's associated file.
 This is to make sure that the file actually exists."
@@ -2350,10 +2334,11 @@ side-effect, it sets the global `template-file' here."
   (template-new-file filename template)
   (write-file filename))
 
-;; end  file creation
+;; end file creation
 
 ;;========
 ;; buffer/file probes (determine what kind of code it is, etc)
+
 (defun perlnow-nix-script-p ()
   "Determine if the buffer looks like a 'nix style executable script.
 Looks for the hash-bang line at the top."
@@ -2363,7 +2348,7 @@ Looks for the hash-bang line at the top."
       (looking-at hash-bang-line-pat)
       )))
 
-;; TODO re-write to use  perlnow-perl-mode-p
+;; TODO re-write to use  perlnow-perl-mode-p?
 (defun perlnow-script-p ()
   "Determine if the buffer looks like a perl script.
 Checks for a perl hash-bang line at the top of the script,
@@ -2427,9 +2412,10 @@ with a Makefile.PL or a Build.PL."
 
 (defun perlnow-perl-mode-p ()
   "Does the current buffer's major mode look like a perl mode?
-Should match  \"sepia-mode\" as well as \"perl-mode\" and \"cperl-mode\"."
+This will return non-nil for \"sepia-mode\" as well as \"perl-mode\"
+and \"cperl-mode\", but not for \"perlnow-select-mode\"."
   (let* (
-        (perl-mode-pat "^sepia-mode$\\|perl.*?-mode$")
+        (perl-mode-pat "^sepia-mode$\\|perl-mode$")
         (mode (pp-to-string major-mode))
         (retval (string-match perl-mode-pat mode))
         )
@@ -2441,26 +2427,57 @@ Should match  \"sepia-mode\" as well as \"perl-mode\" and \"cperl-mode\"."
 Checks for the usual perl file extensions, and if need
 be opens the file to look for a package line or a hashbang line
 or to see if a perl mode has \(somehow\) been enabled."
-;; TODO almost foolproof... but what about scripts without extensions
-;; on non-unix systems?  What if someone else has claimed the *.t extension?
+;; TODO almost foolproof...
+;; I wonder about scripts without extensions on hashbangs on non-unix systems.
 ;; One last trick: try running it through "perl -cw" to see if it parses...
 ;; (note: that would fail on buggy code).
-  (let* ((retval
-          (cond
-           ((string-match "\.t$"  file))
-           ((string-match "\.pm$"  file))
-           ((string-match "\.pl$"  file))
+  (let* ((initial (current-buffer))
+         (retval
+          (or
+           (string-match "\.t$"  file)
+           (string-match "\.pm$"  file)
+           (string-match "\.pl$"  file)
            )))
     (unless retval
       (progn
-        (file-find file)
-        (setq retval
-              (cond
-               ((perlnow-module-code-p))
-               ((perlnow-script-p))
-               ((perlnow-perl-mode-p))
-               ))))
+        (save-excursion
+          (file-find file)
+          (setq retval
+                (or
+                 (perlnow-module-code-p)
+                 (perlnow-script-p)
+                 (perlnow-perl-mode-p)
+                 )))))
+    (switch-to-buffer initial) ;; save-excursion doesn't always work
     retval))
+
+(defun perlnow-code-but-not-test-p (&optional here)
+  "Is HERE (default: current buffer) a perl file that is not a test?"
+  (let* ((initial (current-buffer))
+         (test-file-p)
+         (here)
+         (retval)
+         )
+    (save-excursion
+      ;; if passed as argument, might not be open yet
+      (cond (here
+             (find-file here))
+            (t
+             (setq here (buffer-file-name))))
+
+      (if here
+          (setq test-file-p (string-match "\.t$"  here)))
+
+      (setq retval
+            (and
+             (not test-file-p)
+             ;; (perlnow-perl-code-p file-name)
+             (perlnow-perl-mode-p)  ;; TODO not as thorough as I'd like... it's late
+             ))
+      )
+    (switch-to-buffer initial) ;; save-excursion doesn't always work
+    retval
+    ))
 
 (defun perlnow-module-file-p (file)
   "Determine if the FILE looks like a perl module."
@@ -2469,9 +2486,9 @@ or to see if a perl mode has \(somehow\) been enabled."
           (cond ((not file) nil) ;; if file is nil, it ain't a module
                 ((string-match "\.pm$"  file)) ;; right extension: pass
                 ((file-exists-p file)
-                 ;; TODO do a save-excursion?
-                 (find-file file)
-                 (perlnow-module-code-p)) ;; has "package" line: pass
+                 (save-excursion
+                   (find-file file)
+                   (perlnow-module-code-p))) ;; has "package" line: pass
                 (t
                  nil)))
     retval))
@@ -2480,7 +2497,7 @@ or to see if a perl mode has \(somehow\) been enabled."
   "Determine if the FILE looks like a perl script."
   (let ((retval
          (cond ((not file) nil) ;; if file is nil, it ain't a script
-               ((string-match "\.t$\\|\.pl$"  file)) ;; right extension: pass
+               ((string-match "\.t$\\|\.pl$"  file)) ;; good extension: pass
                ((file-exists-p file)
                 (save-excursion
                   (find-file file)
@@ -2924,9 +2941,9 @@ and the NAMESTYLE \(see `perlnow-test-policy-naming-style'\)."
 ;;; TODO check if this is limited to cpan-style
 ;;; TODO somewhere need to be able to do recursive decent through a project tree
 (defun perlnow-list-test-files (testloc dotdef namestyle &optional fullpath)
-  "Looks for test files associated wtih the current file.
+  "Looks for test files appropriate for the current file.
 Uses the three given elements of a \"test policy\", to find
-associated test files:
+appropriate test files:
 A test policy (see `perlnow-documentation-test-file-strategies')
 is defined by three pieces of information:
 the TESTLOC \(see `perlnow-test-policy-test-location'\)
@@ -2961,18 +2978,16 @@ Returns file names with full path if FULLPATH is t."
     (cond ((string= dotdef "fileloc") ; might be script or module
            (setq testloc-absolute
                  (perlnow-expand-dots-relative-to file-location testloc)))
-          ((string= dotdef "incspot") ; only with modules
+          ((string= dotdef "incspot") ; only defined with modules
            (setq testloc-absolute
                  (perlnow-expand-dots-relative-to inc-spot testloc)))
           (t
-           (error
-            "Invalid perlnow-test-policy-dot-definition, should be fileloc, incspot or parallel")))
-
+           (error (concat
+            "Invalid perlnow-test-policy-dot-definition, "
+            "should be fileloc, incspot or parallel"))))
     (setq testloc-absolute (perlnow-fixdir testloc-absolute))
-
     (unless (file-directory-p testloc-absolute)
       (message "warning %s is not a directory" testloc-absolute))
-
     (setq test-file-list
           (directory-files testloc-absolute fullpath "\.t$"))
     test-file-list))
@@ -2990,21 +3005,6 @@ Returns file names with full path if FULLPATH is t."
 (define-key perlnow-select-mode-map "p"    'previous-line)
 
 
-;; TODO there's a bug in here -- starting from a *.t, bring up menu,
-;; choose another *.t, you end up with both pointing at each other.
-;; TODO note that this code doesn't use the newer "associated" routines:
-;;     perlnow-sync-save-run-string
-;;     perlnow-set-associated-code-pointers
-;;     perlnow-generate-run-string-and-associate
-;;     perlnow-generate-run-string
-;; ;; TODO edit this psuedocode:
-;; trace the buffer local var back to the original calling context.
-;;   follow perlnow-associated-code, then set it to the newly opened file
-;; revise run-string in original context
-;; establish two-way pointers, test-file and calling context
-;;   set run-string in the new test file
-;; leave selected test file open;; extra-credit: set it up so that you can do this again,
-;; from the same menu buffer, and have it all work.
 (defun perlnow-select-file ()
   "Choose the item on the current line."
   (interactive)
@@ -3022,8 +3022,8 @@ Returns file names with full path if FULLPATH is t."
       (message "perlnow-select-file: %s" selected-file)
 
       ;; trace pointer back to the code buffer the menu was generated from
-      (setq original-context perlnow-associated-code)
-      (setq menu-buffer (current-buffer)) ;; TODO no need?
+      ;;;; (setq original-context perlnow-associated-code)
+      (setq original-context (perlnow-follow-associations-to-non-test-code))
 
       ;; open the selection, save it's id, set-up pointer back to original code
       (find-file selected-file)
@@ -3031,11 +3031,9 @@ Returns file names with full path if FULLPATH is t."
       (setq newly-selected-buffer-name (buffer-file-name))
       (setq perlnow-associated-code original-context)
 
-      ;; switch to the original, point forward to the newly opened
-      ;; (switch-to-buffer original-context)
-;;;;    (find-file original-context) ;; TODO why need to do a find-file? It's open already.
+      ;; switch to the original, point at the newly opened test file
       (set-buffer (find-buffer-visiting original-context))
-      (setq older-related-code perlnow-associated-code) ;; do i need this?
+      ;; (setq older-related-code perlnow-associated-code) ;; do i need this?
       (setq perlnow-associated-code newly-selected-buffer-name)
 
       ;; leave the newly opened buffer active
@@ -3044,9 +3042,6 @@ Returns file names with full path if FULLPATH is t."
       (perlnow-show-buffer-other-window (find-buffer-visiting original-context) nil t)
       selected-file)))
 
-;; TODO Any use for this trick?
-;;   (perlnow-open-test-file testfile)
-;;
 ;; Adding "harder" awareness to:  perlnow-edit-test-file
 ;;    C-u C-c \ t
 (defun perlnow-edit-test-file-harder (harder-setting)
@@ -3082,7 +3077,7 @@ to anything."
          (location (file-name-directory original-file))
          (filename (file-name-nondirectory original-file))
          (extension (perlnow-file-extension filename))
-         (menu-buffer-name "*select test file*")
+         (menu-buffer-name perlnow-select-test-file-buffer-name) ;; "*select test file*"
          (selection-buffer-label
           (format "Tests related to %s.  To choose one, cursor to it and hit return." filename))
          )
@@ -3112,7 +3107,6 @@ numeric sort-order prefix."
           (new-list (sort new-list 'string<))
           (last-item (car (last new-list)))
           )
-    ;;    new-list ;; intermediate return for DEBUG
     last-item
     ))
 
@@ -3173,7 +3167,7 @@ Will warn if there appear to be redundant possible testfiles."
             (perlnow-expand-dots-relative-to file-location testloc-dotform))
       (if (file-directory-p testloc)
           (setq test-search-list (cons testloc test-search-list)))
-      (cond (inc-spot ; don't bother with followin if not a module with defined inc-spot
+      (cond (inc-spot ;; don't bother with this if not a module with defined inc-spot
              (setq testloc
                    (perlnow-expand-dots-relative-to inc-spot testloc-dotform))
              (if (file-directory-p testloc)
@@ -3319,17 +3313,16 @@ a module's inc-spot."
 (defun perlnow-report-status-vars ()
   "Dump status report of key buffer-local variables."
   (interactive)
-  (message "status vars for %s" (buffer-file-name))
-  (message "perlnow-perl-script-name: %s" perlnow-perl-script-name)
-  (message "perlnow-perl-package-name: %s" perlnow-perl-package-name)
-  (message "perlnow-script-run-string: %s" perlnow-script-run-string)
-  (message "perlnow-module-run-string: %s" perlnow-module-run-string)
-  (message "perlnow-run-string: %s" perlnow-run-string)
-  (message "perlnow-run-string-harder: %s" perlnow-run-string-harder)
-  (message "perlnow-associated-code: %s" perlnow-associated-code)
-)
-
-
+  (message
+   (concat
+    (format "status vars for %s\n"            (buffer-file-name))
+    (format "perlnow-perl-script-name: %s\n"  perlnow-perl-script-name)
+    (format "perlnow-perl-package-name: %s\n" perlnow-perl-package-name)
+    (format "perlnow-script-run-string: %s\n" perlnow-script-run-string)
+    (format "perlnow-module-run-string: %s\n" perlnow-module-run-string)
+    (format "perlnow-run-string: %s\n"        perlnow-run-string)
+    (format "perlnow-run-string-harder: %s\n" perlnow-run-string-harder)
+    (format "perlnow-associated-code: %s\n"   perlnow-associated-code))))
 
 ;; TODO can this idea be blended with the job that
 ;; perlnow-find-t-directories does (finding the most appropriate
