@@ -6,7 +6,7 @@
 ;; Copyright 2004, 2007, 2009 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.315 2009/10/06 04:19:53 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.316 2009/11/21 23:08:28 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -152,7 +152,7 @@ Add something like the following to your ~/.emacs file:
       \(substitute-in-file-name \"$HOME/bin\"\)\)
   \(setq `perlnow-pm-location'
       \(substitute-in-file-name \"$HOME/lib\"\)\)\n
-  \(setq `perlnow-devlocation''
+  \(setq `perlnow-dev-location'
       \(substitute-in-file-name \"$HOME/dev\"\)\)\n
 
    \(perlnow-define-standard-keymappings\)
@@ -162,7 +162,7 @@ default \"C-c/\", you can supply it as an argument:
 
    \(perlnow-define-standard-keymappings \"C-c'\"\)
 
-Or if you prefer, the entire function call can be replaced
+Or if you prefer, that entire function call can be replaced
 with individual definitions like so, to make it easier
 to modify them individually:
 
@@ -182,10 +182,10 @@ to modify them individually:
    \(global-set-key \"\\C-c/b\" 'perlnow-back-to-code\)
    \(global-set-key \"\\C-c/~\" 'perlnow-perlify-this-buffer-simple\)
 
-Above, the odd prefix \"control-c slash\" has been used because
+The odd prefix \"control-c slash\" has been used because
 only the C-c <punctuation> bindings are reserved for minor modes,
-\(the perlnow is not a minor-mode, but it has similarities:
-many commands here need to work from many different modes\).
+\(while perlnow is not a minor-mode, it has some similarities:
+many perlnow commands need to work from many different modes\).
 The slash was choosen because it's unshifted and on the opposite
 side from the \"c\" \(on typical keyboards\).
 
@@ -197,17 +197,16 @@ frequently used commands.  Some examples:
 
   \(add-hook 'cperl-mode-hook
           '\(lambda \(\)
-             \(define-key cperl-mode-map [f1] 'perlnow-perl-check\) \)\)
+             \(define-key cperl-mode-map [f6] 'perlnow-perl-check\) \)\)
 
 If you're looking for a good prefix for \"perl\" commands, remember
 that \"M-p\" is used in many contexts for \"history\" navigation.
 And be aware that \"C-x p\" is used by the p4.el package \(a
 front-end to the proprietary perforce version control system\).
 
-Caveats: perlnow.el was developed using GNU emacs 21.1 running
-on a linux box \(aka GNU/Linux\).  This version includes bug fixes
-to get it working with GNU emacs 23.  Reportedly, it does not
-work with xemacs.")
+Caveats: perlnow.el is know to work with GNU emacs versions 21
+through 23, and was developed on a linux box \(aka GNU/Linux\).
+Reportedly, it does not work with xemacs.")
 
 (defvar perlnow-documentation-terminology t
   "Definitions of some terms used here:
@@ -262,12 +261,12 @@ FILE SYSTEM PATH \(or FILESYS PATH\): as opposed to
 \"perlish\".  This is the regular \'nix style slash
 separated path.
 
-FULL: usually meaning that the full path is included,
+FULL: usually means that the full path is included,
 e.g. \"full file name\".
 
-TEST SCRIPT: The *.t file associated with the current
-module/script\(?\), usually something like ModuleName.t or
-possibly Staging-Area.t.
+TEST SCRIPT: A file with extension *.t associated with the
+current module/script\(?\), often something like ModuleName.t
+or possibly Staging-Area.t.
 
 TEST LOCATION: place where the test script\(s\) are for
 a given module.
@@ -305,10 +304,7 @@ write, then kick you into a file buffer with a recommended
 code template already filled in.
 
 If you don't like the template, change it \(it should be in
-your ~/.templates directory\).  For example, you might
-prefer to have \"use strict;\" appear commented out but
-ready to be enabled when you know the script is going to be
-longer than a dozen lines.
+your ~/.templates directory\).
 
 Currently perlnow-script tends to want to put all of your
 new scripts in one place, the `perlnow-script-location' that
@@ -319,18 +315,17 @@ it as a starting point to edit into some new location.
 Similarly you've also got access to the minibuffer history
 to get other starting places.
 
-\(By the way: you do know about the minibuffer history,
-don't you?  I didn't until recently.  During a minibuffer
-read, you can step back and forth through the history of
-things you've entered using: \\[previous-history-element]
-and \\[next-history-element]. Typically these are bound to
-Alt-p and Alt-n.\)
+\(You do know about the minibuffer history, don't you?
+During a minibuffer read, you can step back and forth
+through the history of things you've entered using:
+\\[previous-history-element] and \\[next-history-element].
+Typically these are bound to Alt-p and Alt-n.\)
 
 But every time you use \\[perlnow-script] it's going to try
 to put it in the same default location, so \(a\) try and
 pick a good default, and \(b\) think about changing it on
 the fly if you're going to do a lot of work in a different
-place.  You can use \\[set-variable] to set
+place.  You can use \\[set-variable] to change the
 `perlnow-script-location'.
 
 Okay, so once you're in your new perl script buffer, you can
@@ -364,10 +359,10 @@ jump to where you need to be.
 Should you want to use the perl debugger, I suggest using
 \\[perlnow-perldb], rather than \\[perldb] directly.  The perlnow
 wrapper uses the `perlnow-run-string' you've defined, which will
-be different for each script.  If you use the perldb command
+be different for each perl file.  If you use the perldb command
 directly, you'll notice that the default is just however you ran
-it last.  If you're switching back and forth between working on
-two scripts, that default is going to be wrong a lot.
+it last.  If you're switching around, working on multiple files,
+that default is going to be wrong a lot.
 
 The next subject, developing perl modules:
   `perlnow-documentation-tutorial-2-module-development'")
@@ -388,8 +383,8 @@ For cpan-style modules:
    Using Module::Build (by default)  \\[perlnow-module-starter]
 
 The first two are very similar, they just use a different
-template (the OOP version is simpler, there being no need
-for use Exporter there).  Both ask you for the name and
+template (the OOP version is often simpler, there being no
+need for use Exporter there).  Both ask you for the name and
 location of the module you want to create in a single
 prompt, asking for an answer in a hybrid form like:
 
