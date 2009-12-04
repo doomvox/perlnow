@@ -6,7 +6,7 @@
 ;; Copyright 2004, 2007, 2009 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.316 2009/11/21 23:08:28 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.317 2009/12/04 09:04:16 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -33,8 +33,8 @@
 ;;  perlnow.el is intended to speed the development of perl code
 ;;  by automating some routine tasks.
 ;;
-;;  See the documentation for the variable perlnow-documentation,
-;;  and it's relatives, below.
+;;  For the documentation for this package, see the documentation for
+;;  the dummy variable perlnow-documentation (and it's relatives), below.
 
 ;;; Code:
 (provide 'perlnow)
@@ -86,8 +86,8 @@ Much like perlnow-module, but uses a different template.
 \\[perlnow-h2xs] - runs the h2xs command, to begin working
 on a new module for a CPAN-style distribution.
 
-\\[perlnow-module-starter] - uses module-starter to begin
-working on a new module in a CPAN-style distribution.
+\\[perlnow-module-starter] - runs module-starter to create
+a new module for a CPAN-style distribution.
 This defaults to OOP modules built using Module::Build.
 
 \\[perlnow-run-check] - does a perl syntax check on the
@@ -112,7 +112,7 @@ the \"run-string\".
 \\[perlnow-set-alt-run-string] - Allows the user to manually
 change the alt-run-string used by perlnow-alt-run.
 
-A list of the important functions that require template.el:
+A list of some important functions that require template.el:
 \\[perlnow-script]
 \\[perlnow-module]
 \\[perlnow-object-module]
@@ -160,7 +160,7 @@ Add something like the following to your ~/.emacs file:
 Alternately, if you'd like a different prefix than the
 default \"C-c/\", you can supply it as an argument:
 
-   \(perlnow-define-standard-keymappings \"C-c'\"\)
+   \(perlnow-define-standard-keymappings \"\\C-c'\"\)
 
 Or if you prefer, that entire function call can be replaced
 with individual definitions like so, to make it easier
@@ -186,8 +186,8 @@ The odd prefix \"control-c slash\" has been used because
 only the C-c <punctuation> bindings are reserved for minor modes,
 \(while perlnow is not a minor-mode, it has some similarities:
 many perlnow commands need to work from many different modes\).
-The slash was choosen because it's unshifted and on the opposite
-side from the \"c\" \(on typical keyboards\).
+The slash was choosen because on typical keyboards, it's
+unshifted and on the opposite side from the \"c\".
 
 The user is free to choose any key bindings, and you might
 prefer other assignments, such as using function keys for
@@ -1117,12 +1117,12 @@ to adopt a standard set of keymappings, but they're not
 forced on you.  Note: these all use the \"C-c/\" prefix by
 default, unless a different PREFIX is supplied.
 A few mappings are also included for useful functions that are
-defined outside of the perlnow.el package:
-cperl-perldoc-at-point, comment-region and narrow-to-defun."
+defined elsewhere:
+\\[cperl-perldoc-at-point], \\[comment-region] and \\[narrow-to-defun]."
   (interactive)
   (unless prefix (setq prefix "\C-c/"))
   ;; These need to be defined widely in all (or most) modes
-  ;; because they're for jumping into perl code.
+  ;; because they're for jumping into writing perl code.
   (global-set-key (format "%ss" prefix) 'perlnow-script)
   (global-set-key (format "%sm" prefix) 'perlnow-module)
   (global-set-key (format "%so" prefix) 'perlnow-object-module)
@@ -1151,6 +1151,9 @@ cperl-perldoc-at-point, comment-region and narrow-to-defun."
     (add-hook 'cperl-mode-hook (eval (read define-perl-bindings-string)))
     (add-hook 'perl-mode-hook  (eval (read define-perl-bindings-string)))
     ))
+;; TODO -- use perlnow-lookup-preferred-perl-mode instead (somehow)
+;; TODO -- why am I doing "global-set-key"s in there?  Counterproductive, no?
+
 
 ;;;==========================================================
 ;;; functions to run perl scripts        TODO BOOKMARK REAL CODE
@@ -2022,7 +2025,7 @@ See the wrapper function: \\[perlnow-script] (or possibly the older
       (insert "\");\n"))))
 
 ;; TODO really should be able to handle exported lists without an ":all" tag;
-;;      also should have option to prefer expicit lists, even if ":all" is present
+;;      also should have option to prefer explicit lists, even if ":all" is present
 (defun perlnow-import-string ()
   "Determine a good import string for using the current module.
 Returns the ':all' tag if the current buffer shows an Exporter-based
@@ -2375,13 +2378,11 @@ doesn't look like a module."
 (defun perlnow-module-code-p ()
   "Determine if the buffer looks like a perl module.
 This looks for the package line near the top.
-Note: it's usually more useful to just do a \\[perlnow-get-package-name]."
-  (save-excursion
-    (let ( (package-line-pat "^[ \t]*package\\b")
-           (comment-line-pat "^[ \t]*$\\|^[ \t]*#") )
-      (goto-char (point-min))
-      (while (looking-at comment-line-pat) (forward-line 1))
-      (looking-at package-line-pat) )))
+Note: it's usually more useful to just do a
+\\[perlnow-get-package-name-from-module-buffer]."
+  (let ( (package-name (perlnow-get-package-name-from-module-buffer))
+         )
+    package-name))
 
 (defun perlnow-exporter-code-p ()
   "Return t if the current buffer looks like an Exporter-based module.
@@ -2508,27 +2509,33 @@ or to see if a perl mode has \(somehow\) been enabled."
 ;;========
 ;; buffer scraping -- get metadata about the code buffer
 (defun perlnow-get-package-name-from-module-buffer ()
-  "Get the module name from the package line.
+  "Get the module name from the first package line.
 This will be in perl's double colon separated form, or it will
 return nil if none is found."
   (save-excursion
     (let ((package-line-pat "^[ \t]*package[ \t]+\\(.*?\\)[ \t;]")
               ;; captures "Module::Name"
-          (comment-line-pat "^[ \t]*$\\|^[ \t]*#")
-          return)
+          ;; initialize for loop
+          (keep-going-p t)
+          (return nil))
       (goto-char (point-min))
-      (while (looking-at comment-line-pat) (forward-line 1))
-      (if (looking-at package-line-pat)
-          (setq return (match-string-no-properties 1))
-        (setq return nil))
+      (while keep-going-p
+        (progn
+         (cond ((looking-at package-line-pat)
+                (setq return (match-string-no-properties 1))
+                (setq keep-going-p nil)
+                ))
+         (unless (= 0 (forward-line 1))
+           (setq keep-going-p nil))
+         ))
       return)))
 
+;; Not in use: typically want to *know* if it came from a code
+;; buffer or a man page.
 (defun perlnow-get-package-name ()
   "Return the module name  \(in perl's double colon separated form\)
 from either a module buffer or a Man page showing the perldoc for it,
-or nil if none is found.  Currently, not used: typically want
-to *know* if it came from a code buffer or a man page, this throws
-away that info."
+or nil if none is found."
   (let (return)
     (cond
      ((setq return (perlnow-get-package-name-from-module-buffer))
@@ -2620,7 +2627,8 @@ Returns nil if there is none."
                 (match-string 1)))
       )))
 
-;; TODO extract a primitive from this: perlnow-sub-at-point
+
+
 (defun perlnow-sub-name-to-kill-ring ()
   "Pushes the name of the current perl sub on to the `kill-ring'.
 This is intended to be run inside an open buffer of perl code.
@@ -2629,9 +2637,23 @@ the cursor is inside of\) and pushes it onto the kill-ring, ready
 to be yanked later.  Returns nil on failure, sub name on success.
 Used by \\[perlnow-script-using-this-module]."
   (interactive)
+  (let ((sub-name (perlnow-sub-at-point)))
+    (kill-new sub-name)
+    ))
+
+
+;; Used by perlnow-sub-name-to-kill-ring and hence:
+;;  perlnow-script-using-this-module
+(defun perlnow-sub-at-point ()
+ "Returns the name of the current perl sub, or nil if there is none.
+This is intended to be run inside an open buffer of perl code.
+It tries to find the name of the current perl sub \(the one that
+the cursor is inside of\).  Returns nil on failure, sub name on success.
+This works fairly well, but if between subs always reports the name
+of the previous sub \(even if you're inside pod describing the next sub\)."
   (let (return)
     (save-excursion
-      ;; in case the cursor is *on top* of the keyword "sub", go forward a little.
+      ;; in case cursor is *on top* of the keyword "sub", go forward a bit.
       (forward-word 1)
       (forward-char)
       (setq return
@@ -2646,11 +2668,17 @@ Used by \\[perlnow-script-using-this-module]."
                   (throw 'HELL nil))
                 (backward-word 1)
                 (forward-word 1)
-                (copy-region-as-kill beg (point))
                 (setq return
                       (buffer-substring-no-properties beg (point)))
                 ))))
     return))
+
+;; DEBUG
+(defun perlnow-report-sub-at-point ()
+   "Echoes the output from of \[[perlnow-sub-at-point]]."
+   (interactive)
+   (message "sub-at-point: %s" (perlnow-sub-at-point)))
+
 
 ;; the following were implemented for perlnow-revise-export-list
 ;;
