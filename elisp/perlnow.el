@@ -6,7 +6,7 @@
 ;; Copyright 2004, 2007, 2009 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.317 2009/12/04 09:04:16 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.318 2009/12/04 09:16:23 doom Exp root $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -2349,11 +2349,12 @@ Looks for the hash-bang line at the top."
 ;; TODO re-write to use  perlnow-perl-mode-p?
 (defun perlnow-script-p ()
   "Determine if the buffer looks like a perl script.
-Checks for a perl hash-bang line at the top of the script,
-looks to see if it's in a perl mode, and makes sure it
-doesn't look like a module."
+This assumes we have a perl script if there's a
+perl hashbang line *or* if it is in a perl mode,
+and also verifires that it's not a module."
   (save-excursion
-    (let ((hash-bang-line-pat "^[ \t]*#!.*perl\\b") ;; note, presumes an explicit "perl"
+    (let (;; The following assumes perl is called something like perl
+          (hash-bang-line-pat "^[ \t]*#!.*perl")
           ;; this matches perl-mode, cperl-mode, and also sepia-mode
           (perl-mode-pat "^sepia-mode$\\|perl.*?-mode$")
           (mode (pp-to-string major-mode))
@@ -2369,7 +2370,7 @@ doesn't look like a module."
 
 ;; DEBUG
 (defun perlnow-report-script-p ()
-  "Report whether the current buffer looks like a script."
+  "Report whether the current buffer looks like a perl script."
   (interactive)
   (if (perlnow-script-p)
       (message "script!")
@@ -2424,9 +2425,9 @@ Checks for the usual perl file extensions, and if need
 be opens the file to look for a package line or a hashbang line
 or to see if a perl mode has \(somehow\) been enabled."
 ;; TODO almost foolproof...
-;; I wonder about scripts without extensions on hashbangs on non-unix systems.
+;; I wonder about scripts without extensions or hashbangs on non-unix systems.
 ;; One last trick: try running it through "perl -cw" to see if it parses...
-;; (note: that would fail on buggy code).
+;; (but note: that would fail on buggy code).
   (let* ((initial (current-buffer))
          (retval
           (or
@@ -2460,15 +2461,13 @@ or to see if a perl mode has \(somehow\) been enabled."
              (find-file here))
             (t
              (setq here (buffer-file-name))))
-
       (if here
           (setq test-file-p (string-match "\.t$"  here)))
-
       (setq retval
             (and
              (not test-file-p)
              ;; (perlnow-perl-code-p file-name)
-             (perlnow-perl-mode-p)  ;; TODO not as thorough as I'd like... it's late
+             (perlnow-perl-mode-p) ;; TODO could be more thorough, but tis late
              ))
       )
     (switch-to-buffer initial) ;; save-excursion doesn't always work
@@ -2627,8 +2626,6 @@ Returns nil if there is none."
                 (match-string 1)))
       )))
 
-
-
 (defun perlnow-sub-name-to-kill-ring ()
   "Pushes the name of the current perl sub on to the `kill-ring'.
 This is intended to be run inside an open buffer of perl code.
@@ -2640,7 +2637,6 @@ Used by \\[perlnow-script-using-this-module]."
   (let ((sub-name (perlnow-sub-at-point)))
     (kill-new sub-name)
     ))
-
 
 ;; Used by perlnow-sub-name-to-kill-ring and hence:
 ;;  perlnow-script-using-this-module
