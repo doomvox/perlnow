@@ -324,16 +324,6 @@ perlnow-h2xs--hook
 
 ===
 
-TODO  DONTFORGET
-Communicate with template.el author
-Bug1
-Bug2
-Feature requests - TAB
-                   Arguments?
-Copyright transfer to FSF okay?
-
-===
-
 Can you fix "man" with a wrapper?  Goal is to *never* lose
 your original context.  When you follow a link, the content
 replaces current man window, web browser style.
@@ -400,7 +390,8 @@ Q: what about *.mas?  Check mmm-mode set-up.
 
 ===
 
-TODO
+I'd like a feature like this... but it's dependant on certain
+assumptions about how you like to do OOP.
 
 perlnow-document-accessors-from-attributes-array
 
