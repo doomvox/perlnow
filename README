@@ -1,18 +1,24 @@
-perlnow.el is a collection of utility commands for perl
-programmers who use emacs. These commands are designed to help
-automate some routine tasks in the initial creation of perl
-scripts and modules. Commands are also provided to assist in
-running, testing and debugging inside of emacs.
-
-Detailed documentation has been included inside the *.el file
-itself, using the "docstrings" that are easily accessible through
-the emacs help system (e.g by asking for help on a "variable"
-named "perlnow-documentation-tutorial"). Think of it as the poor
-man's pod (or perhaps the lazy man's info).
+perlnow.el is a collection of utility commands for perl programmers
+who use emacs. These commands are designed to help automate some
+routine tasks in (1) the initial creation of perl scripts and
+modules (2) running, testing and debugging inside of emacs.
 
 DOCUMENTATION
 
+Online documentation is available at:
+
   http://obsidianrook.com/perlnow/
+
+Detailed documentation has been included inside the code itself,
+using the "docstrings" that are easily accessible through the
+emacs help system, for example:
+
+   ESC x help v perlnow-documentation-tutorial
+
+This looks up the docstring for the dummy variable
+"perlnow-documentation-tutorial".
+
+Think of it as the poor man's pod (or perhaps the lazy man's info).
 
 INSTALLATION
 
@@ -26,9 +32,17 @@ version can be found at:
 
 You'll need some custom perl-oriented template.el templates ("*.tpl")
 that come with perlnow.el.  Most likely these templates should go in
-~/.templates.
+~/.templates. Stable versions are located here:
 
-Add something like the following to your ~/.emacs file:
+  http://github.com/doomvox/perlnow/tree/master/templates/standard/
+
+With some alternate versions in similar locations, such as these
+experimental ones which are continually under development:
+
+  http://github.com/doomvox/perlnow/tree/master/templates/dev/
+
+
+In your ~/.emacs file, add something like the following:
 
    (require 'template)
    (template-initialize)
