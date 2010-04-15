@@ -24,15 +24,16 @@ INSTALLATION
 
 Put the perlnow.el file somewhere that's included in your load-path.
 
-Also install template.el if at all possible, because many
-features of this package depend on template.el.  The latest
-version can be found at:
+Also install Christoph Wedler's template.el if at all possible,
+because many features of this package depend on it.  The latest
+version of template.el can be found at:
 
    http://sourceforge.net/project/showfiles.php?group_id=47369
 
 You'll need some custom perl-oriented template.el templates ("*.tpl")
 that come with perlnow.el.  Most likely these templates should go in
-~/.templates. Stable versions are located here:
+~/.templates. Stable versions are located here (most of the non-perl
+ones were created by Christoph Wedler):
 
   http://github.com/doomvox/perlnow/tree/master/templates/standard/
 
@@ -69,4 +70,5 @@ Additional installation instructions:
 TUTORIAL
 
   http://obsidianrook.com/perlnow/perlnow-el-docstrings.html#perlnow-documentation-tutorial
+
 
