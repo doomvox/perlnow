@@ -1,5 +1,5 @@
-                                   Wed Feb  8, 2006 10:39 PM
-/home/doom/End/Cave/Perlnow/Wall/web/perlnow/TODO
+                                                       Wed Feb  8, 2006
+                                            Last rev:  Thu Apr 15, 2010
 
 The latest Master Todo/Bug List:
 ===
@@ -10,12 +10,10 @@ BUG
   Further: might like to exclude "-" (so that '->' doesn't get sucked in).
 ===
 BUG
-  doesn't play nice with tramp.el or ange-ftp, not even a perl check.
+  Doesn't play nice with tramp.el or ange-ftp, not even a perl check.
   if a remote buffer, make/find a local copy of it and run perl -cw on it?
-===
-BUG (?)
-Use drop in subsitute for FindBin:
-  FindBin::Real
+  (Verify this is still a problem.  --  Apr 15, 2010 )
+
 ===
 BUG
 Doesn't work with
@@ -23,24 +21,45 @@ Doesn't work with
   windows
 ===
 BUG
-Or buglet:
-I think that if you do a "C-c / t" to get back to the
-buffer for the .t file, the existing buffer local value
-for the run command gets zapped.
 
-Combined with the (current) need to delete single quotes
-around the argument (another buglet) this is mildly annoying.
+Sometimes, an existing buffer local value for a run command gets zapped
+when you would rather it didn't:
+
+E.g. if you do a "C-c / t" as a convienient way to get back to a *.t file,
+the run-string for the *.t file can get changed on you.
+
+Possibly: if a run-string has been set manually, it should be less
+emphemeral than if it's an automatic guess.
+
+Sometimes perlnow's attempts at magically setting the run string correctly
+get in the way: When you've set it to something else manually, it should
+remember that, and avoid over-writing a manual setting.   An "attribute"
+to the string, to tell it hands-off?
+
+BUG                  Tue Dec 29 15:10:54 2009
+
+C-c / R
+  let's you set the run-string, but it  always (often?)
+  zeroes it out to the original guess value: this makes
+  it hard to do repeated edits of the run-string.
+
 ===
+
 BUG
-If *compilation* exists in some other frame, causes
-problems.  Possible fix: always kill *compilation* before a perlnow-run.
-(Maybe something slicker, move buffer to current frame?)
+
+If the *compilation* buffer is displayed in some other frame,
+that can cause problems.  Possible fix: always kill *compilation*
+before a perlnow-run.
+
 ===
-perltidy (alternative to C-M-\)
-  o maybe: use a lisp macro to generate standard elisp wrappers
+FEATURE
+Built-in support for perltidy (alternative to C-M-\)
+
+  o maybe: automatically generate standard elisp wrappers
     around frequently used shell commands.
 
 ===
+FEATURE
 sub awareness
   o narrow to current sub (q: include adjacent pod?)
   o select sub (Q: include adjacent pod?)
@@ -52,108 +71,51 @@ Maybe use B:* modules to report on all subs: definitions *and* where called
    B::Xref - Generates cross reference reports for Perl programs
 Note: look into glimpse and "glimpse-mode" (Tom Lane likes glimpse).
 ===
-Additional code checking features:
-  o  podchecker
-  o  Perl::Critic
-  o  Dunce::Files
-===
-Add support for tempo.el
+
+Add support for other templating systems:
+   tempo.el
+   Template::Toolkit
+   Mason
+
 Possibly: a translator to create tempo.el files from template.el templates.
-Further, look into Template::Toolkit, Mason, etc.
 
 Another "policy" feature: default types of template for
 (1) file creation
-(2) insertion of method framework (etc.)
+(2) insertion of method framework (skeleton?)
 
 ===
-
-FEATURE
-  Control L should also do a font-lock-fontify-buffer.
-
-(Better, maybe it should do "perlnow-fontify-bigger-hammer":
-blow away the current buffer and reload the file into a new one.
-Must preserve buffer local variables, though.)
-
-
-===
+Feature:
 If you create a module/script in a tree under version control
 (RCS, CVS), any newly created directories should be added to the
 repository.  Settable policy: automatically add the perl file
 itself also.
 ===
+Feature:
 Doing a perlnow code creation command while inside a dired buffer
-should probably use that location by default, rather than the
+should use that location by default, rather than the
 fixed default.
-===
-When creating a script from a module,
-the automatically inserted "use " line
-is cool, but doesn't go far enough:
-Anything that's exported should be
-shoved in the qw argument to the
-use line.  Delete those that are
-unneeded later.
-Consider a cleanup command that zaps
-exports that don't seem to be needed.
-===
-
-look into mmm mode again:
-  perl/html (Mason)
-  pod-mode/cperl-mode
-  sql-mode also?
-
-As a point of philosophy:
-adding sql features to perlnow is not a contradiction.
-rough-and-ready: don't be so fussy about definitions.
-
 ===
 
 C-M-f and C-M-b, when used in the middle of an expression, should skip
 you to the beginning or end of that expression (currently, it just
 errors).
 ===
-podchecker integration.
-Output must be massaged into a form for next-error to work.
-
-Maybe: A perl check should also run a podchecker
-
-Options to define what a perl check is.
-Maybe: when run with argument, does an "intense" check (the works).
-
-===
 Want to run ispell on pod only.
 Alternately: run ispell on pod and comments only.
 (How?)
-===
 
-Must expand the range of naming conventions accomodated.  Can't deal with
-the common numeric naming convention like so:
+   perlnow-ispell-next-chunk-of-pod
 
-  /home/doom/End/Cave/CapitalizeTitle/Wall/Text/Capitalize/t:
-  total 7  free 5330556
-  drwxrwxr-x   2 doom     doom          128 Aug 17  2003 CVS
-  drwxrwxr-x   3 doom     doom          104 Aug 27  2003 lib
-  -rw-r--r--   1 doom     doom          358 Aug 17  2003 001-load.t
-  -rw-r--r--   1 doom     doom          728 Aug 22  2003 002-captitle-default.t
-  -rw-r--r--   1 doom     doom          822 Aug 22  2003 003-captitle-preserve_whitespace.t
-  -rw-r--r--   1 doom     doom          795 Aug 22  2003 004-captitle-preserve_allcaps.t
-  -rw-r--r--   1 doom     doom          796 Aug 22  2003 005-captitle-preserve_anycaps.t
-  -rw-r--r--   1 doom     doom          950 Aug 22  2003 006-captitle-preserve_allcaps_and_whitespace.t
-  -rw-r--r--   1 doom     doom          950 Aug 22  2003 007-captitle-preserve_anycaps_and_whitespace.t
+Then interate over all of them with:
 
-Consider... if some tests are identified, present a menu,
-where one option is "create new: Blah.t"
+   perlnow-ispell-pod
 
-Or possibly, a more elaborate "policy" definition might
-work with this...
+Also useful:
 
-                                                 Mon Oct 15 12:13:35 2007
-I think this UI would work:
-
-C-c/t - guess which test file you want
-C-c/T - bring up a menu of all test files found
-        (in multiple locations?)
+   perlnow-ispell-this-chunk-of-pod
 
 ===
+
 run-string
   o  need additional ones, e.g. a 'debug' as well as a 'run' and 'test'?
   o  manipulation commands, e.g. perlnow-save-run-string-to-alt-run-string
@@ -161,54 +123,15 @@ run-string
 Select an active set of templates based on various settings.
 For example, need to support various OOP styles:
   o Inside-Out,  (Class::Std, Class::InsideOut, Object::InsideOut)
-  o Seperation of new and _init
+  o Moose
+  o Simple href-based (with seperation of new and _init) ala Class::Base
 ===
 Support different podstyles
   o  additional templates for interspersed pod style
   o  defcustom to define a preference?
   o  skeleton.el: for subs/methods/constructors/accessors...
 ===
-use skeleton.el (?) to be able to insert boilerplate for:
-  o sub, proceedural
-  o sub, OOP
-  o getter
-  o setter
 
-Example sub:
-  =item <name>
-  =cut
-  sub <name> {
-     my $self = shift;
-     my $SUB = caller(0)[3];
-     local $_;
-  }
-
-===
-Common task: generate stub subs in the .pm for all methods
-in the .t file.  Punt: recognize only -> method calls.
-Stub subs just "return 1;"  Also do simple embedded perldoc
-(possibly enable that with a defcustom).
-===
-Common task: given a SYNOPSIS, generate stub tests.
-Any way to (partially) automate?
-===
-
-Implement the concept of a "project", a set of files that go together.
-The simplest definiton: a project might be a tree of files
-that meet certain criteria (e.g. definitely exclude autosaves and
-backups, definitely include *.pm *.c, definitely with
-associated *.t files, maybe notes-* maybe not, etc.).
-
-  o provide command(s) to do project-wide version control
-    operations (check-in with same message, "tagging"/"branching"?)
-
-  o Provide command to do project-wide global replaces.
-
-  o Index all files in a project to be used for sub lookups (ala
-    tags) and sub usage (not at all ala tags).
-    (investigate "exuberant ctags"?).
-
-===
 Better help command:
 
 Currently the "C-c / 1" command just looks up built-ins in "perlfunc".
@@ -217,76 +140,32 @@ Could be extended to look up the perldoc for a sub, so that
 it works on built-ins *and* extensions.
 ===
 
-Inside of a test file, would like a command that increments
-the number of tests (specified up top), without having to
-manually skip up there and do it.
-
-===
-TODO
-
 Investigate supporting use of "use diagnostics;", e.g. use a C-u
 prefix to "C-c / c" to add a -Mdiagnostics to the run line.
 
 ===
-===
-
-Older TODO items (copied from /home/doom/End/Cave/Perlnow/Notes/notes-perlnow):
 
 Settable option:
   (defcustom perlnow-maximum-sleaziness t)
 
-((The fourth virtue: sleaziness.))
+  (The fourth virtue: sleaziness.)
 
+  Identify all variables used, and create "my" declarations
+  for them if needed.
+  If usage is inside a sub, put the my also inside that sub.
+  Note: if globals are in use, this can break.
 
-(5) In perlnow-script-using-this-module a bare "use
-    <ModuleName>" seems too simple.
-
-Principle of maximum sleaziness:
-
-If :all exists use it.
-If not, look for EXPORT_TAGS, quote all of them.
-If not found, look for EXPORT_OK, quote all of those
-  (Um, also must quote all EXPORTS if you quote any of _TAGS or _OK, correct?)
-  ;;; Note need to add EXPORT and EXPORT_OK listings together.
-
-;;; Need to interpret the quoting used::
-;;;   qw($Blah $Bleh) or '$Blah, $Bleh' or ...
-
-;;; maybe some general "eval" trick?
-
-
-(5a)  Also excellently sleazy:
-
-   perlnow-export-everything
-   Goes through current module, adds all subs to EXPORT_TAGS _OK
-   Perhaps, while working on a module, it might be useful
-   to have a command that would find all the subs, and put
-   them in the EXPORT_TAGS.
-
-(5b) Old notion (quite sleazy), identify all variables used,
-    and create "my" listings for them if need be, so that
-    strict won't complain.  If usage is inside a sub, put
-    the my also inside that sub. Note: if globals are in
-    use, this will break.  Have an option/alternate command
-    to presume global scope.
-
-TODO
+===
                                     Sat May 29, 2004  7:43 PM
 shift-R (and A) let's you change the run-string:
-implement analogis shift-C and shift-D (change check command
+implement shift-C and shift-D (change check command
 and debug command).
 
-TODO
-
-Any utility in generalizing this code for other
-languages besides perl.  (Already using it with html, weblint++...).
-
-TODO
-
+===
 How about Mason code?   Any special template.el templates
 for that?  Any peculiarities with "multimode"?
 
-TODO
+===
 
 I often create run-strings that can't be handed to the
 debugger, e.g.
@@ -308,130 +187,80 @@ to be run.
 run-string and do something a little different if it seems
 adviseable, e.g. pick out "cd blah;" and translate it into
 a default-directory change, possibly translate "make test"
-into something the debugger can use (conceivably: change the
-hashbang on the code buffer: add a -d... any pragmas now,
-like "use debug;"?
+into something the debugger can use
 
 (3) add yet another buffer-local run-string, one solely for
 debugger use.
 
-
-TODO
-
-Try writing a routine that does all the usual chrunching
-about filenames/packagenames, and so on, and stashes all
-of it in a single property list (which could be passed
-around, if you like).
-
-Many functions would then become one call to this routine,
-followed by checks of the propertylist to see what's in it.
-
-What kind of stuff would you put in such a structure?
-
-It's becoming apparent that there's alot of virtue in that
-trick that template.el uses of having one data-structure that
-holds a bunch of different info about a given file.
-A bunch of modules begin with the same crunching, I always want:
-   path, basename, extension, pm-name form, module-root, etc.
-There are functions I'd like to split in two, but it's
-awkward to pass all of those different little bits of
-info...  If they were a single alist (or something) it's be
-no problem.
-
-
-TODO
+===
 
 The script-using-this-module command could get
 "$self->current_method_name" pushed into the kill-ring,
 instead of just "current_sub_name".
 
+===
 
-TODO
+The test file name, and the test policy could be
+intepreted backwards to determine what's being tested.
 
 Write code that goes backwards from
    testfile + policy => code under test
-on general principles that it'll be useful someday:
+on general principle that it'll be useful someday:
 
-  (2) the test file name, and the test policy could be
-  intepreted backwards to determine what's being tested.
+===
+                                       Thu Feb 26 11:59:19 2004
 
-TODO
-(.1)
 When a script run-string ends in a re-direct "> blah.txt",
 perlnow should assume that the user will want to see that
 file.  It should be opened in a freshly "reverted" buffer
-at the bottom of the screen (or something).  Thu Feb 26 11:59:19 2004
+at the bottom of the screen (or something).
 
-TODO research ExtUtils
+===
 
-I have a feeling this is probably better for some reason:
-  ;               (format "perl -MExtUtils::Command::MM -e \"test_harness(1, '%s')\"" filename))
-But I couldn't get it to work, so I'm doing this for now:
-                  (format "perl '%s" testfile))
-Someday, read up on these tools.
+Diagramming of perl classes?
 
-TODO
-
-Also: diagramming of perl classes?
-
-TODO feature ideas
-
-How about a package-namespace browser, that builds up a
-hierarchy as actually seen by perl (e.g. works through @INC
-backwards, finds all *.pm files on the system, let's newly
-found locations replace/shadow older ones).
-
-(.2)
+===
+                                            Thu Feb 26 11:59:24 2004
 Need to think carefully about what buffers should be
 displayed when... avoid messing with the buffer layout if
 possible (closing all competing windows just to make sure
 you've got room to open another is excessively fascist).
-                                         -- Thu Feb 26 11:59:24 2004
 
+                                           Fri Apr 23 20:27:03 2004
 Created centralized file open and buffer display
 routines, to simplify fixing this later
 
     perlnow-open-file-other-window
     perlnow-show-buffer-other-window
 
-                -- Fri Apr 23 20:27:03 2004
+====
 
-(.25)
+                                      Mon Apr 19 11:29:51 2004
 Break out behavior of run-string(s) history into configurable settings:
   o  joint history vs separate history.
   o  buffer-local vs global history.
   o  number of concurrently defined runstring commands.
-                                   -- Mon Apr 19 11:29:51 2004
+===
 
-(.6)
-Test with xemacs?  Easy enough, right?
+Test with xemacs.  Easy enough.
 
-
-TODO
+===
 
 Integration with bug database(s)... somehow?
 
+===
 
-(13b) It could be that template.el was a mistake.
-     I could've used Template Toolkit fairly easily,
-     by running perl as an external process (EPL not needed).
+ perlnow-script-using-this-module
+ Option to include the SYNOPSIS section, in commented out form
 
-     In general, think about how to support multiple
-     template alternatives.
+===
 
-(15) In the perlnow-run set-up, might be good if I could
-     find a way of shortening the path to the script.
+ Simple app: list @INC in a readable (useable?) way in a buffer.
 
-     An easy one: convert "/home/doom/" to "~/".
-     Standard lisp to do that?
-(7)
-   TODO:
-   perlnow-script-using-this-module
-   Option to include the SYNOPSIS section, in commented out form
+===
 
-(86) Simple app: list @INC in a readable (useable?) way in a buffer.
+Possible feature:
 
-(96) ;;; TODO FEATURE
 ;;; Weird feature idea: when just tabbing away, and you get to
 ;;; a level boundary, current behavior is to add a separator "/".
 ;;; Does not switch to "::" until the user has entered one.
@@ -439,33 +268,7 @@ Integration with bug database(s)... somehow?
 ;;; time to switch to :: once you've entered a module-root.
 ;;; Sounds cool, but, like: MUCH later.
 
-TODO FEATURE                   Fri Mar 12 14:04:04 2004
-
-As you're working on a module, you're going to add
-subs, and for each one you add, you'll want to add a test
-for it to the *.t file.
-
-  perlnow-add-this-sub-to-test-file
-
-What form test stub?  Maybe:
-  is ( some_sub(), "", "some_sub test");
-
-Expected to add stuff to () and "", so leave the cursor in
-one of them.  Maybe "" is better.  (*some* subs may have
-reasonable output for no args).
-
-Now, if it's an oop module, what form test stub?
-
-  my $test_obj = Modular::Stuff->new();
-  is ( $test_obj->some_sub(), "", "some_sub test");
-
-Note: "new" is just a convention.  "new" might need args.
-Use different $test_obj name for repeated iterations,
-e.g. $test_obj_2, $test_obj_3...
-
-Gets a bit hairy.
-
-TODO FEATURE
+===
 
 Another thought: generate-test-to-lock-behavior.
 
@@ -482,8 +285,9 @@ This is *relatively* easy... Makes copy of the input-file,
 saves a copy of the output, uses a simple test to make
 sure that in the future the one file is generated by the other.
 
+===
 
-TODO FEATURE - perl-later.el or perl-refactory.el
+perl-later.el or perl-refactory.el
 
 Maybe: think about the various *actually* workflows that
 people *really* use.  Like, you write a script, then
@@ -495,10 +299,10 @@ to cut-and-paste?  A new library *or* an already existing
 library.  Make it EXPORT_OK, add in a "use" line that brings
 it in.
 
-TODO FEATURE
+===
 
 Maybe:
-  perlnow-use-this-module-too-other-window
+  perlnow-use-this-module-to-other-window
 
 Theory is you've got a module window open, and are browsing
 code or docs for some other module in the other window.
@@ -506,44 +310,19 @@ You decide, yeah, I want to use this too.  Command should
 check if the additional module is in INC, if not do the
 appropriate use lib, and so on.
 
-TODO SOMEDAY
-App (perl script) called "perl_doctor" that looks for
-symptoms of Bad Things and warns about them.  Version skews,
-package names that aren't in @INC, but look like they're a
-few levels down, modules without "use strict", one-argument
-form of bless, listing of files that can't pass "perl -cw"
-etc. etc.
+===
 
-   (( I think this is "Perl::Critic" ))
-
-TODO (sigh)
-How about, show the module code for the module documentation
-you're browsing?  (emacs is ahead of the game here.)
-
-  (( sepia has this feature, I think ))
-
-
-TODO
-
-Add standard mouse menu type stuff?
+Add mouse menu stuff?
 Hard for me to get right, since I don't use any of it.
 
-TODO
-Feature:
+===
+
 Create hooks.  (*after* and *before*, right?)
 perlnow-new-script-hook,
 perlnow-new-module-hook,
 perlnow-h2xs--hook
 
-TODO FEATURE
-(C) Command to take existing pm, and move it into a newly
-    created h2xs structure, blowing away the h2xs version.
-    Note: this *has* to be a newly created structure (command itself
-    must run h2xs) or else this would be fucking dangerous.
-    Leave a symlink behind for scripts that point at the old
-    location.
-
-((This sounds very good, but I'm going to postpone it.))
+===
 
 TODO  DONTFORGET
 Communicate with template.el author
@@ -553,15 +332,14 @@ Feature requests - TAB
                    Arguments?
 Copyright transfer to FSF okay?
 
+===
 
-
-TODO EMACS IDEA
 Can you fix "man" with a wrapper?  Goal is to *never* lose
 your original context.  When you follow a link, the content
 replaces current man window, web browser style.
 
 ===
-TODO FEATURE               Fri Mar  3, 2006  1:43 PM
+                           Fri Mar  3, 2006  1:43 PM
 
 Just thinking... if the pod for a sub is somewhere some distance
 away from the sub, it would be usefult to have commands to jump
@@ -578,17 +356,18 @@ And vice-versa, starting with perldoc, and then writing a sub.
 
 ===
 
-TODO FEATURE
-
 The listing of subs in the current file would be a useful
 feature.   Make it a hot list, so you can "click" on one
 and jump to it.  (Or jump to it's pod?)  Would also
 like to able to do an insert, start writing a new sub
 given the list of subs...
 
+(( starting to sound like some other ide-ish packages ))
+
+
 ===
 
-BUG                             Sat Mar  4 20:47:29 2006
+                                Sat Mar  4 20:47:29 2006
 
 The edit-test file thing is doing something funny with the
 window sizes...  If you don't have a lot of screen lines,
@@ -600,70 +379,24 @@ new window a little larger than the old.)
 
 ===
 
-FEATURE
-
 Improve C-c / b navigation.  See: /home/doom/End/Cave/Perlnow/Notes/notes-perlnow-version-0.4
 
 ===
-
-FEATURE
 
 Lexical search: automatically narrows to current lexical scope.
 Or failing that, just the current sub (easier).
 
 ===
 
-FEATURE
 Need a template for a *.conf file.
 Maybe: a *.sql file.
 
 ===
 
-BUG
-
- Need to create *.t files that look more like this:
-
-   /home/doom/End/Cave/Relate/Wall/List-Filter/t/List-Filter.t
-
-      use Test::More tests => 3;
-      use FindBin qw($Bin);
-      BEGIN {
-              use lib ("$Bin/../lib", "$Bin/../../..", "$Bin/../t/lib");
-              use_ok('List::Filter');
-      };
-
-(The first path there is needed.
- As is something like the last.
- Not sure about the one in between:
- I think it has to do with a symlink hack I use sometimes:
- if that symlink is useful, it should also be standardized...)
-
-Note: standing problem with *.t file names.  Should be 00.t
-
-Standing problem with supporting Module::Builder (Module::Starter?)
-
-===
-
-TODO
 Need to cover all the perl file extensions:
   (add-to-list 'auto-mode-alist '("\\.\\([pP][Llm]\\|al\\|t\\|pod\\)\\'" . cperl-mode)) ; .pm .pl .t .pod .al?
 Q: what's *.al?
 Q: what about *.mas?  Check mmm-mode set-up.
-
-===
-
-TODO
-
-The "h2xs" command presumes you're doing a proceedural project.
-Maybe it should ask, or (more perlnowish) seperate commands for
-h2xs oop and h2xs proceedural.
-
-Also: look into the trick of automagically cpanifying a single
-stand-alone module
-
-(Sean M. Burke's makepmdist script).  Note: presumes a certain pod convention?
-(( And doesn't simplify things enough to want to go this route. ))
-
 
 ===
 
@@ -693,144 +426,6 @@ Try searching for m{ 1; .*? \A\z\A=  }msx  (translated into elisp).
 
 ===
 
-TODO
-
-Sometimes perlnow's attempts at magically setting the run string correctly
-get in the way: When you've set it to something else manually, it should
-remember that, and avoid over-writing a manual setting.   An "attribute"
-to the string, to tell it hands-off?
-
-===
-
-TODO
-
-Need a different template for testing object oriented modules
-(e.g. create a generic object with new, use ref to check that it's
-class is correct... there are probably others that could be done:
-e.g. a generic sub-class test).
-
-Have:
-
-   TEMPLATE.perlnow-object-pm.tpl
-   TEMPLATE.perlnow-pm-t.tpl
-
-Need:
-
-   TEMPLATE.perlnow-object-pm-t.tpl
-
-Standard tests in general: pod coverage, perl critic, todo clean...
-(how does Andy Lester do it all?)
-
-===
-
-BUG  TODO SOON
-
-I've applied Quinn's bugfix to the 0.4 code:
-  /home/doom/End/Cave/Perlnow/lib/emacs/perlnow.el
-
-Why not write a test for this, in perl?
-
-
-emacs --batch -load=/home/doom/End/Cave/Perlnow/lib/emacs/perlnow.el --file=<<test code>> --funcall=perlnow-get-package-name-from-module-buffer
-
-Argh: actually: need a wrapper function that writes that return to
-a temp file... I think.
-
-Could feed it in with --eval= ?
-
-Use some of Quinn's test cases below, add one with a
-blank line in front of the semicolon, then hack the
-pattern to allow an eol there.
-
-===
-
-Date: Thu, 20 Sep 2007 12:44:03 -0700
-From: Quinn Weaver <quinn@fairpath.com>
-To: doom@kzsu.stanford.edu
-Subject: perlnow bugfixes
-User-Agent: mutt-ng/devel-r581 (FreeBSD)
-
-
-I've been using perlnow a lot, and I just found and fixed two obscure
-bugs.  They're both in (surprise!) a regexp, in
-perlnow-get-package-name-from-module-buffer.
-
-The problem:
-
-I had this:
-
-package My::Perl::Module; {
-    ...
-
-perlnow was detecting My::Perl::Module; to be the package name--including
-the semicolon--and naming my test accordingly.
-
-The culprit:
-
-I tracked the problem down to this regexp in
-perlnow-get-package-name-from-module-buffer:
-
-(let ((package-line-pat "^[ \t]*package[ \t]*\\(.*\\)[ \t;]") ;; captures "Module::Name"
-;;                                          ^    ^
-;;                                          1    2
-
-Problem 1:  That * quantifier allows for zero whitespace between "package"
-and "My::Perl::Module", which is a Perl syntax error.  (I noticed this
-in passing, while trying to work out what the regexp did.)
-
-Problem 2:  The second * quantifier is greedy, which means, in my case,
-that it was matching "My::Perl::Module;" and THEN the [ \t;] was matching
-the trailing space.  So the semicolon was captured.
-
-The solution:
-
-"^[ \t]*package[ \t]+\\(.*?\\)[ \t;]"
-                    ^     ^
-                    1     2
-
-Solution 1:  The + quantifier forces at least one space or tab between "package"
-and "My::Perl::Module
-
-Solution 2:  The ? makes * non-greedy, so that it stops at the first space,
-tab, or semicolon.
-
-Test cases (not exhaustive):
-
-package My::Perl::Module;      # yields "My::Perl::Module"
-packageMy::Perl::Module;       # yields nil now (should it raise an error?)
-package My::Perl::Module; {    # yields "My::Perl::Module"
-package My::Perl::Module; blah # yields "My::Perl::Module"
-package My::Perl::Module ;     # yields "My::Perl::Module"
-
-All this makes me wish elisp had a good test harness.  Maybe it does...
-Must read up on this someday.
-
-PS:  The reason I noticed this is that I started using Object::InsideOut
-Praise be to Jerry Hedden, he's made me learn to love Perl again.
-I love this module.
-
-The suggested style is something like this:
-
-package My::Perl::Module; { # There's that troublesome trailing bracket
-    use strict;
-    use warnings;
-
-    use Object::InsideOut;
-    my @attribute :Field;
-    ...
-
-Again, thanks for writing perlnow.  It's awesome.  Keep up the good work! :)
-
-===
-
-TODO
-
-Also need a command that runs "prove", I think.
-
-===
-
-TODO
-
 A need for shared blocks of text between templates
 that are also project-specific: e.g. the copyright
 notice.  Define these as defvar strings, make them
@@ -838,22 +433,6 @@ available to template.el templates as tokens.
 
 ===
 
-TODO
-
-Have perlnow.el conditionally attempt to require template.el.
-If that fails, disable features that depend on it.
-
-   See image-dired.el
-
-===
-
-TODO
-
-Generate skeleton of attribute documentation automatically
-  perlnow-document-accessors-from-attributes-array
-
-===
-TODO
                          Fri Mar  7 02:38:46 2008
 perlnow-perlversion-old-to-new:
 Get a definitive list of cases of perl versions that it
@@ -865,28 +444,6 @@ are continually in flux.)
 
 ===
 
-The version of h2xs current as of 5.8.x still inserts
-"__END__"s in modules.   Sucks: breaks mod_perl.
-
-   (a) Look into Module::Build  (( done, more or less ))
-   (b) Want customizeable templates.
-       Simple way: run h2xs, then replace whatever it produces
-       with a templated version, if the templates exist.
-
-                          Sun Aug 23 13:14:12 2009
-
-   And ditto for module build (via module starter)!
-
-   Every file automatically generated by one of these needs a
-   standard, obvious way it can be overridden by a template:
-   and yet you should be able to ignore that, if you're so inclined,
-   and live with the ones that come out of the tools.
-
-   This is not that hard to do, so work it out.
-
-===
-
-TODO
 *Really* need to replace blank lines with empty lines on
 either side of a pod tag (^=).
 
@@ -894,47 +451,19 @@ For that matter, opening up empty lines on either side of
 pod tags would probably be a good idea.
 
 ===
-TODO
-
-Badly need a way to restrict an ispell run to pod-only.
-
-   perlnow-ispell-next-chunk-of-pod
-
-Then interate over all of them with:
-
-   perlnow-ispell-pod
-
-Also useful:
-
-   perlnow-ispell-this-chunk-of-pod
-
-===
-
-TODO
-
-I'm writing parallel routines to deal with Module::Build...
-would it make more sense to have single routines that detect
-the presence of Makefile.PL of Build.PL, and does The Right Thing
-accordingly?
-
-===
-TODO FEATURE
 
 If you create a module from another module, should you get the
 same automatic use features that scripts get?
 
 ===
 
-TODO FEATURE
-
 Creating a script in a cpan-style tree, the script should
 default to being inside the tree, in the right place, maybe:
   <staging area>/bin
 
 ===
-===
 
-TODO PERLNOW                Thu Dec 10 17:21:43 2009
+                                   Thu Dec 10 17:21:43 2009
   What if you want to create a test file first?
   If you start from a text file, and do a: C-c / t
   You get:
@@ -952,14 +481,7 @@ Starting from "*Man LWP*", and trying to create a script:
 It barfs like so:
 menu-bar-update-yank-menu: Wrong type argument: stringp, nil
 
-
-BUG                  Tue Dec 29 15:10:54 2009
-
-C-c / R
-  let's you set the run-string, but it  always (often?)
-  zeroes it out to the original guess value: this makes
-  it hard to do repeated edits of the run-string.
-
+===
 
 BUG               Wed Dec 30 17:26:50 2009
 
@@ -977,36 +499,6 @@ It creates a script with double-colons embedded in the name.
 
 ===
 
-Idea:
-
-perlnow-revise-export-list
-
-C-x C-o
-(delete-blank-lines)
-(open-line)
-
-===
-
-Template:
-module
-(others?)
-
-EXPORT needs
-=over
-=back
-pair
-
-
-If this stuff is good for scripts, it's good for modules, no?
-
-use File::Path     qw( mkpath );
-use File::Basename qw( fileparse basename dirname );
-use File::Copy     qw( copy move );
-use Fatal          qw( open close mkpath copy move );
-use Cwd            qw( cwd abs_path );
-
-===
-
 BUG
 
 From a module:
@@ -1020,34 +512,6 @@ not the *.t.
 
 ===
 
-BUG             Tue Jan  5 12:25:45 2010
-
-While inside Captialize.pm:
-  C-c \ r
-
-perlnow-list-test-files, looking at buffer: Capitalize.pm
-if: Text from Text::Capitalize not found in expected place in /home/doom/End/Cave/TextCap/Wall/Text/Capitalize/
-
-This is my oldest CPAN project, and the structure is *really* peculiar:
-
-  ~/End/Cave/TextCap/Wall/Text/Capitalize/Capitalize.pm
-
-Where I've dropped in a symlink to make it half-way useable:
-
-  /home/doom/End/Cave/TextCap/Wall/Text:
-  total used in directory 16 available 7186424
-  drwxr-xr-x 9 doom doom 4096 2010-01-05 01:02 Capitalize
-  lrwxrwxrwx 1 doom doom   24 2009-02-28 16:43 Capitalize.pm -> Capitalize/Capitalize.pm
-
-I think perlnow.el wants to see a "lib" directory.
-I suspect that h2xs used to do this shit to you.
-
-Should I *fix* perlnow.el?  Temptation is to just re-create the Text::Capitalize tree.
-
-If there *is* a way to adjust the perlnow.el code to cover this
-case, then it could be good to keep this dinosaur around as a test case.
-
-===
 
 BUG               Thu Jan  7 23:06:26 2010
 
@@ -1139,3 +603,5 @@ If it stalled on guessing a run-string until it was actually
 run, this little problem would be covered.
 
 ===
+
+
