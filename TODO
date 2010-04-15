@@ -1,8 +1,14 @@
-                                                       Wed Feb  8, 2006
-                                            Last rev:  Thu Apr 15, 2010
+                                                        February 8, 2006
+                                            Last rev:   April   16, 2010
 
-The latest Master Todo/Bug List:
+Master list of known bugs and feature requests
+
 ===
+FEATURE
+Doing a perlnow code creation command while inside a dired buffer
+should use that location by default, rather than the fixed default.
+===
+
 BUG
   module man pages don't regard '::' as part of a word.
   Something like this improves things:
@@ -36,6 +42,7 @@ get in the way: When you've set it to something else manually, it should
 remember that, and avoid over-writing a manual setting.   An "attribute"
 to the string, to tell it hands-off?
 
+===
 BUG                  Tue Dec 29 15:10:54 2009
 
 C-c / R
@@ -44,61 +51,36 @@ C-c / R
   it hard to do repeated edits of the run-string.
 
 ===
-
 BUG
 
-If the *compilation* buffer is displayed in some other frame,
+If the *compilation* buffer is already displayed in some other frame,
 that can cause problems.  Possible fix: always kill *compilation*
-before a perlnow-run.
+before a perlnow-run.  (verify still a problem -- Thu Apr 15 12:46:59 2010)
 
 ===
 FEATURE
 Built-in support for perltidy (alternative to C-M-\)
 
   o maybe: automatically generate standard elisp wrappers
-    around frequently used shell commands.
+    around some frequently used shell commands.
+    (begun compiling a "cookbook" of types of wrappers)
 
 ===
 FEATURE
 sub awareness
-  o narrow to current sub (q: include adjacent pod?)
+  o narrow to current sub (Q: include adjacent pod?)
+      like narrow-to-defun
   o select sub (Q: include adjacent pod?)
   o move sub (both code and pod, if any, adjacent or not).
+       i.e. "refactoring" tools.
   o display current sub in status bar.
-===
-Beyond etags: better indexing of perl code.  Swish-E?  A distro feature?
-Maybe use B:* modules to report on all subs: definitions *and* where called
-   B::Xref - Generates cross reference reports for Perl programs
-Note: look into glimpse and "glimpse-mode" (Tom Lane likes glimpse).
-===
 
-Add support for other templating systems:
-   tempo.el
-   Template::Toolkit
-   Mason
+                                     Thu Apr 15 12:49:52 2010
+  Maybe: come up with a style of two-window display for subs.
+  When working on a sub, you see the code in one, and the
+  documentation in the other, irrespective of whether it's
+  actually adjacent to the code, or buried down at the bottom.
 
-Possibly: a translator to create tempo.el files from template.el templates.
-
-Another "policy" feature: default types of template for
-(1) file creation
-(2) insertion of method framework (skeleton?)
-
-===
-Feature:
-If you create a module/script in a tree under version control
-(RCS, CVS), any newly created directories should be added to the
-repository.  Settable policy: automatically add the perl file
-itself also.
-===
-Feature:
-Doing a perlnow code creation command while inside a dired buffer
-should use that location by default, rather than the
-fixed default.
-===
-
-C-M-f and C-M-b, when used in the middle of an expression, should skip
-you to the beginning or end of that expression (currently, it just
-errors).
 ===
 Want to run ispell on pod only.
 Alternately: run ispell on pod and comments only.
@@ -116,6 +98,33 @@ Also useful:
 
 ===
 
+Beyond etags: better indexing of perl code.  Swish-E?  A distro feature?
+Maybe use B:* modules to report on all subs: definitions *and* where called
+   B::Xref - Generates cross reference reports for Perl programs
+Note: look into glimpse and "glimpse-mode" (Tom Lane likes glimpse).
+
+                                       Thu Apr 15 12:52:29 2010
+(1) perlnow-ack is an excellent stop-gap for this kind of thing.
+(2) need to review what other people have got (sepia, etc).
+
+===
+
+Support for other templating systems (template-i.el, "template independant")
+   tempo.el
+   Template::Toolkit
+   Mason
+
+Possibly: a translator to create tempo.el files from template.el templates.
+
+Another "policy" feature: default types of template for
+(1) file creation
+(2) insertion of method framework (skeleton?)
+
+===
+C-M-f and C-M-b, when used in the middle of an expression, should skip
+you to the beginning or end of that expression (currently, it just
+errors).
+===
 run-string
   o  need additional ones, e.g. a 'debug' as well as a 'run' and 'test'?
   o  manipulation commands, e.g. perlnow-save-run-string-to-alt-run-string
@@ -190,7 +199,7 @@ a default-directory change, possibly translate "make test"
 into something the debugger can use
 
 (3) add yet another buffer-local run-string, one solely for
-debugger use.
+debugger use.  (least painful, no? -- Thu Apr 15 13:00:02 2010)
 
 ===
 
@@ -200,12 +209,12 @@ instead of just "current_sub_name".
 
 ===
 
-The test file name, and the test policy could be
-intepreted backwards to determine what's being tested.
-
 Write code that goes backwards from
    testfile + policy => code under test
 on general principle that it'll be useful someday:
+
+The test file name, and the test policy could be
+intepreted backwards to determine what's being tested.
 
 ===
                                        Thu Feb 26 11:59:19 2004
@@ -217,7 +226,7 @@ at the bottom of the screen (or something).
 
 ===
 
-Diagramming of perl classes?
+Diagramming of perl classes?  Of dependencies?
 
 ===
                                             Thu Feb 26 11:59:24 2004
@@ -252,10 +261,6 @@ Integration with bug database(s)... somehow?
 
  perlnow-script-using-this-module
  Option to include the SYNOPSIS section, in commented out form
-
-===
-
- Simple app: list @INC in a readable (useable?) way in a buffer.
 
 ===
 
@@ -570,15 +575,15 @@ BUG
 Would have liked perlnow to find this already existing "t",
 and create this file:
 
-/home/doom/End/Ag/API/Goncarova/gen/t/Goncarova-Image-Mod.t
+  ~/End/Ag/API/Goncarova/gen/t/Goncarova-Image-Mod.t
 
 When it was started up from this file:
 
-/home/doom/End/Ag/API/Goncarova/gen/lib/perl/Goncarova/Image/Mod.pm
+  ~/End/Ag/API/Goncarova/gen/lib/perl/Goncarova/Image/Mod.pm
 
 Instead it put it in
 
-/home/doom/End/Ag/API/Goncarova/gen/lib/perl/Goncarova/Image/t
+  ~/End/Ag/API/Goncarova/gen/lib/perl/Goncarova/Image/t
 
 ===
 
@@ -595,4 +600,40 @@ run, this little problem would be covered.
 
 ===
 
+                                Thu Apr 15 12:42:53 2010
 
+Really need some form of automated tests.
+I've had a lot of difficulty in getting consistent behavior
+with the most recent versions (circa 0.4).  E.g. improve
+the code to guess a run-string, and realize belatedly that
+you're blowing away user-set run-strings at odd times.
+
+===
+
+                                Thu Apr 15 14:17:15 2010
+
+Look at declared variables in a given scope (a sub?)
+and report on any that are un-used.  Possibly: mark them
+up with comments, which can then be used to remove them.
+
+That could work with something like an "unpack object"
+routine that generates a chunk of code like
+  my $atttribute = $self->attribute;
+  my $widgit     = $self->widgit;
+  my $flag       = $self->flag;
+
+unpack all object attributes (alt form: hash fields),
+then later clean-up the un-used ones.
+
+===
+
+Come to grips with the Too Many Ways To Do It problem.
+You just *can't* support all of them.
+
+In addition to the general perlnow.el package, add variants
+that deal with different perl sub-worlds: perlnow-moose.el
+perlnow-class-base.el, etc.
+
+In effect "plug-ins".
+
+===
