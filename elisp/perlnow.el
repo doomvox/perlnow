@@ -6,7 +6,7 @@
 ;; Copyright 2004, 2007, 2009 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
-;; Version: $Id: perlnow.el,v 1.318 2009/12/04 09:16:23 doom Exp root $
+;; Version: $Id: perlnow.el,v 1.318 2009/12/04 09:16:23 doom Exp $
 ;; Keywords:
 ;; X-URL: http://obsidianrook.com/perlnow/
 
@@ -3752,6 +3752,38 @@ array, or nil if it is not found."
                   (throw 'TANTRUM full)))))
     retval))
 
+;; TODO could be used by the above to generate the inc-path-list
+(defun perlnow-all-inc-spots ()
+  "Return a list of all locations in perl's @INC array."
+  (let* ((full)
+         (perl-inc
+          (shell-command-to-string
+           "perl -e 'foreach (@INC) {print \"$_\t\"}'" ))
+         (inc-path-list (split-string perl-inc "\t"))
+         )
+    inc-path-list))
+
+(defun perlnow-display-inc-array ()
+  "Show a listing of all locations in perl's @INC array.
+Opens a buffer called \"\" in  other window.
+Returns the name of display buffer."
+  (interactive)
+  (let* ((inc-path-list (perlnow-all-inc-spots))
+         (display-buffer "*perlnow @INC*")
+         (switch-back   nil)
+         )
+    (perlnow-show-buffer-other-window display-buffer)
+    (perlnow-blank-out-display-buffer display-buffer switch-back)
+    (mapc
+      (lambda (item)
+        (insert (format "   %s\n" item))
+        )inc-path-list)
+    (goto-char (point-min))
+    (setq buffer-read-only t)
+    ;; TODO make the dir names hot: run dired when you hit return, etc.
+    display-buffer))
+
+
 ;;;==========================================================
 ;;; Read perlmodule path and names in one step
 ;;; (used by perlnow-module)
@@ -4071,9 +4103,9 @@ Perl package example: given \"/home/doom/lib/Taxed::Reb\" should return
 ;;; General utilities (which might not really belong in this package)
 
 (defun perlnow-grep (pattern list)
-  "A simple implementation of perl's grep.
+  "A simple implementation of a perl-style grep.
 Return a new list of elements from LIST that match PATTERN.
-LIST is presumed to be a list of strings."
+LIST is presumed to be a list of strings. Uses elisp regexps."
   (let ( (new-list) )
     (dolist (item list)
       (if (string-match pattern item)
