@@ -1117,7 +1117,7 @@ to adopt a standard set of keymappings, but they're not
 forced on you.  Note: these all use the \"C-c/\" prefix by
 default, unless a different PREFIX is supplied.
 A few mappings are also included for useful functions that are
-defined elsewhere:
+defined outside of perlnow:
 \\[cperl-perldoc-at-point], \\[comment-region] and \\[narrow-to-defun]."
   (interactive)
   (unless prefix (setq prefix "\C-c/"))
@@ -1133,18 +1133,18 @@ defined elsewhere:
            (replace-regexp-in-string
             "%s" prefix
             "'(lambda ()
-               (global-set-key \"%sc\" 'perlnow-run-check)
-               (global-set-key \"%sr\" 'perlnow-run)
-               (global-set-key \"%sa\" 'perlnow-alt-run)
-               (global-set-key \"%sd\" 'perlnow-perldb)
-               (global-set-key \"%sR\" 'perlnow-set-run-string)
-               (global-set-key \"%sA\" 'perlnow-set-alt-run-string)
-               (global-set-key \"%st\" 'perlnow-edit-test-file)
-               (global-set-key \"%sb\" 'perlnow-back-to-code)
-               (global-set-key \"%s1\" 'cperl-perldoc-at-point)
-               (global-set-key \"%s#\" 'comment-region)
-               (global-set-key \"%sN\" 'narrow-to-defun)
-               (global-set-key \"%si\" 'perlnow-insert-sub)
+               (local-set-key \"%sc\" 'perlnow-run-check)
+               (local-set-key \"%sr\" 'perlnow-run)
+               (local-set-key \"%sa\" 'perlnow-alt-run)
+               (local-set-key \"%sd\" 'perlnow-perldb)
+               (local-set-key \"%sR\" 'perlnow-set-run-string)
+               (local-set-key \"%sA\" 'perlnow-set-alt-run-string)
+               (local-set-key \"%st\" 'perlnow-edit-test-file)
+               (local-set-key \"%sb\" 'perlnow-back-to-code)
+               (local-set-key \"%s1\" 'cperl-perldoc-at-point)
+               (local-set-key \"%s#\" 'comment-region)
+               (local-set-key \"%sN\" 'narrow-to-defun)
+               (local-set-key \"%si\" 'perlnow-insert-sub)
                )"
             ))
          )
@@ -1153,6 +1153,11 @@ defined elsewhere:
     ))
 ;; TODO -- use perlnow-lookup-preferred-perl-mode instead (somehow)
 ;; TODO -- why am I doing "global-set-key"s in there?  Counterproductive, no?
+
+;; TODO test this:
+;; Note, in the inner define-perl-bindings-string, I'm trying this:
+;;    global-set-key => local-set-key
+
 
 
 ;;;==========================================================
@@ -3118,15 +3123,12 @@ to anything."
     (next-line 1)
     menu-buffer-name)) ;; just to return something.
 
-
-
-(defun perlnow-latest-test-file (test-file-list)
+;; An older approach (circa 0.4), not currently in use
+(defun perlnow-latest-test-file-numeric-prefix (test-file-list)
   "Given a list of test files, select the \"latest\" one.
 By latest, we mean the one a developer is most likely to want to
 work on, which currently means the the one with the largest
 numeric sort-order prefix."
-  ;; first cut:
-  ;; grep for numeric prefixes, sort, return the last.
   (let* ( (new-list
            ;;            (perlnow-grep "^[0-9]*?-" test-file-list))
            (perlnow-grep "/[0-9]*?-.*?$" test-file-list))
@@ -3135,6 +3137,45 @@ numeric sort-order prefix."
           )
     last-item
     ))
+
+;;--------
+;; getting the most recently modified file
+
+(defun perlnow-file-mtime (filename)
+  "Return the mtime for the given FILENAME."
+  (let* (( attribs    (file-attributes filename) )
+         ( mtime-pair (nth 5 attribs) )
+         ( mtime-high (nth 0 mtime-pair))
+         ( mtime-low  (nth 1 mtime-pair))
+         ( mtime      (+ (* 65536 mtime-high) mtime-low))
+         )
+    mtime
+    ))
+
+(defun perlnow-file-mtime-p (a b)
+  "A \"predicate\" to sort files in order of decreasing age."
+  (> (perlnow-file-mtime a) (perlnow-file-mtime b)))
+
+(defun perlnow-sort-file-list-by-mtime (list)
+  "Given the LIST of file names, sorts it by mtime."
+  (let* ( (sorted-list (sort list 'perlnow-file-mtime-p))
+          )
+    sorted-list))
+
+(defun perlnow-most-recently-modified-file (list)
+  "Get the most recently modified file, given a LIST of files."
+  (car (perlnow-sort-file-list-by-mtime list)))
+
+;; Compatibility wrapper, used to swap in new behavior
+(defun perlnow-latest-test-file (test-file-list)
+  "Given a list of test files, select the \"latest\" one.
+By latest, we mean the one that's most recently modified,
+on the theory that that's the one you're likely to want to
+work on again."
+  (perlnow-most-recently-modified-file test-file-list)
+  )
+
+
 
 ;; TODO SOON re-write to find "latest numeric"? -- Mon Sep  7 13:38:35 2009
 ;; Possibly using: perlnow-latest-test-file
@@ -3546,12 +3587,12 @@ Returns the module root, \(which in this example is:
                ))))
     inc-spot))
 
-;; TODO what I'm calling the "new form" here is usually
-;;      called "v-strings", and they have been going
+;; TODO what I'm calling the "new form" here may be
+;;      named "v-strings", and they have been going
 ;;      in-and-out of style.
 (defun perlnow-perlversion-old-to-new (given-version)
   "Convert old form of perl version into the new form.
-For example, an GIVEN-VERSION might be 5.006 for which the new is 5.6.0
+For example, a GIVEN-VERSION might be 5.006 for which the new is 5.6.0
 which is more suitable for use as the -b parameter of h2xs.
 If given a version that is already in the new style, just
 passes it through unchanged."
@@ -3763,6 +3804,9 @@ array, or nil if it is not found."
          )
     inc-path-list))
 
+;; TODO make the listed dir names hot: run dired when you hit return, etc.
+;; Maybe better: list all modules (with versions?) installed at that point.
+;; A further step: integrate with CPAN.pm/CPANPLUS
 (defun perlnow-display-inc-array ()
   "Show a listing of all locations in perl's @INC array.
 Opens a buffer called \"\" in  other window.
@@ -3780,7 +3824,6 @@ Returns the name of display buffer."
         )inc-path-list)
     (goto-char (point-min))
     (setq buffer-read-only t)
-    ;; TODO make the dir names hot: run dired when you hit return, etc.
     display-buffer))
 
 
@@ -4202,6 +4245,18 @@ Usage examples:
             (setq retval (nth (abs level) (reverse list)))))
     ))
 
+;; TODO someone must have another way of doing this.  PDE?
+(defun perlnow-run-perltidy-on-region (start end)
+  "Format the region using perltidy."
+  (interactive "r")
+  (let ( (command
+          (format "perltidy --standard-output --standard-error-output"
+                  )) )
+    (shell-command-on-region start end command nil t "*error*")
+    ))
+
+
+
 
 ;;;==========================================================
 ;; Insert boilerplate commands.
@@ -4495,11 +4550,11 @@ EXPORT lists, and add them to the qw() list associated with %EXPORT_TAGS."
 
 
 ;;;==========================================================
-;;; Intentionally neglected commands (the "alt").  Bumping 'em down
-;;; here where I can forget about them for now.
-;;; Reimplement later.  Maybe:
-;;; work out a way to extend the main routines to do the "alt"
-;;; handling?
+;;; Intentionally neglected commands (use "alt" runstrings).
+;;; Bumping 'em down here where I can forget about them for now.
+;;; Reimplement later.
+;;; Maybe: work out a way to extend the main routines
+;;; to do the "alt" handling?
 
 (defun perlnow-alt-run (alt-run-string)
   "Run the perl code in this file buffer.
@@ -4566,7 +4621,7 @@ assumes it's a perl script.  The heuristics for setting a default
 
 
 ;;;==========================================================
-;;; Older (if not quite deprecated) user level creation commands
+;;; Older (though not deprecated) user level creation commands
 
 (defun perlnow-script-using-this-module (script)
   "Jump quickly into a new SCRIPT that uses the current module code.
