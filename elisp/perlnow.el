@@ -105,13 +105,6 @@ change the run-string used by perlnow-run.
 
 \\[perlnow-perldb] - runs the perl debugger using the above run string.
 
-\\[perlnow-alt-run] - works just like \\[perlnow-run]
-except that it uses the \"alt-run-string\" rather than
-the \"run-string\".
-
-\\[perlnow-set-alt-run-string] - Allows the user to manually
-change the alt-run-string used by perlnow-alt-run.
-
 A list of some important functions that require template.el:
 \\[perlnow-script]
 \\[perlnow-module]
@@ -173,10 +166,8 @@ to modify them individually:
    \(global-set-key \"\\C-c/O\" 'perlnow-module-starter\)
    \(global-set-key \"\\C-c/c\" 'perlnow-run-check\)
    \(global-set-key \"\\C-c/r\" 'perlnow-run\)
-   \(global-set-key \"\\C-c/a\" 'perlnow-alt-run\)
    \(global-set-key \"\\C-c/d\" 'perlnow-perldb\)
    \(global-set-key \"\\C-c/R\" 'perlnow-set-run-string\)
-   \(global-set-key \"\\C-c/A\" 'perlnow-set-alt-run-string\)
    \(global-set-key \"\\C-c/t\" 'perlnow-edit-test-file\)
    \(global-set-key \"\\C-c/i\" 'perlnow-insert-sub\)
    \(global-set-key \"\\C-c/b\" 'perlnow-back-to-code\)
@@ -204,9 +195,9 @@ that \"M-p\" is used in many contexts for \"history\" navigation.
 And be aware that \"C-x p\" is used by the p4.el package \(a
 front-end to the proprietary perforce version control system\).
 
-Caveats: perlnow.el is know to work with GNU emacs versions 21
-through 23, and was developed on a linux box \(aka GNU/Linux\).
-Reportedly, it does not work with xemacs.")
+Platform coverage: perlnow.el is known to work with GNU emacs
+versions 21 through 23, and was developed under linux
+\(aka GNU/Linux\). Reportedly, it does not work with xemacs.")
 
 (defvar perlnow-documentation-terminology t
   "Definitions of some terms used here:
@@ -588,7 +579,7 @@ commands \\[perlnow-run] and \\[set-perlnow-run-string] there
 are now \\[perlnow-alt-run] and \\[set-perlnow-alt-run-string].
 The \"alt-run\" commands behave identically to the \"run\" commands,
 but they use a different buffer-local variable to store the run
-string.
+string.  (Warning: deprecated, as of 2010, version 0.42.)
 
 And if you need to switch between more than two run strings,
 there's always the minibuffer \"history\" features typically
@@ -970,6 +961,9 @@ code (e.g. a full barrage of tests, rather than just one test file).")
 
 (defvar perlnow-script-alt-run-string nil
   "The alternative run string for perl scripts, used by \\[perlnow-alt-run].
+
+  Warning: Deprecated feature.
+
 Leave this set to nil unless you want to override the heuristics
 used by \\[perlnow-set-alt-run-string] to determine the way to test
 the current script.  This is a buffer local variable, i.e. it
@@ -979,6 +973,9 @@ may be set differently for different files.")
 
 (defvar perlnow-module-alt-run-string nil
   "The alternative run string for perl modules, used by \\[perlnow-alt-run].
+
+   Warning: Deprecated feature.
+
 Leave this set to nil unless you want to override the heuristics
 used by \\[perlnow-set-alt-run-string] to determine the way to test
 the current script.  This is a buffer local variable, i.e. it
@@ -1154,9 +1151,6 @@ defined outside of perlnow:
 ;; TODO -- use perlnow-lookup-preferred-perl-mode instead (somehow)
 ;; TODO -- why am I doing "global-set-key"s in there?  Counterproductive, no?
 
-;; TODO test this:
-;; Note, in the inner define-perl-bindings-string, I'm trying this:
-;;    global-set-key => local-set-key
 
 
 
@@ -4558,6 +4552,9 @@ EXPORT lists, and add them to the qw() list associated with %EXPORT_TAGS."
 
 (defun perlnow-alt-run (alt-run-string)
   "Run the perl code in this file buffer.
+
+   Warning: Deprecated feature.
+
 This uses an interractively set ALT-RUN-STRING determined
 from `perlnow-alt-run-string' which may have been set by using
 \\[perlnow-set-alt-run-string].  If `perlnow-alt-run-string' is nil,
@@ -4576,6 +4573,9 @@ The alt run string can always be changed later by running
 
 (defun perlnow-set-alt-run-string ()
   "Prompt the user for a new alternative run string for the current buffer.
+
+  Warning: Deprecated feature.
+
 This sets the global variable `perlnow-alt-run-string' that \\[perlnow-alt-run]
 will use to run the code in future in the current buffer.
 Frequently, the user will prefer to use \\[perlnow-alt-run] and let it
