@@ -41,7 +41,7 @@
 (eval-when-compile
   (require 'cl))
 
-(defconst perlnow-version "0.42"
+(defconst perlnow-version "0.43"
   "The version number of the installed perlnow.el package.
 Check <http://obsidianrook.com/perlnow/> for the latest.")
 
@@ -1338,17 +1338,20 @@ can find the module."
     "Name for the new perl script? " perlnow-script-location))
   (require 'template)
   (let (package-name)
+    ;; Note: perlnow-perl-package-name is used to pass name into template
     (cond
-     ((setq package-name (perlnow-get-package-name-from-module-buffer)) ;; and this is a module
+     (;; starting from module
+      (setq package-name (perlnow-get-package-name-from-module-buffer))
       (let* ((pm-file (buffer-file-name)) ;;
              (pm-location (file-name-directory pm-file))
              (inc-spot (perlnow-get-inc-spot package-name pm-location)))
-        (setq perlnow-perl-package-name package-name) ; global used to pass value into template
+        (setq perlnow-perl-package-name package-name)
         (perlnow-do-script-from-module script-name package-name inc-spot)))
-     ((setq package-name (perlnow-get-package-name-from-man)) ;; if so, it's a man page...
-      (setq perlnow-perl-package-name package-name) ; global used to pass value into template
+     (;; starting from man page
+      (setq package-name (perlnow-get-package-name-from-man))
+      (setq perlnow-perl-package-name package-name)
       (perlnow-do-script-from-module script-name package-name))
-     (t ;; no package name found, so we're working with a script
+     (t ;; no special starting place
       (perlnow-do-script script-name)))))
 ;;;   TODO
 ;;;    Someday: check if module is in INC (when starting from man)
@@ -1979,22 +1982,28 @@ See the wrapper function: \\[perlnow-script] (or possibly the older
 \\[perlnow-script-using-this-module])."
   ;; Presumption: if inc-spot is nil, then we got here from a man page buffer,
   ;; and we can assume the module is installed (or the man page most
-  ;; likely wouldn't be there).  TODO check that and warn otherwise?
+  ;; likely wouldn't be there).
   (let* ((initial (current-buffer))
+         (man-page-p (eq inc-spot nil))
          (created))
-    (perlnow-sub-name-to-kill-ring)
+    (unless man-page-p
+      (perlnow-sub-name-to-kill-ring))
     ;; module is displayed, now want to open script, show in paralel
     (perlnow-open-file-other-window
-     script-name
-     nil
-     perlnow-perl-script-template)
+       script-name
+       nil
+       perlnow-perl-script-template)
     (setq created (current-buffer))
 
-    (switch-to-buffer initial) ;; TODO make sense?
     ;; Make the script we've created the default run-string for this module.
-    (setq perlnow-run-string (perlnow-generate-run-string-and-associate script-name))
-
-    (switch-to-buffer created)
+    (set-buffer initial)
+    (setq perlnow-run-string
+          (cond (man-page-p
+                 (perlnow-generate-run-string script-name))
+                (t
+                 (perlnow-generate-run-string-and-associate script-name))
+                ))
+    (set-buffer created)
     ;; forget about a "use" line for things that don't look like perl modules.
     (let ( (case-fold-search nil)
            (import-string "" ) )
@@ -2510,23 +2519,29 @@ or to see if a perl mode has \(somehow\) been enabled."
   "Get the module name from the first package line.
 This will be in perl's double colon separated form, or it will
 return nil if none is found."
+  ;; (initial-point (point)) ;; I don't trust save-excursion
   (save-excursion
-    (let ((package-line-pat "^[ \t]*package[ \t]+\\(.*?\\)[ \t;]")
-              ;; captures "Module::Name"
-          ;; initialize for loop
-          (keep-going-p t)
-          (return nil))
+    (let* ((package-line-pat "^[ \t]*package[ \t]+\\(.*?\\)[ \t;]")
+           ;; captures "Module::Name"
+           (module-name nil)
+           (line-count 1)
+           (line-limit 24)
+           moved   ;; if not moved, we're at eof
+           )
       (goto-char (point-min))
-      (while keep-going-p
-        (progn
-         (cond ((looking-at package-line-pat)
-                (setq return (match-string-no-properties 1))
-                (setq keep-going-p nil)
-                ))
-         (unless (= 0 (forward-line 1))
-           (setq keep-going-p nil))
-         ))
-      return)))
+      ;; repeat ... untill
+      (while (progn
+               (if (looking-at package-line-pat)
+                   (setq module-name (match-string-no-properties 1)))
+               (setq moved (forward-line 1))
+               (setq line-count (1+ line-count))
+               ;; until we've got the name, gone too far, or at the end
+               (not (or
+                     module-name
+                     (> line-count line-limit)
+                     (not moved)))
+               ))
+      module-name)))
 
 ;; Not in use: typically want to *know* if it came from a code
 ;; buffer or a man page.
@@ -2552,28 +2567,28 @@ scraping the module name from the man page buffer, and returns
 it's best guess."
   (save-excursion
     (let ( return buffer-name-string candidate-list
-                  candidate-1 candidate-2 candidate-3
+                  candidate
                   (buffer-name-string (buffer-name))
                   )
-      (cond
-       ((string-match "\\*Man \\(.*\\)\\*$" (buffer-name))
-        (setq candidate-1 (match-string 1 buffer-name-string))
-        (setq candidate-list (cons candidate-1 candidate-list))
-        (goto-char (point-min))
-        (if (re-search-forward "NAME[ \t\n]*\\([^ \t]*\\)[ \t]" nil t)
-            (progn
-              (setq candidate-2 (match-string 1))
-              (setq candidate-list (cons candidate-2 candidate-list))))
-        (goto-char (point-min))
-        (if (re-search-forward "SYNOPSIS[ \t\n]*use \\(.*\\)[ ;]" nil t)
-            (progn
-              (setq candidate-3 (match-string 1))
-              (setq candidate-list (cons candidate-3 candidate-list))))
-        (setq return
-              (perlnow-vote-on-candidates candidate-list))
-        )
-       (t
-        (setq return nil))))))
+      (goto-char (point-min))
+      (cond ((string-match "\\*\\(Wo\\)*Man \\(.*\\)\\*$" (buffer-name))
+             (setq candidate (match-string 2 buffer-name-string))
+             (setq candidate-list (cons candidate candidate-list))
+             (goto-char (point-min))
+             ))
+      (cond ((re-search-forward "NAME[ \t\n]*\\([^ \t]*\\)[ \t]" nil t)
+             (setq candidate (match-string 1))
+             (setq candidate-list (cons candidate candidate-list))
+             (goto-char (point-min))
+             ))
+      (cond ((re-search-forward "SYNOPSIS[ \t\n]*use \\(.*\\)[ ;]" nil t)
+             (setq candidate (match-string 1))
+             (setq candidate-list (cons candidate candidate-list))
+             (goto-char (point-min))
+             ))
+      (setq return
+            (perlnow-vote-on-candidates candidate-list))
+      return)))
 
 ;; used by perlnow-get-package-name-from-man
 (defun perlnow-vote-on-candidates (candidate-list)
@@ -2601,6 +2616,12 @@ this favors the earlier occurrence in the list."
               (setq high_scorer string))
           ))
       high_scorer)))
+
+;; DEBUG
+;; (perlnow-vote-on-candidates
+;;  '("wuh" "tew" "tew" "thuree" "tew" "wuh" "wuh")) ;; returns whu (good)
+;; (perlnow-vote-on-candidates '()) ;; returns nil (good)
+;; (perlnow-vote-on-candidates '("wuh" "tew" "thuree")) ;; returns thuree (wrong!)
 
 ;;=======
 ;; buffer scraping -- extracting info from code buffer
@@ -2634,7 +2655,8 @@ to be yanked later.  Returns nil on failure, sub name on success.
 Used by \\[perlnow-script-using-this-module]."
   (interactive)
   (let ((sub-name (perlnow-sub-at-point)))
-    (kill-new sub-name)
+    (if sub-name
+        (kill-new sub-name))
     ))
 
 ;; Used by perlnow-sub-name-to-kill-ring and hence:
