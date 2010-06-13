@@ -8,7 +8,6 @@ FEATURE
 Doing a perlnow code creation command while inside a dired buffer
 should use that location by default, rather than the fixed default.
 ===
-
 BUG
   module man pages don't regard '::' as part of a word.
   Something like this improves things:
@@ -60,10 +59,16 @@ before a perlnow-run.  (verify still a problem -- Thu Apr 15 12:46:59 2010)
 ===
 FEATURE
 Built-in support for perltidy (alternative to C-M-\)
+  Experimental (Sun May 30 10:06:20 2010):
+  perlnow-run-perltidy-on-region
 
   o maybe: automatically generate standard elisp wrappers
     around some frequently used shell commands.
     (begun compiling a "cookbook" of types of wrappers)
+
+  In particular, could use some good ways to run "at point"
+  without defining a region.
+
 
 ===
 FEATURE
@@ -469,16 +474,6 @@ default to being inside the tree, in the right place, maybe:
 
 ===
 
-BUG
-
-Starting from "*Man LWP*", and trying to create a script:
-  C-c / s
-
-It barfs like so:
-menu-bar-update-yank-menu: Wrong type argument: stringp, nil
-
-===
-
 BUG               Wed Dec 30 17:26:50 2009
 
 C-c / a
@@ -627,13 +622,136 @@ then later clean-up the un-used ones.
 
 ===
 
-Come to grips with the Too Many Ways To Do It problem.
-You just *can't* support all of them.
+                                Fri Apr 23 14:06:47 2010
+BUG
+perlnow-revise-export-list
 
-In addition to the general perlnow.el package, add variants
-that deal with different perl sub-worlds: perlnow-moose.el
-perlnow-class-base.el, etc.
+When trying to publish sub names to an export list ending in
+exported hash variables, have seen it add a list of sub names
+with '%' marks in front of them (as though they, too, were
+hashes).  (?)
 
-In effect "plug-ins".
+===
+
+                              Fri Apr 30 17:30:25 2010
+
+
+FEATURE
+
+Perlnow has creation commands that distinguish between proceedural
+(exported-based) modules, and object-based modules: that works well,
+for me.  Depending on what I'm doing, I might want to do either...
+
+Obviously though, there are *many* ways of doing object-based perl
+modules.  Does it make sense to have only one set of templates for that?
+
+My theory has been that the way to do it is to swap in different sets
+of templates on a project-by-project basis, which hopefully can be
+done without perlnow knowing anything about it.
+
+But I *personally* would probably like to have multiple styles available
+*without* switching projects (facilitate experimentation).  (For me,
+a "project" might be evaluating styles).
+
+But multiplying the number of creation commands doesn't sound like
+a great way to deal with that... *possibly* one could have a default
+style, and alternate styles accessed via the prefix command C-u.
+Like, if string, use it as an object style-name, if numeric, bring
+up a menu of such styles... something like that.  Maybe, if prefix,
+ask for a style name, using the usual auto-completion features.
+
+   Maybe just: "style" setting separate from "project" setting.
+
+Similar idea, no?: "plug-ins" choosen by "style" (or "world"?).
+Note: many projects may belong to one world.
+
+   Come to grips with the Too Many Ways To Do It problem.
+   You just *can't* support all of them.
+
+    In addition to the general perlnow.el package, add variants
+    that deal with different perl sub-worlds: perlnow-moose.el
+    perlnow-class-base.el, etc.
+
+    In effect "plug-ins".
+
+===
+
+FEATURE
+                                          Sat May 29 13:32:20 2010
+
+perlnow has a few "creation" commands, but it lacks one to
+"create" test files.  The "perlnow-edit-test-file" does creation
+only when it can't find anything pre-existing (and most of the
+time, that's the Wrong Thing, it just didn't succeed in looking
+in the right place).  The multiple forms of "edit-test" are cool,
+but I *also* need one that definitely creates a new file
+(though in fact, mutating from an existing file is a pretty common
+idiom, isn't it... is that automatable in any way?  e.g. scrape
+the "use" lines, snag other stuff that looks like set-up, and
+re-use it).
+
+===
+
+PERLNOW FEATURE:
+  standardized way of overriding other templates...
+  run mod star, then replace any of the generated files
+  with your own, if you've defined/created a replacement
+
+  ~/End/Cave/Lightning/Notes/notes-writing_cpan_modules:
+
+      I'm really disliking the standard *.t files that
+      come out of Module::Starter.
+
+      From the -T flag in the hashbang, to the lack of a
+      use lib line, they're good for nothing but running
+      in one single way, and I like to run my *.t files
+      other ways.
+
+===
+
+Sun May 30 12:15:50 2010
+
+TODO CAVING (?)
+
+When creating a new room, also create git repo?
+
+I'm always going to want one of these:
+  ~/End/Cave/Rep/Wall/Emacs-Rep/.gitignore
+
+.gitignore:
+*~
+\#*#
+
+Question: is my old "lib" and "bin" obsolete now?
+Is there a better way to distinguish public and private
+than the "Wall"?
+
+"publication" of code gets different if you're planning on using
+github...
+
+===
+
+Sat Jun  5 00:27:09 2010
+
+I think the *right* way to deal with version numbers is that
+there should be a project-wide version number, and every file
+should have the same version number hard-coded in it.
+
+Might like a command (a function fired by save-hook?) like so:
+  perlnow-update-version-numbers
+
+This would look at the Build.PL to find out which version is king.
+
+===
+
+BUG NOMENCLATURE                 Sun Jun 13 14:10:28 2010
+
+I treat these as synonyms:
+
+   MODULE NAME or PACKAGE NAME: perl's double colon separated
+   name, e.g. \"Modular::Stuff\"
+
+These days, I'm inclined to reserve "package name" for something
+like a CPAN tarball.
 
 ===
