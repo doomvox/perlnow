@@ -1336,23 +1336,33 @@ can find the module."
   (interactive
    (perlnow-prompt-user-for-file-to-create
     "Name for the new perl script? " perlnow-script-location))
-  (require 'template)
-  (let (package-name)
-    ;; Note: perlnow-perl-package-name is used to pass name into template
-    (cond
-     (;; starting from module
-      (setq package-name (perlnow-get-package-name-from-module-buffer))
-      (let* ((pm-file (buffer-file-name)) ;;
-             (pm-location (file-name-directory pm-file))
-             (inc-spot (perlnow-get-inc-spot package-name pm-location)))
-        (setq perlnow-perl-package-name package-name)
-        (perlnow-do-script-from-module script-name package-name inc-spot)))
-     (;; starting from man page
-      (setq package-name (perlnow-get-package-name-from-man))
-      (setq perlnow-perl-package-name package-name)
-      (perlnow-do-script-from-module script-name package-name))
-     (t ;; no special starting place
-      (perlnow-do-script script-name)))))
+  ;; first check the script-name for obvious errors
+  (cond ((string-match "::" script-name)
+         (message
+          "You really don't want to create a script with a '::' do you?"))
+        ((string-match "\.pm$" script-name)
+         (message
+          "You really don't want to create a script ending in '.pm', right?"))
+        (t ;; full speed ahead
+         (require 'template)
+         (let (package-name)
+           ;; Note: perlnow-perl-package-name is used to pass name into template
+           (cond
+            (;; starting from module
+             (setq package-name (perlnow-get-package-name-from-module-buffer))
+             (let* ((pm-file (buffer-file-name)) ;;
+                    (pm-location (file-name-directory pm-file))
+                    (inc-spot (perlnow-get-inc-spot package-name pm-location)))
+               (setq perlnow-perl-package-name package-name)
+               (perlnow-do-script-from-module
+                  script-name package-name inc-spot)))
+            (;; starting from man page
+             (setq package-name (perlnow-get-package-name-from-man))
+             (setq perlnow-perl-package-name package-name)
+             (perlnow-do-script-from-module script-name package-name))
+            (t ;; no special starting place
+             (perlnow-do-script script-name))))
+         )))
 ;;;   TODO
 ;;;    Someday: check if module is in INC (when starting from man)
 ;;;    and report any problems, say by
