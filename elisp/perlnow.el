@@ -41,7 +41,7 @@
 (eval-when-compile
   (require 'cl))
 
-(defconst perlnow-version "0.43"
+(defconst perlnow-version "0.44"
   "The version number of the installed perlnow.el package.
 Check <http://obsidianrook.com/perlnow/> for the latest.")
 
@@ -2562,35 +2562,54 @@ or nil if none is found."
 
 (defun perlnow-get-package-name-from-man ()
   "Return the module name from a man page buffer displaying the perldoc.
-If not a man page buffer, returns nil.  It tries several methods of
-scraping the module name from the man page buffer, and returns
-it's best guess."
+If not a man page buffer, returns nil.  This version is fairly
+simple to avoid returning false positives."
   (save-excursion
     (let ( return buffer-name-string candidate-list
                   candidate
                   (buffer-name-string (buffer-name))
                   )
       (goto-char (point-min))
-      (cond ((string-match "\\*\\(Wo\\)*Man \\(.*\\)\\*$" (buffer-name))
+      (cond ((string-match "\\*\\(Wo\\)*Man \\(.*\\)\\*$" buffer-name-string)
              (setq candidate (match-string 2 buffer-name-string))
-             (setq candidate-list (cons candidate candidate-list))
-             (goto-char (point-min))
              ))
-      (cond ((re-search-forward "NAME[ \t\n]*\\([^ \t]*\\)[ \t]" nil t)
-             (setq candidate (match-string 1))
-             (setq candidate-list (cons candidate candidate-list))
-             (goto-char (point-min))
-             ))
-      (cond ((re-search-forward "SYNOPSIS[ \t\n]*use \\(.*\\)[ ;]" nil t)
-             (setq candidate (match-string 1))
-             (setq candidate-list (cons candidate candidate-list))
-             (goto-char (point-min))
-             ))
-      (setq return
-            (perlnow-vote-on-candidates candidate-list))
-      return)))
+      candidate)))
 
-;; used by perlnow-get-package-name-from-man
+;; (defun perlnow-get-package-name-from-man-ng ()
+;;   "Return the module name from a man page buffer displaying the perldoc.
+;; If not a man page buffer, returns nil.  It tries several methods of
+;; scraping the module name from the man page buffer, and returns
+;; it's best guess.
+;; This version is no good because it can get false positives from any
+;; script that has a NAME section, and possibly any module with a SYNOPSIS
+;; that shows a use statement."
+;;   (save-excursion
+;;     (let ( return buffer-name-string candidate-list
+;;                   candidate
+;;                   (buffer-name-string (buffer-name))
+;;                   )
+;;       (goto-char (point-min))
+;;       (cond ((string-match "\\*\\(Wo\\)*Man \\(.*\\)\\*$" (buffer-name))
+;;              (setq candidate (match-string 2 buffer-name-string))
+;;              (setq candidate-list (cons candidate candidate-list))
+;;              (goto-char (point-min))
+;;              ))
+;;       (cond ((re-search-forward "NAME[ \t\n]*\\([^ \t]*\\)[ \t]" nil t)
+;;              (setq candidate (match-string 1))
+;;              (setq candidate-list (cons candidate candidate-list))
+;;              (goto-char (point-min))
+;;              ))
+;;       (cond ((re-search-forward "SYNOPSIS[ \t\n]*use \\(.*\\)[ ;]" nil t)
+;;              (setq candidate (match-string 1))
+;;              (setq candidate-list (cons candidate candidate-list))
+;;              (goto-char (point-min))
+;;              ))
+;;       (setq return
+;;             (perlnow-vote-on-candidates candidate-list))
+;;       return)))
+
+;; TODO move this function to a utility package
+;; used by perlnow-get-package-name-from-man-ng
 (defun perlnow-vote-on-candidates (candidate-list)
   "Pick the most commonly occuring string from a list of strings.
 The list should be given as the argument CANDIDATE-LIST,
@@ -3493,11 +3512,13 @@ for the \"MANIFEST\" and either a \"Makefile.PL\" or a \"Build.PL\"\)."
             (while (> (length dir) 1)
               (setq file-list (directory-files dir full-names pattern nosort))
               (dolist (file file-list)
-                ;;                (if (or (string= file "lib") (string= file "t"))
+                ;;   (if (or (string= file "lib") (string= file "t"))
                 (if (string= file "MANIFEST")  ;; could be we're here...
                     ;; start scan again: "*.PL" might be before or after
                     (dolist (file file-list)
-                      (if (or (string= file "Makefile.PL") (string= file "Build.PL")) ;; we found it!
+                      (if (or
+                           (string= file "Makefile.PL")
+                           (string= file "Build.PL")) ;; we found it!
                           (throw 'ICE dir)))))
               (setq dir (perlnow-fixdir (concat dir "..")))
 
