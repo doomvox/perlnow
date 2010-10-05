@@ -1002,6 +1002,12 @@ and vice-versa.  Used by \\[perlnow-back-to-code].")
 (defvar perlnow-select-test-file-buffer-name "*select test file*"
   "Name of buffer to display lists of test files.")
 
+;; (defvar perlnow-screen-height 60
+;; "A hack to deal with the fact that I don't know where the function
+;; 'screen-height' that I used to use has gone.")
+;; Now using frame-height.
+
+
 ;;;==========================================================
 ;;; test file search and creation settings
 
@@ -1926,7 +1932,7 @@ original window, not the new one."
   (setq original-file-displayed (buffer-file-name))
       ;; n.g. if a display buffer without a file
   (unless numblines
-    (setq numblines (- (/ (screen-height) 2) 1) )) ;; default: half frame height
+    (setq numblines (- (/ (frame-height) 2) 1) )) ;; default: half frame height
   (delete-other-windows)
   (setq numblines (- numblines))
   (split-window-vertically numblines) ;; Number of lines to display
@@ -1949,6 +1955,7 @@ original window, not the new one."
     ))
 
 
+
 (defun perlnow-show-buffer-other-window (buffer &optional numblines switchback)
   "Utility to open BUFFER in another window, leaving current
 visible.  Options: NUMBLINES, the number number of lines in
@@ -1958,7 +1965,7 @@ buffer.  If SWITCHBACK is true, the cursor is left in the
 original window, not the new one. BUFFER can be a string or
 a buffer object."
   (unless numblines
-    (setq numblines (/ (screen-height) 2) )) ; new window defaults to half of frame height
+    (setq numblines (/ (frame-height) 2) )) ; new window defaults to half of frame height
   (delete-other-windows)
   (split-window-vertically numblines) ; Number of lines to display
   (other-window 1)
