@@ -1155,7 +1155,7 @@ defined outside of perlnow:
     (add-hook 'perl-mode-hook  (eval (read define-perl-bindings-string)))
     ))
 ;; TODO -- use perlnow-lookup-preferred-perl-mode instead (somehow)
-;; TODO -- why am I doing "global-set-key"s in there?  Counterproductive, no?
+
 
 
 
