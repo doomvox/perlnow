@@ -34,20 +34,22 @@ my $DEBUG = 1;
 use Carp;
 use Data::Dumper;
 
-require Exporter;
-
-our @ISA = qw(Exporter);
-our %EXPORT_TAGS = ( 'all' => [
-  # TODO Add names of items to export here.
-  qw(
+our (@ISA, @EXPORT_OK, %EXPORT_TAGS, @EXPORT);
+BEGIN {
+ require Exporter;
+ @ISA = qw(Exporter);
+ %EXPORT_TAGS = ( 'all' => [
+ # TODO Add names of items to export here.
+ qw(
 
 
     ) ] );
-# The above allows declaration	use (>>>PERL_MODULE_NAME<<<) ':all';
-# Moving things directly into @EXPORT or (better) @EXPORT_OK saves some memory.
-our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
-our @EXPORT = qw(  ); # items to export into callers namespace by default.
-                      # (don't use this without a very good reason.)
+  # The above allows declaration	use (>>>PERL_MODULE_NAME<<<) ':all';
+
+  @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
+  @EXPORT = qw(  ); # items to export into callers namespace by default (avoid this!)
+}
+
 our $VERSION = '0.01';
 
 # Preloaded methods go here.
