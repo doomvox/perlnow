@@ -1571,6 +1571,8 @@ module-starter will create the \"staging area\"\) and the PACKAGE-NAME
     (let* ((default-directory modstar-location)
            (modstar-cmd (perlnow-generate-module-starter-cmd  package-name modstar-location ))
            )
+
+      ;; (message "modstar-cmd: %s" modstar-cmd);; DEBUG
       (shell-command modstar-cmd display-buffer nil)
 
       (setq modstar-staging-area (perlnow-staging-area modstar-location package-name))
@@ -1642,6 +1644,12 @@ and the email address from the variable user-mail-address."
             subdir
             )))
     perlnow-module-starter-cmd))
+
+
+;; TODO commit cut-and-paste abuse one more time, clone & mutate:
+;;  (defun perlnow-module-starter (modstar-location package-name)
+;; to something like:
+;;  (defun perlnow-dist-milla (modstar-location package-name)
 
 (defun perlnow-edit-test-file (testfile)
   "Find \(or create\) an appropriate TESTFILE for the current perl code.
@@ -1895,9 +1903,9 @@ Uses the HARDER-SETTING \(4 or 16\) to choose whether to do a
          )
     (setq run-string
           (cond ( (>= harder-setting 16) ;; even harder!
-                  (concat "cd " t-dir "; prove -r"))
+                  (concat "cd " t-dir "; prove --nocolor -r"))
                 ( t
-                  (concat "cd " t-dir "; prove"))
+                  (concat "cd " t-dir "; prove --nocolor *.t"))
                 ))
     run-string
     ))
@@ -4801,4 +4809,3 @@ It does three things:
 (provide 'perlnow)
 
 ;;; perlnow.el ends here
-
