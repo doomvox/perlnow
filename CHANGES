@@ -67,3 +67,65 @@ Removed dependancy of perlnow-edit-test-file on the marker
 function.
 
 ===
+
+Tue Sep  7 22:49:26 2010
+
+Fixed bug in perlnow-get-package-name-from-man
+that could yeild false positives on scripts, leading
+to perlnow-script from a script context having
+a very bad, misleading runstring refering to the context
+script instead of the new one.
+
+===
+
+Fri Jan 20 00:05:55 2017 -0800
+
+Version 0.45 is essentially a bugfix release:
+
+ o  Fixed generated runstrings when using "prove".
+
+ o  With Module::Build::Tiny you need not have a MANIFEST
+    file, and this confused the old algorithm that identified
+    a cpan-style project, and this in turn could break
+    finding the "t" directory from a *.pm file.  This is fixed.
+
+ o  Changed test policy defaults:
+
+    perlnow-test-path                   was: "." "../t" "./t",  now: "../t" "./t"
+    perlnow-test-policy-test-location   was: "./t",             now: "../t"
+    perlnow-test-policy-dot-definition  was: "fileloc",         now: "incspot"
+
+    My ideas about good locations to place test files (and my
+    experience about where they're likely to be found) has changed
+    over the years.
+
+ o  Fixed bug where perlnow-run could get confused by a blank
+    setting of existing-run-string
+
+ o  New customization variable: perlnow-force.  When this is
+    non-nil, perlnow will avoid asking questions about issues
+    like directory creation and so on.  (This is useful for
+    writing tests, at the very least.)
+
+ o  When multiple applicable test files are available, the guess
+    that perlnow makes as to which one you're most likely to
+    be interested in now favors a recent manual selection
+    (experimental).
+
+ o  Created a new command, perlnow-run-perltidy, which works on
+    the entire buffer by default (operating on the region alone
+    can confuse perltidy, because it can't know anything about
+    surrounding context).   The perltidy commands have some
+    added safety features, checking to make sure the perltidy
+    script can be found, and avoiding use on non-perl buffers.
+
+  o Removed all code for deprecated "alt" run strings, and
+    moved to a new package perlnow-deprecated.el.
+
+Plus many other miscellanious small fixes.
+
+I apologize for the continual minor drift in the UI with each release.
+In the near future I hope to stabilize things to avoid this going
+forward.
+
+===

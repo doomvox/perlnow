@@ -45,7 +45,6 @@ use Hash::Util qw( lock_keys unlock_keys );
 
 # needed for accessor generation
 our $AUTOLOAD;
-my %ATTRIBUTES = ();
 
 =item new
 
@@ -56,7 +55,7 @@ to the names of the object attributes. These attributes are:
 
 =over
 
-=item <fill-in attributes here... most likely, sort in order of utility>
+=item <TODO fill-in attributes here... most likely, sort in order of utility>
 
 =back
 
@@ -95,13 +94,13 @@ sub init {
   # push @attributes, keys %{ $args };
 
   foreach my $field (@attributes) {
-    $ATTRIBUTES{ $field } = 1;
     $self->{ $field } = $args->{ $field };
   }
 
-  $DB::single = 1 if ($DEBUG); # set a debugger breakpoint here
+  # $DB::single = 1 if ($DEBUG); # set a debugger breakpoint here
 
   lock_keys( %{ $self } );
+  # TODO add any defaults here, e.g.  $self->{ field } ||= 'default';
   return $self;
 }
 
@@ -136,30 +135,27 @@ sub AUTOLOAD {
 
   # check that this is a valid accessor call
   croak("Unknown method '$AUTOLOAD' called")
-    unless defined( $ATTRIBUTES{ $field } );
+    unless defined( $_[0]->{ $field } );
 
-  { no strict 'refs';
+  { ## no critic
+    no strict 'refs';
+    ## use critic
 
     # create the setter and getter and install them in the symbol table
-
     if ( $name =~ /^set_/ ) {
-
       *$name = sub {
         my $self = shift;
         $self->{ $field } = shift;
         return $self->{ $field };
       };
-
       goto &$name;              # jump to the new method.
     } elsif ( $name =~ /^get_/ ) {
       carp("Apparent attempt at using a getter with unneeded 'get_' prefix.");
     }
-
     *$name = sub {
       my $self = shift;
       return $self->{ $field };
     };
-
     goto &$name;                # jump to the new method.
   }
 }

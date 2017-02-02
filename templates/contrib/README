@@ -1,0 +1,20 @@
+This directory contains some alternate template files that you may
+choose to use instead of the perlnow defaults:
+
+TEMPLATE.perlnow-object-pm.tpl
+    a template for Class::Std-based classes.  For an explanation of why
+    you would want to write classes this way, see the Class::Std documentation
+    on CPAN, or read Damian Conway's book _Perl Best Practices_.
+    This code meticulously follows Damian's conventions.
+
+    In addition, this code uses Log::Log4perl, though this contradicts
+    Damian, who prefers Log::Stdlog.
+
+TEMPLATE.perlnow-pm.tpl
+    a template for Perl modules that are not classes.  This differs
+    from the default only in that it uses Perl6::Export::Attrs,
+    a terser and easier-to-learn alternative to Exporter.
+    ("Perl6" means simply that it mimics, in Perl 5, syntax that will
+    be built into Perl 6.  So you can use it now; you don't have to
+    wait for Perl 6.
+

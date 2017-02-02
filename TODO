@@ -1,5 +1,6 @@
                                                         February 8, 2006
-                                            Last rev:   April   16, 2010
+                                                 Rev:   April   16, 2010
+                                                 Rev:   January 29, 2017
 
 Master list of known bugs and feature requests
 
@@ -24,13 +25,16 @@ BUG
 Doesn't work with
   xemacs
   windows
+
+Should begin at least minimal testing with xemacs.
+
 ===
 BUG
 
 Sometimes, an existing buffer local value for a run command gets zapped
 when you would rather it didn't:
 
-E.g. if you do a "C-c / t" as a convienient way to get back to a *.t file,
+E.g. if you do a "C-c / t" as a convenient way to get back to a *.t file,
 the run-string for the *.t file can get changed on you.
 
 Possibly: if a run-string has been set manually, it should be less
@@ -40,14 +44,6 @@ Sometimes perlnow's attempts at magically setting the run string correctly
 get in the way: When you've set it to something else manually, it should
 remember that, and avoid over-writing a manual setting.   An "attribute"
 to the string, to tell it hands-off?
-
-===
-BUG                  Tue Dec 29 15:10:54 2009
-
-C-c / R
-  let's you set the run-string, but it  always (often?)
-  zeroes it out to the original guess value: this makes
-  it hard to do repeated edits of the run-string.
 
 ===
 BUG
@@ -73,8 +69,6 @@ Built-in support for perltidy (alternative to C-M-\)
 ===
 FEATURE
 sub awareness
-  o narrow to current sub (Q: include adjacent pod?)
-      like narrow-to-defun
   o select sub (Q: include adjacent pod?)
   o move sub (both code and pod, if any, adjacent or not).
        i.e. "refactoring" tools.
@@ -100,6 +94,10 @@ Then interate over all of them with:
 Also useful:
 
    perlnow-ispell-this-chunk-of-pod
+
+Further thinking: don't ignore the code, but use it to add words
+to your dictionary, so that, e.g.  sub variable names aren't
+regarded as mispellings in your pod.
 
 ===
 
@@ -197,6 +195,8 @@ the run-string should have some "properties" assigned to it,
 one of which would be the location that the command expects
 to be run.
 
+   (a) setup (and breakdown?) command strings, i.e. hooks?
+
 (2) Make perlnow-perldb smarter.  Have it examine the
 run-string and do something a little different if it seems
 adviseable, e.g. pick out "cd blah;" and translate it into
@@ -205,12 +205,6 @@ into something the debugger can use
 
 (3) add yet another buffer-local run-string, one solely for
 debugger use.  (least painful, no? -- Thu Apr 15 13:00:02 2010)
-
-===
-
-The script-using-this-module command could get
-"$self->current_method_name" pushed into the kill-ring,
-instead of just "current_sub_name".
 
 ===
 
@@ -227,7 +221,8 @@ intepreted backwards to determine what's being tested.
 When a script run-string ends in a re-direct "> blah.txt",
 perlnow should assume that the user will want to see that
 file.  It should be opened in a freshly "reverted" buffer
-at the bottom of the screen (or something).
+at the bottom of the screen (or something like that...
+maybe "tail" it?).
 
 ===
 
@@ -254,9 +249,6 @@ Break out behavior of run-string(s) history into configurable settings:
   o  joint history vs separate history.
   o  buffer-local vs global history.
   o  number of concurrently defined runstring commands.
-===
-
-Test with xemacs.  Easy enough.
 
 ===
 
@@ -338,11 +330,16 @@ Can you fix "man" with a wrapper?  Goal is to *never* lose
 your original context.  When you follow a link, the content
 replaces current man window, web browser style.
 
+(Though when you *first* run it, it's probably better for it
+to run in the other-window.  Later invocations from that window
+should re-use the window.)
+
 ===
+
                            Fri Mar  3, 2006  1:43 PM
 
 Just thinking... if the pod for a sub is somewhere some distance
-away from the sub, it would be usefult to have commands to jump
+away from the sub, it would be useful to have commands to jump
 from one to the other...
 Maybe to display the other in another window.
 
@@ -367,24 +364,67 @@ given the list of subs...
 
 ===
 
-                                Sat Mar  4 20:47:29 2006
+TODO
+Think through oddities in C-c / b navigation:
 
-The edit-test file thing is doing something funny with the
-window sizes...  If you don't have a lot of screen lines,
-you can get a "window not large enough to subdivide" error,
-which seems pretty weird when you've only got one window
-open.  The balance between the window sizes can seem
-weird, too... (Probably an intended feature, to make the
-new window a little larger than the old.)
+(From: /home/doom/End/Cave/Perlnow/Notes/notes-perlnow-version-0.4)
 
-===
+Thu May 11, 2006 12:21 PM
 
-Improve C-c / b navigation.  See: /home/doom/End/Cave/Perlnow/Notes/notes-perlnow-version-0.4
+Problem:
+
+An oddity of the current setup:
+Start with a module.
+Develop a *.t for it
+  => now "C-c / b" connects these two buffers
+     to each other.
+From the module, create a scirpt.
+Create a *.t for the script.
+  => now "C-c / b" in the module takes you to the new script.
+     and from the new script you go to the *.t file for it.
+     From the *.t file, you just go back to the script.
+
+The issue is that the "associated buffer" feature can create
+an odd chain through the buffers:
+
+(1)
+
+   module  <-->   module.t
+
+(2)
+
+   module  <--- module.t
+      ^
+      |
+      v
+   script
+
+(3)
+
+   module  <--- module.t
+      |
+      |
+      v
+   script  <--> script.t
+
+
+A fix might be to re-envision it as an "associated test" feature.
+
+
+ (3prime)
+
+   module  <--> module.t
+
+   script  <--> script.t
+
+
 
 ===
 
 Lexical search: automatically narrows to current lexical scope.
 Or failing that, just the current sub (easier).
+
+(( narrow-to-defun gets this pretty easily: punt ))
 
 ===
 
@@ -427,13 +467,6 @@ Try searching for m{ 1; .*? \A\z\A=  }msx  (translated into elisp).
 
 ===
 
-A need for shared blocks of text between templates
-that are also project-specific: e.g. the copyright
-notice.  Define these as defvar strings, make them
-available to template.el templates as tokens.
-
-===
-
                          Fri Mar  7 02:38:46 2008
 perlnow-perlversion-old-to-new:
 Get a definitive list of cases of perl versions that it
@@ -445,6 +478,8 @@ are continually in flux.)
 
 ===
 
+FEATURE
+
 *Really* need to replace blank lines with empty lines on
 either side of a pod tag (^=).
 
@@ -453,10 +488,14 @@ pod tags would probably be a good idea.
 
 ===
 
+FEATURE
+
 If you create a module from another module, should you get the
-same automatic use features that scripts get?
+same automatic use features that scripts get?  ((Yes))
 
 ===
+
+BUG
 
 Creating a script in a cpan-style tree, the script should
 default to being inside the tree, in the right place, maybe:
@@ -474,37 +513,10 @@ default to being inside the tree, in the right place, maybe:
 
 ===
 
-BUG               Wed Dec 30 17:26:50 2009
-
-C-c / a
-
-Symbol's function definition is void:
- perlnow-guess-script-run-string
-
-===
-
-BUG
-
-You can run C / s and feed it what is obviously a module name.
-It creates a script with double-colons embedded in the name.
-
-===
-
-BUG
-
-From a module:
-C-c / R
-
-Appears to create a *.t file, before
-prompting for a run-string,
-
-And the prompted run-string defaults to running the *.pm file,
-not the *.t.
-
-===
-
-
 BUG               Thu Jan  7 23:06:26 2010
+                 ((  Reproduced: Sun  January 22, 2017  15:46 ))
+
+Issue with an unusual additional "lib" inside of the "t" location:
 
 Down in here:
          ~/End/Cave/TextCap/Wall/Cpan/Text-Capitalize/t/lib/Test/Locale/Utils.pm
@@ -517,8 +529,10 @@ warning /home/doom/End/Cave/TextCap/Wall/Cpan/Text-Capitalize/t/t/ is not a dire
 setq: Opening directory: no such file or directory, /home/doom/End/Cave/TextCap/Wall/Cpan/Text-Capitalize/t/t/
 
 What I want to do is *set* the run-string.
-I presume it's doing this crap to set-up an intelligent
+I know it's doing this crap to set-up an intelligent
 default, but it's not failing gracefully.
+
+  (( trapping the problems and going with no default would be better ))
 
 ===
                      Fri Feb 26 19:42:32 2010
@@ -531,17 +545,7 @@ If there's a 00-*.t file there already, it doesn't
 take that as a hint.
 
 (( But then... what if one "t" directory is used
-   for test files for multiple modules? ))
-
-===
-
-                       Fri Feb 26 19:40:29 2010
-BUGLET
-
-This only works from inside of the *.t file:
-   perlnow-revise-test-plan
-It should also work from the *compiliation* window,
-(or for that matter, from an associated *.pm, no?)
+   for test files for multiple modules? Eh: doesn't matter. ))
 
 ===
 
@@ -593,6 +597,9 @@ new location... but the run-string stays un-revised.
 If it stalled on guessing a run-string until it was actually
 run, this little problem would be covered.
 
+  ((Or, if the runstring fails, then the code could then re-guess... ))
+
+
 ===
 
                                 Thu Apr 15 12:42:53 2010
@@ -604,6 +611,8 @@ the code to guess a run-string, and realize belatedly that
 you're blowing away user-set run-strings at odd times.
 
 ===
+
+FEATURE (for cheat section?)
 
                                 Thu Apr 15 14:17:15 2010
 
@@ -653,12 +662,14 @@ But I *personally* would probably like to have multiple styles available
 *without* switching projects (facilitate experimentation).  (For me,
 a "project" might be evaluating styles).
 
-But multiplying the number of creation commands doesn't sound like
-a great way to deal with that... *possibly* one could have a default
-style, and alternate styles accessed via the prefix command C-u.
-Like, if string, use it as an object style-name, if numeric, bring
-up a menu of such styles... something like that.  Maybe, if prefix,
-ask for a style name, using the usual auto-completion features.
+But multiplying the number of creation commands is obviously the
+wrong way to deal with this.
+
+Possibly: one could have a default style, and alternate styles
+accessed via the prefix command C-u.  Like, if string, use it as
+an object style-name, if numeric, bring up a menu of such
+styles... something like that.  Maybe, if prefix, ask for a style
+name, using the usual auto-completion features.
 
    Maybe just: "style" setting separate from "project" setting.
 
@@ -681,8 +692,8 @@ FEATURE
 
 perlnow has a few "creation" commands, but it lacks one to
 "create" test files.  The "perlnow-edit-test-file" does creation
-only when it can't find anything pre-existing (and most of the
-time, that's the Wrong Thing, it just didn't succeed in looking
+only when it can't find anything pre-existing (and all too often,
+that's the Wrong Thing, it just didn't succeed in looking
 in the right place).  The multiple forms of "edit-test" are cool,
 but I *also* need one that definitely creates a new file
 (though in fact, mutating from an existing file is a pretty common
@@ -697,39 +708,22 @@ PERLNOW FEATURE:
   run mod star, then replace any of the generated files
   with your own, if you've defined/created a replacement
 
-  ~/End/Cave/Lightning/Notes/notes-writing_cpan_modules:
+===
+                           Sat Oct  9 22:42:17 2010
+PERLNOW FEATURE
 
-      I'm really disliking the standard *.t files that
-      come out of Module::Starter.
+perlnow-next-todo
 
-      From the -T flag in the hashbang, to the lack of a
-      use lib line, they're good for nothing but running
-      in one single way, and I like to run my *.t files
-      other ways.
+Use the complile-command/next-error system in the usual
+way to simplify skipping to the next TODO comment
+(or FIXME, etc.)
+
+Note: get a similar effect "for free" if you've got a *.t file
+that checks for TODOs (Andy Lester has something like that, right?).
 
 ===
 
-Sun May 30 12:15:50 2010
-
-TODO CAVING (?)
-
-When creating a new room, also create git repo?
-
-I'm always going to want one of these:
-  ~/End/Cave/Rep/Wall/Emacs-Rep/.gitignore
-
-.gitignore:
-*~
-\#*#
-
-Question: is my old "lib" and "bin" obsolete now?
-Is there a better way to distinguish public and private
-than the "Wall"?
-
-"publication" of code gets different if you're planning on using
-github...
-
-===
+FEATURE
 
 Sat Jun  5 00:27:09 2010
 
@@ -744,14 +738,176 @@ This would look at the Build.PL to find out which version is king.
 
 ===
 
-BUG NOMENCLATURE                 Sun Jun 13 14:10:28 2010
+FEATURE/ EMACS BUG
 
-I treat these as synonyms:
+Under some circumstances, saving *all* files can be undesireable,
+even dangerous.  If you want to live without that "feature" of
+compile, it's difficult to shut it off.  (You can get rid of the
+question, but then it just saves everything silently).
 
-   MODULE NAME or PACKAGE NAME: perl's double colon separated
-   name, e.g. \"Modular::Stuff\"
+ o  work around, c&p&mutate the "compile" code, create a "perlnow-compile"
+    (did this at FFN).
+    Commenting out this line:
+      (save-some-buffers (not compilation-ask-about-save) nil)
 
-These days, I'm inclined to reserve "package name" for something
-like a CPAN tarball.
+ o  better, submit a patch to emacs project, adding a feature to turn this off.
+
+ o  ideally, compile should do some intelligent guessing about *what* needs
+    to be saved, maybe even tracing dependencies, or just using tree locations
+    and naming conventions as hints.
+
+===
+FEATURE
+
+                                               Mar 14, 2011
+
+Too hard to customize:
+
+   Copyright (C) (>>>YEAR<<<) by (>>>USER_NAME<<<)
+
+The copyright holder might be $CORP rather than the user name.
+
+Need another token: COPYRIGHT_HOLDER.
+Default to USER_NAME?
+
+===
+
+                                       Apr  3, 2011
+Time to push-out new "templates".  Run tests on my "dev"
+versions, then make them the live "standard" ones.
+
+===
+
+TODO
+                                           Thu Dec 22 08:49:30 2011
+The word is Distzilla.  Understand why.
+
+(( Sun  January 22, 2017  15:01
+   I'm thinking milla and MBT, these days...
+))
+
+===
+
+BUG
+
+If a script begins with a flag like this:
+
+#!perl -T
+
+perlnow sees it and tries to pass it through,
+but it doesn't seem to show up in the visible perl run string,
+and deleting the line doesn't convince perlnow to
+stop running it that way.
+
+Re-setting the runstring seems to work (essentially just resetting
+it to what it says it is).  This is pretty funky.
+
+===
+
+TODO
+
+Victor Stevko request:
+use y/n questions rather than yes/no.
+
+(( Changing might be mildly difficult...
+   I want to make things work differently than emacs policy. ))
+
+
+===
+
+Sat  July 16, 2016  15:16
+My request: get everything working smoothly.
+
+Be a little less stupid about smartly searching for *.t files,
+for example.  (( Big problem was a bad heuristic for identifying
+cpan-style projects.  Fixed: Version 0.5, Jan 2017. ))
+
+If something is changed accidentally, make it easier to
+restore it... e.g. a history to M-p back through.
+(( Added one for run strings: version 0.5, Jan 2017. ))
+
+Maybe: more menu of options buffers...
+
+   Discoverability, without annoying experts... wordstar?
+
+===
+
+FEATURE
+
+If a C-c / r fails because of a file-not-found,
+why not try to re-initialize the run-string and try again before
+giving up?
+
+FEATURE
+
+Renaming a file should carry through to the runstrings that refer to it.
+How?  Maybe, a buffer-local var containing metadata, pointing at runstrings
+that reference the file?  Or a .perlnow stash on disk?
+
+===
+
+TODO         2017JAN
+FEATURE
+FOR REAL: NEED THIS
+
+o  when you save a *.pm, if needed the inkspot should
+   be temporarily (?) added to the version of PERL5LIB
+   that emacs sees-- from within emacs, you should always
+   be able to run the code you're working on.
+
+
+There are two envars it's hard to get away with needing to mess
+with during development:  PATH and PERL5LIB.
+
+perlnow should, on the fly, effectively change these to work with
+the code under development *from the point of view of emacs*,
+without actually munging the settings in .bashrc.
+
+emacs can change it's own envar values, correct?
+  (setenv "VAR" "value")
+
+There may be emacs vars like exec-path that need to be adjusted also.
+
+
+   Every time you save a *.pm file, it should
+   identify the inkspot, make sure it's in INC,
+   and if not add it to (effective) PERL5LIB.
+
+   Q: potential confusion: "this ran inside emacs,
+      why not in the shell?"
+
+   Q: this worked in emacs a minute ago, why not now?
+      (you edited a *.pm file, so now it sees the dev
+      version, not the installed one).
+
+   Ditto on a perl script (either .pl or .t, or a
+   c?perl-mode buffer without *.pm), but then it should mess
+   the PATH and exec-path, not PERL5LIB.
+
+   Add a feature to edit both of these directly.
+
+   Also features to make changes permanent, i.e. save to .bashrc?
+
+===
+
+BUG 2016DEC
+
+There are other circumstances when perlnow tries to run make test,
+correct?  (To do that, would first need to run the Build.PL or Makefile.PL.
+Does it work?)  Why would you do a make test rather than a prove?
+
+FEATURE 2016DEC
+
+Add a feature to manually edit the associated file.
+
+===
+
+TODO  2017JAN
+
+Positively weird that these require a file argument:
+they should default to the buffer-file-name:
+
+  (defun perlnow-script-file-p (file)
+  (defun perlnow-module-file-p (file)
 
 ===

@@ -11,7 +11,7 @@ package (>>>PERL_MODULE_NAME<<<);
 
    use (>>>PERL_MODULE_NAME<<<) ':all';
 
-   TODO
+   (>>>7<<<)TODO
 
 =head1 DESCRIPTION
 
@@ -41,8 +41,7 @@ BEGIN {
  %EXPORT_TAGS = ( 'all' => [
  # TODO Add names of items to export here.
  qw(
-
-
+    (>>>9<<<)
     ) ] );
   # The above allows declaration	use (>>>PERL_MODULE_NAME<<<) ':all';
 
