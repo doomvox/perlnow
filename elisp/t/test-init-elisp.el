@@ -22,6 +22,31 @@
 (provide 'test-init-elisp)
 (require 'cl-lib)
 
+;; I always want one of these:
+(defun test-init-fixdir (dir &optional root)
+  "Fixes the DIR.
+Conditions directory paths for portability and robustness.
+Some examples:
+ '~/tmp'             => '/home/doom/tmp/'
+ '~/tmp/../bin/test' => '/home/doom/bin/test/'
+Note: converts relative paths to absolute, using the current
+default-directory setting, unless specified otherwise with the
+ROOT option.  Note side-effect: converts the empty string into
+the default-directory or the ROOT setting."
+  (let ((return
+         (substitute-in-file-name
+          (convert-standard-filename
+           (file-name-as-directory
+            (expand-file-name dir root))))))
+    return))
+
+(defun test-init-mkpath (dir)
+  "Create directory DIR (and intervening levels) if it doesn't exist."
+  (unless (file-directory-p dir)
+     (make-directory dir t)))
+
+
+
 ;; load-path additions
 (setq load-path (cons "/home/doom/lib/emacs/local" load-path))
 (setq load-path (cons "/home/doom/End/Cave/Perlnow/lib/perlnow/elisp/" load-path))
@@ -60,7 +85,8 @@
 (perlnow-mkpath perlnow-pm-location)
 (perlnow-mkpath perlnow-dev-location)
 
-;; TODO move this somewhere: test-simple-utils.el ?
+;; TODO move all of the following defuns to a new package:
+;;    test-simple-script.el
 (defun test-init-move-file-out-of-way (filename &optional extension)
   "Move FILENAME out of the way, by renaming it with appended EXTENSION.
 Default EXTENSION is \".OLD\""
@@ -73,6 +99,50 @@ Default EXTENSION is \".OLD\""
           (rename-file filename backup-name t) ;; with t, overwrites
           ))
    ))
+
+(defun test-init-safe-recursive-delete (dirname &optional backup-location)
+  "Given a DIRNAME including a full-path, move it to the BACKUP-LOCATION.
+BACKUP-LOCATION defaults to a sub-directory named \"Old\".
+If a directory of this name already exists in the backup-location,
+this will delete it first: we preserve only the last version.
+As a safety feature, this first checks to make sure that the DIRNAME
+contains a word such as 'tmp', 'temp' or 'test', indicating that
+it's intended to be ephemeral."
+
+  (setq dirname (test-init-fixdir dirname))
+
+  (let* (
+         ;; drop trailing slash for file-name-directory & nondirectory
+         (last-slash-pat (concat perlnow-slash "$"))
+         (dirname-trimmed
+          (replace-regexp-in-string last-slash-pat "" dirname))
+         (dirname-path      (file-name-directory    dirname-trimmed))
+         (dirname-sans-path (file-name-nondirectory dirname-trimmed))
+
+         ;; bring back trailing slash
+         (dirname-path-fixed (test-init-fixdir dirname-path))
+
+         (default-backup-location  (concat dirname-path-fixed "Old"))
+          expected-backup )
+    (unless backup-location
+      (setq backup-location default-backup-location))
+    (test-init-mkpath backup-location)
+
+    (setq expected-backup
+          (concat backup-location dirname-sans-path))
+
+    (cond ((or
+            (string-match "\\btest\\b" dirname)
+            (string-match "\\btmp\\b" dirname)
+            (string-match "\\btemp\\b" dirname)
+            )
+           ;; TODO safer to do the copy first to a unique name,
+           ;; then delete old, and rename the copy using that name
+           (if (file-directory-p expected-backup)
+               (delete-directory expected-backup t))
+           (copy-directory dirname backup-location nil t t)
+           (delete-directory dirname t)
+           ))))
 
 
 ;; LICENSE
