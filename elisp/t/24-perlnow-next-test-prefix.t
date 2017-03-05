@@ -20,7 +20,6 @@
 Simplifies running edebug."
   (interactive) ;;?
 
-
   (if (file-exists-p "test-init-elisp.el")
     (load-file "test-init-elisp.el"))
 

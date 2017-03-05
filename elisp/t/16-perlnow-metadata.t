@@ -1,5 +1,5 @@
 #!/usr/local/bin/emacs --script
-;; 12-perlnow-metatdata.t
+;; 16-perlnow-metadata.t
 
 ;; Test stories:
 

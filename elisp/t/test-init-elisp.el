@@ -73,17 +73,35 @@ the default-directory or the ROOT setting."
 
 (setenv "USE_TAP" "t")
 
-(setq perlnow-script-location
-      (file-name-as-directory (concat test-loc "bin")))
-(setq perlnow-pm-location
-      (file-name-as-directory (concat test-loc "lib")))
-(setq perlnow-dev-location
-      (file-name-as-directory (concat test-loc "dev")))
 
-;;; create all unless they exist already
-(perlnow-mkpath perlnow-script-location)
-(perlnow-mkpath perlnow-pm-location)
-(perlnow-mkpath perlnow-dev-location)
+(defun test-init-setup-perlnow-locations ( sub-directory )
+  "Sets up standard perlnow locations using the given SUB-DIRECTORY.
+Creates the SUB-DIRECTORY in the `test-loc' location, and adds
+the tree of standard perlnow locations (bin, lib, dev), setting
+the perlnow customization variables to those locations.
+NOTE: if SUB-DIRECTORY already exists it is deleted first
+with `test-init-safe-recursive-delete'.
+The goal here is isolated tests without side-effects on each
+other.
+Returns the full-path to the new sub-directory."
+  (let* ((deep-test-loc
+          (perlnow-fixdir (concat test-loc sub-directory)))
+         )
+    (test-init-safe-recursive-delete deep-test-loc)
+
+    (perlnow-mkpath deep-test-loc)
+
+    (setq perlnow-script-location
+          (file-name-as-directory (concat deep-test-loc "bin")))
+    (setq perlnow-pm-location
+          (file-name-as-directory (concat deep-test-loc "lib")))
+    (setq perlnow-dev-location
+          (file-name-as-directory (concat deep-test-loc "dev")))
+
+    (perlnow-mkpath perlnow-script-location)
+    (perlnow-mkpath perlnow-pm-location)
+    (perlnow-mkpath perlnow-dev-location)
+    deep-test-loc))
 
 ;; TODO move all of the following defuns to a new package:
 ;;    test-simple-script.el
@@ -108,41 +126,40 @@ this will delete it first: we preserve only the last version.
 As a safety feature, this first checks to make sure that the DIRNAME
 contains a word such as 'tmp', 'temp' or 'test', indicating that
 it's intended to be ephemeral."
-
   (setq dirname (test-init-fixdir dirname))
+  (cond ((file-exists-p dirname)
+         (let* (
+                ;; drop trailing slash for file-name-directory & nondirectory
+                (last-slash-pat (concat perlnow-slash "$"))
+                (dirname-trimmed
+                 (replace-regexp-in-string last-slash-pat "" dirname))
+                (dirname-path      (file-name-directory    dirname-trimmed))
+                (dirname-sans-path (file-name-nondirectory dirname-trimmed))
 
-  (let* (
-         ;; drop trailing slash for file-name-directory & nondirectory
-         (last-slash-pat (concat perlnow-slash "$"))
-         (dirname-trimmed
-          (replace-regexp-in-string last-slash-pat "" dirname))
-         (dirname-path      (file-name-directory    dirname-trimmed))
-         (dirname-sans-path (file-name-nondirectory dirname-trimmed))
+                ;; bring back trailing slash
+                (dirname-path-fixed (test-init-fixdir dirname-path))
 
-         ;; bring back trailing slash
-         (dirname-path-fixed (test-init-fixdir dirname-path))
+                (default-backup-location  (concat dirname-path-fixed "Old"))
+                expected-backup )
+           (unless backup-location
+             (setq backup-location default-backup-location))
+           (test-init-mkpath backup-location)
 
-         (default-backup-location  (concat dirname-path-fixed "Old"))
-          expected-backup )
-    (unless backup-location
-      (setq backup-location default-backup-location))
-    (test-init-mkpath backup-location)
+           (setq expected-backup
+                 (concat backup-location dirname-sans-path))
 
-    (setq expected-backup
-          (concat backup-location dirname-sans-path))
-
-    (cond ((or
-            (string-match "\\btest\\b" dirname)
-            (string-match "\\btmp\\b" dirname)
-            (string-match "\\btemp\\b" dirname)
-            )
-           ;; TODO safer to do the copy first to a unique name,
-           ;; then delete old, and rename the copy using that name
-           (if (file-directory-p expected-backup)
-               (delete-directory expected-backup t))
-           (copy-directory dirname backup-location nil t t)
-           (delete-directory dirname t)
-           ))))
+           (cond ((or
+                   (string-match "\\btest\\b" dirname)
+                   (string-match "\\btmp\\b" dirname)
+                   (string-match "\\btemp\\b" dirname)
+                   )
+                  ;; TODO safer to do the copy first to a unique name,
+                  ;; then delete old, and rename the copy using that name
+                  (if (file-directory-p expected-backup)
+                      (delete-directory expected-backup t))
+                  (copy-directory dirname backup-location nil t t)
+                  (delete-directory dirname t)
+                  ))))))
 
 
 ;; LICENSE
