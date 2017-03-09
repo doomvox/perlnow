@@ -19,25 +19,24 @@
 
 ;;; Code:
 
-;; project-specific include file (with standard name)
-(if (file-exists-p "test-init-elisp.el")
-    (load-file "test-init-elisp.el"))
+(funcall
+ (lambda ()
+   ;; project-specific include file (with standard name)
+   (if (file-exists-p "test-init-elisp.el")
+       (load-file "test-init-elisp.el"))
 
-(message "load-path: %s" (pp load-path))
+   ;; meta-project, test-simple.el eval/dev: using a modified test-simple.el
+   (load-file "/home/doom/End/Sys/Emacs/emacs-test-simple/test-simple.el")
 
-(setenv "USE_TAP" "t")
+   (let* (
+          (test-loc (test-init))
+          )
 
-;; meta-project, test-simple.el eval/dev: using a modified test-simple.el
-(load-file "/home/doom/End/Sys/Emacs/emacs-test-simple/test-simple.el")
-
-(test-simple-start) ;; Zero counters and start the stop watch.
-
-(setq perlnow-force t) ;; ask me no questions
-
-;; Want to search load-path, but don't want to find any stale .elc by accident
-(assert-t
-     (let ( (load-suffixes (list ".el")) ) (load-library "perlnow.el"))
-     "Testing load of perlnow.el")
+     ;; Want to search load-path, but don't want to find any stale .elc by accident
+     (assert-t
+      (let ( (load-suffixes (list ".el")) ) (load-library "perlnow.el"))
+      "Testing load of perlnow.el")
+     )))
 
 (end-tests)
 

@@ -15,32 +15,26 @@
 ;; X-URL: not distributed yet
 ;; License: the same as your GNU emacs (see below)
 
-(defun test-main-agonostises ()
-  "A standard wrapper around tests, with name silly enough to dodge collisions.
-Simplifies running edebug."
-  (interactive) ;;?
 
-  (if (file-exists-p "test-init-elisp.el")
-    (load-file "test-init-elisp.el"))
 
-  (setenv "USE_TAP" "t")
+(funcall
+ (lambda ()
+   (if (file-exists-p "test-init-elisp.el")
+       (load-file "test-init-elisp.el"))
 
-;; meta-project, test-simple.el eval/dev: using a modified test-simple.el
-;; TODO
-;;  install the latest, maybe via emacs package management: should have my fix.
-  (load-file "/home/doom/End/Sys/Emacs/emacs-test-simple/test-simple.el")
-  (test-simple-start) ;; Zero counters and start the stop watch.
-  (setq perlnow-force t) ;; ask me no questions
+   ;; meta-project, test-simple.el eval/dev: using a modified test-simple.el
+   (load-file "/home/doom/End/Sys/Emacs/emacs-test-simple/test-simple.el")
+   ;; (perlnow-tron)
+   (let* (
+          (test-loc (test-init))
 
-  (setq perlnow-misc-location
-      (file-name-as-directory (concat test-loc "misc")))
-  (perlnow-mkpath perlnow-misc-location)
-
-  (let* ( (t-loc
+          (perlnow-misc-location
+                (file-name-as-directory (concat test-loc "misc")))
+          (perlnow-mkpath perlnow-misc-location)
+          (t-loc
            (file-name-as-directory (concat perlnow-misc-location "t")))
           (funcname "perlnow-next-test-prefix")
-          (test-name
-           (concat "Testing " funcname ))
+          (test-name (concat "Testing " funcname ))
           (t-list (list "01-yo.t" "69-up.t" "03-ho.t" "27-out.t"))
           (expected "70")
           ret
@@ -54,14 +48,15 @@ Simplifies running edebug."
       ))
     (setq ret
           (perlnow-next-test-prefix t-loc))
-    (assert-t
-     (string= ret expected)
-     (concat test-name ": one more than max existing prefix") )
-    ))
+    (assert-equal ret expected
+     (concat test-name ": returned max existing prefix plus one") )
+    )
+   (end-tests)
+   ))
 
-(test-main-agonostises)
 
-(end-tests)
+
+
 
 ;;========
 ;; LICENSE

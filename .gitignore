@@ -1,0 +1,16 @@
+*~
+\#*#
+Build
+_build
+.rep
+MYMETA.yml
+MANIFEST.SKIP
+Emacs-Rep-*.tar.gz
+META.yml
+blib
+Makefile.PL
+Makefile
+Old
+*.BAK.el
+.gitignore
+.hidden

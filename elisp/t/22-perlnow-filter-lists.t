@@ -14,180 +14,157 @@
 ;; X-URL: not distributed yet
 ;; License: the same as your GNU emacs (see below)
 
-(defun test-main-agonostises ()
-  "A standard wrapper around tests, with name silly enough to dodge collisions.
-Simplifies running edebug."
-  (interactive) ;;?
+(funcall
+ (lambda ()
+   (if (file-exists-p "test-init-elisp.el")
+       (load-file "test-init-elisp.el"))
 
-  (if (file-exists-p "test-init-elisp.el")
-    (load-file "test-init-elisp.el"))
+   ;; meta-project, test-simple.el eval/dev: using a modified test-simple.el
+   (load-file "/home/doom/End/Sys/Emacs/emacs-test-simple/test-simple.el")
+   ;; (perlnow-tron)
+   (let* (
+          (test-loc (test-init))
 
- (setenv "USE_TAP" "t")
+          (funcname "perlnow-filter-list")
+          (test-name
+           (concat "Testing " funcname ))
 
-;; meta-project, test-simple.el eval/dev: using a modified test-simple.el
-;; TODO
-;;  install the latest, maybe via emacs package management: should have my fix.
-  (load-file "/home/doom/End/Sys/Emacs/emacs-test-simple/test-simple.el")
+          (input-list (list "alpha" "beta" "gamma" "delta" "epsilon" "eta"))
+          (rm-pat "^ep")
 
-  (test-simple-start) ;; Zero counters and start the stop watch.
+          (result-list (perlnow-filter-list input-list rm-pat))
+          (expected-list (list "alpha" "beta" "gamma" "delta" "eta"))
+          )
 
-  (setq perlnow-force t) ;; ask me no questions
+     ;;     (message "input: %s" (pp input-list))
+     ;;     (message "result: %s" (pp result-list))
+     ;;     (message "expected: %s" (pp expected-list))
 
-;;  (load-file "/home/doom/End/Cave/Perlnow/lib/perlnow/elisp/perlnow.el")
+     (assert-equal result-list expected-list
+      (concat test-name ": removing one element"))
+     )
 
-  (let* (
-         (funcname "perlnow-filter-list")
-         (test-name
-          (concat "Testing " funcname ))
+   (let* (
+          (funcname "perlnow-filter-list")
+          (test-name
+           (concat "Testing " funcname ))
+          (input-list (list "alpha" "beta" "gamma" "delta" "epsilon" "eta"))
+          (rm-pat "p")
+          (expected-list (list "beta" "gamma" "delta" "eta"))
+          (result-list (perlnow-filter-list input-list rm-pat))
+          )
 
-         (input-list (list "alpha" "beta" "gamma" "delta" "epsilon" "eta"))
-         (rm-pat "^ep")
+     ;;     (message "input: %s" (pp input-list))
+     ;;     (message "result: %s" (pp result-list))
+     ;;     (message "expected: %s" (pp expected-list))
 
-         (result-list (perlnow-filter-list input-list rm-pat))
-         (expected-list (list "alpha" "beta" "gamma" "delta" "eta"))
-       )
+     (assert-equal result-list expected-list
+      (concat test-name ": removing two elements") )
+     )
 
-;;     (message "input: %s" (pp input-list))
-;;     (message "result: %s" (pp result-list))
-;;     (message "expected: %s" (pp expected-list))
+   (let* (
+          (funcname "perlnow-grep-list")
+          (test-name
+           (concat "Testing " funcname ))
 
-    (assert-t
-     (equal result-list expected-list)
-     (concat test-name ": removing one element") )
+          (input-list (list "alpha" "beta" "gamma" "delta" "epsilon" "eta"))
+          (keep-pat "^ep")
 
-    )
+          (result-list (perlnow-grep-list input-list keep-pat))
+          (expected-list (list "epsilon"))
+          )
 
-  (let* (
-         (funcname "perlnow-filter-list")
-         (test-name
-          (concat "Testing " funcname ))
-         (input-list (list "alpha" "beta" "gamma" "delta" "epsilon" "eta"))
-         (rm-pat "p")
-         (expected-list (list "beta" "gamma" "delta" "eta"))
-         (result-list (perlnow-filter-list input-list rm-pat))
-       )
+     ;;     (message "input: %s" (pp input-list))
+     ;;     (message "result: %s" (pp result-list))
+     ;;     (message "expected: %s" (pp expected-list))
 
-;;     (message "input: %s" (pp input-list))
-;;     (message "result: %s" (pp result-list))
-;;     (message "expected: %s" (pp expected-list))
+     (assert-equal result-list expected-list
+      (concat test-name ": keeping one element") )
+     )
 
-    (assert-t
-     (equal result-list expected-list)
-     (concat test-name ": removing two elements") )
+   (let* (
+          (funcname "perlnow-grep-list")
+          (test-name
+           (concat "Testing " funcname ))
+          (input-list (list "alpha" "beta" "gamma" "delta" "epsilon" "eta"))
+          (keep-pat "p")
+          (expected-list (list "alpha" "epsilon"))
+          (result-list (perlnow-grep-list input-list keep-pat))
+          )
 
-    )
+     ;;     (message "input: %s" (pp input-list))
+     ;;     (message "result: %s" (pp result-list))
+     ;;     (message "expected: %s" (pp expected-list))
 
-  (let* (
-         (funcname "perlnow-grep-list")
-         (test-name
-          (concat "Testing " funcname ))
+     (assert-equal result-list expected-list
+      (concat test-name ": keeping two elements") )
+     )
 
-         (input-list (list "alpha" "beta" "gamma" "delta" "epsilon" "eta"))
-         (keep-pat "^ep")
+   ;;(defun perlnow-minimum-nonempty-list (list-of-lists)
 
-         (result-list (perlnow-grep-list input-list keep-pat))
-         (expected-list (list "epsilon"))
-       )
+   (let* (
+          (funcname "perlnow-minimum-nonempty-list")
+          (test-name
+           (concat "Testing " funcname ))
+          (list-a (list "alpha" "beta" "gamma" "delta" "epsilon" "eta"))
+          (list-b (list "spa" "fon" "squa" "tront"))
+          (list-c (list "burroughs" "ginsberg" "kerouac"))
+          (input (list list-a list-b list-c))
 
-;;     (message "input: %s" (pp input-list))
-;;     (message "result: %s" (pp result-list))
-;;     (message "expected: %s" (pp expected-list))
+          (expected list-c)
+          (result (perlnow-minimum-nonempty-list input))
+          )
+     ;;     (message "input: %s" (pp input))
+     ;;     (message "result: %s" (pp result))
+     ;;     (message "expected: %s" (pp expected))
 
-    (assert-t
-     (equal result-list expected-list)
-     (concat test-name ": keeping one element") )
+     (assert-equal result expected
+      (concat test-name ": find shortest of three (nonempties)"))
+     )
 
-    )
+   (let* (
+          (funcname "perlnow-minimum-nonempty-list")
+          (test-name
+           (concat "Testing " funcname ))
+          (list-a ())
+          (list-b ())
+          (list-c (list "yestersnow"))
+          (input (list list-a list-c list-b))
 
-  (let* (
-         (funcname "perlnow-grep-list")
-         (test-name
-          (concat "Testing " funcname ))
-         (input-list (list "alpha" "beta" "gamma" "delta" "epsilon" "eta"))
-         (keep-pat "p")
-         (expected-list (list "alpha" "epsilon"))
-         (result-list (perlnow-grep-list input-list keep-pat))
-       )
+          (expected list-c)
+          (result (perlnow-minimum-nonempty-list input))
+          )
+     ;;     (message "input: %s" (pp input))
+     ;;     (message "result: %s" (pp result))
+     ;;     (message "expected: %s" (pp expected))
 
-;;     (message "input: %s" (pp input-list))
-;;     (message "result: %s" (pp result-list))
-;;     (message "expected: %s" (pp expected-list))
+     (assert-equal result expected
+      (concat test-name ": find the only nonempty of three"))
+     )
 
-    (assert-t
-     (equal result-list expected-list)
-     (concat test-name ": keeping two elements") )
-    )
+   (let* (
+          (funcname "perlnow-minimum-nonempty-list")
+          (test-name
+           (concat "Testing " funcname ))
+          (list-a (list "a" "b" "c"))
+          (list-b (list "1" "2" "3"))
+          (list-c (list "dolls" "hell" "smith" ))
+          (input (list list-a list-c list-b))
+
+          (expected list-a)
+          (result (perlnow-minimum-nonempty-list input))
+          )
+     (message "input: %s" (pp input))
+     ;;     (message "result: %s" (pp result))
+     ;;     (message "expected: %s" (pp expected))qcv c09vb
+
+     (assert-equal result expected
+      (concat test-name ": break a tie between lists of equal length"))
+     )
+   (end-tests)
+   ))
 
 
-;;(defun perlnow-minimum-nonempty-list (list-of-lists)
-
-  (let* (
-         (funcname "perlnow-minimum-nonempty-list")
-         (test-name
-          (concat "Testing " funcname ))
-         (list-a (list "alpha" "beta" "gamma" "delta" "epsilon" "eta"))
-         (list-b (list "spa" "fon" "squa" "tront"))
-         (list-c (list "burroughs" "ginsberg" "kerouac"))
-         (input (list list-a list-b list-c))
-
-         (expected list-c)
-         (result (perlnow-minimum-nonempty-list input))
-       )
-;;     (message "input: %s" (pp input))
-;;     (message "result: %s" (pp result))
-;;     (message "expected: %s" (pp expected))
-
-    (assert-t
-     (equal result expected)
-     (concat test-name ": find shortest of three (nonempties)"))
-    )
-
-  (let* (
-         (funcname "perlnow-minimum-nonempty-list")
-         (test-name
-          (concat "Testing " funcname ))
-         (list-a ())
-         (list-b ())
-         (list-c (list "yestersnow"))
-         (input (list list-a list-c list-b))
-
-         (expected list-c)
-         (result (perlnow-minimum-nonempty-list input))
-       )
-;;     (message "input: %s" (pp input))
-;;     (message "result: %s" (pp result))
-;;     (message "expected: %s" (pp expected))
-
-    (assert-t
-     (equal result expected)
-     (concat test-name ": find the only nonempty of three"))
-    )
-
-  (let* (
-         (funcname "perlnow-minimum-nonempty-list")
-         (test-name
-          (concat "Testing " funcname ))
-         (list-a (list "a" "b" "c"))
-         (list-b (list "1" "2" "3"))
-         (list-c (list "dolls" "hell" "smith" ))
-         (input (list list-a list-c list-b))
-
-         (expected list-a)
-         (result (perlnow-minimum-nonempty-list input))
-       )
-    (message "input: %s" (pp input))
-    ;;     (message "result: %s" (pp result))
-    ;;     (message "expected: %s" (pp expected))qcv c09vb
-
-    (assert-t
-     (equal result expected)
-     (concat test-name ": break a tie between lists of equal length"))
-    )
-  )
-
-(test-main-agonostises)
-
-(end-tests)
 
 ;;========
 ;; LICENSE

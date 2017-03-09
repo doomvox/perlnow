@@ -61,117 +61,105 @@ sub stitute {
 
 ")
 
-(defun test-main-agonostises ()
-  "A standard wrapper around tests, with name silly enough to dodge collisions.
-Simplifies running edebug."
-  (interactive) ;;?
+(funcall
+ (lambda ()
+   (if (file-exists-p "test-init-elisp.el")
+       (load-file "test-init-elisp.el"))
 
-  (if (file-exists-p "test-init-elisp.el")
-    (load-file "test-init-elisp.el"))
+   ;; meta-project, test-simple.el eval/dev: using a modified test-simple.el
+   (load-file "/home/doom/End/Sys/Emacs/emacs-test-simple/test-simple.el")
+   ;; (perlnow-tron)
+   (let* (
+          (test-loc (test-init))
+          )
 
-  (setenv "USE_TAP" "t")
+     ;; make sure you know the policy in use
+     (setq perlnow-test-policy-test-location   "../t")
+     (setq perlnow-test-policy-dot-definition  "incspot")
+     (setq perlnow-test-policy-naming-style    "fullauto")
 
-;; meta-project, test-simple.el eval/dev: using a modified test-simple.el
-;; TODO
-;;  install the latest, maybe via emacs package management: should have my fix.
-  (load-file "/home/doom/End/Sys/Emacs/emacs-test-simple/test-simple.el")
-  (test-simple-start) ;; Zero counters and start the stop watch.
-  (setq perlnow-force t) ;; ask me no questions
+     (setq perlnow-pm-location
+           (perlnow-fixdir (concat test-loc "tcrate" perlnow-slash "lib")))
+     (perlnow-ensure-directory-exists perlnow-pm-location)
 
-;;  (load-file "/home/doom/End/Cave/Perlnow/lib/perlnow/elisp/perlnow.el")
+     (let* (
+            (funcname "perlnow-sub-at-point")
+            (test-name
+             (concat "Testing " funcname ))
+            (package-name "Doom::Bongos")
+            (expected-pm-base "Bongos.pm")
+            (expected-pm-file
+             (concat perlnow-pm-location "Doom" perlnow-slash expected-pm-base))
+            ;; for testing, we insert two subroutines named 'mission' and 'terranean'
 
-  ;; make sure you know the policy in use
-  (setq perlnow-test-policy-test-location   "../t")
-  (setq perlnow-test-policy-dot-definition  "incspot")
-  (setq perlnow-test-policy-naming-style    "fullauto")
+            (expected-t-loc
+             (perlnow-fixdir
+              (concat perlnow-pm-location perlnow-test-policy-test-location)))
 
-  (setq perlnow-pm-location
-        (perlnow-fixdir (concat test-loc "tcrate" perlnow-slash "lib")))
-  (perlnow-ensure-directory-exists perlnow-pm-location)
+            (expected-first-t-file
+             (concat expected-t-loc "01-Doom-Bongos-mission.t"))
 
-  (let* (
-       first-t-file first-t-buffer
+            (expected-second-t-file
+             (concat expected-t-loc "02-Doom-Bongos-terranean.t"))
 
-       (funcname "perlnow-sub-at-point")
-       (test-name
-        (concat "Testing " funcname ))
-       (package-name "Doom::Bongos")
-       (expected-pm-base "Bongos.pm")
-       (expected-pm-file
-        (concat perlnow-pm-location "Doom" perlnow-slash expected-pm-base))
-       ;; for testing, we insert two subroutines named 'mission' and 'terranean'
+            (sub-code-str  test-main-perl-sub-code)
 
-       (expected-t-loc
-        (perlnow-fixdir
-         (concat perlnow-pm-location perlnow-test-policy-test-location)))
+            first-t-buffer
+            )
 
-       (expected-first-t-file
-        (concat expected-t-loc "01-Doom-Bongos-mission.t"))
+       ;; clear the decks
+       (test-init-safe-recursive-delete expected-t-loc)
 
-       (expected-second-t-file
-        (concat expected-t-loc "02-Doom-Bongos-terranean.t"))
+       (perlnow-ensure-directory-exists expected-t-loc)
 
-       (sub-code-str  test-main-perl-sub-code)
-       )
+       (test-init-move-file-out-of-way expected-pm-file)
 
-   ;; clear the decks
-   (test-init-safe-recursive-delete expected-t-loc)
+       ;; create and open new module file
+       (perlnow-module perlnow-pm-location package-name)
+       (insert sub-code-str)
+       (save-buffer)
 
-   (perlnow-ensure-directory-exists expected-t-loc)
+       ;; move to a known point in the buffer near the first sub
+       (search-backward "=item mission")
+       (search-forward "sub mission")
+       (move-beginning-of-line nil)
 
-   (test-init-move-file-out-of-way expected-pm-file)
+       ;; Do an edit-test: confirm that creates the first test file.
+       (perlnow-test-create) ;; 01-Doom-Bongos-mission.t
 
-  ;; create and open new module file
-  (perlnow-module perlnow-pm-location package-name)
-  (insert sub-code-str)
-  (save-buffer)
+       (setq first-t-file (buffer-file-name))
 
-  ;; move to a known point in the buffer near the first sub
-  (search-backward "=item mission")
-  (search-forward "sub mission")
-  (move-beginning-of-line nil)
+       ;;   (message "XYZ first-t-file: %s" first-t-file)
+       ;;   (message "XYZ expected-first-t-file: %s" expected-first-t-file)
 
-  ;; Do an edit-test: confirm that creates the first test file.
-  (perlnow-test-create) ;; 01-Doom-Bongos-mission.t
+       (assert-equal first-t-file expected-first-t-file
+                     (concat test-name ": generated expected t-file in empty t dir") )
 
-  (setq first-t-file (buffer-file-name))
+       ;;   ;; clean up test file buffer (for the hell of it?)
+       ;;   (setq first-t-buffer (current-buffer))
+       ;;   (other-window 1)
+       ;;   (kill-buffer first-t-buffer)
+       ;;   (delete-other-windows)
 
-;;   (message "XYZ first-t-file: %s" first-t-file)
-;;   (message "XYZ expected-first-t-file: %s" expected-first-t-file)
+       ;; switch back to original module buffer
+       (other-window 1)
 
-  (assert-t
-   (string= first-t-file expected-first-t-file)
-   (concat test-name ": generated expected t-file in empty t dir") )
+       ;; move to a known point in the buffer near the second sub
+       (search-forward "=item terranean")
 
-;;   ;; clean up test file buffer (for the hell of it?)
-;;   (setq first-t-buffer (current-buffer))
-;;   (other-window 1)
-;;   (kill-buffer first-t-buffer)
-;;   (delete-other-windows)
+       ;; Do an edit-test: confirm that creates the test file.
+       (perlnow-test-create) ;; 02-Doom-Bongos-terranean.t
 
-  ;; switch back to original module buffer
-   (other-window 1)
+       (setq second-t-file (buffer-file-name))
 
-  ;; move to a known point in the buffer near the second sub
-  (search-forward "=item terranean")
+       ;;   (message "XYZ first-t-file: %s" first-t-file)
+       ;;   (message "XYZ expected-first-t-file: %s" expected-first-t-file)
 
-  ;; Do an edit-test: confirm that creates the test file.
-  (perlnow-test-create) ;; 02-Doom-Bongos-terranean.t
-
-  (setq second-t-file (buffer-file-name))
-
-;;   (message "XYZ first-t-file: %s" first-t-file)
-;;   (message "XYZ expected-first-t-file: %s" expected-first-t-file)
-
-  (assert-t
-   (string= second-t-file expected-second-t-file)
-   (concat test-name ": generated expected second t-file") )
-
-  ))
-
-(test-main-agonostises)
-
-(end-tests)
+       (assert-equal second-t-file expected-second-t-file
+                     (concat test-name ": generated expected second t-file") )
+       ))
+   (end-tests)
+   ))
 
 ;;========
 ;; LICENSE

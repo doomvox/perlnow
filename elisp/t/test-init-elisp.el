@@ -22,31 +22,6 @@
 (provide 'test-init-elisp)
 (require 'cl-lib)
 
-;; I always want one of these:
-(defun test-init-fixdir (dir &optional root)
-  "Fixes the DIR.
-Conditions directory paths for portability and robustness.
-Some examples:
- '~/tmp'             => '/home/doom/tmp/'
- '~/tmp/../bin/test' => '/home/doom/bin/test/'
-Note: converts relative paths to absolute, using the current
-default-directory setting, unless specified otherwise with the
-ROOT option.  Note side-effect: converts the empty string into
-the default-directory or the ROOT setting."
-  (let ((return
-         (substitute-in-file-name
-          (convert-standard-filename
-           (file-name-as-directory
-            (expand-file-name dir root))))))
-    return))
-
-(defun test-init-mkpath (dir)
-  "Create directory DIR (and intervening levels) if it doesn't exist."
-  (unless (file-directory-p dir)
-     (make-directory dir t)))
-
-
-
 ;; load-path additions
 (setq load-path (cons "/home/doom/lib/emacs/local" load-path))
 (setq load-path (cons "/home/doom/End/Cave/Perlnow/lib/perlnow/elisp/" load-path))
@@ -73,6 +48,43 @@ the default-directory or the ROOT setting."
 
 (setenv "USE_TAP" "t")
 
+;; I always want one of these:
+(defun test-init-fixdir (dir &optional root)
+  "Fixes the DIR.
+Conditions directory paths for portability and robustness.
+Some examples:
+ '~/tmp'             => '/home/doom/tmp/'
+ '~/tmp/../bin/test' => '/home/doom/bin/test/'
+Note: converts relative paths to absolute, using the current
+default-directory setting, unless specified otherwise with the
+ROOT option.  Note side-effect: converts the empty string into
+the default-directory or the ROOT setting."
+  (let ((return
+         (substitute-in-file-name
+          (convert-standard-filename
+           (file-name-as-directory
+            (expand-file-name dir root))))))
+    return))
+
+(defun test-init-mkpath (dir)
+  "Create directory DIR (and intervening levels) if it doesn't exist."
+  (unless (file-directory-p dir)
+     (make-directory dir t)))
+
+(defun test-init ()
+  "Generates a test tree in a sub-directory named with the script's file-name prefix.
+E.g. for 02-check_it.t, creates a \"t02\" in `test-loc' by running
+\\[test-init-setup-perlnow-locations]."
+  (let* (
+         (script-file-name (nth 2 command-line-args))
+         (file-prefix (car (split-string (file-name-nondirectory script-file-name) "-")))
+         (script-loc (file-name-directory script-file-name))
+         (sub-directory (concat "t" file-prefix))
+         (test-loc-subdir (test-init-setup-perlnow-locations sub-directory))
+         )
+    (setq perlnow-force t) ;; ask me no questions
+    (test-simple-start) ;; Zero counters and start the stop watch.
+    test-loc-subdir))
 
 (defun test-init-setup-perlnow-locations ( sub-directory )
   "Sets up standard perlnow locations using the given SUB-DIRECTORY.
@@ -109,7 +121,7 @@ Returns the full-path to the new sub-directory."
   "Move FILENAME out of the way, by renaming it with appended EXTENSION.
 Default EXTENSION is \".OLD\""
   (let* ((extension (cond (extension extension)
-                                  (t ".OLD")))
+                          (t ".OLD")))
          (backup-name (concat filename extension))
          )
    (cond ((file-exists-p filename)
@@ -140,25 +152,35 @@ it's intended to be ephemeral."
                 (dirname-path-fixed (test-init-fixdir dirname-path))
 
                 (default-backup-location  (concat dirname-path-fixed "Old"))
-                expected-backup )
+                new-backup new-backup-temp )
            (unless backup-location
              (setq backup-location default-backup-location))
            (test-init-mkpath backup-location)
 
-           (setq expected-backup
+           (setq new-backup
                  (concat backup-location dirname-sans-path))
+
+           ;; Get a uniq directory name to use temporarily
+           (setq new-backup-temp new-backup)
+           (let ((suffix "A")
+                 (count   0))
+             (while (file-exists-p new-backup-temp)
+               (setq new-backup-temp (concat new-backup (concat suffix (number-to-string count))))
+               (setq count (1+ count)) ))
 
            (cond ((or
                    (string-match "\\btest\\b" dirname)
-                   (string-match "\\btmp\\b" dirname)
+                   (string-match "\\btmp\\b"  dirname)
                    (string-match "\\btemp\\b" dirname)
                    )
-                  ;; TODO safer to do the copy first to a unique name,
-                  ;; then delete old, and rename the copy using that name
-                  (if (file-directory-p expected-backup)
-                      (delete-directory expected-backup t))
-                  (copy-directory dirname backup-location nil t t)
+                  ;; first copy to a dir with unique name, then
+                  ;; delete orignal, and rename the copy using
+                  ;; original name
+                  (copy-directory dirname new-backup-temp nil t t)
                   (delete-directory dirname t)
+                  (if (file-directory-p new-backup)
+                      (delete-directory new-backup t))
+                  (copy-directory new-backup-temp new-backup nil t t)
                   ))))))
 
 

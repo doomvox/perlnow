@@ -22,38 +22,26 @@
 ;; X-URL: not distributed yet
 ;; License: the same as your GNU emacs (see below)
 
-(defun test-main-agonostises ()
-  "A standard wrapper around tests, with name silly enough to dodge collisions.
-Simplifies running edebug."
-  (interactive) ;;?
+(funcall
+ (lambda ()
+   (if (file-exists-p "test-init-elisp.el")
+       (load-file "test-init-elisp.el"))
 
-  (if (file-exists-p "test-init-elisp.el")
-    (load-file "test-init-elisp.el"))
+   ;; meta-project, test-simple.el eval/dev: using a modified test-simple.el
+   (load-file "/home/doom/End/Sys/Emacs/emacs-test-simple/test-simple.el")
+   ;; (perlnow-tron)
+   (let* (
+          (test-loc (test-init))
 
-  (setenv "USE_TAP" "t")
-
-;; meta-project, test-simple.el eval/dev: using a modified test-simple.el
-;; TODO
-;;  install the latest, maybe via emacs package management: should have my fix.
-  (load-file "/home/doom/End/Sys/Emacs/emacs-test-simple/test-simple.el")
-
-  (test-simple-start) ;; Zero counters and start the stop watch.
-
-  (setq perlnow-force t) ;; ask me no questions
-
-;;  (load-file "/home/doom/End/Cave/Perlnow/lib/perlnow/elisp/perlnow.el")
-
-  (let* (
-       (funcname "perlnow-sub-at-point")
-       (test-name
-        (concat "Testing " funcname ))
-       (package-name "Modular::Stuff")
-       (expected-pm-base "Stuff.pm")
-       (expected-pm-file
-        (concat perlnow-pm-location "Modular" perlnow-slash expected-pm-base))
-       ;; for testing, we insert two subroutines named 'mission' and 'terranean'
-       (sub-code-str
-        "
+          (funcname "perlnow-sub-at-point")
+          (test-name (concat "Testing " funcname ))
+          (package-name "Modular::Stuff")
+          (expected-pm-base "Stuff.pm")
+          (expected-pm-file
+           (concat perlnow-pm-location "Modular" perlnow-slash expected-pm-base))
+          ;; for testing, we insert two subroutines named 'mission' and 'terranean'
+          (sub-code-str
+           "
 =item mission
 
 =cut
@@ -78,149 +66,152 @@ sub terranean {
 }
 ")
 
-;;       (perl "/usr/bin/perl")
-       returned-sub
-       )
+          ;;       (perl "/usr/bin/perl")
+          returned-sub
+          )
 
-  ;; delete existing *.pm file (( TODO better to rename out of the way? ))
-;;   (if (file-exists-p expected-pm-file)
-;;       (delete-file expected-pm-file))
-  (test-init-move-file-out-of-way expected-pm-file)
+     ;; delete existing *.pm file (( TODO better to rename out of the way? ))
+     ;;   (if (file-exists-p expected-pm-file)
+     ;;       (delete-file expected-pm-file))
+     (test-init-move-file-out-of-way expected-pm-file)
 
-  ;; create and open new module file
-  (perlnow-module perlnow-pm-location package-name)
-  (insert sub-code-str)
-  (save-buffer)
+     ;; create and open new module file
+     (perlnow-module perlnow-pm-location package-name)
+     (insert sub-code-str)
+     (save-buffer)
 
-  ;; begin out-of-sequence with an easy one
-  (search-backward "=item mission")
-  (search-forward "sub mission")
-  (move-beginning-of-line nil)
-  (setq returned-sub (perlnow-sub-at-point))
-  (assert-t
-   (string= returned-sub "mission")
-   (concat test-name ": beginning of first sub") )
+     ;; begin out-of-sequence with an easy one
+     (search-backward "=item mission")
+     (search-forward "sub mission")
+     (move-beginning-of-line nil)
+     (setq returned-sub (perlnow-sub-at-point))
+     (assert-t
+      (string= returned-sub "mission")
+      (concat test-name ": beginning of first sub") )
 
-  ;; now, start at beginning of two subs pod, and step forward
-  (search-backward "=item mission")
-  (setq returned-sub (perlnow-sub-at-point))
-  ;; currently, nil, want it to be "mission"
-  (assert-t
-   (string= returned-sub  "mission")
-   (concat test-name ": at start of first sub pod") )
+     ;; now, start at beginning of two subs pod, and step forward
+     (search-backward "=item mission")
+     (setq returned-sub (perlnow-sub-at-point))
+     ;; currently, nil, want it to be "mission"
+     (assert-t
+      (string= returned-sub  "mission")
+      (concat test-name ": at start of first sub pod") )
 
-  (forward-line 1)
-  (setq returned-sub (perlnow-sub-at-point))
-  ;; currently, nil, want it to be "mission"
-  (assert-t
-   (string= returned-sub  "mission")
-   (concat test-name ": inside the first subs pod") )
+     (forward-line 1)
+     (setq returned-sub (perlnow-sub-at-point))
+     ;; currently, nil, want it to be "mission"
+     (assert-t
+      (string= returned-sub  "mission")
+      (concat test-name ": inside the first subs pod") )
 
-  (search-forward "=cut")
-  (setq returned-sub (perlnow-sub-at-point))
-  ;; currently, nil, want it to be "mission"
-  (assert-t
-   (string= returned-sub  "mission")
-   (concat test-name ": last line of first sub's pod") )
+     (search-forward "=cut")
+     (setq returned-sub (perlnow-sub-at-point))
+     ;; currently, nil, want it to be "mission"
+     (assert-t
+      (string= returned-sub  "mission")
+      (concat test-name ": last line of first sub's pod") )
 
-  (search-forward "# Talking")
-  (setq returned-sub (perlnow-sub-at-point))
-  ;; currently, nil, want it to be "mission"
-  (assert-t
-   (string= returned-sub  "mission")
-   (concat test-name ": comment right above first sub") )
+     (search-forward "# Talking")
+     (setq returned-sub (perlnow-sub-at-point))
+     ;; currently, nil, want it to be "mission"
+     (assert-t
+      (string= returned-sub  "mission")
+      (concat test-name ": comment right above first sub") )
 
-  (search-forward "sub mission")
-  (move-beginning-of-line nil)
-  (setq returned-sub (perlnow-sub-at-point))
-  (assert-t
-   (string= returned-sub  "mission")
-   (concat test-name ": beginning of first sub") )
+     (search-forward "sub mission")
+     (move-beginning-of-line nil)
+     (setq returned-sub (perlnow-sub-at-point))
+     (assert-t
+      (string= returned-sub  "mission")
+      (concat test-name ": beginning of first sub") )
 
-  (forward-word 1)
-  (setq returned-sub (perlnow-sub-at-point))
-  (assert-t
-   (string= returned-sub  "mission")
-   (concat test-name ": between sub keyword and subname, first sub") )
+     (forward-word 1)
+     (setq returned-sub (perlnow-sub-at-point))
+     (assert-t
+      (string= returned-sub  "mission")
+      (concat test-name ": between sub keyword and subname, first sub") )
 
-  (move-end-of-line nil)
-  (setq returned-sub (perlnow-sub-at-point))
-  (assert-t
-   (string= returned-sub  "mission")
-   (concat test-name ": eol, first line of first sub") )
+     (move-end-of-line nil)
+     (setq returned-sub (perlnow-sub-at-point))
+     (assert-t
+      (string= returned-sub  "mission")
+      (concat test-name ": eol, first line of first sub") )
 
-  (forward-line 1)
-  (setq returned-sub (perlnow-sub-at-point))
-  (assert-t
-   (string= returned-sub  "mission")
-   (concat test-name ": inside of the first sub") )
+     (forward-line 1)
+     (setq returned-sub (perlnow-sub-at-point))
+     (assert-t
+      (string= returned-sub  "mission")
+      (concat test-name ": inside of the first sub") )
 
-  (search-forward "}")
-  (backward-char 1)
-  (setq returned-sub (perlnow-sub-at-point))
-  (assert-t
-   (string= returned-sub  "mission")
-   (concat test-name ": at closing brace of first sub") )
+     (search-forward "}")
+     (backward-char 1)
+     (setq returned-sub (perlnow-sub-at-point))
+     (assert-t
+      (string= returned-sub  "mission")
+      (concat test-name ": at closing brace of first sub") )
 
-  (search-forward "=item terranean")
-  (previous-line 1)
-  (setq returned-sub (perlnow-sub-at-point))
-  (assert-t
-   (string= returned-sub  "terranean")
-   (concat test-name ": between first sub and pod of second") )
+     (search-forward "=item terranean")
+     (previous-line 1)
+     (setq returned-sub (perlnow-sub-at-point))
+     (assert-t
+      (string= returned-sub  "terranean")
+      (concat test-name ": between first sub and pod of second") )
 
-  (search-forward "=item terranean")
-  (move-beginning-of-line nil)
-  (setq returned-sub (perlnow-sub-at-point))
-  (assert-t
-   (string= returned-sub  "terranean")
-   (concat test-name ": start of pod for second sub") )
+     (search-forward "=item terranean")
+     (move-beginning-of-line nil)
+     (setq returned-sub (perlnow-sub-at-point))
+     (assert-t
+      (string= returned-sub  "terranean")
+      (concat test-name ": start of pod for second sub") )
 
-  (search-forward "=item terranean")
-  (forward-line 1)
-  (setq returned-sub (perlnow-sub-at-point))
-  (assert-t
-   (string= returned-sub  "terranean")
-   (concat test-name ": inside pod for second sub") )
+     (search-forward "=item terranean")
+     (forward-line 1)
+     (setq returned-sub (perlnow-sub-at-point))
+     (assert-t
+      (string= returned-sub  "terranean")
+      (concat test-name ": inside pod for second sub") )
 
-  (search-forward "sub ")
-  (move-beginning-of-line nil)
-  (setq returned-sub (perlnow-sub-at-point))
-  (assert-t
-   (string= returned-sub  "terranean")
-   (concat test-name ": beginning of second sub") )
+     (search-forward "sub ")
+     (move-beginning-of-line nil)
+     (setq returned-sub (perlnow-sub-at-point))
+     (assert-t
+      (string= returned-sub  "terranean")
+      (concat test-name ": beginning of second sub") )
 
-  (forward-word 1)
-  (setq returned-sub (perlnow-sub-at-point))
-  (assert-t
-   (string= returned-sub  "terranean")
-   (concat test-name ": first line of second sub") )
+     (forward-word 1)
+     (setq returned-sub (perlnow-sub-at-point))
+     (assert-t
+      (string= returned-sub  "terranean")
+      (concat test-name ": first line of second sub") )
 
-  (search-forward "{")
-  (setq returned-sub (perlnow-sub-at-point))
-  (assert-t
-   (string= returned-sub  "terranean")
-   (concat test-name ": opening brace of second sub") )
+     (search-forward "{")
+     (setq returned-sub (perlnow-sub-at-point))
+     (assert-t
+      (string= returned-sub  "terranean")
+      (concat test-name ": opening brace of second sub") )
 
-  (backward-char 1)
-  (forward-sexp 1)
-  (backward-char 1)
-  (setq returned-sub (perlnow-sub-at-point))
-  (assert-t
-   (string= returned-sub  "terranean")
-   (concat test-name ": closing brace of second sub") )
+     (backward-char 1)
+     (forward-sexp 1)
+     (backward-char 1)
+     (setq returned-sub (perlnow-sub-at-point))
+     (assert-t
+      (string= returned-sub  "terranean")
+      (concat test-name ": closing brace of second sub") )
 
-  (forward-line 1)
-  (setq returned-sub (perlnow-sub-at-point))
-  (assert-nil
-   (string= returned-sub  "terranean")
-   (concat test-name ": after end of second sub") )
+     (forward-line 1)
+     (setq returned-sub (perlnow-sub-at-point))
+     (assert-nil
+      (string= returned-sub  "terranean")
+      (concat test-name ": after end of second sub") )
 
-))
+     )
+   (end-tests)
+   ))
 
-(test-main-agonostises)
 
-(end-tests)
+
+
+
 
 ;;========
 ;; LICENSE

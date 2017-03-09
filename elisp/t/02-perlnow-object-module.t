@@ -1,5 +1,5 @@
 #!/usr/local/bin/emacs --script
-;; /usr/bin/emacs
+;; Or: /usr/bin/emacs
 
 ;;; perlnow-test.t ---
 
@@ -11,42 +11,41 @@
 ;; X-URL: not distributed yet
 ;; License: the same as your GNU emacs (see below)
 
-(if (file-exists-p "test-init-elisp.el")
-    (load-file "test-init-elisp.el"))
+(funcall
+ (lambda ()
+   (if (file-exists-p "test-init-elisp.el")
+       (load-file "test-init-elisp.el"))
 
-;; (message "load-path: %s"
-;;         (pp load-path)) ;; DEBUG
+   ;; meta-project, test-simple.el eval/dev: using a modified test-simple.el
+   (load-file "/home/doom/End/Sys/Emacs/emacs-test-simple/test-simple.el")
 
-(setenv "USE_TAP" "t")
+   (let* (
+          (test-loc (test-init))
+          (funcname "perlnow-object-module")
+          (test-name (format "Testing %s" funcname ))
 
-;; meta-project, test-simple.el eval/dev: using a modified test-simple.el
-(load-file "/home/doom/End/Sys/Emacs/emacs-test-simple/test-simple.el")
+          (inc-spot perlnow-pm-location)
+          (package-name "One::Over")
+          (expected-file (concat inc-spot "One/Over.pm"))
+          new-package-name
+          )
+     (perlnow-object-module inc-spot package-name)
 
-(test-simple-start) ;; Zero counters and start the stop watch.
+     (assert-t
+      (file-exists-p expected-file)
+      (concat test-name ": creates expected file, " expected-file )
+      )
 
-(setq perlnow-force t) ;; ask me no questions
+     ;; now, look over the open code buffer
+     (setq new-package-name (perlnow-get-package-name-from-module-buffer))
 
-(let* (
-       (funcname "perlnow-object-module")
-       (test-name
-        (concat "Testing that " funcname " creates file"))
-       (inc-spot
-        (concat perlnow-pm-location "/t1"))
-       (package-name "One::Over")
-       (expected-file (concat inc-spot "/One/Over.pm"))
-       )
-  (perlnow-mkpath inc-spot)
+     (assert-equal package-name new-package-name
+                   (concat test-name ":package line looks right"))
 
-  (perlnow-object-module inc-spot package-name)
-
-  (assert-t
-   (file-exists-p expected-file)
-   (concat test-name " " expected-file )
-   )
-  )
-
-;; TODO look at the file, make sure it's the right kind,
-;; e.g. should not call out Exporter.
+     (assert-t
+      (not (perlnow-exporter-code-p))
+      (concat test-name ": Looks like OOP (i.e. not Exporter)"))
+     )))
 
 (end-tests)
 

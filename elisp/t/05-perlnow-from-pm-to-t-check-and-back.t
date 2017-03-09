@@ -2,7 +2,7 @@
 ;; /usr/bin/emacs
 ;;; 05-perlnow-from-pm-to-t-check-and-back.t
 
-;; This exercises:
+;; The test story:
 ;;   module starter
 ;;   edit test
 ;;   run check

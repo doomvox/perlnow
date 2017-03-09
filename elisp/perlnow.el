@@ -1861,17 +1861,19 @@ The test policy is defined by a trio of settings, see docs for these variables:
   (interactive)
   (if perlnow-trace (perlnow-message "Calling perlnow-edit-test-file"))
   (let* ((harder-setting (car current-prefix-arg)))
-    (unless testfile
-      (cond (harder-setting  ;; if so, perlnow-select-file has to handle open, etc
-             (perlnow-edit-test-file-harder harder-setting))
-            (t
-             (setq testfile
-                   (perlnow-get-test-file-name))
-             (setq perlnow-recent-pick testfile)
-             (setq perlnow-recent-pick-global testfile)  ;; TODO experimental
-             (perlnow-open-test-file testfile)
-             )))
-    ))
+    (cond (harder-setting  ;; if so, perlnow-select-file has to handle open, etc
+           (perlnow-edit-test-file-harder harder-setting))
+          (t
+           (cond ((not testfile)
+                  (setq testfile
+                        (perlnow-get-test-file-name))
+                  (setq perlnow-recent-pick testfile)
+                  (setq perlnow-recent-pick-global testfile)  ;; TODO experimental
+                  ))
+           (message "ZANG: about to perlnow-open-test-file with: %s" testfile)
+           (perlnow-open-test-file testfile)
+           ))))
+
 
 ;; Used by: perlnow-edit-test-file, perlnow-test-create-manually, perlnow-select-create-test
 (defun perlnow-open-test-file (testfile)
@@ -2803,14 +2805,6 @@ Does the simplest possible check: looks for a *.t extension on file name."
             ))
     ret))
 
-(defun perlnow-report-script-p ()
-  "Report whether the current buffer looks like a perl script."
-  (interactive)
-  (if perlnow-trace (perlnow-message "Calling perlnow-report-script-p"))
-  (if (perlnow-script-p)
-      (message "script!")
-    (message "not.")))
-
 (defun perlnow-module-code-p ()
   "Determine if the buffer looks like a perl module.
 This looks for the package line near the top.
@@ -3115,8 +3109,7 @@ An example of returned metadata.
             (mapconcat 'identity (split-string package-name "::") "-"))
       )
 
-     ((perlnow-test-p) ;; EXPERIMENTAL needs test
-
+     ((perlnow-test-p)
       (setq file-location
             (file-name-directory (buffer-file-name)))
 
@@ -3178,6 +3171,7 @@ An example of returned metadata.
     (switch-to-buffer initial-buffer)
     (goto-char initial-point)
     ret-list))
+
 
 (defun perlnow-get-package-name-from-module-buffer ()
   "Get the module name from the first package line.
@@ -4088,7 +4082,7 @@ The template used is specified by the variable `perlnow-perl-test-module-templat
 
 ;;; TODO check if this is limited to cpan-style
 ;;; TODO somewhere need to be able to do recursive decent through a project tree
-(defun perlnow-list-test-files (testloc dotdef namestyle &optional fullpath)
+(defun perlnow-list-test-files (testloc dotdef namestyle &optional fullpath-opt)
   "Looks for test files appropriate for the current file.
 Uses the three given elements of a \"test policy\", to find
 appropriate test files:
@@ -4097,32 +4091,57 @@ is defined by three pieces of information:
 the TESTLOC \(see `perlnow-test-policy-test-location'\)
 the DOTDEF \(see `perlnow-test-policy-dot-definition' \)
 and the NAMESTYLE \(see `perlnow-test-policy-naming-style'\).
-Returns file names with full path if FULLPATH is t."
+Note: actually NAMESTYLE isn't used internally: just a placeholder.
+Returns file names with full path if FULLPATH-OPT is t."
   (if perlnow-trace (perlnow-message "Calling perlnow-list-test-files"))
-;;; Note, code mutated from above: perlnow-test-from-policy
+  ;;;; Note, code mutated from above: perlnow-test-from-policy
   (message "perlnow-list-test-files, looking at buffer: %s" (buffer-name))
-  (let* ((file-location
+  (let* ((full-file
            (file-name-directory (buffer-file-name)))
-         (basename
-           (file-name-sans-extension (file-name-nondirectory (buffer-file-name))))
+         ;; (basename
+         ;;   (file-name-sans-extension (file-name-nondirectory (buffer-file-name))))
+         (basename (file-name-base (buffer-file-name)))
          ;; module oriented info (calculated below):
          package-name   inc-spot  hyphenized-package-name
          ;; need to determine:
          testloc-absolute test-file-list
          )
+    (unless full-file ;; TODO but what about test select menu?  Or even, dired?
+      (error "perlnow-list-test-files: buffer has no associated file, giving up."))
+
+    ;; check whether curbuff is perl code? (Why not run metadata probe)
+    ;;    perlnow-find-cpan-style-staging-area
+    ;;    perlnow-script-p
+    ;;    perlnow-test-p
+    ;;    perlnow-test-select-menu-p
+
+    ;;  (defun perlnow-get-inc-spot (package-name pm-location)
+
+
     ;; module oriented info
-    (cond
-     ((setq package-name (perlnow-get-package-name-from-module-buffer))
-      (setq inc-spot (perlnow-get-inc-spot package-name file-location))
-      (setq hyphenized-package-name (mapconcat 'identity (split-string package-name "::") "-"))
-      ))
+    (cond ((setq package-name (perlnow-get-package-name-from-module-buffer))
+           (setq inc-spot (perlnow-get-inc-spot package-name full-file))
+           (setq hyphenized-package-name
+                 (mapconcat 'identity (split-string package-name "::") "-"))
+           )
+;;      (t ;; handle non-module case
+;;       )
+     )
+
+    (if perlnow-debug
+        (message "perlnow-list-test-files: full-file: %s testloc: %s " full-file testloc ))
 
     (setq testloc-absolute
           (perlnow-fixdir
-           (cond ((string= dotdef "fileloc") ; might be script or module
-                   (perlnow-expand-dots-relative-to file-location testloc))
-                 ((string= dotdef "incspot") ; only defined with modules
-                   (perlnow-expand-dots-relative-to inc-spot testloc))
+           (cond ((string= dotdef "fileloc") ;; may be for script or module
+                   (perlnow-expand-dots-relative-to full-file testloc))
+                 ((string= dotdef "incspot") ;; only defined with modules
+                  (cond (inc-spot
+                         (perlnow-expand-dots-relative-to inc-spot testloc))
+                        (t
+                         (error (format "Could not determine inc-spot for file: %s" full-file))
+                         ))
+                  )
                  (t
                   (error (concat
                           "Invalid perlnow-test-policy-dot-definition, "
@@ -4131,7 +4150,7 @@ Returns file names with full path if FULLPATH is t."
     (unless (file-directory-p testloc-absolute)
       (message "warning %s is not a directory" testloc-absolute))
     (setq test-file-list
-          (directory-files testloc-absolute fullpath "\\\.t$"))
+          (directory-files testloc-absolute fullpath-opt "\\\.t$"))
     test-file-list))
 
 ;; Adding "harder" awareness to:  perlnow-edit-test-file
@@ -4345,9 +4364,7 @@ This only checks the first character in NAME."
     ;; The code buffer the menu was generated from
     (setq initiating-buffer perlnow-associated-code)
 
-    (setq selected-file-compact (perlnow-select-file-from-current-line))
-    (setq path (perlnow-get-path-from-markedup-name selected-file-compact))
-    (setq selected-file (concat path selected-file-compact))
+    (setq selected-file (perlnow-select-read-full-file-name))
 
     ;; trace associated pointers back to code being tested
     (setq original-context
@@ -4399,6 +4416,19 @@ This only checks the first character in NAME."
             (replace-regexp-in-string "\s+$" "" selected-file))
       selected-file)))
 
+;; Used indirectly by perlnow-select-file
+(defun perlnow-select-read-full-file-name ()
+  "In select test buffer, tries to read a file name with path from current line.
+Returns nil if not inside a *perlnow test select* buffer, or if
+no file-name is found on the current line."
+  (let (selected-file-compact path selected-file)
+    (cond ((perlnow-test-select-menu-p)
+           (setq selected-file-compact (perlnow-select-file-from-current-line))
+           (cond ((or selected-file-compact (not (string= selected-file-compact "")))
+                  (setq path (perlnow-get-path-from-markedup-name selected-file-compact))
+                  (setq selected-file (concat path selected-file-compact))))
+           ))
+    selected-file))
 
 ;; bind this to "a" in perlnow-select-mode
 ;; Note: somewhat similar to perlnow-test-create-manually
@@ -4650,7 +4680,75 @@ falls back to just \"perl\"."
            (setq how-to-perl "perl")))
     how-to-perl))
 
-(defun perlnow-find-cpan-style-staging-area ()
+(defun perlnow-find-cpan-style-staging-area ( &optional file-name )
+  "Determines if the current file buffer is located in an cpan-style tree.
+Should return the path to the current cpan-style staging area, or
+nil if it's not found.  The staging area is located by searching
+upwards from the location of a file to a location with files that
+look like a cpan-style project (as currently implemented, it
+looks for either a \"Makefile.PL\" or a \"Build.PL\"\).
+This defaults to working on the current buffer's file \(if available\),
+but can use the optional FILE-NAME instead.  For the special case of a
+\"*perlnow select test*\" buffer, it works with a file name extracted
+from the buffer." ;; TODO specify how?
+  ;; Two important cases to cover are:
+  ;;   ~/perldev/Horror-Grossout/lib/Horror/Grossout.pm
+  ;;   ~/perldev/Horror-Grossout/t/Horror-Grossout.t
+  (interactive)
+  (if perlnow-trace (perlnow-message "Calling perlnow-find-cpan-style-staging-area"))
+  (let* (
+         return
+         ;; args for directory-files function:
+         (dir        "")        ;; candidate directory under examination
+         (full-names nil)
+         (pattern    "^[ltMB]") ;; to pre-screen listing for interesting results only
+                                ;;    lib, t, Makefile.PL, Build.PL, etc
+         (nosort     t  )
+         (file-list  () )       ;; file listing of the candidate directory (pre-screened)
+         ;;
+         (buffy (buffer-file-name))
+         (pnts-file (perlnow-select-read-full-file-name)) ;; nil if not select test buffer
+         (input-file
+          (or file-name buffy pnts-file perlnow-associated-code perlnow-recent-pick-global))
+         )
+    (cond (input-file
+           (setq dir (perlnow-fixdir (file-name-directory input-file)))
+           ;; Look at dir, and each level above it, stepping up one each time,
+           ;; give up when dir is so short we must be at root (( TODO but: Windows?  ))
+           (setq return
+                 (catch 'UP
+                   (while (> (length dir) 1)
+                     (setq file-list (directory-files dir full-names pattern nosort))
+
+                     (dolist (file file-list)
+                       (if (or
+                            (string= file "Makefile.PL")
+                            (string= file "Build.PL")) ;; we found it!
+                           (throw 'UP dir))
+                       ) ;; end dolist
+
+                     ;; go up a directory level
+                     (setq dir (perlnow-fixdir (concat dir "..")))
+                     ;; if we can't read files here, give up
+                     (if (not (file-accessible-directory-p dir))
+                         (throw 'UP nil))
+
+                     ) ;; end while
+                   nil ) ;; end catch, ran the gauntlet without success, so return nil
+                 ) ;; end setq return
+           )
+          (t
+           (setq return nil)))
+
+    ;; TODO this func is supposed to *find*, why do a build as a side-effect?
+    (if return ;; skip if nothing found (note, that means dir is "/")
+        (perlnow-cpan-style-build dir))
+
+    (if perlnow-debug
+        (message "perlnow-find-cpan-style-staging-area return: %s" return))
+    return))
+
+(defun perlnow-find-cpan-style-staging-area-OLD ()
   "Determines if the current file buffer is located in an cpan-style tree.
 Should return the path to the current cpan-style staging area, or nil
 if it's not found.  The staging area is located by searching upwards
@@ -4702,14 +4800,12 @@ for either a \"Makefile.PL\" or a \"Build.PL\"\)."
           (t
            (setq return nil)))
 
-    ;; TODO this method is supposed to do a find, why is it doing a build as a side-effect?
+    ;; TODO this func is supposed to *find*, why do a build as a side-effect?
     (if return ;; skip if nothing found (note, that means dir is "/")
         (perlnow-cpan-style-build dir))
 
     ;; (message "perlnow-find-cpan-style-staging-area return: %s" return);; DEBUG
-    return
-    ) ;; end let*
-  ) ;; end defun
+    return))
 
 
 ;; replaces perlnow-run-perl-makefile-pl-if-needed & perlnow-run-perl-build-pl
@@ -5514,7 +5610,7 @@ Defaults to perlnow-t-for-code-plist."
   (setq perlnow-t-for-code-plist plist) ;; TODO temporary fix
   )
 
-;; It's hard to believe I needed to write this.
+;; Like perl's "keys".  It's hard to believe I needed to write this.
 (defun perlnow-plist-keys ( plist )
   "Return all keys of the given plist as a list of strings."
 ;; Step through a list and skipping the even values
@@ -6080,26 +6176,14 @@ It does three things:
   (perlnow-troff)
   )
 
-(defun perlnow-wtf ()
-  ""
+(defun perlnow-report-script-p ()
+  "Report whether the current buffer looks like a perl script."
   (interactive)
+  (if perlnow-trace (perlnow-message "Calling perlnow-report-script-p"))
+  (if (perlnow-script-p)
+      (message "script!")
+    (message "not.")))
 
-  (let* (( testloc-absolute "/home/doom/tmp/t" )
-         ( inc-spot "/home/doom/tmp/lib")
-         )
-
-    ;; EXPERIMENTAL
-    (perlnow-stash-put testloc-absolute inc-spot)
-
-
-    (message "perlnow-t-for-code-plist: %s\n"
-             (pp perlnow-t-for-code-plist))
-    ))
-
-
-
-;;-------
-;; debugging routines
 
 (defun perlnow-report-sub-at-point ()
    "Echoes the output from of \[[perlnow-sub-at-point]]."
@@ -6112,6 +6196,42 @@ It does three things:
   (message "buffer-name: %s" (buffer-name))
 )
 
+(defun perlnow-report-list-test-files  ()
+  "Command that lists test files associated with current buffer.
+For do debugging trial runs."
+  (interactive)
+   (let ((testloc "../t")
+         (dotdef  "incspot")
+         (namestyle "")
+         (fullpath-opt nil)
+         )
+
+     (message "perlnow-list-test-files: %s"
+              (pp
+               (perlnow-list-test-files testloc dotdef namestyle fullpath-opt)
+               ))
+     ))
+
+
+(defun perlnow-wtf ()
+  ""
+  (interactive)
+
+  (let* (( testloc-absolute "/home/doom/tmp/t" )
+         ( inc-spot "/home/doom/tmp/lib")
+         )
+
+    ;; EXPERIMENTAL
+    (perlnow-stash-put testloc-absolute inc-spot)
+
+    (message "perlnow-t-for-code-plist: %s\n"
+             (pp perlnow-t-for-code-plist))
+    ))
+
+
+
+;;-------
+;; debugging routines
 
 (defun perlnow-tron ()
   (interactive)

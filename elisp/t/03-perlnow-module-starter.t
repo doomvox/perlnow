@@ -11,57 +11,44 @@
 ;; X-URL: not distributed yet
 ;; License: the same as your GNU emacs (see below)
 
-(if (file-exists-p "test-init-elisp.el")
-    (load-file "test-init-elisp.el"))
+(funcall
+ (lambda ()
+   ;; project-specific include file (with standard name)
+   (if (file-exists-p "test-init-elisp.el")
+       (load-file "test-init-elisp.el"))
 
-(setenv "USE_TAP" "t")
+   ;; meta-project, test-simple.el eval/dev: using a modified test-simple.el
+   (load-file "/home/doom/End/Sys/Emacs/emacs-test-simple/test-simple.el")
 
-;; meta-project, test-simple.el eval/dev: using a modified test-simple.el
-;; TODO install the latest, maybe via emacs package management: should have my fix.
-(load-file "/home/doom/End/Sys/Emacs/emacs-test-simple/test-simple.el")
+   (let* (
+          (test-loc (test-init))
+          (funcname "perlnow-module-starter")
+          (test-name
+           (concat "Testing that " funcname " creates cpan-style module"))
+          (package-name "Three::Warp::Nine")
+          ;; TODO would be better to work with perlnow-dev-location
+          (staging-area
+           (perlnow-staging-area perlnow-pm-location package-name))
+          (expected-file (concat staging-area "lib" perlnow-slash
+                                 "Three" perlnow-slash "Warp" perlnow-slash "Nine.pm"))
 
-(test-simple-start) ;; Zero counters and start the stop watch.
+          (expected-Pl (concat staging-area "Build.PL"))
+          )
+     ;; TODO why not zap these if they exist already?
+     (perlnow-mkpath perlnow-pm-location)
+     (perlnow-mkpath staging-area)
 
-(setq perlnow-force t) ;; ask me no questions
+     (perlnow-module-starter perlnow-pm-location package-name)
 
-(let* (
-       (funcname "perlnow-module-starter")
-       (test-name
-        (concat "Testing that " funcname " creates cpan-style module"))
-       (package-name "Three::Warp::Nine")
-       (staging-area
-        (perlnow-staging-area perlnow-pm-location package-name))
-       (expected-file (concat staging-area "lib" "/Three/Warp/Nine.pm"))
-       (expected-Pl (concat staging-area "Build.PL"))
-       )
-  (perlnow-mkpath perlnow-pm-location)
-  (perlnow-mkpath staging-area)
+     (assert-t
+      (file-exists-p expected-file)
+      (concat test-name " " expected-file ) )
 
-  (perlnow-module-starter perlnow-pm-location package-name)
-
-  (assert-t
-   (file-exists-p expected-file)
-   (concat test-name " " expected-file ) )
-
-  (assert-t
-   (file-exists-p expected-Pl)
-   (concat "Testing that " funcname " generated expected Build.PL file" ) )
-
-  )
-
-;; (message "end is near")
+     (assert-t
+      (file-exists-p expected-Pl)
+      (concat "Testing that " funcname " generated expected Build.PL file" ) )
+     )))
 (end-tests)
-;; (message "after the end")
-
-;; TODO BUG
-;; test-simple buglet: end-tests is echoing name of *scratch* buffer to stdout, for some reason
-
-;; end is near
-;; *scratch*
-;; ok 1 - Testing that perlnow-module-starter creates cpan-style module /home/doom/tmp/perlnow_test/lib/Three-Warp-Nine/lib/Three/Warp/Nine.pm
-;; 1..1
-
-;; after the end
 
 
 ;;========
