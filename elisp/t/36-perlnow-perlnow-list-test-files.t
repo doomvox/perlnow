@@ -37,21 +37,23 @@
           (package-name "Trantor::Skateboard")
           (staging-area
            (perlnow-staging-area perlnow-dev-location package-name))
-          (expected-project-loc
-           (perlnow-fixdir
-            (concat staging-area "Trantor-Skateboard")))
-          (expected-pm (concat expected-project-loc "lib" perlnow-slash
+;; Note: this was redundant, staging-area already has hyphenized
+;;           (expected-project-loc
+;;            (perlnow-fixdir
+;;             (concat staging-area "Trantor-Skateboard")))
+          (expected-pm (concat staging-area "lib" perlnow-slash
                                  "Trantor" perlnow-slash "Skateboard.pm") )
           (expected-Pl (concat staging-area "Build.PL"))
-          (expected-t-loc (perlnow-fixdir (concat expected-project-loc "t")))
+          (expected-t-loc (perlnow-fixdir (concat staging-area "t")))
           pm-buffer
           )
 
 ;;      (require 'template)
 ;;      (setq perlnow-perl-package-name package-name) ;; global used to pass value into template
 
-     (test-init-safe-recursive-delete expected-project-loc)
-     (perlnow-milla expected-project-loc package-name)
+     (test-init-safe-recursive-delete staging-area)
+;;     (perlnow-milla staging-area package-name)
+     (perlnow-milla perlnow-dev-location package-name)
 
      (assert-t
       (perlnow-module-code-p)
@@ -105,7 +107,6 @@
              expected-test-files
              test-files-sorted
              (concat test-name ": additional via perlnow-test-create"))
-
 
        )
      ) ;; end let*

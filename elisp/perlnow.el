@@ -955,7 +955,7 @@ Similar to perlnow-associated-code, but really contains a buffer object.
 ;; A global (not buffer-local for once) where perlnow can
 ;; save the associations between the "t" directories and
 ;; the lib directories.
-(defvar perlnow-t-for-code-plist ()
+(defvar perlnow-incpot-from-t-plist ()
   "Pairs of \"t\" dirs and code dirs (e.g. \"lib\" directories, aka inc-spots).
 It's expected that there will be a one-to-one relationship between
 the location of a project's code directories and it's \"t\".
@@ -3378,22 +3378,77 @@ Returns path to \"t\" (including \"t\")."
         (setq t-loc nil))
     t-loc))
 
-;; TODO this is at present just a wrapper around one line of code,
-;;      because I can't see this as being the last word in how to do this.
-;;      If optional MD is supplied, can you use the test policy to get back to a lib,
-;;      without relying on a stashed association?
 (defun perlnow-inc-spot-from-t (testfile &optional md)
   "Given TESTFILE return the associated inc-spot.
 An optional MD stash can be passed in provide hints. (TODO)."
   ;; TODO handle a t-dir argument as well as a testfile argument
-  (let* (inc-spot (perlnow-stash-lookup (file-name-directory testfile))
+  (if perlnow-debug
+      (message "perlnow-t-for-code-plist: %s" (pp perlnow-t-for-code-plist)))
+  (let* (
+         (initial-buffer (current-buffer))
+         (initial-point (point))
+         (t-loc (perlnow-t-dir-from-t testfile))
+
+          inc-spot
+          staging
+          )
+    ;; make the testfile buffer open and active
+    (find-file testfile)
+    (cond ((setq staging (perlnow-find-cpan-style-staging-area))
+           (setq inc-spot (concat staging perlnow-slash "lib"))
+           )
+          (md
+           (let* (
+                  (testloc          (nth 0  md))
+                  (dotdef           (nth 1  md))
+                  (namestyle        (nth 2  md))
                   )
-  ;; TODO check if inc-spot isn't defined
+             (setq inc-spot (perlnow-incspot-from-t-given-policy testfile testloc dotdef namestyle))
+             ))
+          (t
+           (setq inc-spot
+                 (perlnow-stash-lookup (file-name-directory testfile)))
+           ))
+
+    ;; return from any excursions
+    (switch-to-buffer initial-buffer)
+    (goto-char initial-point)
+
   inc-spot))
 
 ;; (message "t-loc: %s"
 ;;  (perlnow-t-dir-from-t "/home/doom/tmp/t/subdir/subbyhere/submariner/bozo.t"))
 ;; ;; "t-loc: /home/doom/tmp/t/"
+
+
+(defun perlnow-incspot-from-t-given-policy (testfile testloc dotdef &optional namestyle)
+  ""
+  ;; TODO so, given a /home/humbug/yaddah/Moho-Bogo/t/stuffit.t, and
+  ;; dotdef of either incspot or fileloc, should be able to apply the
+  ;; dotdef (e.g. "../t") to get from t to lib...
+  ;; complication: can't assume it's named "lib" unless cpan-style.
+  ;; which means... you get to the place where the "lib" has to be,
+  ;; and then... check all the dirs for perl modules, if there's only
+  ;; one, you got it.  If there's more than one, get a list modules
+  ;; for each, and check the testfile for references to modules in
+  ;; either list-- if there's only one, you got it.
+  ;; (( I'm beginning to see why I've never written one of these. ))
+  (let* (
+         (t-file-loc (file-name-directory testfile))
+         (rel-t-loc testloc)
+         (full-t-loc (perlnow-t-dir-from-t testfile))
+         staging inc-spot
+         )
+
+    (cond ((setq staging (perlnow-find-cpan-style-staging-area))
+           (setq inc-spot (concat staging perlnow-slash "lib"))
+           )
+          (t
+           )
+          )
+    inc-spot))
+;; TODO look at perlnow-test-from-policy for clues... or maybe not.
+;;      look at perlnow-expand-dots-relative-to
 
 ;; TODO move this function to a utility package
 ;; (was used by perlnow-get-package-name-from-man-ng)
@@ -4096,17 +4151,24 @@ Returns file names with full path if FULLPATH-OPT is t."
   (if perlnow-trace (perlnow-message "Calling perlnow-list-test-files"))
   ;;;; Note, code mutated from above: perlnow-test-from-policy
   (message "perlnow-list-test-files, looking at buffer: %s" (buffer-name))
-  (let* ((full-file
-           (file-name-directory (buffer-file-name)))
-         ;; (basename
-         ;;   (file-name-sans-extension (file-name-nondirectory (buffer-file-name))))
-         (basename (file-name-base (buffer-file-name)))
-         ;; module oriented info (calculated below):
-         package-name   inc-spot  hyphenized-package-name
-         ;; need to determine:
-         testloc-absolute test-file-list
+  (let* (
+         (full-file (buffer-file-name))
+         (file-path
+           (file-name-directory full-file))
+         ;; (basename (file-name-base (buffer-file-name)))
+
+         ;; I get this, but don't really need it:
+         package-name
+         ;;  Don't need:  hyphenized-package-name
+
+         ;; Intermediate values to determine:
+         inc-spot
+         testloc-absolute
+
+         ;; ultimate goal:
+         test-file-list
          )
-    (unless full-file ;; TODO but what about test select menu?  Or even, dired?
+    (unless file-path ;; TODO but what about test select menu?  Or even, dired?
       (error "perlnow-list-test-files: buffer has no associated file, giving up."))
 
     ;; check whether curbuff is perl code? (Why not run metadata probe)
@@ -4117,29 +4179,31 @@ Returns file names with full path if FULLPATH-OPT is t."
 
     ;;  (defun perlnow-get-inc-spot (package-name pm-location)
 
-
-    ;; module oriented info
-    (cond ((setq package-name (perlnow-get-package-name-from-module-buffer))
-           (setq inc-spot (perlnow-get-inc-spot package-name full-file))
-           (setq hyphenized-package-name
-                 (mapconcat 'identity (split-string package-name "::") "-"))
+    (cond (;; is module
+           (setq package-name (perlnow-get-package-name-from-module-buffer))
+           (setq inc-spot (perlnow-get-inc-spot package-name file-path))
+;;            (setq hyphenized-package-name
+;;                  (mapconcat 'identity (split-string package-name "::") "-"))
            )
-;;      (t ;; handle non-module case
+          ((perlnow-test-p)
+           (setq inc-spot (perlnow-inc-spot-from-t full-file))
+           )
+;;      (t ;; handle non-module, non-test cases,
 ;;       )
      )
 
     (if perlnow-debug
-        (message "perlnow-list-test-files: full-file: %s testloc: %s " full-file testloc ))
+        (message "perlnow-list-test-files: file-path: %s testloc: %s " file-path testloc ))
 
     (setq testloc-absolute
           (perlnow-fixdir
            (cond ((string= dotdef "fileloc") ;; may be for script or module
-                   (perlnow-expand-dots-relative-to full-file testloc))
+                   (perlnow-expand-dots-relative-to file-path testloc))
                  ((string= dotdef "incspot") ;; only defined with modules
                   (cond (inc-spot
                          (perlnow-expand-dots-relative-to inc-spot testloc))
                         (t
-                         (error (format "Could not determine inc-spot for file: %s" full-file))
+                         (error (format "Could not determine inc-spot for file: %s" file-path))
                          ))
                   )
                  (t
@@ -4690,7 +4754,7 @@ looks for either a \"Makefile.PL\" or a \"Build.PL\"\).
 This defaults to working on the current buffer's file \(if available\),
 but can use the optional FILE-NAME instead.  For the special case of a
 \"*perlnow select test*\" buffer, it works with a file name extracted
-from the buffer." ;; TODO specify how?
+from the buffer."
   ;; Two important cases to cover are:
   ;;   ~/perldev/Horror-Grossout/lib/Horror/Grossout.pm
   ;;   ~/perldev/Horror-Grossout/t/Horror-Grossout.t
@@ -5593,24 +5657,28 @@ Usage examples:
 ;;--------
 ;; plist utilities
 
-(defun perlnow-stash-lookup ( keystr &optional plist )
-  "Look-up string KEYSTR in plist stash.
-Defaults to perlnow-t-for-code-plist."
-  (unless plist (setq plist perlnow-t-for-code-plist))
-  (let ( (value (lax-plist-get plist (intern keystr))) )
+(defun perlnow-stash-put ( keystr value &optional plist-symbol )
+  "Put pair of KEYSTR and VALUE in the plist indicated by optional PLIST-SYMBOL.
+The PLIST-SYMBOL defaults to the global `perlnow-incpot-from-t-plist'.
+   Example:
+     (perlnow-stash-put \"one\" \"alpha\" 'my-special-plist)
+"
+  (unless plist-symbol (setq plist-symbol 'perlnow-incpot-from-t-plist))
+  (set plist-symbol
+        (plist-put (symbol-value plist-symbol) (intern keystr) value)))
+
+(defun perlnow-stash-lookup ( keystr &optional plist-symbol )
+  "Look-up string KEYSTR in plist indicated by optional PLIST-SYMBOL.
+The PLIST-SYMBOL defaults to the global `perlnow-incpot-from-t-plist'.
+  Example:
+  (setq value
+    (perlnow-stash-lookup \"one\" 'my-special-plist)
+"
+  (unless plist-symbol (setq plist-symbol 'perlnow-incpot-from-t-plist))
+  (let ( (value (lax-plist-get (symbol-value plist-symbol) (intern keystr))) )
     value))
 
-(defun perlnow-stash-put ( keystr value &optional plist )
-  "Put pair of KEYSTR and VALUE in the plist stash.
-Defaults to perlnow-t-for-code-plist."
-  (unless plist (setq plist perlnow-t-for-code-plist))
-  (setq plist
-        (plist-put plist (intern keystr) value))
-  ;; hm... plist is a *copy* of perlnow-t-for-code-plist, not a reference?
-  (setq perlnow-t-for-code-plist plist) ;; TODO temporary fix
-  )
-
-;; Like perl's "keys".  It's hard to believe I needed to write this.
+;; Like perl's "keys":  it's hard to believe I needed to write this.
 (defun perlnow-plist-keys ( plist )
   "Return all keys of the given plist as a list of strings."
 ;; Step through a list and skipping the even values
@@ -5625,8 +5693,7 @@ Defaults to perlnow-t-for-code-plist."
               (t ;; not flip
                (setq flip t))
               ))
-    ;; TODO should reverse!  Or just use mapcar above
-    accumulator))
+    (reverse accumulator)))
 
 (defun perlnow-plist-values ( plist )
   "Return all values of the given plist as a list."
@@ -5639,7 +5706,9 @@ Defaults to perlnow-t-for-code-plist."
       (if flip
           (setq flip nil)
         (setq flip t))
-      )))
+      )
+    (reverse accumulator)))
+
 
 
 ;;========
@@ -6132,8 +6201,8 @@ It does three things:
             (format "perlnow-recent-pick-global:    %s\n"
                     perlnow-recent-pick-global)
 
-            (format "perlnow-t-for-code-plist: %s\n"
-                    (pp perlnow-t-for-code-plist))
+            (format "perlnow-incpot-from-t-plist: %s\n"
+                    (pp perlnow-incpot-from-t-plist))
             )))
   ;; Bring the *perlnow* display window to the fore
   ;;   (bottom window of the frame)
@@ -6224,8 +6293,8 @@ For do debugging trial runs."
     ;; EXPERIMENTAL
     (perlnow-stash-put testloc-absolute inc-spot)
 
-    (message "perlnow-t-for-code-plist: %s\n"
-             (pp perlnow-t-for-code-plist))
+    (message "perlnow-incpot-from-t-plist: %s\n"
+             (pp perlnow-incpot-from-t-plist))
     ))
 
 

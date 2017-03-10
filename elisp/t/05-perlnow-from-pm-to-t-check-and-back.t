@@ -16,132 +16,134 @@
 ;; X-URL: not distributed yet
 ;; License: the same as your GNU emacs (see below)
 
-(if (file-exists-p "test-init-elisp.el")
-    (load-file "test-init-elisp.el"))
+(funcall
+ (lambda ()
+   ;; project-specific include file (with standard name)
+   (if (file-exists-p "test-init-elisp.el")
+       (load-file "test-init-elisp.el"))
 
-(setenv "USE_TAP" "t")
+   ;; meta-project, test-simple.el eval/dev: using a modified test-simple.el
+   (load-file "/home/doom/End/Sys/Emacs/emacs-test-simple/test-simple.el")
 
-;; meta-project, test-simple.el eval/dev: using a modified test-simple.el
-;; TODO install the latest, maybe via emacs package management: should have my fix.
-(load-file "/home/doom/End/Sys/Emacs/emacs-test-simple/test-simple.el")
-
-(test-simple-start) ;; Zero counters and start the stop watch.
-
-(setq perlnow-force t) ;; ask me no questions
-
-(let* (
-       (funcname "perlnow-module-starter")
-       (test-name
-        (concat "Testing that " funcname " creates cpan-style module"))
-       (package-name "Lost::In::Test")
-       (staging-area
-        (perlnow-staging-area perlnow-pm-location package-name))
-       (expected-pm-base "Test.pm")
-       (expected-pm-file  ;; ... lib/Lost/In/Test.pm
-        (concat
-         (file-name-as-directory (concat staging-area "lib"))
-         "Lost" perlnow-slash "In" perlnow-slash expected-pm-base))
-       (expected-pl (concat staging-area "Build.PL"))
-       (expected-t
-        (concat
-         (file-name-as-directory (concat staging-area "t")) "01-Lost-In-Test.t"))
-       )
-  (perlnow-mkpath perlnow-pm-location)
-  (perlnow-mkpath staging-area)
-
-  (perlnow-module-starter perlnow-pm-location package-name)
-
-  (let* (t-exists-p pm-exists-p PL-exists-p t-found-p
-         check-ok-p check-harder-ok-p back-worked-p)
-
-    ;; First, some redundant tests covered in 03-*.t already.
-    (setq pm-exists-p
-          (assert-t
-           (file-exists-p expected-pm-file)
-           (concat test-name " " expected-pm-file ) ))
-
-    (setq PL-exists-p
-          (assert-t
-           (file-exists-p expected-pl)
-           (concat "Testing that " funcname " generated expected Build.PL file" ) ) )
-
-    (setq t-exists-p
-          (assert-t
-           (file-exists-p expected-t)
-           (concat "Testing that " funcname " generated expected *.t file" ) ) )
-
-    (cond ((and pm-exists-p t-exists-p)
-           ;; /home/doom/tmp/perlnow_test/lib/Lost-In-Test/
-           ;;    lib/Lost/In/Test.pm
-           (find-file expected-pm-file)
-           (perlnow-edit-test-file)
-           ;; (message "the t I hope: %s" (buffer-file-name) ) ;; DEBUG
-           (setq t-found-p
-                 (assert-t
-                  (string= (buffer-file-name) expected-t)
-                  (concat "Testing that perlnow-edit-test-file found *.t file")))
-           )
+   (let* (
+          (test-loc (test-init))
+          (funcname "perlnow-module-starter")
+          (test-name
+           (concat "Testing that " funcname " creates cpan-style module"))
+          (package-name "Lost::In::Test")
+          (staging-area
+           (perlnow-staging-area perlnow-pm-location package-name))
+          (expected-pm-base "Test.pm")
+          (expected-pm-file  ;; ... lib/Lost/In/Test.pm
+           (concat
+            (file-name-as-directory (concat staging-area "lib"))
+            "Lost" perlnow-slash "In" perlnow-slash expected-pm-base))
+          (expected-pl (concat staging-area "Build.PL"))
+          (expected-t
+           (concat
+            (file-name-as-directory (concat staging-area "t")) "01-Lost-In-Test.t"))
           )
+     (perlnow-mkpath perlnow-pm-location)
+     (perlnow-mkpath staging-area)
 
-    (cond (pm-exists-p
-           (let* ((syntax-ok-pat (concat expected-pm-base " syntax OK"))
-                  (syntax-pod-ok-pat (concat expected-pm-base " pod syntax OK"))
-                  (critic-ok-pat (concat expected-pm-base " source OK"))
+     (perlnow-module-starter perlnow-pm-location package-name)
+
+     (let* (t-exists-p pm-exists-p PL-exists-p t-found-p
+                       check-ok-p check-harder-ok-p back-worked-p)
+
+       ;; First, some redundant tests covered in 03-*.t already.
+       (setq pm-exists-p
+             (assert-t
+              (file-exists-p expected-pm-file)
+              (concat test-name " " expected-pm-file ) ))
+
+       (setq PL-exists-p
+             (assert-t
+              (file-exists-p expected-pl)
+              (concat "Testing that " funcname " generated expected Build.PL file" ) ) )
+
+       (setq t-exists-p
+             (assert-t
+              (file-exists-p expected-t)
+              (concat "Testing that " funcname " generated expected *.t file" ) ) )
+
+       (cond ((and pm-exists-p t-exists-p)
+              ;; /home/doom/tmp/perlnow_test/lib/Lost-In-Test/
+              ;;    lib/Lost/In/Test.pm
+              (find-file expected-pm-file)
+              (perlnow-edit-test-file)
+              ;; (message "the t I hope: %s" (buffer-file-name) ) ;; DEBUG
+              (setq t-found-p
+                    (assert-t
+                     (string= (buffer-file-name) expected-t)
+                     (concat "Testing that perlnow-edit-test-file found *.t file")))
+              )
+             )
+
+       (cond (pm-exists-p
+              (let* ((syntax-ok-pat (concat expected-pm-base " syntax OK"))
+                     (syntax-pod-ok-pat (concat expected-pm-base " pod syntax OK"))
+                     (critic-ok-pat (concat expected-pm-base " source OK"))
+                     )
+                (find-file expected-pm-file)
+                (perlnow-run-check nil)
+                (sleep-for 2) ;; wait for compile (only thing in emacs that's async)
+                (set-buffer "*compilation*")
+                (let* ( ( compilation-results (buffer-string) )
+                        )
+                  ;; (message "%s" compilation-results) ;; DEBUG
+                  (setq check-ok-p
+                        (assert-t
+                         (string-match syntax-ok-pat compilation-results)
+                         (concat "Testing that perlnow-run-check worked.")))
                   )
-             (find-file expected-pm-file)
-             (perlnow-run-check nil)
-             (sleep-for 2) ;; wait for compile (only thing in emacs that's async)
-             (set-buffer "*compilation*")
-             (let* ( ( compilation-results (buffer-string) )
-                     )
-               ;; (message "%s" compilation-results) ;; DEBUG
-               (setq check-ok-p
-                     (assert-t
-                      (string-match syntax-ok-pat compilation-results)
-                      (concat "Testing that perlnow-run-check worked.")))
-               )
 
-             (find-file expected-pm-file)
-             (perlnow-run-check 4) ;; run it "harder"
-             (sleep-for 2) ;; wait for compile (only thing in emacs that's async)
-             (set-buffer "*compilation*")
-             (let* ( ( compilation-results (buffer-string) )
-                     ( syntax-ok-1
-                       (string-match syntax-ok-pat     compilation-results))
-                     ( syntax-ok-2
-                       (string-match syntax-pod-ok-pat compilation-results))
-                     ( critic-ok
-                       (string-match critic-ok-pat     compilation-results))
-                     )
-               ;; (message "%s" compilation-results) ;; DEBUG
-               ;; (message "so1: %s  so2: %s  co: %s" syntax-ok-1 syntax-ok-2 critic-ok);;
-               ;; so1: 235  so2: 330  co: 353
-               (setq check-harder-ok-p
-                     (assert-t
-                      (and syntax-ok-1 syntax-ok-2 critic-ok)
-                      (concat "Testing that perlnow-run-check harder worked.")))
-               )
-             )))
+                (find-file expected-pm-file)
+                (perlnow-run-check 4) ;; run it "harder"
+                (sleep-for 2) ;; wait for compile (only thing in emacs that's async)
+                (set-buffer "*compilation*")
+                (let* ( ( compilation-results (buffer-string) )
+                        ( syntax-ok-1
+                          (string-match syntax-ok-pat     compilation-results))
+                        ( syntax-ok-2
+                          (string-match syntax-pod-ok-pat compilation-results))
+                        ( critic-ok
+                          (string-match critic-ok-pat     compilation-results))
+                        )
+                  (cond (perlnow-debug
+                         (message "%s" compilation-results)
+                         (message "so1: %s  so2: %s  co: %s" syntax-ok-1 syntax-ok-2 critic-ok);;
+                         ;; so1: 235  so2: 330  co: 353
+                         ;; so1: 239  so2: 334  co: 357   -- Wed  March 08, 2017  23:27
+                         ))
+                  (setq check-harder-ok-p
+                        (assert-t
+                         (and syntax-ok-1 syntax-ok-2 critic-ok)
+                         (concat "Testing that perlnow-run-check harder worked.")))
+                  )
+                )))
 
-    (cond (check-ok-p
-           ;; /home/doom/tmp/perlnow_test/lib/Lost-In-Test/
-           ;;    lib/Lost/In/Test.pm
-           (find-file expected-pm-file)
-           (perlnow-edit-test-file)
-           ;; (message "the t I hope: %s" (buffer-file-name) ) ;; DEBUG
-           (perlnow-back-to-code)
-           ;; Now, we shouild be back in the original pm file.
+       (cond (check-ok-p
+              ;; /home/doom/tmp/perlnow_test/lib/Lost-In-Test/
+              ;;    lib/Lost/In/Test.pm
+              (find-file expected-pm-file)
+              (perlnow-edit-test-file)
+              ;; (message "the t I hope: %s" (buffer-file-name) ) ;; DEBUG
+              (perlnow-back-to-code)
+              ;; Now, we shouild be back in the original pm file.
 
-           (setq back-worked-p
-                 (assert-t
-                  (string= (buffer-file-name) expected-pm-file)
-                  (concat "Testing that perlnow-back-to-code found pm file")))
-           )
-          )
-    ) ;; end let*
-  ) ;; end let*
+              (setq back-worked-p
+                    (assert-t
+                     (string= (buffer-file-name) expected-pm-file)
+                     (concat "Testing that perlnow-back-to-code found pm file")))
+              ))
+       ))
+   (end-tests)
+   ))
 
-(end-tests)
+
+
+
 
 ;;========
 ;; LICENSE

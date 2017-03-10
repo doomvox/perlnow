@@ -47,8 +47,10 @@
      (assert-t
       (file-exists-p expected-Pl)
       (concat "Testing that " funcname " generated expected Build.PL file" ) )
-     )))
-(end-tests)
+     )
+   (end-tests)
+   ))
+
 
 
 ;;========
