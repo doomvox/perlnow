@@ -141,31 +141,35 @@ it's intended to be ephemeral."
   (setq dirname (test-init-fixdir dirname))
   (cond ((file-exists-p dirname)
          (let* (
-                ;; drop trailing slash for file-name-directory & nondirectory
+                ;; remove trailing slash so file-name-directory & nondirectory can work
                 (last-slash-pat (concat perlnow-slash "$"))
                 (dirname-trimmed
                  (replace-regexp-in-string last-slash-pat "" dirname))
                 (dirname-path      (file-name-directory    dirname-trimmed))
                 (dirname-sans-path (file-name-nondirectory dirname-trimmed))
 
-                ;; bring back trailing slash
-                (dirname-path-fixed (test-init-fixdir dirname-path))
-
-                (default-backup-location  (concat dirname-path-fixed "Old"))
+                dirname-path-fixed default-backup-location
                 new-backup new-backup-temp )
+
+           ;; bring back trailing slash
+           (setq dirname-path-fixed (test-init-fixdir dirname-path))
+           (setq default-backup-location  (test-init-fixdir (concat dirname-path-fixed "Old")))
+
            (unless backup-location
              (setq backup-location default-backup-location))
            (test-init-mkpath backup-location)
 
            (setq new-backup
-                 (concat backup-location dirname-sans-path))
+                 (test-init-fixdir
+                  (concat backup-location dirname-sans-path)))
 
            ;; Get a uniq directory name to use temporarily
            (setq new-backup-temp new-backup)
            (let ((suffix "A")
                  (count   0))
              (while (file-exists-p new-backup-temp)
-               (setq new-backup-temp (concat new-backup (concat suffix (number-to-string count))))
+;;               (setq new-backup-temp (concat new-backup (concat suffix (number-to-string count))))
+               (setq new-backup-temp (concat backup-location (concat suffix (number-to-string count))))
                (setq count (1+ count)) ))
 
            (cond ((or

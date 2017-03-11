@@ -134,7 +134,6 @@
                       test-name)
                      )))
 
-       )
-     ) ;; end let*
+       ))
    (end-tests)
    ))

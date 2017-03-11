@@ -3180,6 +3180,188 @@ An example of returned metadata.
     ret-list))
 
 
+(defun perlnow-metadata-exp (&optional file-name)
+  "Tries to give you \"metadata\" for the relevant perl code.
+That is to say, it tries to tell you what you want to know,
+given your present context: the default is typically to
+report on the present buffer.  If you're looking at a
+\"*select test file*\" buffer, it tries to tell you something
+about the module it figures you're testing.
+If given a FILE-NAME, it will do a find-file on
+that first, though it restores the original buffer display afterwards.
+The central idea here is to centralize some tasks that frequently
+need to be performed by perlnow functions.
+This returns the metadata as an ordered list.
+
+An example of returned metadata.
+
+                     testloc:  ../t
+                      dotdef:  incspot
+                   namestyle:  fullauto
+            testloc-absolute:  /home/doom/t/
+     hyphenized-package-name:  Skank-Mama
+                package-name:  Skank::Mama
+                    inc-spot:  /home/doom/lib/
+                      buffer:  #<buffer Mama.pm>
+                   file-name:  /home/doom/lib/Skank/Mama.pm
+               file-location:  /home/doom/lib/Skank/
+                    basename:  Mama
+"
+  (interactive) ;; DEBUG
+  (if perlnow-trace (perlnow-message "Calling perlnow-metadata"))
+  (let (;; can't rely on save-excursion, so:
+        (initial-point (point))
+        (initial-buffer (current-buffer))
+
+        testloc dotdef namestyle
+        testloc-absolute
+        package-name inc-spot hyphenized-package-name
+        buffer file-name file-location basename
+        policy-metadata
+        )
+    (cond (file-name
+           (find-file file-name)
+        ))
+    (cond
+          ((perlnow-cpan-style-code-p)  ;; Doesn't work from inside a test select buffer
+           (setq testloc   perlnow-test-policy-test-location-cpan  )
+           (setq dotdef    perlnow-test-policy-dot-definition-cpan )
+           (setq namestyle perlnow-test-policy-naming-style-cpan   )
+           )
+          ((perlnow-module-code-p)
+           (setq testloc   perlnow-test-policy-test-location-module  )
+           (setq dotdef    perlnow-test-policy-dot-definition-module )
+           (setq namestyle perlnow-test-policy-naming-style-module   )
+           )
+          ((perlnow-script-p) ;; TODO do trial runs some time (ntigas)
+           (setq testloc   perlnow-test-policy-test-location-script  )
+           (setq dotdef    perlnow-test-policy-dot-definition-script )
+           (setq namestyle perlnow-test-policy-naming-style-script   )
+           )
+          ((perlnow-test-select-menu-p) ;; act like a module, correct?  TODO (but: could be cpan...)
+           (setq testloc   perlnow-test-policy-test-location-module  )
+           (setq dotdef    perlnow-test-policy-dot-definition-module )
+           (setq namestyle perlnow-test-policy-naming-style-module   )
+           )
+          (t ;; other (whatever that would be...)
+           (setq testloc   "../t" )
+           (setq dotdef    "incspot" )
+           ;; (setq namestyle "numbered") ;; nice name, too bad I never used it
+           (setq namestyle "numeric")
+           )
+          )
+
+    ;; partial metadata list with just the first three test policy items
+    (setq policy-metadata (list testloc dotdef namestyle))
+
+    ;; module oriented info
+    (cond
+     ((perlnow-test-select-menu-p)
+      ;; get the module name from the test file name
+      (let* (
+             (selected-file-compact (perlnow-select-file-from-current-line))
+             (path (perlnow-get-path-from-markedup-name selected-file-compact))
+             (testfile (concat path selected-file-compact))
+
+             )
+        (setq package-name (perlnow-module-from-t-file testfile t))
+        ;; (setq testloc-absolute (file-name-directory testfile))
+        (setq testloc-absolute (perlnow-t-dir-from-t testfile))
+
+        ;; (setq inc-spot (perlnow-stash-lookup (file-name-directory testfile)))
+        (perlnow-inc-spot-from-t testfile policy-metadata)
+
+        (setq file-name (perlnow-full-path-to-module inc-spot package-name))
+        (setq file-location file-name)
+        (setq basename (file-name-sans-extension (file-name-nondirectory file-name)))
+
+        (setq hyphenized-package-name  ;; TODO silly doing this inside conds, REFACTOR OUT
+              (mapconcat 'identity (split-string package-name "::") "-"))
+
+        ;; TODO This is literally the current buffer right?  in this case the select menu buffer
+        (setq buffer    (current-buffer))
+      ))
+     (;; if module
+      (setq package-name (perlnow-get-package-name-from-module-buffer))
+
+      (setq testloc-absolute
+          (perlnow-testloc-from-policy testloc dotdef namestyle))
+
+      (setq file-location
+          (file-name-directory (buffer-file-name)))
+
+      (setq buffer    (current-buffer))
+      (setq file-name (buffer-file-name))
+      (setq basename (file-name-sans-extension (file-name-nondirectory file-name)))
+
+      (setq inc-spot (perlnow-get-inc-spot package-name file-location))
+      (setq hyphenized-package-name
+            (mapconcat 'identity (split-string package-name "::") "-"))
+      )
+
+     ((perlnow-test-p)
+      (setq file-location
+            (file-name-directory (buffer-file-name)))
+
+      (setq buffer    (current-buffer))
+      (setq file-name (buffer-file-name))
+      (setq basename (file-name-sans-extension (file-name-nondirectory file-name)))
+
+      (let* (
+             (selected-file-compact (file-name-nondirectory file-name))
+             (path (file-name-directory file-name))
+             (testfile file-name)
+             (hyphenized (perlnow-extract-hyphenized-from-standard-t-name testfile))
+             (colonized (replace-regexp-in-string "-" "::" hyphenized))
+             )
+        (setq package-name colonized)
+
+        ;; (setq testloc-absolute (file-name-directory testfile))
+        (setq testloc-absolute (perlnow-t-dir-from-t testfile))
+
+        ;; (setq inc-spot (perlnow-stash-lookup (file-name-directory testfile)))
+        (perlnow-inc-spot-from-t testfile policy-metadata)
+
+        (setq hyphenized-package-name
+              (mapconcat 'identity (split-string package-name "::") "-"))
+        ;; Question though: if in the select buffer, I'd return info about the related module file.
+        ;; Should I do that here with the *.t file?   Could be... multiple fields, code-* and test-*?
+        ))
+      ;;;; TODO what about from a script?
+      )
+
+    (setq ret-list
+          (list testloc dotdef namestyle testloc-absolute
+                hyphenized-package-name package-name inc-spot
+                buffer file-name file-location basename
+                ))
+
+    (perlnow-stash-put testloc-absolute inc-spot)
+
+    (if perlnow-debug
+        (message
+         (concat
+          "   ~~~\n"
+          (format "%30s %-40s\n" "testloc: " testloc)
+          (format "%30s %-40s\n" "dotdef: " dotdef)
+          (format "%30s %-40s\n" "namestyle: " namestyle)
+          (format "%30s %-40s\n" "testloc-absolute: " testloc-absolute)
+          (format "%30s %-40s\n" "hyphenized-package-name: "
+                  hyphenized-package-name)
+          (format "%30s %-40s\n" "package-name: " package-name)
+          (format "%30s %-40s\n" "inc-spot: " inc-spot)
+          (format "%30s %-40s\n" "buffer: " (pp buffer))
+          (format "%30s %-40s\n" "file-name: " file-name)
+          (format "%30s %-40s\n" "file-location: " file-location)
+          (format "%30s %-40s\n" "basename: " basename)
+          "   ~~~\n"
+          )))
+
+    ;; returning from any excursions
+    (switch-to-buffer initial-buffer)
+    (goto-char initial-point)
+    ret-list))
+
 (defun perlnow-get-package-name-from-module-buffer ()
   "Get the module name from the first package line.
 This will be in perl's double colon separated form, or it will
@@ -3256,7 +3438,6 @@ simple to avoid returning false positives."
 ;;
 ;; And if none of this works, you can use the select menu's
 ;; associated context (but that should be handled by the callling defun)
-
 
 (defun perlnow-module-from-t-file ( &optional t-file colonized-flag )
   "Try to infer an associated module given a test file, T-FILE.
@@ -4192,17 +4373,7 @@ Returns file names with full path if FULLPATH-OPT is t."
          (full-file (buffer-file-name))
          (file-path
            (file-name-directory full-file))
-         ;; (basename (file-name-base (buffer-file-name)))
-
-         ;; I get this, but don't really need it:
-         package-name
-         ;;  Don't need:  hyphenized-package-name
-
-         ;; Intermediate values to determine:
-         inc-spot
-         testloc-absolute
-
-         ;; ultimate goal:
+         package-name   inc-spot   testloc-absolute
          test-file-list
          )
     (unless file-path ;; TODO but what about test select menu?  Or even, dired?
@@ -4413,13 +4584,13 @@ This only checks the first character in NAME."
 ;;  o  in a recursive list cursor should be left in the region of the current test-loc.
 ;;  o  create new test file, via minibuffer input (in current test location though)
 
-(define-key perlnow-select-mode-map "\C-m" 'perlnow-select-file)
-(define-key perlnow-select-mode-map "n"    'next-line)
-(define-key perlnow-select-mode-map "p"    'previous-line)
-(define-key perlnow-select-mode-map [tab]  'perlnow-select-forward-hotspot)
+(define-key perlnow-select-mode-map "\C-m"     'perlnow-select-file)
+(define-key perlnow-select-mode-map "n"        'next-line)
+(define-key perlnow-select-mode-map "p"        'previous-line)
+(define-key perlnow-select-mode-map [tab]      'perlnow-select-forward-hotspot)
 (define-key perlnow-select-mode-map [backtab]  'perlnow-select-previous-hotspot)
-(define-key perlnow-select-mode-map "a"    'perlnow-select-create-test) ;; TODO experimental binding
-(define-key perlnow-select-mode-map "\C-c/b"    'perlnow-back-to-code) ;; TODO experimental binding
+(define-key perlnow-select-mode-map "a"        'perlnow-select-create-test) ;; TODO experimental binding
+(define-key perlnow-select-mode-map "\C-c/b"   'perlnow-back-to-code)       ;; TODO experimental binding
 
 ;; These seem kind of hacky, but I think that's the nature of next-single-property-change
 (defun perlnow-select-forward-hotspot ()
