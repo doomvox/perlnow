@@ -3406,15 +3406,16 @@ An optional MD stash can be passed in provide hints. (TODO)."
     (cond ((setq staging (perlnow-find-cpan-style-staging-area))
            (setq inc-spot (concat staging perlnow-slash "lib"))
            )
-          (md
-           (let* (
-                  (testloc          (nth 0  md))
-                  (dotdef           (nth 1  md))
-                  (namestyle        (nth 2  md))
-                  )
-             (setq inc-spot
-                   (perlnow-incspot-from-t-given-policy testfile testloc dotdef namestyle))
-             ))
+;; TODO  (maybe someday...)
+;;           (metadata
+;;            (let* (
+;;                   (testloc          (nth 0  metadata))
+;;                   (dotdef           (nth 1  metadata))
+;;                   (namestyle        (nth 2  metadata))
+;;                   )
+;;              (setq inc-spot
+;;                    (perlnow-incspot-from-t-given-policy testfile testloc dotdef namestyle))
+;;              ))
           (t
            (setq inc-spot
                  (perlnow-stash-lookup (file-name-directory testfile)))
@@ -3424,38 +3425,67 @@ An optional MD stash can be passed in provide hints. (TODO)."
     (goto-char initial-point)
     inc-spot))
 
-;; (message "t-loc: %s"
-;;  (perlnow-t-dir-from-t "/home/doom/tmp/t/subdir/subbyhere/submariner/bozo.t"))
-;; ;; "t-loc: /home/doom/tmp/t/"
+;; (defun perlnow-incspot-from-t-given-policy (testfile testloc dotdef &optional namestyle)
+;;   "Given test policy tries to find related code tree from a test.
+;; Presumes that current buffer displays a test file.
+;; "
+;;   ;; TODO
+;;   ;; Should be able to get from an absolute path to a test
+;;   ;; to the (likely) location of the code that it tests,
+;;   ;; just by using the test policy, but there's a complication:
+;;   ;; while we can assume that test locations are always called "t"
+;;   ;; we can't presume the location of code (the "incspot") is named
+;;   ;; anything in particular-- "lib" is standard only for cpan-style.
 
-(defun perlnow-incspot-from-t-given-policy (testfile testloc dotdef &optional namestyle)
-  ""
-  ;; TODO so, given a /home/humbug/yaddah/Moho-Bogo/t/stuffit.t, and
-  ;; dotdef of either incspot or fileloc, should be able to apply the
-  ;; dotdef (e.g. "../t") to get from t to lib...
-  ;; complication: can't assume it's named "lib" unless cpan-style.
-  ;; which means... you get to the place where the "lib" has to be,
-  ;; and then... check all the dirs for perl modules, if there's only
-  ;; one, you got it.  If there's more than one, get a list modules
-  ;; for each, and check the testfile for references to modules in
-  ;; either list-- if there's only one, you got it.
-  ;; (( I'm beginning to see why I've never written one of these. ))
-  (let* (
-         (t-file-loc (file-name-directory testfile))
-         (rel-t-loc testloc)
-         (full-t-loc (perlnow-t-dir-from-t testfile))
-         staging inc-spot
-         )
+;;   ;; Look at how this works, say you've got a "dotdef" of "incspot"
+;;   ;; and a relative "testloc" of "../t".
+;;   ;; Beginning with the known "t" location, you see from the policy
+;;   ;; that you need to go up one level, and look around there for
+;;   ;; a tree of code.  You're not allowed to assume a name for
+;;   ;; that tree, so instead you could work through a list of every
+;;   ;; dir there, and examine each tree looking for one with *.pm files
+;;   ;; in it.   That's a nice heuristic, but are you sure there's only
+;;   ;; going to be one?
+;;   ;; If you can figure out the name of the module the *.t file targets,
+;;   ;; you can use that to look for the particular *.pm file: if the *.t
+;;   ;; is named using my naming convention, that's easy, if it isn't
+;;   ;; then you could scrape the *.t file, looking for "use_ok" or "use"
+;;   ;; lines, and try matching that info to names in the candidate trees
+;;   ;; (arguably, if you can find a single hit, you've probably got it,
+;;   ;; and you can prioritize "use_ok" over "use).
 
-    (cond ((setq staging (perlnow-find-cpan-style-staging-area))
-           (setq inc-spot (concat staging perlnow-slash "lib"))
-           )
-          (t
-           )
-          )
-    inc-spot))
-;; TODO look at perlnow-test-from-policy for clues... or maybe not.
-;;      look at perlnow-expand-dots-relative-to
+;;   ;; And we've not yet considered the possibility that the test is designed to
+;;   ;; excercise a script, rather than a module (in which case we're looking
+;;   ;; for a "bin"/"scripts" rather than a "lib"...?).
+
+;;   ;; So: this shit gets complicated real fast, all for want of a
+;;   ;; standard name for a development directory... and it's all
+;;   ;; useful just to cover some odd cases, like you initiate a
+;;   ;; perlnow command from a *.t buffer, rather than a *.pm,
+;;   ;; and that *.t is not yet registered in perlnow-incpot-from-t-plist.
+
+;;   ;; And it's entirely possible there's an different, saner approach, and I
+;;   ;; should look laterally, rather than continue to hack on stuff like this
+;;   ;; (how about a perl script that does static analysis to try to determine
+;;   ;; project metadata?)
+
+;;   ;; TODO look at perlnow-test-from-policy for clues... or maybe not.
+;;   ;;      look at perlnow-expand-dots-relative-to
+;;   (let* (
+;;          (t-file-loc (file-name-directory testfile))
+;;          (rel-t-loc testloc)
+;;          (full-t-loc (perlnow-t-dir-from-t testfile))
+;;          staging inc-spot
+;;          )
+
+;;     (cond ((setq staging (perlnow-find-cpan-style-staging-area))
+;;            (setq inc-spot (concat staging perlnow-slash "lib"))
+;;            )
+;;           (t
+;;            ;; ?
+;;            )
+;;           )
+;;     inc-spot))
 
 ;; TODO move this function to a utility package
 ;; (was used by perlnow-get-package-name-from-man-ng)

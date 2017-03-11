@@ -89,7 +89,8 @@
             (setq test-files-sorted
                   (sort test-files 'string<))
 
-            (setq expected-test-files '("01-Trantor-Skateboard.t" "02-Trantor-Skateboard.t"))
+            (setq expected-test-files
+                  '("01-Trantor-Skateboard.t" "02-Trantor-Skateboard.t"))
 
             (assert-equal
              expected-test-files
@@ -104,7 +105,8 @@
             (setq test-files-sorted
                   (sort test-files 'string<))
 
-            (setq expected-test-files '("01-Trantor-Skateboard.t" "02-Trantor-Skateboard.t" "03-Trantor-Skateboard.t"))
+            (setq expected-test-files
+                  '("01-Trantor-Skateboard.t" "02-Trantor-Skateboard.t" "03-Trantor-Skateboard.t"))
 
             (assert-equal
              expected-test-files
