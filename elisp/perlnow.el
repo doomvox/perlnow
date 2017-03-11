@@ -3383,7 +3383,7 @@ Returns path to \"t\" (including \"t\")."
 An optional MD stash can be passed in provide hints. (TODO)."
   ;; TODO handle a t-dir argument as well as a testfile argument
   (if perlnow-debug
-      (message "perlnow-t-for-code-plist: %s" (pp perlnow-t-for-code-plist)))
+      (message "perlnow-incpot-from-t-plist: %s" (pp perlnow-incpot-from-t-plist)))
   (let* (
          (initial-buffer (current-buffer))
          (initial-point (point))
