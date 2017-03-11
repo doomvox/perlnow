@@ -35,12 +35,9 @@
           (test-loc (test-init))
           (test-name "Testing perlnow-list-test-files")
           (package-name "Trantor::Skateboard")
+          (dev-location (concat test-loc "dev"))
           (staging-area
-           (perlnow-staging-area perlnow-dev-location package-name))
-;; Note: this was redundant, staging-area already has hyphenized
-;;           (expected-project-loc
-;;            (perlnow-fixdir
-;;             (concat staging-area "Trantor-Skateboard")))
+           (perlnow-staging-area dev-location package-name))
           (expected-pm (concat staging-area "lib" perlnow-slash
                                  "Trantor" perlnow-slash "Skateboard.pm") )
           (expected-Pl (concat staging-area "Build.PL"))
@@ -48,11 +45,12 @@
           pm-buffer
           )
 
-;;      (require 'template)
-;;      (setq perlnow-perl-package-name package-name) ;; global used to pass value into template
+     (cond (perlnow-debug
+            (message "test-loc: %s"     test-loc)
+            (message "staging-area: %s" staging-area)
+            ))
 
      (test-init-safe-recursive-delete staging-area)
-;;     (perlnow-milla staging-area package-name)
      (perlnow-milla perlnow-dev-location package-name)
 
      (assert-t
@@ -68,7 +66,8 @@
             (namestyle  perlnow-test-policy-naming-style-cpan   )
 
             (fullpath-opt nil)
-            (expected-test-files '("01-Trantor-Skateboard.t" "basic.t"))
+;;            (expected-test-files '("01-Trantor-Skateboard.t" "basic.t"))
+            (expected-test-files '("01-Trantor-Skateboard.t"))
             test-files   test-files-sorted
             )
 
@@ -78,35 +77,60 @@
             (setq test-files-sorted
                   (sort test-files 'string<))
 
-            ;; (message (pp test-files))
-            ;; ("01-Trantor-Skateboard.t" "basic.t")
-            ;; (message (pp test-files-sorted))
-            ;; ("01-Trantor-Skateboard.t" "basic.t")
-
             (assert-equal
              expected-test-files
              test-files-sorted
              (concat test-name ": default tests from perlnow-milla"))
 
             (set-buffer pm-buffer) ;; back to the pm
-
             (perlnow-test-create) ;; 02-Trantor-Skateboard.t
-
-            ;; For some reason, this is necessary:
-            ;; (set-buffer pm-buffer) ;; back to the pm
-
-            (perlnow-tron)
             (setq test-files
                   (perlnow-list-test-files testloc dotdef namestyle fullpath-opt))
             (setq test-files-sorted
                   (sort test-files 'string<))
 
-            (setq expected-test-files '("01-Trantor-Skateboard.t" "02-Trantor-Skateboard.t" "basic.t"))
+            (setq expected-test-files '("01-Trantor-Skateboard.t" "02-Trantor-Skateboard.t"))
 
             (assert-equal
              expected-test-files
              test-files-sorted
              (concat test-name ": additional via perlnow-test-create"))
+
+            (set-buffer pm-buffer) ;; back to the pm
+            (perlnow-test-create) ;; 03-Trantor-Skateboard.t
+            ;; (perlnow-tron)
+            (setq test-files
+                  (perlnow-list-test-files testloc dotdef namestyle fullpath-opt))
+            (setq test-files-sorted
+                  (sort test-files 'string<))
+
+            (setq expected-test-files '("01-Trantor-Skateboard.t" "02-Trantor-Skateboard.t" "03-Trantor-Skateboard.t"))
+
+            (assert-equal
+             expected-test-files
+             test-files-sorted
+             (concat test-name ": additional via perlnow-test-create"))
+
+            (if perlnow-debug
+                (message "perlnow-incpot-from-t-plist: %s" (pp perlnow-incpot-from-t-plist)))
+
+            (let (
+                  (test-name "Testing perlnow-stash-lookup")
+                  (expected-inc-spot (concat test-loc "dev/Trantor-Skateboard/lib/"))
+                  testfile inc-spot
+                  )
+              (setq testfile (buffer-file-name))
+
+              (message "testfile: %s" (pp testfile))
+
+              (cond (testfile
+                     (setq inc-spot
+                           (perlnow-stash-lookup (file-name-directory testfile)))
+                     (assert-equal
+                      expected-inc-spot
+                      inc-spot
+                      test-name)
+                     )))
 
        )
      ) ;; end let*
