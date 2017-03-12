@@ -2157,6 +2157,7 @@ e.g. run all tests rather than just one."
                              perlnow-test-policy-dot-definition-cpan ;; "incspot"
                              perlnow-test-policy-naming-style-cpan   ;; "fullauto", was "numeric"
                              t  ;; return fullpath
+                             t  ;; recurse ;; TODO EXPERIMENTAL this one is dicey.
                              ))))
                     )
                    (t ; non-cpan-style
@@ -2998,189 +2999,6 @@ Checks mode and buffer name."
 ;; perlnow-test-create-manually.  Refactor to use more widely? TODO
 ;; TODO add support for script file and test file buffers
 (defun perlnow-metadata (&optional file-name)
-  "Tries to give you \"metadata\" for the relevant perl code.
-That is to say, it tries to tell you what you want to know,
-given your present context: the default is typically to
-report on the present buffer.  If you're looking at a
-\"*select test file*\" buffer, it tries to tell you something
-about the module it figures you're testing.
-If given a FILE-NAME, it will do a find-file on
-that first, though it restores the original buffer display afterwards.
-The central idea here is to centralize some tasks that frequently
-need to be performed by perlnow functions.
-This returns the metadata as an ordered list.
-
-An example of returned metadata.
-
-                     testloc:  ../t
-                      dotdef:  incspot
-                   namestyle:  fullauto
-            testloc-absolute:  /home/doom/t/
-     hyphenized-package-name:  Skank-Mama
-                package-name:  Skank::Mama
-                    inc-spot:  /home/doom/lib/
-                      buffer:  #<buffer Mama.pm>
-                   file-name:  /home/doom/lib/Skank/Mama.pm
-               file-location:  /home/doom/lib/Skank/
-                    basename:  Mama
-"
-  (interactive) ;; DEBUG
-  (if perlnow-trace (perlnow-message "Calling perlnow-metadata"))
-  (let (;; can't rely on save-excursion, so:
-        (initial-point (point))
-        (initial-buffer (current-buffer))
-
-        testloc dotdef namestyle
-        testloc-absolute
-        package-name inc-spot hyphenized-package-name
-        buffer file-name file-location basename
-        policy-metadata
-        )
-    (cond (file-name
-           (find-file file-name)
-        ))
-    (cond
-          ((perlnow-cpan-style-code-p)  ;; Doesn't work from inside a test select buffer
-           (setq testloc   perlnow-test-policy-test-location-cpan  )
-           (setq dotdef    perlnow-test-policy-dot-definition-cpan )
-           (setq namestyle perlnow-test-policy-naming-style-cpan   )
-           )
-          ((perlnow-module-code-p)
-           (setq testloc   perlnow-test-policy-test-location-module  )
-           (setq dotdef    perlnow-test-policy-dot-definition-module )
-           (setq namestyle perlnow-test-policy-naming-style-module   )
-           )
-          ((perlnow-script-p) ;; TODO do trial runs some time (ntigas)
-           (setq testloc   perlnow-test-policy-test-location-script  )
-           (setq dotdef    perlnow-test-policy-dot-definition-script )
-           (setq namestyle perlnow-test-policy-naming-style-script   )
-           )
-          ((perlnow-test-select-menu-p) ;; act like a module, correct?  TODO (but: could be cpan...)
-           (setq testloc   perlnow-test-policy-test-location-module  )
-           (setq dotdef    perlnow-test-policy-dot-definition-module )
-           (setq namestyle perlnow-test-policy-naming-style-module   )
-           )
-          (t ;; other (whatever that would be...)
-           (setq testloc   "../t" )
-           (setq dotdef    "incspot" )
-           ;; (setq namestyle "numbered") ;; nice name, too bad I never used it
-           (setq namestyle "numeric")
-           )
-          )
-
-    ;; partial metadata list with just the first three test policy items
-    (setq policy-metadata (list testloc dotdef namestyle))
-
-    ;; module oriented info
-    (cond
-     ((perlnow-test-select-menu-p)
-      ;; get the module name from the test file name
-      (let* (
-             (selected-file-compact (perlnow-select-file-from-current-line))
-             (path (perlnow-get-path-from-markedup-name selected-file-compact))
-             (testfile (concat path selected-file-compact))
-
-             )
-        (setq package-name (perlnow-module-from-t-file testfile t))
-        ;; (setq testloc-absolute (file-name-directory testfile))
-        (setq testloc-absolute (perlnow-t-dir-from-t testfile))
-
-        ;; (setq inc-spot (perlnow-stash-lookup (file-name-directory testfile)))
-        (perlnow-inc-spot-from-t testfile policy-metadata)
-
-        (setq file-name (perlnow-full-path-to-module inc-spot package-name))
-        (setq file-location file-name)
-        (setq basename (file-name-sans-extension (file-name-nondirectory file-name)))
-
-        (setq hyphenized-package-name  ;; TODO silly doing this inside conds, REFACTOR OUT
-              (mapconcat 'identity (split-string package-name "::") "-"))
-
-        ;; TODO This is literally the current buffer right?  in this case the select menu buffer
-        (setq buffer    (current-buffer))
-      ))
-     (;; if module
-      (setq package-name (perlnow-get-package-name-from-module-buffer))
-
-      (setq testloc-absolute
-          (perlnow-testloc-from-policy testloc dotdef namestyle))
-
-      (setq file-location
-          (file-name-directory (buffer-file-name)))
-
-      (setq buffer    (current-buffer))
-      (setq file-name (buffer-file-name))
-      (setq basename (file-name-sans-extension (file-name-nondirectory file-name)))
-
-      (setq inc-spot (perlnow-get-inc-spot package-name file-location))
-      (setq hyphenized-package-name
-            (mapconcat 'identity (split-string package-name "::") "-"))
-      )
-
-     ((perlnow-test-p)
-      (setq file-location
-            (file-name-directory (buffer-file-name)))
-
-      (setq buffer    (current-buffer))
-      (setq file-name (buffer-file-name))
-      (setq basename (file-name-sans-extension (file-name-nondirectory file-name)))
-
-      (let* (
-             (selected-file-compact (file-name-nondirectory file-name))
-             (path (file-name-directory file-name))
-             (testfile file-name)
-             (hyphenized (perlnow-extract-hyphenized-from-standard-t-name testfile))
-             (colonized (replace-regexp-in-string "-" "::" hyphenized))
-             )
-        (setq package-name colonized)
-
-        ;; (setq testloc-absolute (file-name-directory testfile))
-        (setq testloc-absolute (perlnow-t-dir-from-t testfile))
-
-        ;; (setq inc-spot (perlnow-stash-lookup (file-name-directory testfile)))
-        (perlnow-inc-spot-from-t testfile policy-metadata)
-
-        (setq hyphenized-package-name
-              (mapconcat 'identity (split-string package-name "::") "-"))
-        ;; Question though: if in the select buffer, I'd return info about the related module file.
-        ;; Should I do that here with the *.t file?   Could be... multiple fields, code-* and test-*?
-        ))
-      ;;;; TODO what about from a script?
-      )
-
-    (setq ret-list
-          (list testloc dotdef namestyle testloc-absolute
-                hyphenized-package-name package-name inc-spot
-                buffer file-name file-location basename
-                ))
-
-    (perlnow-stash-put testloc-absolute inc-spot)
-
-    (if perlnow-debug
-        (message
-         (concat
-          "   ~~~\n"
-          (format "%30s %-40s\n" "testloc: " testloc)
-          (format "%30s %-40s\n" "dotdef: " dotdef)
-          (format "%30s %-40s\n" "namestyle: " namestyle)
-          (format "%30s %-40s\n" "testloc-absolute: " testloc-absolute)
-          (format "%30s %-40s\n" "hyphenized-package-name: "
-                  hyphenized-package-name)
-          (format "%30s %-40s\n" "package-name: " package-name)
-          (format "%30s %-40s\n" "inc-spot: " inc-spot)
-          (format "%30s %-40s\n" "buffer: " (pp buffer))
-          (format "%30s %-40s\n" "file-name: " file-name)
-          (format "%30s %-40s\n" "file-location: " file-location)
-          (format "%30s %-40s\n" "basename: " basename)
-          "   ~~~\n"
-          )))
-
-    ;; returning from any excursions
-    (switch-to-buffer initial-buffer)
-    (goto-char initial-point)
-    ret-list))
-
-
-(defun perlnow-metadata-exp (&optional file-name)
   "Tries to give you \"metadata\" for the relevant perl code.
 That is to say, it tries to tell you what you want to know,
 given your present context: the default is typically to
@@ -4355,7 +4173,7 @@ The template used is specified by the variable `perlnow-perl-test-module-templat
 
 ;;; TODO check if this is limited to cpan-style
 ;;; TODO somewhere need to be able to do recursive decent through a project tree
-(defun perlnow-list-test-files (testloc dotdef namestyle &optional fullpath-opt)
+(defun perlnow-list-test-files (testloc dotdef namestyle &optional fullpath-opt recurse-opt)
   "Looks for test files appropriate for the current file.
 Uses the three given elements of a \"test policy\", to find
 appropriate test files:
@@ -4365,7 +4183,10 @@ the TESTLOC \(see `perlnow-test-policy-test-location'\)
 the DOTDEF \(see `perlnow-test-policy-dot-definition' \)
 and the NAMESTYLE \(see `perlnow-test-policy-naming-style'\).
 Note: actually NAMESTYLE isn't used internally: just a placeholder.
-Returns file names with full path if FULLPATH-OPT is t."
+Returns file names with full path if FULLPATH-OPT is t.
+If the RECURSE-OPT is set, lists files for the whole directory tree.
+RECURSE-OPT implies FULLPATH-OPT.
+" ;; TODO why not just remove the fullpath-opt?  I always want full paths.
   (if perlnow-trace (perlnow-message "Calling perlnow-list-test-files"))
   ;;;; Note, code mutated from above: perlnow-test-from-policy
   (message "perlnow-list-test-files, looking at buffer: %s" (buffer-name))
@@ -4375,17 +4196,16 @@ Returns file names with full path if FULLPATH-OPT is t."
            (file-name-directory full-file))
          package-name   inc-spot   testloc-absolute
          test-file-list
+
          )
     (unless file-path ;; TODO but what about test select menu?  Or even, dired?
       (error "perlnow-list-test-files: buffer has no associated file, giving up."))
 
-    ;; check whether curbuff is perl code? (Why not run metadata probe)
+    ;; check whether current-buffer is perl code?
     ;;    perlnow-find-cpan-style-staging-area
     ;;    perlnow-script-p
     ;;    perlnow-test-p
     ;;    perlnow-test-select-menu-p
-
-    ;;  (defun perlnow-get-inc-spot (package-name pm-location)
 
     (cond (;; is module
            (setq package-name (perlnow-get-package-name-from-module-buffer))
@@ -4421,8 +4241,16 @@ Returns file names with full path if FULLPATH-OPT is t."
 
     (unless (file-directory-p testloc-absolute)
       (message "warning %s is not a directory" testloc-absolute))
-    (setq test-file-list
-          (directory-files testloc-absolute fullpath-opt "\\\.t$"))
+
+    (let* ((test-file-pat "\\\.t$"))
+      (setq test-file-list
+            (cond (recurse-opt
+                   (directory-files-recursively testloc-absolute test-file-pat)
+                   )
+                  (t
+                   (directory-files testloc-absolute fullpath-opt test-file-pat)
+                   ))))
+
     test-file-list))
 
 ;; Adding "harder" awareness to:  perlnow-edit-test-file
@@ -4457,7 +4285,9 @@ Returns file names with full path if FULLPATH-OPT is t."
            )
           )
     (perlnow-test-file-menu
-     (perlnow-list-test-files testloc dotdef namestyle t))))
+     (perlnow-list-test-files testloc dotdef namestyle t
+                              t ;; TODO EXPERIMENTAL recurse-opt
+                              ))))
 
 ;; TODO
 ;;  o  interpret C-u C-u to mean recursive directory search
@@ -4482,7 +4312,9 @@ to anything."
        perlnow-test-policy-test-location-cpan      ;; TODO get from "metadata", drop cpan restriction?
        perlnow-test-policy-dot-definition-cpan
        perlnow-test-policy-naming-style-cpan
-       t)))
+       t ;; full-path
+       t ;; recursive TODO EXPERIMENTAL
+       )))
   (if perlnow-trace (perlnow-message "Calling perlnow-test-file-menu"))
   (let* (
          (md (perlnow-metadata)) ;; for side-effect... but you can use this here TODO
@@ -5019,66 +4851,6 @@ from the buffer."
     (if perlnow-debug
         (message "perlnow-find-cpan-style-staging-area return: %s" return))
     return))
-
-(defun perlnow-find-cpan-style-staging-area-OLD ()
-  "Determines if the current file buffer is located in an cpan-style tree.
-Should return the path to the current cpan-style staging area, or nil
-if it's not found.  The staging area is located by searching upwards
-from the location of the buffer's file to a location with files that
-look like a cpan-style project (as currently implemented, it looks
-for either a \"Makefile.PL\" or a \"Build.PL\"\)."
-  ;; Two important cases to cover are:
-  ;;   ~/perldev/Horror-Grossout/lib/Horror/Grossout.pm
-  ;;   ~/perldev/Horror-Grossout/t/Horror-Grossout.t
-  (interactive)
-  (if perlnow-trace (perlnow-message "Calling perlnow-find-cpan-style-staging-area"))
-  (let* (
-         return
-         ;; args for directory-files function:
-         (dir        "")        ;; candidate directory under examination
-         (full-names nil)
-         (pattern    "^[ltMB]") ;; pre-screen listing for interesting results only
-         ;;   lib, t, Makefile.PL, Build.PL, etc
-         (nosort     t  )
-         (file-list  () )       ;; file listing of the candidate directory (pre-screened)
-         (buffy (buffer-file-name))
-         )
-    (cond (buffy
-           (setq dir (perlnow-fixdir (file-name-directory buffy)))
-           ;; Look at dir, and each level above it, stepping up one each time,
-           ;; give up when dir is so short we must be at root (( TODO but: Windows?  ))
-           (setq return
-                 (catch 'UP
-                   (while (> (length dir) 1)
-                     (setq file-list (directory-files dir full-names pattern nosort))
-
-                     (dolist (file file-list)
-                       (if (or
-                            (string= file "Makefile.PL")
-                            (string= file "Build.PL")) ;; we found it!
-                           (throw 'UP dir))
-                       ) ;; end dolist
-
-                     ;; go up a directory level
-                     (setq dir (perlnow-fixdir (concat dir "..")))
-                     ;; if we can't read files here, give up
-                     (if (not (file-accessible-directory-p dir))
-                         (throw 'UP nil))
-
-                     ) ;; end while
-                   nil ) ;; end catch, ran the gauntlet without success, so return nil
-                 ) ;; end setq return
-           )
-          (t
-           (setq return nil)))
-
-    ;; TODO this func is supposed to *find*, why do a build as a side-effect?
-    (if return ;; skip if nothing found (note, that means dir is "/")
-        (perlnow-cpan-style-build dir))
-
-    ;; (message "perlnow-find-cpan-style-staging-area return: %s" return);; DEBUG
-    return))
-
 
 ;; replaces perlnow-run-perl-makefile-pl-if-needed & perlnow-run-perl-build-pl
 ;; TODO -- should this bring the display-buffer up front? (you can do this
@@ -5870,10 +5642,16 @@ Usage examples:
 The PLIST-SYMBOL defaults to the global `perlnow-incpot-from-t-plist'.
    Example:
      (perlnow-stash-put \"one\" \"alpha\" 'my-special-plist)
-"
-  (unless plist-symbol (setq plist-symbol 'perlnow-incpot-from-t-plist))
-  (set plist-symbol
-        (plist-put (symbol-value plist-symbol) (intern keystr) value)))
+If KEYSTR is nil, does nothing and returns nil. If VALUE is nil,
+silently converts it to an empty string."
+  (cond (keystr
+         (unless value (setq value ""))
+         (unless plist-symbol (setq plist-symbol 'perlnow-incpot-from-t-plist))
+         (set plist-symbol
+              (plist-put (symbol-value plist-symbol) (intern keystr) value))
+         )
+        (t
+         nil)))
 
 (defun perlnow-stash-lookup ( keystr &optional plist-symbol )
   "Look-up string KEYSTR in plist indicated by optional PLIST-SYMBOL.
@@ -5881,10 +5659,13 @@ The PLIST-SYMBOL defaults to the global `perlnow-incpot-from-t-plist'.
   Example:
   (setq value
     (perlnow-stash-lookup \"one\" 'my-special-plist)
-"
-  (unless plist-symbol (setq plist-symbol 'perlnow-incpot-from-t-plist))
-  (let ( (value (lax-plist-get (symbol-value plist-symbol) (intern keystr))) )
-    value))
+If KEYSTR is nil, returns nil."
+  (cond (keystr
+         (unless plist-symbol (setq plist-symbol 'perlnow-incpot-from-t-plist))
+         (let ( (value (lax-plist-get (symbol-value plist-symbol) (intern keystr))) )
+           value))
+        (t
+         nil)))
 
 ;; Like perl's "keys":  it's hard to believe I needed to write this.
 (defun perlnow-plist-keys ( plist )
