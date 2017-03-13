@@ -482,9 +482,9 @@ Next, the cpan-style approach to module development:
   "There's another completely different style of perl module development
 from the one discussed in: `perlnow-documentation-tutorial-2-module-development';
 which is oriented toward CPAN-style distributions.
-These are created either with module-starter or the older h2xs program,
-either of which can be run from within emacs using
-\\[perlnow-module-starter] or \\[perlnow-h2xs].  (( TODO milla ))
+These are usually set-up by running \"builder\" scripts.
+There are perlnow front-ends for:
+\\[perlnow-milla], \\[perlnow-module-starter] or \\[perlnow-h2xs].
 
 This will ask you two questions: \(1\) where do you want to put
 the build, aka the \"staging area\" \(default: the variable
@@ -556,18 +556,17 @@ search procedure (and this behavior may *still* be subject to change in
 the future):
 
 First of all we can presume that test files all end with the
-\".t\" extension, and pretty frequently they're kept in a
-sub-directory named \"t\".  It's fairly common (and standard for
-cpan-style projects) for \"t\" to be located next to the main
-code directory (often named \"lib\") where the module namespace
-begins (I typically call this the \"incspot\").
+\".t\" extension, and they're organized in a directory named
+\"t\".  It's fairly common (and standard for cpan-style projects)
+for \"t\" to be located next to the main code directory (named
+\"lib\" for cpan-style) where the module namespace begins.
+I typically refer to this as the \"incspot\".
 
-As presently implemented (circa version 0.5), perlnow-edit-test
-will find one that matches it's naming convention, or alternately
-it will look for the most recently modified one, and if it finds
-nothing it will create a new one according to the naming
-convention.  (This may change in future versions, though it isn't
-that easy to think of a good alternative.)    TODO
+As presently implemented (circa version 0.5), `perlnow-edit-test'
+will find a test file that matches it's naming convention \(see
+`perlnow-documentation-standard'\), or alternately it will look
+for the most recently modified one, and if it finds nothing it
+will create a new one according to the naming convention.
 
 While there are several supported naming styles for test files,
 perlnow currently defaults to a 'fullauto' style like so:
@@ -699,15 +698,6 @@ exists already.  Copies of old files should be preserved with an
 ;; See perlnow-create-with-template, which is used by all the
 ;; perlnow create commands.
 (put 'perlnow-force  'risky-local-variable t)
-
-;; DEBUG
-;; (setq perlnow-force t) ;; ask me no questions
-;; (setq perlnow-force nil)
-
-;; Hm... just use perlnow-force for this for now.  TODO?
-;; (defcustom perlnow-create-t-dir t
-;;   "If it doesn't exist already, create the 't' directory without asking.")
-
 
 (defvar perlnow-perl-script-name nil
   "Used internally to pass the script name to some templates.
@@ -893,10 +883,11 @@ as \"5.008002\" rather than \"5.8.2\".")
 ;;; reasoning behind the admonition against this in the emacs
 ;;; lisp reference doesn't seem to apply here).
 
-;;; TODO refactor - are there too many of these buffer-local vars?
-;;;  E.g. I have separate module and script runstrings variables
-;;;  (both of which are almost certainly nil) and the one
-;;;  actual run-string.
+;;; It could be there are too many of these: (I have separate module and
+;;; script runstrings variables, and the one actual run-string, keeping
+;;; straight how they're supposed to work is difficult: TODO).
+;;; However, I refuse to expose a more complex data-structure
+;;; (e.g. an alist) to the user as a customization mechanism.
 
 (defvar perlnow-script-run-string nil
   "The run string for perl scripts, used by \\[perlnow-run].
@@ -916,72 +907,6 @@ may be set differently for different files.")
 (put 'perlnow-module-run-string  'risky-local-variable t)
 (make-variable-buffer-local 'perlnow-module-run-string)
 
-(defvar perlnow-run-string nil
-  "Tells \\[perlnow-run] how to run the code in a particular file buffer.
-This is a buffer local variable which is set by the software,
-and thus should not typically be set by the user directly.
-See `perlnow-script-run-string' and `perlnow-module-run-string' instead.")
-(put 'perlnow-run-string  'risky-local-variable t)
-(make-variable-buffer-local 'perlnow-run-string)
-
-(defvar perlnow-run-string-harder nil
-  "Tells \\[perlnow-run] how to run code in a buffer, if given C-u prefix.
-This is a buffer local variable which is set by the software,
-and thus should not typically be set by the user directly.
-See `perlnow-script-run-string' and `perlnow-module-run-string' instead.
-This variant will be used to remember a more through way of running some
-code (e.g. a full barrage of tests, rather than just one test file).")
-(put 'perlnow-run-string  'risky-local-variable t)
-(make-variable-buffer-local 'perlnow-run-string-harder)
-
-
-(defvar perlnow-associated-code nil
-  "A code file associated with the current buffer.
-Typicially a module might be associated with it's test file,
-and vice-versa.  Used by \\[perlnow-back-to-code].")
-;; (put 'perlnow-associated-code  'risky-local-variable t)
-(make-variable-buffer-local 'perlnow-associated-code)
-
-;; currently only deployed in the test select menu
-(defvar perlnow-associated-buffer nil
-  "A buffer associated with the current buffer.
-Similar to perlnow-associated-code, but really contains a buffer object.
-")
-;; (put 'perlnow-associated-code  'risky-local-variable t)
-(make-variable-buffer-local 'perlnow-associated-buffer)
-
-;; EXPERIMENTAL
-;; A global (not buffer-local for once) where perlnow can
-;; save the associations between the "t" directories and
-;; the lib directories.
-(defvar perlnow-incpot-from-t-plist ()
-  "Pairs of \"t\" dirs and code dirs (e.g. \"lib\" directories, aka inc-spots).
-It's expected that there will be a one-to-one relationship between
-the location of a project's code directories and it's \"t\".
-You can go from a *.pm file to a \"t\" via the test policy \"testloc\"
-setting.  Once that's done, we'll save that relationship here,
-so that later, given a *.t file, we'll be able to find the location
-of the code it tests.")
-
-
-(defvar perlnow-recent-pick nil
-  "Internally used place to record a recent file selection.
-This allows this code to offer the last selection again as
-the default.")
-(make-variable-buffer-local 'perlnow-recent-pick)
-
-(defvar perlnow-recent-pick-global nil
-  "Internally used place to record a recent file selection.
-This allows this code to offer the last selection again as
-the default.
-This is a variant which is not buffer-local, to experiment
-with both approaches.")
-;; TODO right now I can't fathom why it would be buffer local.
-;;      isn't it intended to be able to pass the recent-pick
-;;      value around?  I think I'm currently setting it
-;;      for the buffer that was picked, which means you can't
-;;      see the value unless you're already in that buffer.
-;;      WTF?
 
 (defvar perlnow-select-test-file-buffer-name "*select test file*"
   "Name of buffer to display lists of test files.")
@@ -1150,6 +1075,74 @@ when \\[perlnow-run-check] is invoked with a prefix argument.")
   "A typical hash bang line for perl code.
 Used only by the somewhat deprecated \"simple\" functions:
 \\[perlnow-script-simple] \\[perlnow-perlify-this-buffer-simple]")
+
+;;;==========================================================
+;;; internally used vars
+
+;; A global (not buffer-local for once) where perlnow can save the
+;; associations between the "t" directories and the lib directories.
+(defvar perlnow-incpot-from-t-plist ()
+  "Pairs of \"t\" dirs and code dirs (e.g. \"lib\" directories, aka inc-spots).
+It's expected that there will be a one-to-one relationship between
+the location of a project's code directories and it's \"t\".
+You can go from a *.pm file to a \"t\" via the test policy \"testloc\"
+setting.  Once that's done, we'll save that relationship here,
+so that later, given a *.t file, we'll be able to find the location
+of the code it tests.")
+
+(defvar perlnow-run-string nil
+  "Tells \\[perlnow-run] how to run the code in a particular file buffer.
+This is a buffer local variable which is set by the software,
+and thus should not typically be set by the user directly.
+See `perlnow-script-run-string' and `perlnow-module-run-string' instead.")
+(put 'perlnow-run-string  'risky-local-variable t)
+(make-variable-buffer-local 'perlnow-run-string)
+
+(defvar perlnow-run-string-harder nil
+  "Tells \\[perlnow-run] how to run code in a buffer, if given C-u prefix.
+This is a buffer local variable which is set by the software,
+and thus should not typically be set by the user directly.
+See `perlnow-script-run-string' and `perlnow-module-run-string' instead.
+This variant will be used to remember a more through way of running some
+code (e.g. a full barrage of tests, rather than just one test file).")
+(put 'perlnow-run-string  'risky-local-variable t)
+(make-variable-buffer-local 'perlnow-run-string-harder)
+
+(defvar perlnow-associated-code nil
+  "A code file associated with the current buffer.
+Typicially a module might be associated with it's test file,
+and vice-versa.  Used by \\[perlnow-back-to-code].")
+;; (put 'perlnow-associated-code  'risky-local-variable t)
+(make-variable-buffer-local 'perlnow-associated-code)
+
+;; currently only deployed in the test select menu
+(defvar perlnow-associated-buffer nil
+  "A buffer associated with the current buffer.
+Similar to perlnow-associated-code, but really contains a buffer object.
+")
+;; (put 'perlnow-associated-code  'risky-local-variable t)
+(make-variable-buffer-local 'perlnow-associated-buffer)
+
+(defvar perlnow-recent-pick nil
+  "Internally used place to record a recent file selection.
+This allows this code to offer the last selection again as
+the default.")
+(make-variable-buffer-local 'perlnow-recent-pick)
+
+(defvar perlnow-recent-pick-global nil
+  "Internally used place to record a recent file selection.
+This allows this code to offer the last selection again as
+the default.
+This is a variant which is not buffer-local, to experiment
+with both approaches.")
+;; TODO right now I can't fathom why it would be buffer local.
+;;      isn't it intended to be able to pass the recent-pick
+;;      value around?  I think I'm currently setting it
+;;      for the buffer that was picked, which means you can't
+;;      see the value unless you're already in that buffer.
+;;      WTF?
+
+
 
 ;;;==========================================================
 ;;; set-up functions
@@ -2039,7 +2032,7 @@ will switch to that window."
         (setq testfile
               (perlnow-new-test-file-name testloc hyphenized))
         ))
-    (cond (harder-setting  ;; experimental: not the main entry point for this TODO
+    (cond (harder-setting  ;; not the main entry point for this, but what other behavior? TODO
            ;; minibuffer entry with testfile as default
            (perlnow-test-create-manually testfile)
            )
@@ -2079,7 +2072,6 @@ will switch to that window."
 ;;========
 ;; guess run-string routines
 ;;   key routines for determining appropriate run-strings.
-
 
 ;; TODO raid this old documentation from the specific "guess" routine
 ;; for ideas for the following docs:
@@ -2279,8 +2271,6 @@ Note: as written the given FILE is expect to have the full path."
              (find-file file))
            ))
     (funcall (perlnow-lookup-preferred-perl-mode))
-;;     ;; after opening, point back from new place to where we were
-;;     (setq perlnow-associated-code original-file-displayed)  ;; TODO why commented?
     (if switchback
         (other-window 1))
     ))
@@ -4172,7 +4162,6 @@ The template used is specified by the variable `perlnow-perl-test-module-templat
     (perlnow-ensure-file-exists test-file template)))
 
 ;;; TODO check if this is limited to cpan-style
-;;; TODO somewhere need to be able to do recursive decent through a project tree
 (defun perlnow-list-test-files (testloc dotdef namestyle &optional fullpath-opt recurse-opt)
   "Looks for test files appropriate for the current file.
 Uses the three given elements of a \"test policy\", to find
@@ -4290,7 +4279,6 @@ RECURSE-OPT implies FULLPATH-OPT.
                               ))))
 
 ;; TODO
-;;  o  interpret C-u C-u to mean recursive directory search
 
 ;;  o  cpan-style assumption is hardcoded here (and thankfully documented)
 ;;      does that make sense?  Make more general?
@@ -4327,24 +4315,63 @@ to anything."
          (selection-buffer-label
           (format "Tests related to %s. To choose one, cursor to it and hit return."
                   filename))
+         t-menu-plist
+         t-loc-list
          t-loc
          )
     (perlnow-show-buffer-other-window menu-buffer-name)
     (setq buffer-read-only nil)
     (delete-region (point-min) (point-max))
+
+    (put-text-property
+       0 (length selection-buffer-label) 'face 'perlnow-00-face selection-buffer-label)
     (insert selection-buffer-label)
     (insert "\n")
 
-    ;; TODO when you've got a multi-location set, will need to loop over t-locs...
-    (setq t-loc
-     (perlnow-fixdir (file-name-directory (car test-file-list))))
-    (insert (concat t-loc ": \n")) ;; TODO colorize?
+    ;; Convert to lists of files in each directory, gathered in one plist, keyed by directory
+    (dolist (fullfile test-file-list)
+      (let (loc file loclist)
+        (setq loc  (file-name-directory    fullfile))
+        (setq file (file-name-nondirectory fullfile))
+;;        (setq file (perlnow-markup-file-with-path fullfile)) ;; file marked-up with path propety
+        (setq loclist (or
+                       (perlnow-stash-lookup loc 't-menu-plist)
+                       () ))
+;;        (push file loclist)
+        (push fullfile loclist)
+        (setq loclist (sort loclist 'string<))
+        (perlnow-stash-put loc loclist 't-menu-plist)
+      ))
+    (if perlnow-debug
+        (message "t-menu-plist: %s" (pp t-menu-plist)))
 
-    ;; old-style, listing of full names with paths:
-    ;;   (insert (mapconcat 'identity test-file-list "\n"))
-    (insert "   ")
-    (insert (mapconcat 'perlnow-markup-file-with-path test-file-list "\n   "))
-    (insert "\n")
+    ;; sorted list of the keys, the test locations
+    (setq t-loc-list
+          (sort
+           (perlnow-plist-keys t-menu-plist)
+           'string< ))
+    (if perlnow-debug
+        (message "t-loc-list: %s" (pp t-loc-list)))
+
+    ;; to support multi-location sets, we need to loop over t-locs
+    (dolist (loc t-loc-list)
+      (let ( loc-str file file-list )
+        (setq filelist (perlnow-stash-lookup loc 't-menu-plist))
+
+        (setq loc-str (concat loc ": "))
+        (put-text-property
+           0 (length loc-str) 'face 'perlnow-01-face loc-str)
+        (insert loc-str)
+        (insert "\n")
+
+        (insert "   ")
+        (dolist (str (mapcar 'perlnow-markup-file-with-path filelist))
+          (put-text-property 0 (length str) 'face 'perlnow-02-face str)
+          (insert str)
+          (insert "\n   ")
+          )
+        (insert "\n")
+      ))
 
     (perlnow-select-mode)
     (setq perlnow-associated-code original-file) ;; connect menu back to generating context
@@ -4375,6 +4402,32 @@ to anything."
     (goto-char (next-single-property-change (point) 'perlnow-file-path))
     ;; just to return something.
     menu-buffer-name))
+
+
+;; lifted from my old rep.el code:
+(defmacro perlnow-make-face (name number color1 color2)
+  "Generate a colorized face suitable to markup changes.
+NAME is the name of the face, COLOR1 is for light backgrounds
+and COLOR2 is for dark backgrounds.
+NUMBER is the corresponding rep substitution number (used only
+in the doc string for the face."
+  `(defface ,name
+  '((((class color)
+      (background light))
+     (:foreground ,color1))
+    (((class color)
+      (background dark))
+     (:foreground ,color2)))
+  ,(format "Face used for changes from substitution number: %s." number)
+  :group 'desktop-recover-faces
+  ))
+
+(perlnow-make-face perlnow-00-face 00 "DarkGoldenrod4" "DarkGoldenrod2")
+(perlnow-make-face perlnow-01-face 01 "MediumPurple4" "MediumPurple1")
+(perlnow-make-face perlnow-02-face 02 "forest green" "light green")
+(perlnow-make-face perlnow-03-face 03 "PaleVioletRed4" "PaleVioletRed1")
+
+
 
 (defun perlnow-markup-file-with-path (fullfile)
     "Converts file name with path to file name with path as text-property.
@@ -6337,6 +6390,10 @@ For do debugging trial runs."
          )
         )
   )
+
+
+
+
 
 (provide 'perlnow)
 
