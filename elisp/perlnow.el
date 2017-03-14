@@ -342,8 +342,8 @@ if I were saner, I might\). Consider this the \"alpha\" release.
     refactor to use \"Moose\". And alternately, if you're not doing much with
     object-state, consider refactoring to an Exporter-based non-OOP style.
 
- o  Use embedded-pod style, with sub documentation in a pod block (typically
-    an =item) immediately preceeding the code.
+ o  Use embedded-pod style, with sub documentation in an =item pod block
+    immediately preceeding the code.
 
  o  You should be using cperl-mode, not the default perl-mode.
 
@@ -591,12 +591,6 @@ files will go.  See \"test policy\" in `perlnow-documentation-terminology'.
 
 Next:
  `perlnow-documentation-7-template-expansions'")
-
-
-
-;; perlnow standard
-
-
 
 
 
@@ -5827,43 +5821,60 @@ is an OOP module, otherwise, an ordinary sub."
   "Insert the framework of a perl method definition"
   (interactive "sMethod name: ")
   (if perlnow-trace (perlnow-message "Calling perlnow-insert-method"))
-  (let ((item-pod (or perlnow-sub-doc-pod "=item")))
-;;             "=item " name "\n"
-    (insert (concat
+  (let* (
+        ;; (internal-p (string-match "^_" name))
+        (item-pod perlnow-sub-doc-pod) ;; "=item"
+        (docstring-p (string-match "^=" item-pod))
+        )
+    (if docstring-p
+        (insert (concat
              "\n"
              item-pod " " name "\n"
              "\n"
              "=cut" "\n"
              "\n"
+             )))
+    (insert (concat
              "sub " name " {" "\n"
              "  my $self = shift;" "\n"
              "\n"
              "\n"
              "}" "\n"
-             )))
-  (previous-line 3)
-  )
+             ))
+    (previous-line 3)
+   ))
 
 (defun perlnow-insert-basic-sub ( name )
-  "Insert the framework of a basic (non-OOP) perl sub definition"
+  "Insert the framework of a basic (non-OOP) perl sub definition.
+A pod block is created before the sub framework, and the NAME is
+added to the module's export list (in the :all tag)."
   (interactive "ssub name: ")
   (if perlnow-trace (perlnow-message "Calling perlnow-insert-basic-sub"))
-  (let ((item-pod (or perlnow-sub-doc-pod "=item")))
-    (insert (concat
+  (let* (
+        (internal-p (string-match "^_" name))
+        (item-pod perlnow-sub-doc-pod) ;; "=item"
+        (docstring-p (string-match "^=" item-pod))
+        )
+    (if docstring-p
+        (insert (concat
              "\n"
              item-pod " " name "\n"
              "\n"
              "=cut" "\n"
              "\n"
+             )))
+    (insert (concat
              "sub " name " {" "\n"
              "  my $arg = shift;" "\n"
              "\n"
              "\n"
              "}" "\n"
-             )))
-  (previous-line 3)
-  (perlnow-add-export name)
-  )
+             ))
+    (previous-line 3)
+
+    (unless internal-p
+      (perlnow-add-export name))
+    ))
 
 (defun perlnow-add-export (subname)
   "For an Exporter-based module, adds SUBNAME to the \":all\" tag.
@@ -5896,6 +5907,7 @@ and the qw( ) list it uses."
              (insert subname)
              (cperl-indent-command) ;; Q: what if we're using perl-mode?
                                     ;; Q: do I really care?
+                                    ;; A: if you used tempo, this'd be covered
              ;; adjust the indentation of the ')' line
              (forward-line 1)
              (cperl-indent-command)
@@ -6438,9 +6450,18 @@ For do debugging trial runs."
         )
   )
 
+(defvar perlnow-documentation-undocumented-features t
+  "Undocumented features:
 
+  o  \\[perlnow-insert-sub] also inserts a block of pod with an =item tag.
+     that can be changed with `perlnow-sub-doc-pod'.
 
+  o  \\[perlnow-insert-sub] on an Exporter-based module always adds the
+     sub name to the export list, except when named with a leading
+     underscore.
 
+"
+)
 
 (provide 'perlnow)
 
