@@ -50,7 +50,7 @@ Check <http://obsidianrook.com/perlnow/> for the latest.")
   "The introductory documentation to the perlnow.el package.
 Also see the documentation for:
 `perlnow-documentation-installation'
-`perlnow-documentation-standard'
+`perlnow-documentation-coding-standard'
 `perlnow-documentation-terminology'
 `perlnow-documentation-template-expansions'
 `perlnow-documentation-tutorial'
@@ -231,16 +231,16 @@ PM LOCATION \(or MODULE FILE LOCATION\): directory
 portion of module file name, e.g. /usr/lib/perl/Modular/
 
 MODULE NAME or PACKAGE NAME: perl's double colon separated
-name, e.g. \"Modular::Stuff\"
+name, e.g. \"Modular::Stuff\".
 
 INC SPOT or MODULE ROOT or PACKAGE ROOT: a place where perl's
 package space begins \(e.g. /usr/lib/perl\). Perl's @INC is a list
 of different such \"inc spots\".  These are often named \"lib\".
 
-STAGING AREA: the directory created by tools such as module-starter
-for module development, a hyphenized-form of the module name
-e.g. Modular-Stuff. Staging areas contain a module root
-\(or \"inc spot\") called \"lib\".
+STAGING AREA: the directory created by cpan builder tools
+\(milla, module-starter, h2xs, etc \) for module development, a
+hyphenized-form of the module name e.g. Modular-Stuff. Staging
+areas contain a module root \(or \"inc spot\") called \"lib\".
 
 DEV LOCATION: the place where you put your staging areas.
 
@@ -260,12 +260,12 @@ current module/script\(?\), often something like ModuleName.t
 or possibly Staging-Area.t.
 
 TEST LOCATION: place where the test script\(s\) are for
-a given module.
+a given module \(almost always named \"t\"\).
 
 TEST PATH: search path to look for test files. Note, can
 include relative locations, e.g. \"./t\", but the dot
 shouldn't be taken as the current directory.
-See: `perlnow-test-path'.
+See: `perlnow-test-path'.  (TODO: is this deprecated?)
 
 TEST POLICY: the information necessary to know where to
 put a newly created test file and what to call it:
@@ -273,76 +273,89 @@ put a newly created test file and what to call it:
 2 - the definition of dot e.g. module-file-location vs. inc-spot;
 3 - the naming style, e.g. hyphenized vs. base.")
 
-(defvar perlnow-documentation-standard t
-  "With this, the perlnow 0.6 release, I'm beginning to define
-a \"perlnow standard\" for perl development. The intent is that
-if you follow this standard, using perlnow should go more smoothly.
-It's not my intent to cop-out and insist that you have to follow
-this standard \(though if I were saner, I might\).  I expect that
-I'll continue to revise this \"standard\" for at least the near term:
-consider this an \"alpha\" release.
+(defvar perlnow-documentation-coding-standard t
+  "With this, the perlnow 0.6 release, I'm beginning to define a \"perlnow
+standard\" for perl development. The intent is that if you follow this
+standard, using perlnow should go more smoothly. It's not my intent to cop-
+out and insist that you have to follow this standard to use perlnow \(though
+if I were saner, I might\). Consider this the \"alpha\" release.
 
-(1) The only existing standard for perl development is cpan-style,
-    so you should use it if at all possible.  In particular,
-    you should use a single \"incspot\" directory for your modules
-    (typically named \"lib\") in parallel with the relevant \"t\"
-    directory, and if needed a \"scripts\" or \"bin\" directory.
+ o  The only existing standard for perl projects is cpan-style, so you
+    should get as close to it as possible, e.g.
 
-    Integrating the work from multiple cpan-style projects
-    is most simply done by just installing them on the system.
+       dev/Modular-Stuff/
+                         lib/
+                               Modular/Stuff.pm
+                           t/
+                               01-Modular_Stuff-do_stuff-basic_test.t
+                         bin/
+                               stuff_it
 
-(2) I recommend initiating a cpan-style project with Miyagawa's
-    \"milla\" (( look up info )) and Module::Build::Tiny,
-    use that until you have a reason to do something else.
+    Modules should be placed in one directory \(typically named \"lib\"), and
+    tests should be gathered in a parallel \"t\" directory \(sub-directories
+    of \"t\" can be used to organize them\).
 
-(3) Test files should be kept in a flat namespace
-    inside of one \"t\" sub-directory \(though better support
-    for sub-directories of \"t\" is planned for Real Soon,
-    and has been for some time\).
+    Command-line scripts \(if any\) should be kept in a \"bin\"
+    or \"scripts\" directory.
 
-(4) Test files should usually target one sub in one module,
-    and be named according to this pattern:
-      <numeric prefix>-<Hyphenized Module Name>-<sub name>-<optional remark>.t
-    For example, for a Modular::Stuff with sub do_something:
+    Integrating the work from multiple cpan-style projects is
+    most simply done by just installing them on the system.
+    (Though, that's hardly ideal and you'll probably do something else.)
+
+ o  I recommend initiating a cpan-style project with Miyagawa's \"milla\" (see
+    App::Milla on CPAN), which uses Module::Build::Tiny.  Use this until you
+    have a reason to do something else.  See \\[perlnow-milla].
+
+ o  Ideally, test files should target one sub in one module, and be named
+    something like this \(for Modular::Stuff with sub do_something\):
+
       01-Modular-Stuff-do_something-basic_case.t
 
-    The numeric prefix is an arbitrary unique number whose sequence
-    typically reflects the order of development of a feature and
-    possibly how fundamental it is.
-    The sequence is not the sequence that tests should be run:
-    Ideally all tests should be runnable independently, in random
-    order.
+    Where the pattern is:
 
-(5) Scripts should typically be implemented with the main work
-    done in modules: the main job to be done locally is unpack
-    and interpret arguments before passing them on to the modules.
-    Most testing should be implemented at the module level,
-    though perlnow has simple features to generate tests that
-    shell out to run a script and check it's output.
+      <numeric prefix>-<Hyphenized Module Name>-<sub name>-<optional remark>.t
 
-    You should not turn on taint (-T) unless you know you need it:
-    perl complains if you later try to run a \"taint\" script
-    without it.
+    The numeric prefix is an arbitrary (but ideally, unique) number whose
+    sequence typically reflects the order of development of features \(or at
+    least, the order of development of tests\).
 
-    The only Getopt::* modules you need to understand are Getopt::Long
-    and Getopt::Std.  Seriously: just don't go there.
+    This is the sequence in which tests are *usually* run, but are not
+    *required* to be run. Tests should be runnable independently, in
+    random order.
 
-(6) I suggest initially beginning all module development using
-    OOP, via the lightweight \"Moo\" package with \"MooX::Types::MooseLike::Base\".
-    Then later if it turns out you need more flexible, dynamic OOP
-    features, refactor to use \"Moose\".  And alternately, if you're
-    not doing much with object-state, consider refactoring to an
-    Exporter-based non-OOP style.
+ o  Scripts should typically be implemented with the main work done in
+    modules: the main job of a script is to unpack and interpret arguments
+    before passing them on to modules. Most testing should be implemented
+    at the module level \(though perlnow has features to generate tests
+    that shell out to run a script and check it's output\).
+
+    You should not turn on taint \(-T\) in your hash-bang line unless you
+    know you need it: perl complains if you try to invoke such a script in
+    a different way without the -T.
+
+    The only Getopt::* modules you need to understand are Getopt::Long and
+    Getopt::Std. Seriously: just don't go there.
+
+ o  I suggest initially beginning all module development using OOP, via the
+    lightweight \"Moo\" package with \"MooX::Types::MooseLike::Base\". Then
+    later if it turns out you need more flexible, dynamic OOP features,
+    refactor to use \"Moose\". And alternately, if you're not doing much with
+    object-state, consider refactoring to an Exporter-based non-OOP style.
+
+ o  Use embedded-pod style, with sub documentation in a pod block (typically
+    an =item) immediately preceeding the code.
+
+ o  You should be using cperl-mode, not the default perl-mode.
+
 ")
 
 
 (defvar perlnow-documentation-tutorial t
   "First, see: `perlnow-documentation-installation'.
 
-Depending on how you configure things, you should then have
-easy access (perhaps as easy as a single keystroke of a
-function key) to some quick short-cuts.  Here's a run down
-on how you might use them for different purposes:
+Depending on how you configure things, you should then have easy access
+(perhaps as easy as a single keystroke of a function key) to some quick short-
+cuts. Here's a run down on how you might use them for different purposes:
 
  `perlnow-documentation-tutorial-1-script-development'
  `perlnow-documentation-tutorial-2-module-development'
@@ -353,54 +366,46 @@ on how you might use them for different purposes:
 (defvar perlnow-documentation-tutorial-1-script-development t
   "Got an idea for a script?  Hit \\[perlnow-script].
 
-This will ask you for the name of the script you want to
-write, then kick you into a file buffer with a recommended
-code template already filled in.
+This will ask you for the name of the script you want to write, then kick you
+into a file buffer with a recommended code template already filled in.
 
-If you don't like the template, change it \(it should be in
-your ~/.templates directory\).
+If you don't like the template, change it \(it should be in your ~/.templates
+directory\).
 
-Currently perlnow-script tends to want to put all of your
-new scripts in one place, the `perlnow-script-location' that
-you've defined for it.  You can, of course, choose a
-different place to put a script at creation time: the
-default is inserted into the minibuffer so that you can use
-it as a starting point to edit into some new location.
-Similarly you can use your minibuffer history to start
-with something you've used before (try Alt-p, the typical
-binding for \\[previous-history-element]).
+Currently perlnow-script tends to want to put all of your new scripts in one
+place, the `perlnow-script-location' that you've defined for it. You can, of
+course, choose a different place to put a script at creation time: the default
+is inserted into the minibuffer so that you can use it as a starting point to
+edit into some new location. Similarly you can use your minibuffer history to
+start with something you've used before (try Alt-p, the typical binding for
+\\[previous-history-element]).
 
-You also might want to change the default location on-the-fly:
-you can use \\[set-variable] to change `perlnow-script-location'.
+You also might want to change the default location on-the-fly: you can use
+\\[set-variable] to change `perlnow-script-location'.
 
-After you've created a script, you can start coding away, and at
-any time, you can do a \"perlnow-run-check\" (\\[perlnow-run-check])
-to make sure your syntax is okay.  This is a wrapper around the
-emacs compile-command facility running it with \"perl -cw\".
-Errors and warnings are listed in another buffer, and then doing a
-\"next-error\" will rotate you through these, skipping you
-directly to the point in the code where the problem was reported.
-By default, one runs \"next-error\" via \"control-x
-back-apostrophe\"; and it looks like your current binding is:
-\\[next-error]
+While you're working on the code, at any time, you can do a \"perlnow-run-check\"
+(\\[perlnow-run-check]) to check for syntax errors and warnings.
+This is a wrapper around the emacs compile-command facility running it with
+\"perl -cw\".  Errors and warnings are listed in another buffer, and doing
+a \"next-error\" rotates you through these, skipping you directly to the point
+in the code where the problem was reported. By default, one runs \"next-error\"
+via \"control-x back-apostrophe\"; and it looks like your current binding
+is: \\[next-error]
 
-Alternately, you might skip \\[perlnow-run-check] and
-go straight to \\[perlnow-run], which will
-\(the first time through\) then ask you how you want to
-run the script. The default command line is usually just
-\"perl <scriptname>\"; but you can append whatever
-arguments and re-directs you like.  Once a run-string
-is defined for that file buffer it will stop asking you
-this question, though you can change the run string later
-at any time with \\[perlnow-set-run-string].
+Alternately, you might skip \\[perlnow-run-check] and go straight to
+\\[perlnow-run], which will \(the first time through\) then ask you how you
+want to run the script. The default command line is usually just
+\"perl <scriptname>\"; but you can append whatever arguments and re-directs
+you like. Once a run-string is defined for that file buffer it will stop
+asking you this question, though you can change the run string later at any
+time with \\[perlnow-set-run-string].
 
-Should you want to use the perl debugger, I suggest using
-\\[perlnow-perldb], rather than \\[perldb] directly.  The perlnow
-wrapper uses the `perlnow-run-string' you've defined, which will
-be different for each perl file.  If you use the perldb command
-directly, you'll notice that the default is just however you ran
-it last.  If you're switching around, working on multiple files,
-that default is going to be wrong a lot.
+If you want to use the perl debugger, I suggest using \\[perlnow-perldb],
+rather than \\[perldb]. The perlnow wrapper uses the `perlnow-run-string'
+you've defined, which will be different for each perl file. If you use the
+perldb command directly, you'll notice that the default is just however you
+ran it last. If you're switching around, working on multiple files, that
+default is going to be wrong a lot.
 
 The next subject, developing perl modules:
   `perlnow-documentation-tutorial-2-module-development'")
@@ -416,27 +421,26 @@ There are multiple commands you could use to start on a new module:
 For proceedural modules:             \\[perlnow-module]
 For object-oriented modules:         \\[perlnow-object-module]
 For cpan-style modules:
-   Using ExtUtils::MakeMaker         \\[perlnow-h2xs]
-   Using Module::Build (by default)  \\[perlnow-module-starter]
+   (uses Module::Build::Tiny)        \\[perlnow-milla]
+   (uses ExtUtils::MakeMaker)        \\[perlnow-h2xs]
+   (uses Module::Build, by default)  \\[perlnow-module-starter]
 
-The first two are very similar, they just use different
-templates.  Both ask you for the name and location of the module
-you want to create in a single prompt, asking for an answer in a
-hybrid form like:
+The first two are very similar, they just use different templates. Both ask
+you for the name and location of the module you want to create in a single
+prompt, asking for an answer in a hybrid form like:
 
   /home/hacker/perldev/lib/New::Module
 
-Here the module location \(really, a \"module root\"
-location, or \"inc spot\", see `perlnow-documentation-terminology')
-is entered in the usual file-system form \(in this example,
-it is \"/home/hacker/perldev/lib/\"\) and the module name
-is given using perl's double-colon separated package name notation
-\(in this example, \"New::Module\"\).
+Here the module location \(really, a \"module root\" location, or \"inc spot\",
+see `perlnow-documentation-terminology') is entered in the usual file-system
+form \(in this example, it is \"/home/hacker/perldev/lib/\"\) and the module name
+is given using perl's double-colon separated package name notation \(in this
+example, \"New::Module\"\).
 
 The default for the module location is given by the variable
-`perlnow-pm-location' which should be set in
-your .emacs as indicated in `perlnow-documentation-installation'.
-It can also be modified on the fly with \\[set-variable].
+`perlnow-pm-location' which should be set in your .emacs as
+indicated in `perlnow-documentation-installation'.  It can also
+be modified on the fly with \\[set-variable].
 
 Tab and space completion works while navigating the previously
 existing part of the path \(including the part inside the package
@@ -547,7 +551,6 @@ Next:
  `perlnow-documentation-test-file-strategies'")
 
 
-;; TODO maybe link to perlnow-documentation-standard near "naming convention".
 (defvar perlnow-documentation-test-file-strategies t
   "The \\[perlnow-run] and \\[set-perlnow-run-string] commands
 try to find an appropriate test to exercise the code in the current
@@ -564,8 +567,8 @@ I typically refer to this as the \"incspot\".
 
 As presently implemented (circa version 0.5), `perlnow-edit-test'
 will find a test file that matches it's naming convention \(see
-`perlnow-documentation-standard'\), or alternately it will look
-for the most recently modified one, and if it finds nothing it
+`perlnow-documentation-coding-standard'\), or alternately it will
+look for the most recently modified one, and if it finds nothing it
 will create a new one according to the naming convention.
 
 While there are several supported naming styles for test files,
@@ -688,6 +691,11 @@ No warranty is provided with this code.
 See http://dev.perl.org/licenses/ for more information."
   "Software license message available to templates as LICENSE.
 The default value is the traditional boilerplate for open source perl code.")
+
+(defcustom perlnow-sub-doc-pod "=item"
+  "Pod tag used to introduce a block of sub documentation.
+Defaults to '=item', and should probably stay that way, but I've known
+people who wanted to use '=head3'.")
 
 ;; TODO rename, make this less scarey.  perlnow-quiet?
 (defcustom perlnow-force nil
@@ -990,13 +998,13 @@ Used by \\[perlnow-edit-test-file].  See:
 
 (defcustom perlnow-test-policy-test-location-module
   perlnow-test-policy-test-location
-  "Like `perlnow-test-policy-test-location', but for module modules.")
+  "Like `perlnow-test-policy-test-location', but for non-cpan modules.")
 (defcustom perlnow-test-policy-dot-definition-module
   perlnow-test-policy-dot-definition
-  "Like `perlnow-test-policy-dot-definition', but for module modules.")
+  "Like `perlnow-test-policy-dot-definition', but for non-cpan modules.")
 (defcustom perlnow-test-policy-naming-style-module
   perlnow-test-policy-naming-style
-  "Like `perlnow-test-policy-naming-style', but for module modules.")
+  "Like `perlnow-test-policy-naming-style', but for non-cpan modules.")
 
 (defcustom perlnow-test-policy-test-location-script
   perlnow-test-policy-test-location
@@ -3624,7 +3632,7 @@ Returns nil on failure, sub name on success."
   (let ((sub-name (or (perlnow-sub-at-point) "")))
     (setq perlnow-perl-sub-name sub-name)))
 
-;; the following were implemented for perlnow-revise-export-list
+;; the following defuns were implemented for perlnow-revise-export-list
 ;;
 ;; At present: the following assumes a layout like this:
 ;;
@@ -4726,12 +4734,6 @@ has been chosen as the default to work on perl code."
 
 
 
-  ;;; TODO how would you do recursive descent if that's what you want?
-  ;;;      could make that a flag on this code?
-  ;;; TODO think about using test policy somehow: run the code to do
-  ;;; a best pick of *.t files, then give it's location priority in
-  ;;; this list.
-
 ;; concept: if given a module, you can get the module root
 ;; and from there, you peek up one level (check for "../t"),
 ;; and scan downwards, adding the "t"s found to the list.
@@ -4905,12 +4907,7 @@ from the buffer."
         (message "perlnow-find-cpan-style-staging-area return: %s" return))
     return))
 
-;; replaces perlnow-run-perl-makefile-pl-if-needed & perlnow-run-perl-build-pl
-;; TODO -- should this bring the display-buffer up front? (you can do this
-;;         without losing focus from the current buffer, correct?)
-;;         done in h2xs
-;; Used by:
-;;   perlnow-module-starter, perlnow-h2xs
+
 (defun perlnow-cpan-style-build (staging-area)
   "Does the cpan-style build in the STAGING-AREA (but only if needed).
 Specifically, this runs Makefile.PL and/or Build.PL.
@@ -5808,7 +5805,6 @@ see: \\[perlnow-run-perltidy]."
 ;; Ideally, there would be some way of customizing these, but then,
 ;; just writing your own routine is easy enough.
 
-;; TODO if used with export code, should automatically add to export tag :all
 (defun perlnow-insert-sub ()
  "Insert the framework for a new sub.
 Adapts to context and inserts an OOP framework if this
@@ -5823,26 +5819,6 @@ is an OOP module, otherwise, an ordinary sub."
        (t ;; presume a script
         (call-interactively 'perlnow-insert-basic-sub))))
 
-
-(defun perlnow-insert-basic-sub (name)
-  "Insert the framework of a basic perl sub definition"
-  (interactive "ssub name: ")
-  (if perlnow-trace (perlnow-message "Calling perlnow-insert-basic-sub"))
-  (insert (concat
-           "\n"
-           "=item " name "\n"
-           "\n"
-           "=cut" "\n"
-           "\n"
-           "sub " name " {" "\n"
-           "  my $arg = shift;" "\n"
-           "\n"
-           "\n"
-           "}" "\n"
-           ))
-  (previous-line 3)
-  )
-
 ;; perl-OOP-oriented:
 ;; Currently these are limited to hashref-based oop.
 ;; Need more preference settings, ideally with project specific overrides.
@@ -5851,20 +5827,91 @@ is an OOP module, otherwise, an ordinary sub."
   "Insert the framework of a perl method definition"
   (interactive "sMethod name: ")
   (if perlnow-trace (perlnow-message "Calling perlnow-insert-method"))
-  (insert (concat
-           "\n"
-           "=item " name "\n"
-           "\n"
-           "=cut" "\n"
-           "\n"
-           "sub " name " {" "\n"
-           "  my $self = shift;" "\n"
-           "\n"
-           "\n"
-           "}" "\n"
-           ))
+  (let ((item-pod (or perlnow-sub-doc-pod "=item")))
+;;             "=item " name "\n"
+    (insert (concat
+             "\n"
+             item-pod " " name "\n"
+             "\n"
+             "=cut" "\n"
+             "\n"
+             "sub " name " {" "\n"
+             "  my $self = shift;" "\n"
+             "\n"
+             "\n"
+             "}" "\n"
+             )))
   (previous-line 3)
   )
+
+(defun perlnow-insert-basic-sub ( name )
+  "Insert the framework of a basic (non-OOP) perl sub definition"
+  (interactive "ssub name: ")
+  (if perlnow-trace (perlnow-message "Calling perlnow-insert-basic-sub"))
+  (let ((item-pod (or perlnow-sub-doc-pod "=item")))
+    (insert (concat
+             "\n"
+             item-pod " " name "\n"
+             "\n"
+             "=cut" "\n"
+             "\n"
+             "sub " name " {" "\n"
+             "  my $arg = shift;" "\n"
+             "\n"
+             "\n"
+             "}" "\n"
+             )))
+  (previous-line 3)
+  (perlnow-add-export name)
+  )
+
+(defun perlnow-add-export (subname)
+  "For an Exporter-based module, adds SUBNAME to the \":all\" tag.
+This depends on some features in the exporter-based template that ships
+with perlnow: the %EXPORT_TAGS feature that defines 'all',
+and the qw( ) list it uses."
+  (save-excursion
+  (let* ((initial-buffer (current-buffer))
+         (initial-point  (point))
+         ;; pattern to search for a line like this:
+         ;;  our %EXPORT_TAGS = ( 'all' => [
+         (all-tag-pattern
+          "\\bEXPORT_TAGS[ \t]*=[ \t]*(.*?\\ball\\b")  ;; allows alt quotes on 'all'
+         ;; parens are required on the qw( ) construct
+         (open-quoted-words-pattern
+          "qw(")
+         )
+    (cond ((perlnow-exporter-code-p)
+           (goto-char (point-min))
+           (re-search-forward all-tag-pattern nil t)
+           ;; skip to "qw(", and from there to ")"
+           (re-search-forward open-quoted-words-pattern nil t)
+           (let* ((all-beg (point)))
+             (backward-char 1)
+             (forward-sexp)  ;; finds matching ')' for 'qw('
+             (backward-char 2)
+
+             ;; insert the subname and adjust indentation
+             (open-line 1)
+             (insert subname)
+             (cperl-indent-command) ;; Q: what if we're using perl-mode?
+                                    ;; Q: do I really care?
+             ;; adjust the indentation of the ')' line
+             (forward-line 1)
+             (cperl-indent-command)
+
+             ;; removes the blank lines that are (probably) in the initial template
+             (goto-char all-beg)
+             (delete-blank-lines)
+             ))
+          (t
+           (message "perlnow-add-export should only be called on an Exporter-based module.")
+           )
+          )
+    ;; returning from any excursions
+    ;; (switch-to-buffer initial-buffer)
+    ;; (goto-char initial-point)
+  )))
 
 (defun perlnow-insert-accessors (field)
   "Insert the basic framework for a perl setter and getter,
