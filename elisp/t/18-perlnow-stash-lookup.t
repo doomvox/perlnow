@@ -10,7 +10,7 @@
 ;; The test story:
 ;;   Use perlnow-stash-put with a local plist, adding several key-value pairs
 ;;   Use perlnow-stash-lookup to extract one of the values.
-;;   Verify global default plist stash is untouched: perlnow-incpot-from-t-plist
+;;   Verify global default plist stash is untouched: perlnow-incspot-from-t-plist
 ;;   Extract values from local plist directly with list manipulation features.
 ;;   Run some "put"s and "lookup"s using the global default.
 
@@ -71,10 +71,10 @@
            (message "mah-plist: %s\n" (pp mah-plist)))
 
        (if perlnow-debug
-           (message "perlnow-incpot-from-t-plist: %s\n" (pp perlnow-incpot-from-t-plist)))
+           (message "perlnow-incspot-from-t-plist: %s\n" (pp perlnow-incspot-from-t-plist)))
 
        (assert-nil
-        perlnow-incpot-from-t-plist
+        perlnow-incspot-from-t-plist
         (concat test-name ": the global stash plist should still be empty"))
 
        (setq check-val1 (nth 1 mah-plist)) ;; ... Republican/Candy/Dates.pm
@@ -94,18 +94,18 @@
        (perlnow-stash-put "milk"  "float")
        (perlnow-stash-put "louie" "louie")
 
-       (message "perlnow-incpot-from-t-plist: %s" (pp perlnow-incpot-from-t-plist))
+       (message "perlnow-incspot-from-t-plist: %s" (pp perlnow-incspot-from-t-plist))
        (setq length-global-plist
-             (length perlnow-incpot-from-t-plist))
+             (length perlnow-incspot-from-t-plist))
 
        (assert-equal 10 length-global-plist
                      (concat test-name ": confirm global plist stash is default"))
 
-;;        (nth 2 perlnow-incpot-from-t-plist)  ;; shoes
-;;        (nth 4 perlnow-incpot-from-t-plist)  ;; away
-;;        (nth 6 perlnow-incpot-from-t-plist)  ;; butt
-;;        (nth 8 perlnow-incpot-from-t-plist)  ;; float
-;;        (nth 10 perlnow-incpot-from-t-plist) ;; louie
+;;        (nth 2 perlnow-incspot-from-t-plist)  ;; shoes
+;;        (nth 4 perlnow-incspot-from-t-plist)  ;; away
+;;        (nth 6 perlnow-incspot-from-t-plist)  ;; butt
+;;        (nth 8 perlnow-incspot-from-t-plist)  ;; float
+;;        (nth 10 perlnow-incspot-from-t-plist) ;; louie
        )
 
      (setq val-alpha

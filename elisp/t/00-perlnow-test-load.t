@@ -28,10 +28,7 @@
    ;; meta-project, test-simple.el eval/dev: using a modified test-simple.el
    (load-file "/home/doom/End/Sys/Emacs/emacs-test-simple/test-simple.el")
 
-   (let* (
-          (test-loc (test-init))
-          )
-
+   (let* ((test-loc (test-init)))
      ;; Want to search load-path, but don't want to find any stale .elc by accident
      (assert-t
       (let ( (load-suffixes (list ".el")) ) (load-library "perlnow.el"))

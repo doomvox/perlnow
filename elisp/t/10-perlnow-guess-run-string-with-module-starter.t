@@ -177,7 +177,6 @@
                    (concat "Testing " funcname " for pm " mod-style )) ;; not ok 8
 
      ;; if we switch to the pm, and do an *edit-test*, then the pm's rs changes to t
-     ;; (( TODO BUG but it doesn't.))
      ;; back to pm, then do an edit-test
      (set-buffer pm-buffer)
      (perlnow-edit-test-file t-file)

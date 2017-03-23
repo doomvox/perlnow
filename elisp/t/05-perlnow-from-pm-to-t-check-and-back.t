@@ -19,8 +19,8 @@
 (funcall
  (lambda ()
    ;; project-specific include file (with standard name)
-   (if (file-exists-p "test-init-elisp.el")
-       (load-file "test-init-elisp.el"))
+    (if (file-exists-p "test-init-elisp.el")
+        (load-file "test-init-elisp.el"))
 
    ;; meta-project, test-simple.el eval/dev: using a modified test-simple.el
    (load-file "/home/doom/End/Sys/Emacs/emacs-test-simple/test-simple.el")
@@ -32,7 +32,7 @@
            (concat "Testing that " funcname " creates cpan-style module"))
           (package-name "Lost::In::Test")
           (staging-area
-           (perlnow-staging-area perlnow-pm-location package-name))
+           (perlnow-staging-area perlnow-dev-location package-name))
           (expected-pm-base "Test.pm")
           (expected-pm-file  ;; ... lib/Lost/In/Test.pm
            (concat
@@ -43,10 +43,9 @@
            (concat
             (file-name-as-directory (concat staging-area "t")) "01-Lost-In-Test.t"))
           )
-     (perlnow-mkpath perlnow-pm-location)
-     (perlnow-mkpath staging-area)
+     (test-init-safe-recursive-delete staging-area)
 
-     (perlnow-module-starter perlnow-pm-location package-name)
+     (perlnow-module-starter perlnow-dev-location package-name)
 
      (let* (t-exists-p pm-exists-p PL-exists-p t-found-p
                        check-ok-p check-harder-ok-p back-worked-p)
@@ -72,7 +71,7 @@
               ;;    lib/Lost/In/Test.pm
               (find-file expected-pm-file)
               (perlnow-edit-test-file)
-              ;; (message "the t I hope: %s" (buffer-file-name) ) ;; DEBUG
+              ;; (message "TRALALA: the t I hope: %s" (buffer-file-name) ) ;; DEBUG
               (setq t-found-p
                     (assert-t
                      (string= (buffer-file-name) expected-t)

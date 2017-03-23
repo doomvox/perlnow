@@ -75,14 +75,38 @@ the default-directory or the ROOT setting."
   "Generates a test tree in a sub-directory named with the script's file-name prefix.
 E.g. for 02-check_it.t, creates a \"t02\" in `test-loc' by running
 \\[test-init-setup-perlnow-locations]."
-  (let* (
-         (script-file-name (nth 2 command-line-args))
-         (file-prefix (car (split-string (file-name-nondirectory script-file-name) "-")))
-         (script-loc (file-name-directory script-file-name))
-         (sub-directory (concat "t" file-prefix))
-         (test-loc-subdir (test-init-setup-perlnow-locations sub-directory))
-         )
-    (setq perlnow-force t) ;; ask me no questions
+  (let* ( count-args
+          script-file-name
+          file-prefix
+          sub-directory
+          test-loc-subdir )
+    (setq count-args (length command-line-args))
+    (setq sub-directory
+          (cond ((>= count-args 2)
+                 (setq script-file-name (nth 2 command-line-args))
+                 (setq file-prefix
+                     (cond ( (string-match "\\.t$" script-file-name)
+                             (car (split-string (file-name-nondirectory script-file-name) "-"))
+                            )
+                           (t
+                            "XX"
+                           )))
+                 ;; (setq script-loc (file-name-directory script-file-name))
+                 (concat "t" file-prefix)
+                )
+                (t
+                 "tXXXX"
+                 )))
+    (setq test-loc-subdir (test-init-setup-perlnow-locations sub-directory))
+
+    ;; DEBUG
+    (message "command-line-args: %s" (pp command-line-args))
+    (message "script-file-name: %s" script-file-name)
+    ;; (message "script-loc: %s" script-loc)
+    (message "sub-directory: %s" sub-directory)
+    (message "test-loc-subdir: %s" test-loc-subdir)
+
+    (setq perlnow-quiet t) ;; ask me no questions
     (test-simple-start) ;; Zero counters and start the stop watch.
     test-loc-subdir))
 
@@ -115,8 +139,6 @@ Returns the full-path to the new sub-directory."
     (perlnow-mkpath perlnow-dev-location)
     deep-test-loc))
 
-;; TODO move all of the following defuns to a new package:
-;;    test-simple-script.el
 (defun test-init-move-file-out-of-way (filename &optional extension)
   "Move FILENAME out of the way, by renaming it with appended EXTENSION.
 Default EXTENSION is \".OLD\""
@@ -168,8 +190,8 @@ it's intended to be ephemeral."
            (let ((suffix "A")
                  (count   0))
              (while (file-exists-p new-backup-temp)
-;;               (setq new-backup-temp (concat new-backup (concat suffix (number-to-string count))))
-               (setq new-backup-temp (concat backup-location (concat suffix (number-to-string count))))
+               (setq new-backup-temp
+                     (concat backup-location (concat suffix (number-to-string count))))
                (setq count (1+ count)) ))
 
            (cond ((or

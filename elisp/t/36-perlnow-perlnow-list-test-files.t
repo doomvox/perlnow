@@ -30,7 +30,7 @@
 
    ;; meta-project, test-simple.el eval/dev: using a modified test-simple.el
    (load-file "/home/doom/End/Sys/Emacs/emacs-test-simple/test-simple.el")
-   ;; (perlnow-tron)
+   (perlnow-tron)
    (let* (
           (test-loc (test-init))
           (test-name "Testing perlnow-list-test-files")
@@ -114,7 +114,7 @@
              (concat test-name ": additional via perlnow-test-create"))
 
             (if perlnow-debug
-                (message "perlnow-incpot-from-t-plist: %s" (pp perlnow-incpot-from-t-plist)))
+                (message "perlnow-incspot-from-t-plist: %s" (pp perlnow-incspot-from-t-plist)))
 
             (let (
                   (test-name "Testing perlnow-stash-lookup")
