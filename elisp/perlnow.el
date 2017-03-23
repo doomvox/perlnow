@@ -28,7 +28,7 @@
 (provide 'perlnow)
 (require 'cl-lib)
 
-(defconst perlnow-version "0.6"
+(defconst perlnow-version "0.7"
   "The version number of the installed perlnow.el package.
 Check <http://obsidianrook.com/perlnow/> for the latest.")
 
@@ -1270,9 +1270,8 @@ time it is used \(this happens via \\[perlnow-set-run-string]\)."
                   perlnow-run-string
                   )
                  ))
-          (run-string   ;; TODO cleanup boooleans
+          (run-string
            (or
-;;            existing-run-string
             (if (not (string= existing-run-string ""))
                 existing-run-string)
             (perlnow-set-run-string harder-setting)
@@ -1908,7 +1907,6 @@ to be associated with the given TESTFILE." ;; TODO expand docstring
   (if perlnow-trace (perlnow-message "* Calling perlnow-open-test-file"))
   (let* ((harder-setting  (car current-prefix-arg))
          (new-file-p      (not (file-exists-p testfile)))
-;;         (original-code   (buffer-file-name))
          original-code
          package-name
          pm-file
@@ -1918,12 +1916,9 @@ to be associated with the given TESTFILE." ;; TODO expand docstring
     (perlnow-sub-name-to-var)
     (cond
      ;; TODO maybe should add a cpan-style handler here?
-
-     ;; if module
-     ( (setq package-name (perlnow-get-package-name-from-module-buffer))
+     (;; if module
+      (setq package-name (perlnow-get-package-name-from-module-buffer))
        ;; define module incspot now, before opening test file buffer
-;;        (let* (
-;;                )
          (setq pm-file      (buffer-file-name))
          (setq pm-location  (file-name-directory pm-file))
          (setq incspot     (perlnow-get-incspot package-name pm-location))
@@ -1941,8 +1936,7 @@ to be associated with the given TESTFILE." ;; TODO expand docstring
                        (perlnow-jump-to-use package-name import-string) ))
                  (perlnow-endow-script-with-access-to incspot whitespace))))
          (save-buffer)
-       ;;  )
-       )
+         )
      ;; if script
      ((perlnow-script-p)
       ;; global to pass value to template
@@ -2917,9 +2911,11 @@ be opens the file to look for a package line or a hashbang line."
     retval
     ))
 
-(defun perlnow-module-file-p (file)
+(defun perlnow-module-file-p (&optional file)
   "Determine if the FILE looks like a perl module."
   (if perlnow-trace (perlnow-message "Calling perlnow-module-file-p"))
+  (unless file
+    (setq file (buffer-file-name))
   (let (retval)
     (setq retval
           (cond ((not file) nil) ;; if file is nil, it ain't a module
@@ -2932,9 +2928,11 @@ be opens the file to look for a package line or a hashbang line."
                  nil)))
     retval))
 
-(defun perlnow-script-file-p (file)
+(defun perlnow-script-file-p (&optional file)
   "Determine if the FILE looks like a perl script."
   (if perlnow-trace (perlnow-message "Calling perlnow-script-file-p"))
+  (unless file
+    (setq file (buffer-file-name))
   (let ((retval
          (cond ((not file) nil) ;; if file is nil, it ain't a script
                ((string-match "\.t$\\|\.pl$"  file)) ;; good extension: pass
@@ -3093,10 +3091,7 @@ An example of returned metadata.
              (testfile (concat path selected-file-compact))
              )
         (setq package-name (perlnow-module-from-t-file testfile t))
-        ;; (setq testloc-absolute (file-name-directory testfile))
         (setq testloc-absolute (perlnow-t-dir-from-t testfile))
-
-        ;; (setq incspot (perlnow-stash-lookup (file-name-directory testfile)))
         (perlnow-incspot-from-t testfile policy-metadata)
 
         (setq file-name (perlnow-full-path-to-module incspot package-name))
@@ -4624,14 +4619,6 @@ This only checks the first character in NAME."
   "Major mode to display items from which user can make a selection.
 \\{perlnow-select-mode-map}"
   (use-local-map perlnow-select-mode-map))
-
-;; TODO
-;;  o  need a rename command (but don't go too crazy replicating dired...)
-;;     edit file suffix command?  (follow through: revise runstrings, and internal comments)
-;;  o  need a copy command, copy and rename. (follow through: revise internal comments)
-;;  o  Implement a recursive list, showing multiple locations
-;;  o  in a recursive list cursor should be left in the region of the current test-loc.
-;;  o  create new test file, via minibuffer input (in current test location though)
 
 (define-key perlnow-select-mode-map "\C-m"     'perlnow-select-file)
 (define-key perlnow-select-mode-map "n"        'next-line)
