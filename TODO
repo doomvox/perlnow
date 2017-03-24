@@ -535,19 +535,6 @@ default, but it's not failing gracefully.
   (( trapping the problems and going with no default would be better ))
 
 ===
-                     Fri Feb 26 19:42:32 2010
-BUG
-Creating a test file in a non-cpan location
-doesn't respect the numbered *.t file convention
-(or doesn't seem to).
-
-If there's a 00-*.t file there already, it doesn't
-take that as a hint.
-
-(( But then... what if one "t" directory is used
-   for test files for multiple modules? Eh: doesn't matter. ))
-
-===
 
 FEATURE
 
@@ -900,14 +887,16 @@ FEATURE 2016DEC
 
 Add a feature to manually edit the associated file.
 
+
 ===
+                                      March 22, 2017
 
-TODO  2017JAN
+;; TODO 2017 test select menu:
 
-Positively weird that these require a file argument:
-they should default to the buffer-file-name:
+;;  o  need a rename command (but don't go too crazy replicating dired...)
+;;     edit file suffix command?  (follow through: revise runstrings, and internal comments)
+;;  o  need a copy command, copy and rename. (follow through: revise internal comments)
 
-  (defun perlnow-script-file-p (file)
-  (defun perlnow-module-file-p (file)
+;;  o  in a recursive list cursor should be left in the region of the current test-loc. (?)
 
 ===

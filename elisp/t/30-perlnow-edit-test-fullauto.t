@@ -1,6 +1,6 @@
 #!/usr/local/bin/emacs --script
 ;; /usr/bin/emacs
-;; perlnow-edit-test-fullauto
+;; 30-perlnow-edit-test-fullauto.t
 
 ;; The test story:
 ;;

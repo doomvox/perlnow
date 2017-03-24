@@ -27,6 +27,7 @@
 ;;; Code:
 (provide 'perlnow)
 (require 'cl-lib)
+(require 'cperl-mode)
 
 (defconst perlnow-version "0.7"
   "The version number of the installed perlnow.el package.
@@ -2915,7 +2916,7 @@ be opens the file to look for a package line or a hashbang line."
   "Determine if the FILE looks like a perl module."
   (if perlnow-trace (perlnow-message "Calling perlnow-module-file-p"))
   (unless file
-    (setq file (buffer-file-name))
+    (setq file (buffer-file-name)))
   (let (retval)
     (setq retval
           (cond ((not file) nil) ;; if file is nil, it ain't a module
@@ -2932,7 +2933,7 @@ be opens the file to look for a package line or a hashbang line."
   "Determine if the FILE looks like a perl script."
   (if perlnow-trace (perlnow-message "Calling perlnow-script-file-p"))
   (unless file
-    (setq file (buffer-file-name))
+    (setq file (buffer-file-name)))
   (let ((retval
          (cond ((not file) nil) ;; if file is nil, it ain't a script
                ((string-match "\.t$\\|\.pl$"  file)) ;; good extension: pass
@@ -3984,9 +3985,9 @@ and the NAMESTYLE \(see `perlnow-test-policy-naming-style'\)."
                   ((and perlnow-recent-pick
                         (file-exists-p perlnow-recent-pick))
                    perlnow-recent-pick )
-                  ( (perlnow-latest-test-file
-                     (perlnow-most-recently-modified-file  ;; TODO test! This mtime filter was missing
-                      (directory-files testloc-absolute t "\\.t$" nil))))
+                  ((perlnow-latest-test-file
+                    (perlnow-most-recently-modified-file
+                     (directory-files testloc-absolute t "\\.t$" nil))))
                   (t
                    (concat testloc-absolute
                            "01-" hyphenized-package-name ".t"))
@@ -4033,13 +4034,13 @@ If MOD-OR-SCRIPT is set to 'script', operates on names with suffix \"-script.t\"
   (if perlnow-trace (perlnow-message "* Calling perlnow-fullauto-test-from-policy"))
   (if perlnow-debug
       (message
-        (concat
-          " fullauto-test, testloc-absolute: %s, "
-          " hyphenized: %s, "
-          " var perlnow-perl-sub-name: %s " )
-        (pp-to-string testloc-absolute)
-        (pp-to-string hyphenized-package-name)
-        (pp-to-string perlnow-perl-sub-name)))
+       (concat
+        " fullauto-test, testloc-absolute: %s, "
+        " hyphenized: %s, "
+        " var perlnow-perl-sub-name: %s " )
+       (pp-to-string testloc-absolute)
+       (pp-to-string hyphenized-package-name)
+       (pp-to-string perlnow-perl-sub-name)))
   (perlnow-sub-name-to-var)
   (cond ((not perlnow-perl-sub-name)
          (setq perlnow-perl-sub-name ""))) ;; nil causes problems
@@ -4054,32 +4055,35 @@ If MOD-OR-SCRIPT is set to 'script', operates on names with suffix \"-script.t\"
            (setq test-name-pat "\\.t$")))
     (setq test-files (directory-files testloc-absolute t test-name-pat nil))
     (cond (test-files
-           (let* (
-                  (test-files-module
+           (let* ((test-files-module
                    (perlnow-grep-list test-files      hyphenized-package-name))
+                  ;; unused:
                   ;; (test-files-subname  (perlnow-grep-list test-files      perlnow-perl-sub-name ))
                   (test-files-both
                    (perlnow-grep-list test-files-module perlnow-perl-sub-name ))
                   )
-
              (cond (test-files-both ;; matches found on module *and* sub: pick latest
                     (setq test-file-from-policy
                           (perlnow-most-recently-modified-file test-files-both))
                     )
-                   (test-files-module ;; matches on module: pick latest
-                    (setq test-file-from-policy
-                          (perlnow-most-recently-modified-file test-files-module))
-                    )
-                   (t  ;; no match on module (TODO: *maybe* on subname, though)
-                    (setq test-file-from-policy
-                          ;; just create a new one (TODO: could go with latest of any)
-                          (perlnow-new-test-file-name testloc-absolute hyphenized-package-name))
-                    )
-                   )))
-          (t ;; no test files, pick a name for new one
-           (setq test-file-from-policy
-                 (perlnow-new-test-file-name testloc-absolute hyphenized-package-name))
-           ))
+                   (t  ;; we're without match on module/script, so...
+                    (cond ((not perlnow-perl-sub-name) ;; no sub name defined
+                           (cond (test-files-module)   ;; have matches on module: will pick latest
+                                 (setq test-file-from-policy
+                                       (perlnow-most-recently-modified-file test-files-module))
+                                 (t ;; unused branch?  no subname, and no modules-only matches
+                                  )
+                                 ))
+                          (t ;; subname defined
+                           (setq test-file-from-policy
+                                 ;; just create a new one (gets sub name from var)
+                                 (perlnow-new-test-file-name testloc-absolute hyphenized-package-name))
+                           ))
+                    ))))
+          (t ;; no test files (*and* no subname) pick a new test name
+            (setq test-file-from-policy
+                  (perlnow-new-test-file-name testloc-absolute hyphenized-package-name))
+            ))
     test-file-from-policy))
 
 
@@ -4456,15 +4460,14 @@ to anything."
   (interactive
    (list
     (perlnow-list-test-files
-       perlnow-test-policy-test-location-cpan      ;; TODO get from "metadata", drop cpan restriction?
+       perlnow-test-policy-test-location-cpan   ;; TODO get from "metadata", drop cpan restriction?
        perlnow-test-policy-dot-definition-cpan
        perlnow-test-policy-naming-style-cpan
        t ;; full-path
-       t ;; recursive TODO EXPERIMENTAL
+       t ;; recursive
        )))
   (if perlnow-trace (perlnow-message "Calling perlnow-test-file-menu"))
-  (let* (
-         (md (perlnow-metadata)) ;; for side-effect... but you can use this here TODO
+  (let* ((md (perlnow-metadata)) ;; for side-effect... but you can use this here TODO
          (original-buffer (current-buffer))   ;; (nth 7 md) ?
          (original-file (buffer-file-name))   ;; (nth 8 md)
          ;; (location (file-name-directory     original-file))
@@ -5949,19 +5952,30 @@ see: \\[perlnow-run-perltidy]."
 ;; Ideally, there would be some way of customizing these, but then,
 ;; just writing your own routine is easy enough.
 
-(defun perlnow-insert-sub ()
- "Insert the framework for a new sub.
+(defun perlnow-insert-sub (&optional name)
+  "Insert the framework for a new sub.
 Adapts to context and inserts an OOP framework if this
 is an OOP module, otherwise, an ordinary sub."
- (interactive)
+  (interactive)
   (if perlnow-trace (perlnow-message "Calling perlnow-insert-sub"))
- (cond ((perlnow-module-code-p)
-        (cond ((perlnow-exporter-code-p)
-               (call-interactively 'perlnow-insert-basic-sub))
-              (t ;; presume OOP
-               (call-interactively 'perlnow-insert-method))))
-       (t ;; presume a script
-        (call-interactively 'perlnow-insert-basic-sub))))
+  (cond (name
+         (cond ((perlnow-module-code-p)
+                (cond ((perlnow-exporter-code-p)
+                       (perlnow-insert-basic-sub name))
+                      (t ;; presume OOP
+                       (perlnow-insert-method name))))
+               (t ;; presume a script
+                (perlnow-insert-basic-sub name)))
+         )
+        (t
+         (cond ((perlnow-module-code-p)
+                (cond ((perlnow-exporter-code-p)
+                       (call-interactively 'perlnow-insert-basic-sub))
+                      (t ;; presume OOP
+                       (call-interactively 'perlnow-insert-method))))
+               (t ;; presume a script
+                (call-interactively 'perlnow-insert-basic-sub)))
+         )))
 
 ;; perl-OOP-oriented:
 ;; Currently these are limited to hashref-based oop.
@@ -6454,6 +6468,10 @@ It does three things:
 
             (format "perlnow-incspot-from-t-plist: %s\n"
                     (pp-to-string perlnow-incspot-from-t-plist))
+
+            (format "perlnow-script-location: %s\n" perlnow-script-location)
+            (format "perlnow-pm-location: %s\n" perlnow-pm-location)
+            (format "perlnow-dev-location: %s\n" perlnow-dev-location)
             )))
   ;; Bring the *perlnow* display window to the fore
   ;;   (bottom window of the frame)
