@@ -1187,6 +1187,8 @@ outside of perlnow:
                (local-set-key \"%s#\" 'comment-region)
                (local-set-key \"%sN\" 'narrow-to-defun)
                (local-set-key \"%si\" 'perlnow-insert-sub)
+
+               (local-set-key \"%s*\" 'perlnow-display-inc-array)
                )"
             ))
          )
@@ -2296,10 +2298,13 @@ a buffer object."
   ;; (split-window-vertically numblines) ; Number of lines to display
   (perlnow-new-window-below numblines)
   (other-window 1)
-  (switch-to-buffer buffer)
+  (switch-to-buffer buffer) ;; not set-buffer, so buffer is visible
   (if switchback
       (other-window 1))
   )
+
+
+
 
 ;;=======
 ;; internal, lower-level routines used by the external "entry point" functions
@@ -5276,6 +5281,12 @@ Modular::Stuff creates a file called 01-Modular-Stuff.t."
          )
     fullname))
 
+;; (defun perlnow-blank-this-display-buffer ()
+;;   "DEBUG"
+;;   (interactive)
+;;   (perlnow-blank-out-display-buffer (current-buffer))
+;; )
+
 (defun perlnow-blank-out-display-buffer (buffer &optional switchback)
   "Clear out a temporary display BUFFER.
 Erase the contents of a buffer, though only if it matches
@@ -5327,7 +5338,7 @@ current file buffer.  Used by \\[perlnow-do-script-from-module]."
            (file-name-directory (buffer-file-name)))))
   (let* (
          (perl-inc (shell-command-to-string "perl -e 'foreach (@INC) {print \"$_\t\"}'" ))
-         (inc-path-list (split-string perl-inc "\t"))
+         (inc-path-list (split-string perl-inc "\t" t "[ \t\n]"))
          return )
     (setq return
           (catch 'UP
@@ -5350,7 +5361,7 @@ array, or nil if it is not found."
          (perl-inc
           (shell-command-to-string
            "perl -e 'foreach (@INC) {print \"$_\t\"}'" ))
-         (inc-path-list (split-string perl-inc "\t"))
+         (inc-path-list (split-string perl-inc "\t" t "[ \t\n]"))
          )
     (setq retval
           (catch 'TANTRUM
@@ -5368,31 +5379,51 @@ array, or nil if it is not found."
          (perl-inc
           (shell-command-to-string
            "perl -e 'foreach (@INC) {print \"$_\t\"}'" ))
-         (inc-path-list (split-string perl-inc "\t"))
+         (inc-path-list (split-string perl-inc "\t" t "[ \t\n]")) ;; omit-nulls & trim whitespace
          )
     inc-path-list))
 
-;; TODO make the listed dir names hot: run dired when you hit return, etc.
-;; Maybe better: list all modules (with versions?) installed at that point.
-;; A further step: integrate with CPAN.pm/CPANPLUS
+;; TODO
+;;  o  make the listed names hot-- e.g. hit return, go into dired (?)
+;;  o  Or: list all modules *and* versions in incspot
+;;  o  Further: integrate with CPAN.pm/CPANPLUS/cpanm-- upgrade command
 (defun perlnow-display-inc-array ()
   "Show a listing of all locations in perl's @INC array.
-Opens a buffer called \"\" in  other window.
+Opens a buffer called \"perlnow @INC\" in  other window.
 Returns the name of display buffer."
   (interactive)
   (if perlnow-trace (perlnow-message "Calling perlnow-display-inc-array"))
   (let* ((inc-path-list (perlnow-all-incspots))
          (display-buffer "*perlnow @INC*")
+         (buffer-label
+          (format " @INC locations for perl:"))
          (switch-back   nil)
+         original-read-only-status
          )
-    (perlnow-show-buffer-other-window display-buffer)
+    ;; color for the buffer-label
+    (put-text-property
+       0 (length buffer-label) 'face 'perlnow-00-face buffer-label)
     (perlnow-blank-out-display-buffer display-buffer switch-back)
+    (perlnow-show-buffer-other-window display-buffer)
+    ;; make sure buffer is writeable, but will preserve status
+    (setq original-read-only-status buffer-read-only)
+    (setq buffer-read-only nil)
+    ;; modify the buffer
+    (insert buffer-label)
+    (insert "\n")
     (mapc
-      (lambda (item-i)
-        (insert (format "   %s\n" item-i))
-        ) inc-path-list)
+     (lambda (item-i)
+       (insert (format "   %s\n" item-i))
+       ) inc-path-list)
+    (deactivate-mark t)
+    ;; make buffer read-only if we found it that way
+    (setq buffer-read-only original-read-only-status)
+    ;; park cursor at start of first entry
     (goto-char (point-min))
-    (setq buffer-read-only t)
+    (forward-line 1)
+    (forward-word 1)
+    (forward-word -1)
+    (backward-char 1)
     display-buffer))
 
 
@@ -6624,10 +6655,12 @@ For do debugging trial runs."
   o  \\[perlnow-insert-sub] also inserts a block of pod with an =item tag.
      that can be changed with `perlnow-sub-doc-pod'.
 
-  o  \\[perlnow-insert-sub] on an Exporter-based module always adds the
-     sub name to the export list, except when named with a leading
-     underscore.
+  o  \\[perlnow-insert-sub] always adds the sub name to @EXPORT_OK
+     list \(on an Exporter-based module\), *except* if the sub is
+     named with a leading underscore.
 
+  o  \\[perlnow-display-inc-array] shows the locations in perl's @INC.
+     By default this is bound to \"C-c \ *\".
 "
 )
 
