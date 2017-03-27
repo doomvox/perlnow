@@ -16,11 +16,8 @@
 
 (funcall
  (lambda ()
-   (if (file-exists-p "test-init-elisp.el")
-       (load-file "test-init-elisp.el"))
-
-   ;; meta-project, test-simple.el eval/dev: using a modified test-simple.el
-   (load-file "/home/doom/End/Sys/Emacs/emacs-test-simple/test-simple.el")
+   (if (file-exists-p "test-init.el")
+       (load-file "test-init.el"))
    ;; (perlnow-tron)
    (let* (
           (test-loc (test-init))
@@ -35,11 +32,6 @@
           (result-list (perlnow-filter-list input-list rm-pat))
           (expected-list (list "alpha" "beta" "gamma" "delta" "eta"))
           )
-
-     ;;     (message "input: %s" (pp input-list))
-     ;;     (message "result: %s" (pp result-list))
-     ;;     (message "expected: %s" (pp expected-list))
-
      (assert-equal result-list expected-list
       (concat test-name ": removing one element"))
      )
@@ -53,11 +45,6 @@
           (expected-list (list "beta" "gamma" "delta" "eta"))
           (result-list (perlnow-filter-list input-list rm-pat))
           )
-
-     ;;     (message "input: %s" (pp input-list))
-     ;;     (message "result: %s" (pp result-list))
-     ;;     (message "expected: %s" (pp expected-list))
-
      (assert-equal result-list expected-list
       (concat test-name ": removing two elements") )
      )
@@ -73,11 +60,6 @@
           (result-list (perlnow-grep-list input-list keep-pat))
           (expected-list (list "epsilon"))
           )
-
-     ;;     (message "input: %s" (pp input-list))
-     ;;     (message "result: %s" (pp result-list))
-     ;;     (message "expected: %s" (pp expected-list))
-
      (assert-equal result-list expected-list
       (concat test-name ": keeping one element") )
      )
@@ -91,16 +73,9 @@
           (expected-list (list "alpha" "epsilon"))
           (result-list (perlnow-grep-list input-list keep-pat))
           )
-
-     ;;     (message "input: %s" (pp input-list))
-     ;;     (message "result: %s" (pp result-list))
-     ;;     (message "expected: %s" (pp expected-list))
-
      (assert-equal result-list expected-list
       (concat test-name ": keeping two elements") )
      )
-
-   ;;(defun perlnow-minimum-nonempty-list (list-of-lists)
 
    (let* (
           (funcname "perlnow-minimum-nonempty-list")
@@ -114,10 +89,6 @@
           (expected list-c)
           (result (perlnow-minimum-nonempty-list input))
           )
-     ;;     (message "input: %s" (pp input))
-     ;;     (message "result: %s" (pp result))
-     ;;     (message "expected: %s" (pp expected))
-
      (assert-equal result expected
       (concat test-name ": find shortest of three (nonempties)"))
      )
@@ -134,10 +105,6 @@
           (expected list-c)
           (result (perlnow-minimum-nonempty-list input))
           )
-     ;;     (message "input: %s" (pp input))
-     ;;     (message "result: %s" (pp result))
-     ;;     (message "expected: %s" (pp expected))
-
      (assert-equal result expected
       (concat test-name ": find the only nonempty of three"))
      )
@@ -154,9 +121,7 @@
           (expected list-a)
           (result (perlnow-minimum-nonempty-list input))
           )
-     (message "input: %s" (pp input))
-     ;;     (message "result: %s" (pp result))
-     ;;     (message "expected: %s" (pp expected))qcv c09vb
+     ;; (message "input: %s" (pp input))
 
      (assert-equal result expected
       (concat test-name ": break a tie between lists of equal length"))

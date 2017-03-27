@@ -50,11 +50,8 @@ sub terranean {
 
 (funcall
  (lambda ()
-   (if (file-exists-p "test-init-elisp.el")
-       (load-file "test-init-elisp.el"))
-
-   ;; meta-project, test-simple.el eval/dev: using a modified test-simple.el
-   (load-file "/home/doom/End/Sys/Emacs/emacs-test-simple/test-simple.el")
+   (if (file-exists-p "test-init.el")
+       (load-file "test-init.el"))
    ;; (perlnow-tron)
    (let* (
           (test-loc (test-init))
@@ -116,8 +113,7 @@ sub terranean {
        ;;   (message "XYZ first-t-file: %s" first-t-file)
        ;;   (message "XYZ expected-first-t-file: %s" expected-first-t-file)
 
-       (assert-t
-        (string= first-t-file expected-first-t-file)
+       (assert-equal first-t-file expected-first-t-file
         (concat test-name ": generated expected t-file in empty t dir") )
 
        ;; clean up test file buffer

@@ -2,8 +2,6 @@
 ;; /usr/bin/emacs
 ;; 11-perlnow-guess-run-string-with-h2xs.t
 
-;;;; TODO NEXT trim modstar stuff at top, spin off non h2xs stuff at bottom
-
 ;; Test story:
 
 ;; The overall idea is to create a bunch of different kinds of
@@ -40,11 +38,8 @@
 
 (funcall
  (lambda ()
-   (if (file-exists-p "test-init-elisp.el")
-       (load-file "test-init-elisp.el"))
-
-   ;; meta-project, test-simple.el eval/dev: using a modified test-simple.el
-   (load-file "/home/doom/End/Sys/Emacs/emacs-test-simple/test-simple.el")
+   (if (file-exists-p "test-init.el")
+       (load-file "test-init.el"))
    ;; (perlnow-tron)
    (let* (
           (test-loc (test-init))

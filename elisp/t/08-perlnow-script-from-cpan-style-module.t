@@ -25,12 +25,9 @@
 
 (funcall
  (lambda ()
-   (if (file-exists-p "test-init-elisp.el")
-       (load-file "test-init-elisp.el"))
-
-   ;; meta-project, test-simple.el eval/dev: using a modified test-simple.el
-   (load-file "/home/doom/End/Sys/Emacs/emacs-test-simple/test-simple.el")
-   (perlnow-tron)
+   (if (file-exists-p "test-init.el")
+       (load-file "test-init.el"))
+   ;; (perlnow-tron)
    (let* (
           (test-loc (test-init))
 
@@ -54,15 +51,19 @@
 
           ;; pl: /home/doom/tmp/perlnow_test/dev/Osnome-Gnome/script/deathskate.pl
           (script-name "deathskate.pl")
-          ;; TODO  "bin" => "script"
-          ;; (exp-script-file (concat staging-area "bin" perlnow-slash script-name))
-          (exp-script-file (concat staging-area "script" perlnow-slash script-name))
+
+          (exp-script-loc (test-init-fixdir (concat staging-area "script"
+                                                    ;; perlnow-slash
+                                                    )))
+          (exp-script-file (concat
+                                   exp-script-loc ;; staging-area "script" perlnow-slash
+                                   script-name))
 
           ;; t: /home/doom/tmp/perlnow_test/dev/Osnome-Gnome/t/01-Borgia-BananaPeel.t
           (t-mod-name "01-Borgia-BananaPeel.t")
           (exp-mod-t (concat staging-area "t" perlnow-slash t-mod-name))
 
-          (t-script-name "02-Borgia-BananaPeel-deathskate-script.t") ;; TODO can do?
+          (t-script-name "02-Borgia-BananaPeel-deathskate-script.t")
           (exp-t-loc (concat staging-area "t" perlnow-slash))
           (exp-script-t (concat exp-t-loc t-script-name))
 
@@ -70,7 +71,7 @@
           t-file            t-buffer
           t-mod-file        t-mod-buffer
           t-script-file     t-script-buffer
-          script-file       script-buffer
+          script-file       script-buffer      script-loc
 
           (exp-asscode-for-script exp-pm-file)
           asscode-for-script
@@ -80,7 +81,6 @@
 
           (exp-asscode-for-script-test exp-script-file)
           asscode-for-script-test
-
           )
 
      ;; For a new milla project,
@@ -124,18 +124,23 @@
      (setq script-file   (buffer-file-name))
      (setq script-buffer (current-buffer))
 
-     ;; TODO check location of script first, before checking full path (?)
+     ;; check the location of script first...
+     (setq script-loc (file-name-directory script-file))
+     (assert-equal exp-script-loc script-loc
+       (concat test-name ": script file is in expected location, in 'script'")) ;; ok 5
+
+     ;; check the script name (with full path).
      (assert-equal exp-script-file script-file
-       (concat test-name ": created expected script file from module, in 'script'")) ;; ok 5
+       (concat test-name ": created expected script file from module, in 'script'")) ;; ok 6
 
      (setq asscode-for-script perlnow-associated-code)
      (assert-equal exp-asscode-for-script asscode-for-script
-        (concat test-name ": associated code for script is the module")) ;; ok 6
+        (concat test-name ": associated code for script is the module")) ;; ok 7
 
      (set-buffer pm-buffer)
      (setq asscode-for-mod perlnow-associated-code)
      (assert-equal exp-asscode-for-mod asscode-for-mod
-                   (concat test-name ": associated code for mod is the script"))    ;; ok 7
+                   (concat test-name ": associated code for mod is the script"))    ;; ok 8
 
      (set-buffer script-buffer)
      (perlnow-edit-test-file)
@@ -146,15 +151,15 @@
       exp-t-loc
       (perlnow-fixdir (file-name-directory t-script-file))
       (concat test-name
-              ": test location for script is expected cpan t loc")) ;; ok 8
+              ": test location for script is expected cpan t loc")) ;; ok 9
 
      (assert-equal exp-script-t t-script-file
         (concat test-name
-           ": test file for script is named as expected, and in cpan t loc")) ;; ok 9
+           ": test file for script is named as expected, and in cpan t loc")) ;; ok 10
 
      (setq asscode-for-script-test perlnow-associated-code)
      (assert-equal exp-asscode-for-script-test asscode-for-script-test
-                   (concat test-name ": associated code for script test is the script"))  ;; ok 10
+                   (concat test-name ": associated code for script test is the script"))  ;; ok 11
 
 
      (set-buffer script-buffer)
@@ -162,12 +167,12 @@
 
      (setq asscode-for-script perlnow-associated-code)
      (assert-equal exp-asscode-for-script asscode-for-script
-        (concat test-name ": associated code for script has become script test"))      ;; ok 11
+        (concat test-name ": associated code for script has become script test"))      ;; ok 12
 
      (set-buffer pm-buffer)
      (setq asscode-for-mod perlnow-associated-code)
      (assert-equal exp-asscode-for-mod asscode-for-mod
-                   (concat test-name ": associated code for mod remains the script"))  ;; ok 12
+                   (concat test-name ": associated code for mod remains the script"))  ;; ok 13
 
      (end-tests)
      )))

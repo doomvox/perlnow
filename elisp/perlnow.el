@@ -715,6 +715,9 @@ Defines the PERL_SUB_NAME expansion.")
 (defvar perlnow-test-file-history nil
   "The minibuffer history for perl test files.")
 
+(defvar perlnow-ack-history nil
+  "The minibuffer history for the \\[perlnow-ack] command.")
+
 (defconst perlnow-slash (convert-standard-filename "/")
   "A more portable form of the file system name separator.")
 ;; I'm using this instead of "/" to improve portability to for windows.
@@ -910,6 +913,7 @@ may be set differently for different files.")
 ;;;==========================================================
 ;;; test file search and creation settings
 
+;; TODO not currently in use... remove if it'll never be used.
 ;; (defcustom perlnow-test-path (list "." "../t" "./t")
 (defcustom perlnow-test-path (list "../t" "./t")
   "List of places to look for test scripts.
@@ -919,6 +923,7 @@ directory, it will be interpreted as either the
 module root or the module location.")
 (put 'perlnow-test-path  'risky-local-variable t)
 ;; (setq perlnow-test-path (list "../t" "./t"))
+
 
 ;; TEST POLICY: the information necessary to know where to
 ;; put a newly created test file and what to call it:
@@ -1018,7 +1023,9 @@ Used by \\[perlnow-edit-test-file].  See:
 
 (setq perlnow-test-policy-test-location-script   "../t")
 (setq perlnow-test-policy-dot-definition-script  "fileloc")   ;; override
-(setq perlnow-test-policy-naming-style-script    "basename")  ;; override
+;; TODO EXPERIMENTAL fullauto now best for scripts maybe?
+;; (setq perlnow-test-policy-naming-style-script    "basename")  ;; override
+(setq perlnow-test-policy-naming-style-script    "fullauto")  ;; override
 
 ;;;==========================================================
 ;;; other policy settings
@@ -1140,7 +1147,6 @@ with both approaches.")
 ;;      for the buffer that was picked, which means you can't
 ;;      see the value unless you're already in that buffer.
 ;;      WTF?
-
 
 
 ;;;==========================================================
@@ -1369,17 +1375,35 @@ to a different file."
          )
     (perldb hacked-run-string)))
 
-;; TODO: uses grep-find internally, but probably should have it's own history.
-;; But note: ack.el exists already.
+
 (defun perlnow-ack (ack-search)
-  "Does searches with the utility ack, ala grep-find."
-  (interactive "sDo ack search: ")
+  "Does searches with the utility ack, ala grep-find.
+Note: there's an ack.el package, if you'd like something fancier
+than this."
+  (interactive
+   (let ( (history 'perlnow-ack-history)
+          (keymap nil)  ;; use default keymap for grep command
+          (initial nil) ;; no initial suggestion in minibuffer
+          miniread
+          inter-list
+          )
+     (setq miniread
+           (read-from-minibuffer
+            "Do code search with ack: "
+            initial keymap nil history nil nil))
+     (setq inter-list (list miniread))))
   (if perlnow-trace (perlnow-message "Calling perlnow-ack"))
-  (let (
-        (ack-command (format "ack --nocolor --nogroup %s" ack-search))
-        )
-       (let ((null-device nil))		;; see grep
-         (grep ack-command))))
+  (let* ((ack-probe   (format "ack --version"))
+         (ack-command (format "ack --nogroup %s" ack-search))
+         )
+    (cond
+     ((shell-command-to-string ack-probe)
+      (let ((null-device nil)) ;; see grep
+        (grep ack-command))
+      )
+     (t
+      (message "ack not installed.  Install App::Ack from cpan,\ne.g. 'cpanm App::Ack'.")
+      )) ))
 
 ;;;==========================================================
 ;;; user level creation functions (script, module, h2xs...)
@@ -1503,17 +1527,17 @@ The location for the new module defaults to the global
 ;;; Mutated from perlnow-module
   (interactive
    (let ((initial perlnow-pm-location)
+         ;; keymap is key: transforms read-from-minibuffer.
          (keymap perlnow-read-minibuffer-map)
-             ;; keymap is key: transforms read-from-minibuffer.
          (history 'perlnow-package-name-history)
-         result filename return
+         result filename return-list
          )
      (setq result
            (read-from-minibuffer
             "New OOP module to create \(e.g. /tmp/dev/New::Mod\): "
             initial keymap nil history nil nil))
+     ;; remove accidentally typed ".pm"
      (setq result (replace-regexp-in-string "\.pm$" "" result))
-         ;; remove accidentally typed ".pm"
      (setq filename
            (concat (replace-regexp-in-string "::" perlnow-slash result) ".pm"))
      (while (file-exists-p filename)
@@ -1521,23 +1545,22 @@ The location for the new module defaults to the global
              (read-from-minibuffer
               "This name is in use, choose another \(e.g. /tmp/dev/New::Mod\): "
               result keymap nil history nil nil))
+       ;; silently ignore accidentally typed ".pm"
        (setq result (replace-regexp-in-string "\.pm$" "" result))
-          ;; remove accidentally typed ".pm"
        (setq filename
              (concat
               (replace-regexp-in-string "::" perlnow-slash result)
               ".pm")))
-     (setq return
-           (perlnow-divide-hybrid-path-and-package-name
-            result))
-     return)) ;; end interactive
+     (setq return-list
+           (perlnow-divide-hybrid-path-and-package-name result))
+     return-list)) ;; end interactive
   (if perlnow-trace (perlnow-message "Calling perlnow-object-module"))
   (require 'template)
   (setq perlnow-perl-package-name package-name) ; global used to pass value into template
-  (let* ( (filename (perlnow-full-path-to-module incspot package-name))
-          (ret
-           (perlnow-create-with-template filename perlnow-perl-object-module-template))
-          )
+  (let* ((filename (perlnow-full-path-to-module incspot package-name))
+         (ret
+          (perlnow-create-with-template filename perlnow-perl-object-module-template))
+         )
     ret))
 
 ;;--------
@@ -1869,9 +1892,9 @@ module-starter will create the \"staging area\"\) and the PACKAGE-NAME
   "Find \(or create\) an appropriate TESTFILE for the current perl code.
 This command follows this process:
   o Uses the given testfile (if run non-interactively).
-  o Checks if the code looks like a module or a script:
-    Scripts have a modified test policy: always use naming style
-    \"basename\", and dot-def \"fileloc\".
+  o Checks if the code looks like a module or a script: Scripts
+    have a modified test policy: they always use naming style
+    \"basename\".  (( TODO? ))
   o Look for an existing file in place dictated by test policy.
   o If not, searches the test path (`perlnow-test-path'), looks for
     an existing file, and if more than one is found it makes a guess.
@@ -1880,21 +1903,25 @@ This command follows this process:
     test policy.
   o Finally, the run string for the current buffer is set so that
     it will run this test.
+((TODO SOON downplay discussion like this.))
 The test policy is defined by a trio of settings, see docs for these variables:
 `perlnow-test-policy-test-location', e.g. \".\", \"./t\", \"../t\", etc.
 `perlnow-test-policy-dot-definition' i.e.  \"fileloc\" or \"incspot\"
-`perlnow-test-policy-naming-style'   e.g. \"hyphenized\", \"numeric\", or \"fullauto\""
+`perlnow-test-policy-naming-style'   e.g. \"hyphenized\", \"numeric\", or \"fullauto\"
+If run with the prefix command, finds the likely \"t\" location
+opens a menu to choose a test from an existing one."
   ;; Remember the *run-string* is a bit different for
   ;; a cpan-style module than a regular module.
   (interactive)
   (if perlnow-trace (perlnow-message "* Calling perlnow-edit-test-file"))
-  (let* ((harder-setting (car current-prefix-arg)))
+  (let* ((harder-setting (car current-prefix-arg)))   ;; TODO how does this interact with testfile setting?
     (cond (harder-setting  ;; if so, perlnow-select-file has to handle open, etc
            (perlnow-edit-test-file-harder harder-setting))
           (t
            (cond ((not testfile)
                   (setq testfile
                         (perlnow-get-test-file-name))
+                  ;; TODO an okay place to set these, but are they sufficient?
                   (setq perlnow-recent-pick testfile)
                   (setq perlnow-recent-pick-global testfile)  ;; TODO experimental
                   ))
@@ -2204,7 +2231,7 @@ Uses the HARDER-SETTING \(4 or 16\) to choose whether to do a
          (t-dir (car (perlnow-find-t-directories)))
          )
     ;; if no t directory was found, try to create according to default policy.
-    ;;    TODO test this behavior, new as of jan 2017
+    ;;    TODO test this behavior, new as of 2017
     (unless t-dir
       (setq t-dir (perlnow-testloc-from-policy
                      perlnow-test-policy-test-location-module
@@ -2358,7 +2385,8 @@ See the wrapper function: \\[perlnow-script] (or possibly the older
                 (t
                  (perlnow-generate-run-string-and-associate script))
                 ))
-    (set-buffer created)
+;;    (set-buffer created)
+    (switch-to-buffer created)
     ;; forget about a "use" line for things that don't look like perl modules.
     (let ( (case-fold-search nil)
            (import-string "" ) )
@@ -2388,71 +2416,55 @@ See the wrapper function: \\[perlnow-script] (or possibly the older
       (insert relative-path)
       (insert "\");\n"))))
 
-;; TODO really should be able to handle exported lists without an ":all" tag;
-;;      also should have option to prefer explicit lists, even if ":all" is present
-(defun perlnow-import-string ()
-  "Determine a good import string for using the current module.
-Returns the ':all' tag if the current buffer shows an Exporter-based
-module, and an empty string if it's an OOP module.  Errors out
-if it's not called on a module buffer.
-EXPERIMENTAL: precise behavior is subject to change."
-;; used by perlnow-import-string-from
-  (interactive) ;; DEBUG only
-  (if perlnow-trace (perlnow-message "Calling perlnow-import-string"))
-  (unless (perlnow-module-code-p)
-    (error "perlnow-import-string expects to be run in a module buffer."))
-  (let* ((import-string "")
-         (all-tag-pattern
-          "\\bEXPORT_TAGS[ \t]*=[ \t]*(.*?\\ball\\b")  ; allowing alt quotes,
-         ;; requiring first paren
-         )
-    (cond ((perlnow-exporter-code-p)
-           (save-excursion
-             (goto-char (point-min))
-             (setq import-string
-                   (cond ( (re-search-forward all-tag-pattern nil t)
-                           " qw(:all) "
-                           )
-                         (t
-                          ""
-                          )))))
-          (t
-           (setq import-string "")
-           ))
-    import-string
-    ))
-
 ;; Used by:
 ;;   perlnow-open-test-file
 ;;   perlnow-do-script-from-module
-(defun perlnow-import-string-from (package-name &optional incspot)
+
+;; Old:
+;; This will just be ':all' \(if the module is Exporter\)
+;; based, or the empty string if not.
+
+(defun perlnow-import-string-from (package-name &optional incspot-opt)
   "Get a workable import string from the module PACKAGE-NAME.
-This will just be ':all' \(if the module is Exporter\)
-based, or the empty string if not.  If the module is installed,
-this can work just with the PACKAGE-NAME, otherwise, the optional
-INC-SPOT is needed to point at it."
+If the module is not exporter-based, this is just the empty string,
+if it is, it will be the contents of the EXPORT and EXPORT_OK arrays.
+If the module is installed, this can work just with the
+PACKAGE-NAME, otherwise, the optional INC-SPOT-OPT is needed to point
+at it."
   (if perlnow-trace (perlnow-message "Calling perlnow-import-string-from"))
-;; TODO: Someday, this module might return something like
-;;    \"qw( routine1 routine2 routine3 )\"
-;; where the three routines are exported \(optionally or not\) from
-;; the indicated module.
   (if perlnow-debug
       (message "\"import-string\" w/ %s %s" package-name (pp-to-string incspot)))
-  (let* ((module-file
-          (cond (incspot
-                 (perlnow-full-path-to-module incspot package-name)
-                 )
+  (let* (
+         (incspot
+          (cond (incspot-opt)
                 (t
-                 (perlnow-module-found-in-INC package-name))))
+                 (perlnow-get-incspot
+                  package-name
+                  (file-name-directory
+                   (perlnow-module-found-in-INC package-name))))))
+         (module-file (perlnow-full-path-to-module incspot package-name))
          (original-buffer (current-buffer))
          (import-string "")
+         is  ;; dummy var, more readable (?)
+         export-string
          )
-    ;; you might *think* this save-excursion would restore the current buffer...
     (save-excursion
       (find-file module-file)
-      (setq import-string (perlnow-import-string))
-      )
-    (switch-to-buffer original-buffer)
+      (setq import-string
+            (cond ((perlnow-exporter-code-p)
+                   (setq export-string
+                         (mapconcat 'identity
+                                    (perlnow-export-list-for package-name incspot)
+                                    " "))
+                   (setq is
+                         (concat
+                          " qw("
+                          export-string
+                          ") ")))
+                  (t
+                   ""
+                   ))))
+    (switch-to-buffer original-buffer) ;; save-excursion?  Hello?
     import-string))
 
 ;; ========
@@ -2773,6 +2785,10 @@ Looks for the hash-bang line at the top."
       (goto-char (point-min))
       (looking-at hash-bang-line-pat)
       )))
+
+;; (defun perlnow-script-p ()
+;;   "Always true: override usual code for debugging purposes."
+;;   t)
 
 ;; TODO re-write to use  perlnow-perl-mode-p?
 (defun perlnow-script-p ()
@@ -3149,6 +3165,7 @@ An example of returned metadata.
                (let* ( (candidate (perlnow-follow-associations-to-non-test-code))
                        (ext (file-name-extension candidate))
                        )
+                 (unless ext (setq ext ""))
                  (cond ((string-match "pm$" ext)
                         (setq package-name
                               (perlnow-get-package-name-from-module-buffer candidate))
@@ -3983,7 +4000,7 @@ and the NAMESTYLE \(see `perlnow-test-policy-naming-style'\)."
            (setq test-file-from-policy
                  (concat testloc-absolute hyphenized-package-name ".t")))
 
-          ((string= namestyle "numeric")  ;; only with modules (TODO: why?)
+          ((string= namestyle "numeric")  ;; only with modules (TODO... but why not scripts, too?)
            (setq test-file-from-policy
                  (cond
                   ;; TODO try the -global form of this here
@@ -3997,22 +4014,23 @@ and the NAMESTYLE \(see `perlnow-test-policy-naming-style'\)."
                    (concat testloc-absolute
                            "01-" hyphenized-package-name ".t"))
                   )))
-
-          ((string= namestyle "fullauto")  ;; only with modules, JUST BECAUSE  ((but that's wrong!))
-
+          ((string= namestyle "fullauto")  ;; originally just for modules, using for scripts now
            (setq test-file-from-policy
                  (cond ((perlnow-module-code-p)
                         (perlnow-fullauto-test-from-policy testloc-absolute hyphenized-package-name
                                                            "module"
+                                                           basename ;; peer pressure
                                                            ))
                        ((perlnow-script-p)
                         (perlnow-fullauto-test-from-policy testloc-absolute hyphenized-package-name
                                                            "script"
+                                                           basename ;; oh, don't ask why
                                                            ))
           ))
            )
           (;; just for scripts 'cause tests for 'em are stupid and so is basename
            (string= namestyle "basename")
+           ;; TODO this isn't really fixed, instead I've been dancing around it with 'fullauto'
            (setq test-file-from-policy
                  (concat testloc-absolute basename ".t")))
           (t
@@ -4024,7 +4042,7 @@ and the NAMESTYLE \(see `perlnow-test-policy-naming-style'\)."
     test-file))
 
 
-(defun perlnow-fullauto-test-from-policy (testloc-absolute hyphenized-package-name &optional mod-or-script)
+(defun perlnow-fullauto-test-from-policy (testloc-absolute hyphenized-package-name &optional mod-or-script basename)
   "Find a relevant test file to edit for the \"fullauto\" policy.
 Begins by looking for existing tests in the test location:
 TESTLOC-ABSOLUTE, tries to narrow the set by trying to find
@@ -4035,6 +4053,8 @@ from the relevant set, or
 if there are no tests found in TESTLOC-ABSOLUTE, we
 return a file name to be created.
 If MOD-OR-SCRIPT is set to 'script', operates on names with suffix \"-script.t\".
+The option BASENAME exists because I'm abusing module-oriented code for the
+script case (which is an abomination you should avoid using).
 "
   (if perlnow-trace (perlnow-message "* Calling perlnow-fullauto-test-from-policy"))
   (if perlnow-debug
@@ -4066,17 +4086,27 @@ If MOD-OR-SCRIPT is set to 'script', operates on names with suffix \"-script.t\"
                   ;; (test-files-subname  (perlnow-grep-list test-files      perlnow-perl-sub-name ))
                   (test-files-both
                    (perlnow-grep-list test-files-module perlnow-perl-sub-name ))
+                  test-files-basename
                   )
              (cond (test-files-both ;; matches found on module *and* sub: pick latest
                     (setq test-file-from-policy
                           (perlnow-most-recently-modified-file test-files-both))
                     )
-                   (t  ;; we're without match on module/script, so...
+                   (t  ;; we're without match on module/sub, so...
                     (cond ((not perlnow-perl-sub-name) ;; no sub name defined
-                           (cond (test-files-module)   ;; have matches on module: will pick latest
-                                 (setq test-file-from-policy
-                                       (perlnow-most-recently-modified-file test-files-module))
-                                 (t ;; unused branch?  no subname, and no modules-only matches
+                           (cond ((test-files-module)   ;; have matches on module: will pick latest
+                                  (setq test-file-from-policy
+                                        (perlnow-most-recently-modified-file test-files-module))
+                                  )
+                                 ((string= mod-or-script "script")  ;; could be a funny place to do this TODO
+                                  (cond (basename
+                                         (setq test-files-basename
+                                               (perlnow-grep-list test-files basename ))
+
+                                         (setq test-file-from-policy
+                                               (perlnow-most-recently-modified-file test-files-basename))
+                                         )))
+                                 (t ;; unused branch?  still no subname, plus not script and not modules-only matches
                                   )
                                  ))
                           (t ;; subname defined
@@ -4170,12 +4200,17 @@ If no files are found in TESTLOC-ABSOLUTE, returns 01."
       (message "  perlnow-filter-list: string-list: %s filter-regexp: %s"
                (pp-to-string string-list) filter-regexp))
   (let (new-list)
-    (dolist (string string-list)
-      (cond ( (not (string-match filter-regexp string))
-                (setq new-list (cons string new-list))
-                ))
-      )
-    (reverse new-list)))
+    (cond (filter-regexp
+           (dolist (string string-list)
+             (cond ( (not (string-match filter-regexp string))
+                     (setq new-list (cons string new-list))
+                     )) )
+           (setq new-list (reverse new-list)) )
+          (t
+           (setq new-list nil)
+           ))
+    new-list))
+
 
 (defun perlnow-grep-list (string-list match-regexp)
   "Search the given list of strings (STRING-LIST) for items matching the MATCH-REGEXP."
@@ -4185,12 +4220,15 @@ If no files are found in TESTLOC-ABSOLUTE, returns 01."
                (pp-to-string string-list) match-regexp))
 
   (let (new-list)
-    (dolist (string string-list)
-      (cond ( (string-match match-regexp string)
-                (setq new-list (cons string new-list))
-                ))
-      )
-    (reverse new-list)))
+    (cond (match-regexp
+           (dolist (string string-list)
+             (cond ( (string-match match-regexp string)
+                     (setq new-list (cons string new-list))
+                     )) )
+           (setq new-list (reverse new-list)) )
+          (t
+           (setq new-list nil)))
+    new-list))
 
 (defun perlnow-minimum-nonempty-list (list-of-lists)
   "Given a LIST-OF-LISTS returns the shortest list that still contains something.
@@ -5281,12 +5319,6 @@ Modular::Stuff creates a file called 01-Modular-Stuff.t."
          )
     fullname))
 
-;; (defun perlnow-blank-this-display-buffer ()
-;;   "DEBUG"
-;;   (interactive)
-;;   (perlnow-blank-out-display-buffer (current-buffer))
-;; )
-
 (defun perlnow-blank-out-display-buffer (buffer &optional switchback)
   "Clear out a temporary display BUFFER.
 Erase the contents of a buffer, though only if it matches
@@ -5425,6 +5457,50 @@ Returns the name of display buffer."
     (forward-word -1)
     (backward-char 1)
     display-buffer))
+
+(defun perlnow-export-list-for (package-name &optional incspot-opt)
+  "Gets the full export list for the given PACKAGE-NAME.
+The package should be located in the given INCSPOT-OPT, though
+if the module is installed, that can be omitted."
+;; Generates and runs shell commands like:
+;;  perl -I'/home/doom/lib' -MCranky::Devil -e 'print join " ", @Cranky::Devil::EXPORT_OK, "\n";' 2>/dev/null
+  (let* ((incspot
+          (cond (incspot-opt)
+                (t
+                 (perlnow-get-incspot
+                  package-name
+                  (file-name-directory
+                   (perlnow-module-found-in-INC package-name))))))
+         (cmd1  ;; gets @EXPORT_OK
+          (concat
+           "perl"
+           " -I'"
+           incspot
+           "' -M"
+           package-name
+           " -e 'print join \"\t\", @"
+           package-name
+           "::EXPORT_OK, \"\n\";' 2>/dev/null"))
+         (export-ok-str  (shell-command-to-string cmd1 ))
+         (export-ok-list (split-string export-ok-str "\t" t "[ \t\n]"))
+         (cmd2  ;; gets @EXPORT
+          (concat
+           "perl"
+           " -I'"
+           incspot
+           "' -M"
+           package-name
+           " -e 'print join \"\t\", @"
+           package-name
+           "::EXPORT, \"\n\";' 2>/dev/null"))
+         (export-main-str  (shell-command-to-string cmd2 ))
+         (export-main-list (split-string export-main-str "\t" t "[ \t\n]"))
+         (export-list (append export-main-list export-ok-list))
+         )
+    export-list))
+;;(perlnow-export-list-for "Cranky::Devil" "/home/doom/lib")
+
+
 
 
 ;;;==========================================================

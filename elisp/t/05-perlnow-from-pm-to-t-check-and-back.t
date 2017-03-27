@@ -19,11 +19,8 @@
 (funcall
  (lambda ()
    ;; project-specific include file (with standard name)
-    (if (file-exists-p "test-init-elisp.el")
-        (load-file "test-init-elisp.el"))
-
-   ;; meta-project, test-simple.el eval/dev: using a modified test-simple.el
-   (load-file "/home/doom/End/Sys/Emacs/emacs-test-simple/test-simple.el")
+    (if (file-exists-p "test-init.el")
+        (load-file "test-init.el"))
 
    (let* (
           (test-loc (test-init))
@@ -54,30 +51,31 @@
        (setq pm-exists-p
              (assert-t
               (file-exists-p expected-pm-file)
-              (concat test-name " " expected-pm-file ) ))
+              (concat test-name " " expected-pm-file ) ))  ;; ok 1
 
        (setq PL-exists-p
              (assert-t
               (file-exists-p expected-pl)
-              (concat "Testing that " funcname " generated expected Build.PL file" ) ) )
+              (concat "Testing that " funcname " generated expected Build.PL file" ))) ;; ok 2
 
        (setq t-exists-p
              (assert-t
               (file-exists-p expected-t)
-              (concat "Testing that " funcname " generated expected *.t file" ) ) )
+              (concat "Testing that " funcname " generated expected *.t file" ))) ;; ok 3
 
        (cond ((and pm-exists-p t-exists-p)
               ;; /home/doom/tmp/perlnow_test/lib/Lost-In-Test/
               ;;    lib/Lost/In/Test.pm
               (find-file expected-pm-file)
-              (perlnow-edit-test-file)
-              ;; (message "TRALALA: the t I hope: %s" (buffer-file-name) ) ;; DEBUG
+;;              (perlnow-edit-test-file)     ;; TODO this brings up the select menu buffer!  WTF?
+              (perlnow-edit-test-file nil)     ;; TODO how about this?
+              (if perlnow-debug
+                  (message "TRALALA: the t I hope: %s" (pp-to-string (buffer-file-name))))
               (setq t-found-p
                     (assert-t
                      (string= (buffer-file-name) expected-t)
-                     (concat "Testing that perlnow-edit-test-file found *.t file")))
-              )
-             )
+                     (concat "Testing that perlnow-edit-test-file found *.t file"))) ;; ok 4
+              ))
 
        (cond (pm-exists-p
               (let* ((syntax-ok-pat (concat expected-pm-base " syntax OK"))
@@ -94,7 +92,7 @@
                   (setq check-ok-p
                         (assert-t
                          (string-match syntax-ok-pat compilation-results)
-                         (concat "Testing that perlnow-run-check worked.")))
+                         (concat "Testing that perlnow-run-check worked."))) ;; ok 5
                   )
 
                 (find-file expected-pm-file)
@@ -111,14 +109,14 @@
                         )
                   (cond (perlnow-debug
                          (message "%s" compilation-results)
-                         (message "so1: %s  so2: %s  co: %s" syntax-ok-1 syntax-ok-2 critic-ok);;
+                         (message "so1: %s  so2: %s  co: %s" syntax-ok-1 syntax-ok-2 critic-ok)
                          ;; so1: 235  so2: 330  co: 353
                          ;; so1: 239  so2: 334  co: 357   -- Wed  March 08, 2017  23:27
                          ))
                   (setq check-harder-ok-p
                         (assert-t
                          (and syntax-ok-1 syntax-ok-2 critic-ok)
-                         (concat "Testing that perlnow-run-check harder worked.")))
+                         (concat "Testing that perlnow-run-check harder worked."))) ;; ok 6
                   )
                 )))
 
@@ -126,15 +124,14 @@
               ;; /home/doom/tmp/perlnow_test/lib/Lost-In-Test/
               ;;    lib/Lost/In/Test.pm
               (find-file expected-pm-file)
-              (perlnow-edit-test-file)
-              ;; (message "the t I hope: %s" (buffer-file-name) ) ;; DEBUG
-              (perlnow-back-to-code)
-              ;; Now, we shouild be back in the original pm file.
-
+;;              (perlnow-edit-test-file)   ;; TODO can be select menu buffer, but not always?
+              (perlnow-edit-test-file nil)     ;; TODO experimental.  Okay?
+              (perlnow-back-to-code)     ;; ... but if so this still works.
+              ;; Now, we should be back in the original pm file.
               (setq back-worked-p
-                    (assert-t
-                     (string= (buffer-file-name) expected-pm-file)
-                     (concat "Testing that perlnow-back-to-code found pm file")))
+                    (assert-equal
+                     (buffer-file-name) expected-pm-file
+                     (concat "Testing that perlnow-back-to-code found pm file"))) ;; ok 7
               ))
        ))
    (end-tests)

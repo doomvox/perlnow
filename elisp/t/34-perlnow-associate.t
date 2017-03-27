@@ -25,11 +25,8 @@
 
 (funcall
  (lambda ()
-   (if (file-exists-p "test-init-elisp.el")
-       (load-file "test-init-elisp.el"))
-
-   ;; meta-project, test-simple.el eval/dev: using a modified test-simple.el
-   (load-file "/home/doom/End/Sys/Emacs/emacs-test-simple/test-simple.el")
+   (if (file-exists-p "test-init.el")
+       (load-file "test-init.el"))
    ;; (perlnow-tron)
    (let* (
           (test-loc (test-init))
@@ -40,9 +37,11 @@
           (package-name "Gonzo")
           (pm-file (concat pm-location "Gonzo.pm"))
           (t-file  (concat t-location "Gonzo-weirdout.t"))
-          ;; TODO need to ship copies of these files with this test?
-          (pm-template "/home/doom/.templates/TEMPLATE.perlnow-pm.tpl")
-          (t-template  "/home/doom/.templates/TEMPLATE.perlnow-pm-t.tpl")
+          (data-loc (concat default-directory "dat/"))
+          (template-loc (concat data-loc "templates/"))
+          (pm-template (concat template-loc "TEMPLATE.perlnow-pm.tpl"))
+          (t-template  (concat template-loc "TEMPLATE.perlnow-pm-t.tpl"))
+
           pm-asscode  t-asscode
           )
 

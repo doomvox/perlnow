@@ -22,11 +22,8 @@
 (funcall
  (lambda ()
    ;; project-specific include file (with standard name)
-   (if (file-exists-p "test-init-elisp.el")
-       (load-file "test-init-elisp.el"))
-
-   ;; meta-project, test-simple.el eval/dev: using a modified test-simple.el
-   (load-file "/home/doom/End/Sys/Emacs/emacs-test-simple/test-simple.el")
+   (if (file-exists-p "test-init.el")
+       (load-file "test-init.el"))
 
    (let* ((test-loc (test-init)))
      ;; Want to search load-path, but don't want to find any stale .elc by accident

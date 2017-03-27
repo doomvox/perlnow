@@ -14,11 +14,8 @@
 (funcall
  (lambda ()
    ;; project-specific include file (with standard name)
-   (if (file-exists-p "test-init-elisp.el")
-       (load-file "test-init-elisp.el"))
-
-   ;; meta-project, test-simple.el eval/dev: using a modified test-simple.el
-   (load-file "/home/doom/End/Sys/Emacs/emacs-test-simple/test-simple.el")
+   (if (file-exists-p "test-init.el")
+       (load-file "test-init.el"))
 
    (let* (
           (test-loc (test-init))
@@ -26,19 +23,20 @@
           (test-name
            (concat "Testing that " funcname " creates cpan-style module"))
           (package-name "Three::Warp::Nine")
-          ;; TODO would be better to work with perlnow-dev-location
           (staging-area
-           (perlnow-staging-area perlnow-pm-location package-name))
+           (perlnow-staging-area perlnow-dev-location package-name))
           (expected-file (concat staging-area "lib" perlnow-slash
                                  "Three" perlnow-slash "Warp" perlnow-slash "Nine.pm"))
 
           (expected-Pl (concat staging-area "Build.PL"))
           )
-     ;; TODO why not zap these if they exist already?
-     (perlnow-mkpath perlnow-pm-location)
+     ;; (test-init-safe-recursive-delete perlnow-dev-location)
+     (perlnow-mkpath perlnow-dev-location)
+
+     (test-init-safe-recursive-delete staging-area)
      (perlnow-mkpath staging-area)
 
-     (perlnow-module-starter perlnow-pm-location package-name)
+     (perlnow-module-starter perlnow-dev-location package-name)
 
      (assert-t
       (file-exists-p expected-file)

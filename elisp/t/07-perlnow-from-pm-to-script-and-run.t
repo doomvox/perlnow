@@ -24,11 +24,8 @@
 
 (funcall
  (lambda ()
-   (if (file-exists-p "test-init-elisp.el")
-       (load-file "test-init-elisp.el"))
-
-   ;; meta-project, test-simple.el eval/dev: using a modified test-simple.el
-   (load-file "/home/doom/End/Sys/Emacs/emacs-test-simple/test-simple.el")
+   (if (file-exists-p "test-init.el")
+       (load-file "test-init.el"))
 
    (let* (
           (test-loc (test-init))
@@ -41,6 +38,7 @@
            (concat perlnow-pm-location "Garbagio" perlnow-slash expected-pm-base))
           (expected-script
            (concat perlnow-script-location script-name))
+          (sub-code-core-str "print $arg ,\"\n\";") ;; Use with perlnow-insert-sub
           (sub-code-str
            "sub echo {my $arg=shift; print $arg ,\"\n\";}")
           (calling-code-str
@@ -49,6 +47,10 @@
           )
      (setq test-name "Testing perlnow-module")
      (perlnow-module perlnow-pm-location package-name)
+
+;; TODO why not use the provided perlnow-insert-sub command?
+;;      simplify test code, and test new functionality at same time.
+
      (insert sub-code-str)
 
      ;; Need to put the subname in EXPORT_TAGS list
@@ -62,14 +64,16 @@
      (insert "echo")
      (save-buffer)
 
+;; end perlnow-insert-sub
+
      ;; The pm file should exist on disk now.
      (assert-t
       (file-exists-p expected-pm-file)
-      (concat test-name ": created file:\n       " expected-pm-file ))
+      (concat test-name ": created file:\n       " expected-pm-file )) ;; ok 1
 
      (assert-t
       (perlnow-module-file-p (buffer-file-name))
-      "Testing perlnow-module-file-p to confirm module looks like a module.")
+      "Testing perlnow-module-file-p to confirm module looks like a module.") ;; ok 2
 
      (assert-nil
       (perlnow-script-file-p (buffer-file-name))
@@ -78,7 +82,6 @@
      ;; move a pre-existing script out of the way
      ;; (noninteractive call to perlnow-script doesn't deal with this well...)
      (test-init-move-file-out-of-way expected-script)
-
 
      (setq test-name "Testing perlnow-script")
 

@@ -34,12 +34,9 @@
 
 (funcall
  (lambda ()
-   (if (file-exists-p "test-init-elisp.el")
-       (load-file "test-init-elisp.el"))
-
-   ;; meta-project, test-simple.el eval/dev: using a modified test-simple.el
-   (load-file "/home/doom/End/Sys/Emacs/emacs-test-simple/test-simple.el")
-   (perlnow-tron) ;; DEBUG
+   (if (file-exists-p "test-init.el")
+       (load-file "test-init.el"))
+   ;; (perlnow-tron)
    (let* ((e-test-loc (test-init)))
      ;; make sure you know the policy in use
      (setq perlnow-test-policy-test-location   "../t")
@@ -51,8 +48,7 @@
      (perlnow-ensure-directory-exists perlnow-pm-location)
 
      (let*
-         (
-          (funcname "perlnow-edit-test-file")
+         ((funcname "perlnow-edit-test-file")
           (test-name
            (concat "Testing " funcname ))
           (package-name "Rabid::Foosball")
@@ -134,10 +130,9 @@
        (perlnow-edit-test-file)
        (setq again-second-t-file (buffer-file-name))
        (assert-equal expected-second-t-file again-second-t-file
-                     (concat test-name ": re-opened existing test file, going for most recent match on module."))
-         ))
-   (end-tests)
-   ))
+          (concat test-name ": re-opened existing test file, going for most recent match on module."))
+       ))
+   (end-tests)))
 
 
 

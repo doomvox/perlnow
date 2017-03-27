@@ -54,22 +54,8 @@ before a perlnow-run.  (verify still a problem -- Thu Apr 15 12:46:59 2010)
 
 ===
 FEATURE
-Built-in support for perltidy (alternative to C-M-\)
-  Experimental (Sun May 30 10:06:20 2010):
-  perlnow-run-perltidy-on-region
-
-  o maybe: automatically generate standard elisp wrappers
-    around some frequently used shell commands.
-    (begun compiling a "cookbook" of types of wrappers)
-
-  In particular, could use some good ways to run "at point"
-  without defining a region.
-
-
-===
-FEATURE
 sub awareness
-  o select sub (Q: include adjacent pod?)
+  o select sub (Q: include adjacent pod?)  (( HELL YEAH ))
   o move sub (both code and pod, if any, adjacent or not).
        i.e. "refactoring" tools.
   o display current sub in status bar.
@@ -589,16 +575,6 @@ run, this little problem would be covered.
 
 ===
 
-                                Thu Apr 15 12:42:53 2010
-
-Really need some form of automated tests.
-I've had a lot of difficulty in getting consistent behavior
-with the most recent versions (circa 0.4).  E.g. improve
-the code to guess a run-string, and realize belatedly that
-you're blowing away user-set run-strings at odd times.
-
-===
-
 FEATURE (for cheat section?)
 
                                 Thu Apr 15 14:17:15 2010
@@ -632,7 +608,7 @@ hashes).  (?)
                               Fri Apr 30 17:30:25 2010
 
 
-FEATURE
+feature  (( forget this: want "project" switching, that's all ))
 
 Perlnow has creation commands that distinguish between proceedural
 (exported-based) modules, and object-based modules: that works well,
@@ -900,3 +876,9 @@ Add a feature to manually edit the associated file.
 ;;  o  in a recursive list cursor should be left in the region of the current test-loc. (?)
 
 ===
+
+Sun  March 26, 2017  14:47
+
+Using this as my development TODO list for now:
+
+/home/doom/End/Cave/Perlnow/Notes/summary-TODO-consolidated

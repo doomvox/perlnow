@@ -13,11 +13,8 @@
 
 (funcall
  (lambda ()
-   (if (file-exists-p "test-init-elisp.el")
-       (load-file "test-init-elisp.el"))
-
-   ;; meta-project, test-simple.el eval/dev: using a modified test-simple.el
-   (load-file "/home/doom/End/Sys/Emacs/emacs-test-simple/test-simple.el")
+   (if (file-exists-p "test-init.el")
+       (load-file "test-init.el"))
 
    (let* (
           (test-loc (test-init))
@@ -33,8 +30,7 @@
 
      (assert-t
       (file-exists-p expected-file)
-      (concat test-name ": creates expected file, " expected-file )
-      )
+      (concat test-name ": creates expected file, " expected-file ) )
 
      ;; now, look over the open code buffer
      (setq new-package-name (perlnow-get-package-name-from-module-buffer))

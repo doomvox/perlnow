@@ -31,8 +31,6 @@
 ;;  back to the pm file:  do an edit-test
 ;;    verify that changes run-string to the *.t
 
-
-
 ;; Copyright 2017 Joseph Brenner
 ;;
 ;; Author: doom@kzsu.stanford.edu
@@ -41,15 +39,12 @@
 ;; X-URL: not distributed yet
 ;; License: the same as your GNU emacs (see below)
 
-
 (funcall
  (lambda ()
-   (if (file-exists-p "test-init-elisp.el")
-       (load-file "test-init-elisp.el"))
+   (if (file-exists-p "test-init.el")
+       (load-file "test-init.el"))
 
-   ;; meta-project, test-simple.el eval/dev: using a modified test-simple.el
-   (load-file "/home/doom/End/Sys/Emacs/emacs-test-simple/test-simple.el")
-   (perlnow-tron)
+   ;; (perlnow-tron)
    (let* (
           (test-loc (test-init))
 
