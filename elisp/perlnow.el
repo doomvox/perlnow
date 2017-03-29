@@ -1,6 +1,6 @@
 ;; perlnow.el                Wed January   14, 2004
 ;;;                     Rev: Tue September 22, 2009
-;;;                          Thu February  02, 2017
+;;;                          Tue March     28, 2017
 
 ;;; Emacs extensions to speed development of perl code.
 
@@ -2098,7 +2098,8 @@ will switch to that window."
     (cond ( existing-window
             (select-window existing-window))
           (t
-           (find-file other-buffer))
+           (if other-buffer
+               (find-file other-buffer)))
           )
     ))
 
@@ -2167,7 +2168,8 @@ e.g. run all tests rather than just one."
             ((string-match "\\\.t$"  filename)
              (setq run-string (perlnow-generate-run-string filename)))
             ;; if there's an associated script already, just use that.
-            ((perlnow-script-file-p associated)
+            ((and (perlnow-perlish-true-p associated)
+                  (perlnow-script-file-p  associated))
              (setq run-string (perlnow-generate-run-string associated)))
             ;; if we are a script... perhaps we should just run ourselves
             ((perlnow-script-p)
@@ -2401,6 +2403,7 @@ See the wrapper function: \\[perlnow-script] (or possibly the older
             (insert (format "use %s%s;" package import-string))
             (insert "\n")
             )))
+    (perlnow-change-mode-to-executable)
     script))
 
 (defun perlnow-endow-script-with-access-to (location &optional whitespace)
@@ -2618,7 +2621,11 @@ given PROGRAM-FILE with the current buffer's file."
   "Generates a direct run-string for the perl PROGRAM-FILE.
 This is used internally by routines such as \\[perlnow-guess-run-string]."
   (if perlnow-trace (perlnow-message "Calling perlnow-generate-run-string"))
+  ;; TODO hack
+  (unless program-file
+          (setq program-file ""))
   ;; a centralized place to apply shell quoting, etc.
+  ;; TODO docs for combine-and-quote-strings say it's not for shell quoting
   (let* ((perl-command (perlnow-how-to-perl))
          (runstring ""))
     ;; Can't run perl-command through quote, handles "perl -T" wrong.
@@ -2627,6 +2634,8 @@ This is used internally by routines such as \\[perlnow-guess-run-string]."
                   (combine-and-quote-strings
                    (list program-file))))
     runstring))
+
+
 
 ;;=======
 ;; prompt functions
@@ -2717,7 +2726,9 @@ This is to make sure that the file actually exists."
   "Make the file associated with the current buffer executable."
   (if perlnow-trace (perlnow-message "Calling perlnow-change-mode-to-executable"))
   (perlnow-make-sure-file-exists)
-  (let* ((all-but-execute-mask ?\666)
+  (let* (
+;;         (all-but-execute-mask ?\666)
+         (all-but-execute-mask #o666)  ;; Tue  March 28, 2017  22:39
          (filename (buffer-file-name))
          (file-permissions (file-modes filename))
          (new-file-permissions
@@ -2956,7 +2967,7 @@ be opens the file to look for a package line or a hashbang line."
   (unless file
     (setq file (buffer-file-name)))
   (let ((retval
-         (cond ((not file) nil) ;; if file is nil, it ain't a script
+         (cond ((not file) nil) ;; if file is nil, it ain't a script    (TODO oh come on)
                ((string-match "\.t$\\|\.pl$"  file)) ;; good extension: pass
                ((file-exists-p file)
                 (save-excursion
@@ -2965,6 +2976,7 @@ be opens the file to look for a package line or a hashbang line."
                (t
                 nil))))
     retval))
+
 
 (defun perlnow-test-select-menu-p ()
   "Identify whether the current buffer looks like a test select menu.
@@ -2986,6 +2998,20 @@ Checks mode and buffer name."
                (t
                 nil)))
     retval))
+
+
+(defun perlnow-perlish-true-p (arg)
+  "Return t if perl would call ARG true.
+Checks for non-nil and non-empty string and non-zero."
+  (cond (arg ;; arg is non-nil
+         (cond ((stringp arg)
+                (not (string= arg "")))
+               ((numberp arg)
+                (not (equal arg 0)))
+               (t ;; some other non-nil type
+                t)))
+        (t   ;; arg is nil
+         nil)))
 
 ;; end  buffer probes
 
@@ -5019,6 +5045,7 @@ path and options the author of the code intended, e.g. the \"-T\"
 flag\).  If that's not found, it uses the contents of the
 `perlnow-perl-program' variable, and if that has not been defined
 falls back to just \"perl\"."
+  (if perlnow-trace (perlnow-message "Calling perlnow-how-to-perl"))
   (let* ((perl-from-hashbang (perlnow-hashbang))
          (how-to-perl ""))
     (cond (perl-from-hashbang
