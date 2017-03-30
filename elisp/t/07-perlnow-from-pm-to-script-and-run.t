@@ -26,45 +26,32 @@
  (lambda ()
    (if (file-exists-p "test-init.el")
        (load-file "test-init.el"))
-
+   (perlnow-tron)
    (let* (
           (test-loc (test-init))
           (test-name "")
           (package-name "Garbagio::Fantastico")
           (script-name "fill_can.pl")
           (expected-pm-base "Fantastico.pm")
-
           (expected-pm-file
            (concat perlnow-pm-location "Garbagio" perlnow-slash expected-pm-base))
           (expected-script
            (concat perlnow-script-location script-name))
-          (sub-code-core-str "print $arg ,\"\n\";") ;; Use with perlnow-insert-sub
-          (sub-code-str
-           "sub echo {my $arg=shift; print $arg ,\"\n\";}")
+          (sub-code-core-str "  print $arg, \"\\n\";") ;; Use with perlnow-insert-sub
           (calling-code-str
-           "echo($ARGV[0]);")
+           "  echo( $ARGV[ 0 ] );")
           (perl "/usr/bin/perl") ;; same has hash-bang in script template
+          pm-buffer
           )
      (setq test-name "Testing perlnow-module")
+     (if perlnow-debug (message "RIDEON: %s" test-name))
      (perlnow-module perlnow-pm-location package-name)
 
-;; TODO why not use the provided perlnow-insert-sub command?
-;;      simplify test code, and test new functionality at same time.
-
-     (insert sub-code-str)
-
-     ;; Need to put the subname in EXPORT_TAGS list
-     ;;  @ISA = qw(Exporter);
-     ;;  %EXPORT_TAGS = ( 'all' => [
-     ;;  # TODO Add names of items to export here.
-     ;;  qw(
-     (search-backward "%EXPORT_TAGS")
-     (search-forward  "qw")
-     (forward-char 2)
-     (insert "echo")
+     (perlnow-insert-sub "echo")
+     (insert sub-code-core-str)
      (save-buffer)
 
-;; end perlnow-insert-sub
+     (setq pm-buffer (current-buffer))
 
      ;; The pm file should exist on disk now.
      (assert-t
@@ -84,9 +71,10 @@
      (test-init-move-file-out-of-way expected-script)
 
      (setq test-name "Testing perlnow-script")
+     (if perlnow-debug (message "STUMBLE on BUM: %s" test-name))
 
+     (set-buffer pm-buffer)
      (perlnow-script expected-script)
-
      (insert calling-code-str)
      (save-buffer)
 
@@ -104,10 +92,13 @@
       "Testing perlnow-module-file-p to confirm script is not like module.")
 
      (setq test-name "Testing perlnow-run")
+     (if perlnow-debug (message "SMELL_O_DOOM: %s" test-name))
 
      ;; TODO These need work to get closer to how you'd use them interactively
      (setq perlnow-run-string
            (concat perl " " expected-script " TRASH!"))
+     (if perlnow-debug (message "pnr: %s" perlnow-run-string))
+
      (perlnow-run perlnow-run-string)
 
      ;; The compilation window should show the string "TRASH!" (in first column):

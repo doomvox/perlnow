@@ -2164,13 +2164,21 @@ e.g. run all tests rather than just one."
                   )))
           (t ;; harder not set, so do a standard run
            (cond
-            ;; if we are a test, don't look for another
-            ((string-match "\\\.t$"  filename)
+            ( ;; if we are a test, don't look for another
+             ;; (string-match "\\\.t$"  filename)
+             (perlnow-test-p filename)
+
              (setq run-string (perlnow-generate-run-string filename)))
-            ;; if there's an associated script already, just use that.
+
+            ;; if there's an associated script/test already, just use that.
             ((and (perlnow-perlish-true-p associated)
-                  (perlnow-script-file-p  associated))
-             (setq run-string (perlnow-generate-run-string associated)))
+                  (or
+                    (perlnow-script-file-p  associated)
+                    (perlnow-test-p associated)
+                    ))
+             (setq run-string (perlnow-generate-run-string associated))
+             )
+
             ;; if we are a script... perhaps we should just run ourselves
             ((perlnow-script-p)
              (setq run-string (perlnow-generate-run-string filename)))
@@ -2191,23 +2199,23 @@ e.g. run all tests rather than just one."
                    (t ; non-cpan-style
                     (setq testfile (perlnow-get-test-file-name))
                     (cond ( (not (file-exists-p testfile))
-                            (perlnow-edit-test-file testfile)
-                                                      ;; creates a new test
+                            (perlnow-edit-test-file testfile) ;; creates a new test
+                            ;; TODO refactor this out of this cond
                             (setq run-string
-                                  (perlnow-generate-run-string filename)) ;; ?
-                                    ;; why not also associate, as below?
+;;                                  (perlnow-generate-run-string
+                                  (perlnow-generate-run-string-and-associate
+                                   testfile) )
+                                       ;; and why not also associate, as below?
                             )
                           (t
                            (setq run-string
                                  (perlnow-generate-run-string-and-associate
-                                    testfile))
+                                  testfile))
                            ))
                     )
-                   ))))
-          (t ; When all else fails, just feed it to perl and hope for the best
-           (unless (perlnow-module-file-p filename)
-             (setq run-string (perlnow-generate-run-string filename)))
-           ))
+                   ))) ;; end "standard run" cases
+           ) ;; end not-harder
+          ) ;; end cond harder/not-harder
     run-string))
 
 (defun perlnow-cpan-style-test-run-string (staging-area)
@@ -2797,71 +2805,113 @@ Looks for the hash-bang line at the top."
       (looking-at hash-bang-line-pat)
       )))
 
-;; (defun perlnow-script-p ()
-;;   "Always true: override usual code for debugging purposes."
-;;   t)
-
-;; TODO re-write to use  perlnow-perl-mode-p?
-(defun perlnow-script-p ()
+(defun perlnow-script-p (&optional file)
   "Determine if the buffer looks like a perl script.
+If FILE is given, opens that first.
 This assumes we have a perl script if there's a
 perl hashbang line *or* if it is in a perl mode,
 and also verifires that it's not a module."
   (if perlnow-trace (perlnow-message "Calling perlnow-script-p"))
-  (save-excursion
-    (let (;; The following assumes perl is called something like perl
-          (hash-bang-line-pat "^[ \t]*#!.*perl")
-          ;; matches cperl-mode, perl-mode, or sepia-mode, and *not* perlnow-select-mode
-          (perl-mode-pat "^\\\(sepia\\\|cperl\\\|perl\\\)-mode$")
-
-          (mode (pp-to-string major-mode))
-          )
-      (or
-       (progn
-         (goto-char (point-min))
-         (looking-at hash-bang-line-pat))
-       (and (string-match perl-mode-pat mode)
-            (not (perlnow-module-code-p))
-            (not (perlnow-test-p))
+  (let ((initial-buffer (current-buffer))
+        retval
+        )
+    (cond (file
+           (find-file file))
+          (t
+           (setq file (buffer-file-name))
+           ))
+    (save-excursion
+      (let (;; The following assumes perl is called something like perl
+            (hash-bang-line-pat "^[ \t]*#!.*perl")
             )
-       )
-      )))
+        (setq retval
+              (or
+               (progn
+                 (goto-char (point-min))
+                 (looking-at hash-bang-line-pat))
+               (and
+                ;; (string-match perl-mode-pat mode)
+                (perlnow-perl-mode-p file)
+                (not (perlnow-module-code-p))
+                (not (perlnow-test-p file))
+                )))
+        ))
+    (switch-to-buffer initial-buffer)
+    retval))
 
-(defun perlnow-test-p ()
-  "Determine if the buffer looks like a perl test.
+(defun perlnow-perl-mode-p (&optional file)
+  "Does the current buffer's major mode look like a perl mode?
+This will return non-nil for \"sepia-mode\" as well as \"perl-mode\"
+and \"cperl-mode\", but not for \"perlnow-select-mode\".
+If FILE is given, opens that first."
+  (if perlnow-trace (perlnow-message "Calling perlnow-perl-mode-p"))
+  (let ((initial-buffer (current-buffer)) )
+    (cond (file
+           (find-file file))
+          (t
+           (setq file (buffer-file-name))
+           ))
+    (let* (;; matches cperl-mode, perl-mode, or sepia-mode, and *not* perlnow-select-mode
+           (perl-mode-pat "^\\\(sepia\\\|cperl\\\|perl\\\)-mode$")
+           (mode (pp-to-string major-mode))
+           (retval (string-match perl-mode-pat mode))
+           )
+      (switch-to-buffer initial-buffer) ;; save-excursion doesn't always work
+      retval)))
+
+(defun perlnow-test-p (&optional file)
+  "Determine if FILE looks like a perl test, defaults to current buffer.
 Does the simplest possible check: looks for a *.t extension on file name."
 ;; TODO might also look for a 'use Test::' line
+;;    (use-test-pattern "\\b\\(require\\|use\\)[ \t]+Test::\\b")
   (if perlnow-trace (perlnow-message "Calling perlnow-script-p"))
-  (let* ((file (buffer-file-name))
-         (ret  nil))
+  (unless file
+    (setq file (buffer-file-name)))
+  (let* ((retval  nil))
     (if file
         (if (string-match "\\\.t$" file)
-            (setq ret t)
+            (setq retval t)
             ))
-    ret))
+    retval))
 
-(defun perlnow-module-code-p ()
+(defun perlnow-module-code-p (&optional file)
   "Determine if the buffer looks like a perl module.
+If given FILE, opens that first.
 This looks for the package line near the top.
 Note: it's usually more useful to just do a
 \\[perlnow-get-package-name-from-module-buffer]."
   (if perlnow-trace (perlnow-message "Calling perlnow-module-code-p"))
-  (let ( (package-name (perlnow-get-package-name-from-module-buffer))
-         )
-    package-name))
+  (let ((initial-buffer (current-buffer)) )
+    (cond (file
+           (find-file file))
+          (t
+           (setq file (buffer-file-name))
+           ))
+    (let ((package-name (perlnow-get-package-name-from-module-buffer))
+          )
+      (switch-to-buffer initial-buffer)
+      package-name)))
 
-(defun perlnow-exporter-code-p ()
+(defun perlnow-exporter-code-p (&optional file)
   "Return t if the current buffer looks like an Exporter-based module.
 Return nil otherwise."
   (if perlnow-trace (perlnow-message "Calling perlnow-exporter-code-p"))
-  ;; searches for "use Exporter" or "require Exporter"
-  (save-excursion
-    (let* (
-           (exporter-pattern "\\b\\(require\\|use\\)[ \t]+Exporter\\b")
-           )
-      (goto-char (point-min))
-      (re-search-forward exporter-pattern nil t)
-      )))
+  (let ((initial-buffer (current-buffer))
+        (initial-point  (point))
+        ;; searches for "use Exporter" or "require Exporter"
+        (exporter-pattern "\\b\\(require\\|use\\)[ \t]+Exporter\\b")
+        retval )
+    (cond (file
+           (find-file file))
+          (t
+           (setq file (buffer-file-name))
+           ))
+    (goto-char (point-min))
+    (setq retval
+          (re-search-forward exporter-pattern nil t))
+    (switch-to-buffer initial-buffer)
+    (goto-char initial-point)
+    retval))
 
 (defun perlnow-cpan-style-code-p ()
   "Determine if this file looks like it's in a cpan-style dev tree.
@@ -2874,46 +2924,34 @@ with a Makefile.PL or a Build.PL."
           )
     staging-area))
 
-(defun perlnow-perl-mode-p ()
-  "Does the current buffer's major mode look like a perl mode?
-This will return non-nil for \"sepia-mode\" as well as \"perl-mode\"
-and \"cperl-mode\", but not for \"perlnow-select-mode\"."
-  (if perlnow-trace (perlnow-message "Calling perlnow-perl-mode-p"))
-  (let* (
-        ;; (perl-mode-pat "^sepia-mode$\\|perl-mode$")
-        ;; matches cperl-mode, perl-mode, or sepia-mode, and *not* perlnow-select-mode
-        (perl-mode-pat "^\\\(sepia\\\|cperl\\\|perl\\\)-mode$")
-        (mode (pp-to-string major-mode))
-        (retval (string-match perl-mode-pat mode))
-        )
-    retval
-    ))
-
 ;; Now I use this to check if a perl mode should be enabled,
 ;; so I'm dropping the check of the current mode setting.
-(defun perlnow-perl-code-p (file)
-  "Return t if FILE seems to be perl code.
+(defun perlnow-perl-code-p (&optional file)
+  "Return t if FILE seems to be perl code, defaults to current-buffer.
 Checks for the usual perl file extensions, and if need
 be opens the file to look for a package line or a hashbang line."
   (if perlnow-trace (perlnow-message "Calling perlnow-perl-code-p"))
-;; or to see if a perl mode has \(somehow\) been enabled."
-  (let* ((initial (current-buffer))
-         (retval
-          (or
-           (string-match "\.t$"  file)
-           (string-match "\.pm$"  file)
-           (string-match "\.pl$"  file)
-           )))
-    (unless retval
-      (progn
-        (save-excursion  ;; TODO unreliable
-          (find-file file)
-          (setq retval
-                (or
-                 (perlnow-module-code-p)
-                 (perlnow-script-p)
-                 ;; (perlnow-perl-mode-p)
-                 )))))
+  (let ((initial (current-buffer))
+        retval
+        )
+    (cond (file
+           (find-file file))
+          (t
+           (setq file (buffer-file-name))
+           ))
+    (cond ((setq retval
+                 (or
+                  (string-match "\.t$"  file)   ;; TODO but is a *.t always perl?
+                  (string-match "\.pm$"  file)
+                  (string-match "\.pl$"  file)
+                  )))
+          (t
+           (setq retval
+                 (or
+                  (perlnow-module-code-p)
+                  (perlnow-script-p)
+                  ;; (perlnow-perl-mode-p)
+                  ))))
     (switch-to-buffer initial) ;; save-excursion doesn't always work
     retval))
 
@@ -2967,7 +3005,7 @@ be opens the file to look for a package line or a hashbang line."
   (unless file
     (setq file (buffer-file-name)))
   (let ((retval
-         (cond ((not file) nil) ;; if file is nil, it ain't a script    (TODO oh come on)
+         (cond ((not file) nil) ;; if file is nil, it ain't a script
                ((string-match "\.t$\\|\.pl$"  file)) ;; good extension: pass
                ((file-exists-p file)
                 (save-excursion
@@ -6571,8 +6609,20 @@ It does three things:
   (interactive)
   (let* (( display-buffer (get-buffer-create "*perlnow*"))
          ( window-size -13 )   ;; number of lines for display-buffer
-         ( mess
-           (concat
+         ( mess (perlnow-vars-report-string))
+         )
+  ;; Bring the *perlnow* display window to the fore
+  ;;   (bottom window of the frame)
+  (perlnow-show-buffer-other-window display-buffer window-size t)
+  (perlnow-blank-out-display-buffer display-buffer t)
+  (insert mess)
+  ;;;; (message mess) ;; DEBUG
+  ))
+
+(defun perlnow-vars-report-string ()
+  "Returns report of current buffer's vars as a string."
+  (let* ((mess
+         (concat
             (format "VARS FOR BUFFER:\n   %s\n"
                     (buffer-file-name))
             (format "perlnow-perl-script-name:   %s\n"
@@ -6607,13 +6657,7 @@ It does three things:
             (format "perlnow-pm-location: %s\n" perlnow-pm-location)
             (format "perlnow-dev-location: %s\n" perlnow-dev-location)
             )))
-  ;; Bring the *perlnow* display window to the fore
-  ;;   (bottom window of the frame)
-  (perlnow-show-buffer-other-window display-buffer window-size t)
-  (perlnow-blank-out-display-buffer display-buffer t)
-  (insert mess)
-  ;;;; (message mess) ;; DEBUG
-  ))
+    mess))
 
 ;;--------
 ;;; trial runs of various functions (edebug entry points)
@@ -6654,7 +6698,48 @@ It does three things:
   (if perlnow-trace (perlnow-message "Calling perlnow-report-script-p"))
   (if (perlnow-script-p)
       (message "script!")
-    (message "not.")))
+    (message "not script, yes?")))
+
+(defun perlnow-report-module-code-p ()
+  "Report whether the current buffer looks like a perl script."
+  (interactive)
+  (if perlnow-trace (perlnow-message "Calling perlnow-report-script-p"))
+  (if (perlnow-module-code-p)
+      (message "Mod, baby.")
+    (message "not so mod, eh?")))
+
+(defun perlnow-report-perl-mode-p ()
+  "Report whether the current buffer looks like a perl script."
+  (interactive)
+  (if perlnow-trace (perlnow-message "Calling perlnow-report-script-p"))
+  (if (perlnow-perl-mode-p)
+      (message "got a perl mode going.")
+    (message "not in the mode, eh?")))
+
+(defun perlnow-report-test-p ()
+  "Report whether the current buffer looks like a perl script."
+  (interactive)
+  (if perlnow-trace (perlnow-message "Calling perlnow-report-script-p"))
+  (if (perlnow-test-p)
+      (message "you little test you.")
+    (message "live dang young")))
+
+(defun perlnow-report-exporter-code-p ()
+  "Report whether the current buffer looks like a perl script."
+  (interactive)
+  (if perlnow-trace (perlnow-message "Calling perlnow-report-script-p"))
+  (if (perlnow-exporter-code-p)
+      (message "exporter!")
+    (message "isolationist")))
+
+(defun perlnow-report-perl-code-p ()
+  "Report whether the current buffer looks like a perl script."
+  (interactive)
+  (if perlnow-trace (perlnow-message "Calling perlnow-report-script-p"))
+  (if (perlnow-perl-code-p)
+      (message "perlish")
+    (message "sadly unperlish")))
+
 
 
 (defun perlnow-report-sub-at-point ()
