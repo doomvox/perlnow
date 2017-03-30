@@ -36,14 +36,14 @@
    (perlnow-tron)
    (let* (
           (test-loc (test-init)) ;; TODO need to use a lib and bin in there
-          (test-name "")
+          (test-name "Testing next-error to pm from pl")
+     ;;    case-name
 
           (package-name "Trash::Mountain")
           (script-name "timber.pl")
           (script-base "timber")
           (pm-base "Mountain")
 
-          ;; TODO test-init-slash
           (data-loc (concat default-directory "dat" test-init-slash))
           (source-loc (concat data-loc "code" test-init-slash "s40" test-init-slash))
            ;; /home/doom/End/Cave/Perlnow/lib/perlnow/elisp/t/dat/code
@@ -64,15 +64,11 @@
           (perl "/usr/bin/perl") ;; same as hash-bang in script template
 
           pm-buffer script-buffer t-buffer argument-text opened-file comp-buffer
-
           )
-     (message "Zzzzziiiinnnnggg...")
-     (setq test-name "Testing perlnow-run of script") ;; TODO better handling of test-name, eh?
+     ;; (setq case-name "Testing perlnow-run of script")
 
      ;; Initialize the t40 tree with script and module in dat/code
-;;     (copy-file source-pl script-file t)
      (copy-file source-pl script-loc t)
-;;     (copy-file source-pm pm-file t)
      (test-init-mkpath pm-loc)
      (copy-file source-pm pm-loc t)
 
@@ -91,56 +87,56 @@
       "Testing newly opened script has no run-string")
 
      ;; Do a perlnow-run: but still have to tell it what to do explicitly.
+     ;;    (funcall-interactively 'perlnow-run) ;; wrong number of arguments
      (setq perlnow-run-string
            (concat perl " " script-file))
      (if perlnow-debug
          (message "perlnow-run-string: %s\n" perlnow-run-string))
          ;; /usr/bin/perl /home/doom/tmp/perlnow_test/t38/bin/timber.pl
      (perlnow-run perlnow-run-string)
+
      (sleep-for 2) ;; wait for compile (only thing in emacs that's async)
 
-     ;; The compilation window should show warning
+     ;; The compilation window should show warning:
      ;;  Use of uninitialized value $arg in print at ... Mountain.pm line 62.
      (switch-to-buffer "*compilation*")
      (setq comp-buffer (current-buffer))
      (let* ((compilation-results (buffer-string) )
             (warning-prefix  "Use of uninitialized value")
             (trash-out-pat (concat "^" warning-prefix ))
+             ;; Could use these too, but it's testing the wrong things
              ;; ( warning-middle "arg in print at")
              ;; ( warning-suffix "Mountain.pm line 62")
             )
-;;        (assert-matches trash-out-pat compilation-results
-;;                        (concat "Testing perlnow-run of script worked, and generated warning"))
-
        (assert-t (string-match trash-out-pat compilation-results 1)
                  (concat "Testing perlnow-run of script worked, and generated warning"))
        )
-     ;; Do a next-error (Q: you can do this *from the script* right?)
 
-;;     (switch-to-buffer comp-buffer)
-     ;; (goto-char (point-min))
+     ;; We'll do a next-error to jump to the pm file generating that warning
      (switch-to-buffer script-buffer)
-     (next-error 1 t) ;; the 'reset' of t means take it from top
 
-     ;; Presuming there are no other buffers for similar files,
-     ;; we can guess the name of the newly opened pm
-     (switch-to-buffer (concat pm-base ".pm"))
+     ;; pass value to next-error-hook
+     (setq perlnow-last-buffer-file-name (buffer-file-name))
+     (next-error 1 t) ;; the 'reset' of t means take it from top
+     ;;     (next-error)
+     ;;     (funcall-interactively 'next-error)
+
+     ;; Presuming no other buffers for similar files, guess the name
+     (let* ((new-pm-buffer-name (concat pm-base ".pm") ))
+       ;; (Why we *need* to do this switch buffer is a mystery of next-error.
+       ;; Must. Stop. Thinking. About. This.)
+       (switch-to-buffer  new-pm-buffer-name))
 
      ;; Check that you now have the *.pm file (newly opened, right?)
      (setq opened-file (buffer-file-name))
      (assert-t opened-file
-               "Testing that next-error opened a buffer with file name")
+               "Testing that next-error opened a buffer that has a file name")
      (assert-equal pm-file opened-file
                    "Testing next-error opened pm file from script")
      (setq pm-buffer (current-buffer))
 
      ;; Check some "status" vars
      (message "script 1: %s" (perlnow-vars-report-string))
-
-     ;; TODO would rather have this pm associated with script now.  can fix?
-     (assert-nil
-      perlnow-associated-code
-      "Testing newly opened module has no association")
 
      (assert-nil
       perlnow-run-string
@@ -157,16 +153,15 @@
      (assert-equal exp-rs-from-pm rs-from-pm
            (concat "Testing perlnow-guess-run-string for pm opened from script by next-error"))
 
+      (switch-to-buffer pm-buffer)
+      (assert-equal
+        script-file perlnow-associated-code
+        "Testing module after perlnow-next-error associated with script.")
 
-
-;;      ;; TODO is the pm associated with script yet? (For some reason, it has a *.t association. OK?)
-;;      ;; perlnow-associated-code:
-;;      ;;   /home/doom/tmp/perlnow_test/t40/t/01-Trash-Mountain-yodel.t
-;;      (switch-to-buffer pm-buffer)
-;;      (assert-equal
-;;        script-file perlnow-associated-code
-;;        "Testing module after guess associated with script.")
-
+      (switch-to-buffer script-buffer)
+      (assert-equal
+        pm-file perlnow-associated-code
+        "Testing script after perlnow-next-error associated with module.")
 
      ;; TODO maybe do a perlnow-run (or another guess) and check that again.
 

@@ -501,6 +501,13 @@ default to being inside the tree, in the right place, maybe:
 
 BUG               Thu Jan  7 23:06:26 2010
                  ((  Reproduced: Sun  January 22, 2017  15:46 ))
+                 ((  And again:  Wed  March 29, 2017  18:39 ))
+
+With a weird set-up, trying to manually set a run-string can
+fail with a no such file or directory, because of an attempt
+at setting up an intelligent default:  trap big problems
+like this, and just go with *no* default:
+
 
 Issue with an unusual additional "lib" inside of the "t" location:
 
@@ -539,23 +546,6 @@ BUGLET
 
 Creating a script from a "*WoMan" buffer for a module,
 doesn't give you the "use" line for the module.
-
-===
-
-BUG
-
-Would have liked perlnow to find this already existing "t",
-and create this file:
-
-  ~/End/Ag/API/Goncarova/gen/t/Goncarova-Image-Mod.t
-
-When it was started up from this file:
-
-  ~/End/Ag/API/Goncarova/gen/lib/perl/Goncarova/Image/Mod.pm
-
-Instead it put it in
-
-  ~/End/Ag/API/Goncarova/gen/lib/perl/Goncarova/Image/t
 
 ===
 
@@ -647,22 +637,6 @@ Note: many projects may belong to one world.
     perlnow-class-base.el, etc.
 
     In effect "plug-ins".
-
-===
-
-FEATURE
-                                          Sat May 29 13:32:20 2010
-
-perlnow has a few "creation" commands, but it lacks one to
-"create" test files.  The "perlnow-edit-test-file" does creation
-only when it can't find anything pre-existing (and all too often,
-that's the Wrong Thing, it just didn't succeed in looking
-in the right place).  The multiple forms of "edit-test" are cool,
-but I *also* need one that definitely creates a new file
-(though in fact, mutating from an existing file is a pretty common
-idiom, isn't it... is that automatable in any way?  e.g. scrape
-the "use" lines, snag other stuff that looks like set-up, and
-re-use it).
 
 ===
 

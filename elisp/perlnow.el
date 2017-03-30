@@ -1148,6 +1148,10 @@ with both approaches.")
 ;;      see the value unless you're already in that buffer.
 ;;      WTF?
 
+(defvar perlnow-last-buffer-file-name ""
+  "A global used to pass the last buffer-file-name to a hook.
+See \\[perlnow-associate-last-with-current].")
+
 
 ;;;==========================================================
 ;;; set-up functions
@@ -1195,17 +1199,15 @@ outside of perlnow:
                (local-set-key \"%si\" 'perlnow-insert-sub)
 
                (local-set-key \"%s*\" 'perlnow-display-inc-array)
+
+;;                ;; in a perl buffer, use this wrapper around next-error
+;;                (local-set-key \"C-x`\" 'perlnow-next-error)
                )"
             ))
          )
     (add-hook 'cperl-mode-hook (eval (read define-perl-bindings-string)))
     (add-hook 'perl-mode-hook  (eval (read define-perl-bindings-string)))
     ))
-;; TODO -- use perlnow-lookup-preferred-perl-mode instead (somehow)
-
-
-
-
 
 ;;;==========================================================
 ;;; functions to run perl scripts        TODO BOOKMARK REAL CODE STARTS
@@ -2200,22 +2202,12 @@ e.g. run all tests rather than just one."
                     (setq testfile (perlnow-get-test-file-name))
                     (cond ( (not (file-exists-p testfile))
                             (perlnow-edit-test-file testfile) ;; creates a new test
-                            ;; TODO refactor this out of this cond
-                            (setq run-string
-;;                                  (perlnow-generate-run-string
-                                  (perlnow-generate-run-string-and-associate
-                                   testfile) )
-                                       ;; and why not also associate, as below?
-                            )
-                          (t
-                           (setq run-string
-                                 (perlnow-generate-run-string-and-associate
-                                  testfile))
-                           ))
-                    )
-                   ))) ;; end "standard run" cases
-           ) ;; end not-harder
-          ) ;; end cond harder/not-harder
+                            ))
+                    (setq run-string
+                          (perlnow-generate-run-string-and-associate testfile))
+                    ))
+             ))) ;; end "standard run" cases
+          )
     run-string))
 
 (defun perlnow-cpan-style-test-run-string (staging-area)
@@ -2645,6 +2637,30 @@ This is used internally by routines such as \\[perlnow-guess-run-string]."
 
 
 
+
+;; This actually WORKED.  (I've lost track of The number of hacks
+;; I tried that really should've worked... yeah, ok, this is the Right Way,
+;; but seriously there is something fundamentally squirrelly about the
+;; behavior of next-error, only a fool would think about tweaking it.)
+(defun perlnow-associate-last-with-this ()
+ "Associate the last buffer file name with the current buffers.
+Uses global `perlnow-last-buffer-file-name' to get the value of
+the last one.
+Intended to be use via hooks such as `next-error-hook'."
+ (let* ((there perlnow-last-buffer-file-name)
+        (here (buffer-file-name)) )
+   (cond ((and
+           (perlnow-perl-code-p there)
+           (perlnow-perl-code-p here))
+          (perlnow-set-associated-code-pointers there here)
+          (if perlnow-debug
+              (message
+               "perlnow-associate-last-with-this:\nhere: %s\n there: %s\n" here there))
+          ))))
+
+;; (remove-hook 'next-error-hook 'perlnow-associate-last-with-this)
+(add-hook 'next-error-hook 'perlnow-associate-last-with-this)
+
 ;;=======
 ;; prompt functions
 (defun perlnow-prompt-for-module-to-create (where what)
@@ -2924,8 +2940,6 @@ with a Makefile.PL or a Build.PL."
           )
     staging-area))
 
-;; Now I use this to check if a perl mode should be enabled,
-;; so I'm dropping the check of the current mode setting.
 (defun perlnow-perl-code-p (&optional file)
   "Return t if FILE seems to be perl code, defaults to current-buffer.
 Checks for the usual perl file extensions, and if need
@@ -2939,7 +2953,9 @@ be opens the file to look for a package line or a hashbang line."
           (t
            (setq file (buffer-file-name))
            ))
-    (cond ((setq retval
+    (cond ((not (perlnow-perlish-true-p file)) ;; non-nil and not empty string
+           (setq retval nil))
+          ((setq retval
                  (or
                   (string-match "\.t$"  file)   ;; TODO but is a *.t always perl?
                   (string-match "\.pm$"  file)
@@ -2950,6 +2966,8 @@ be opens the file to look for a package line or a hashbang line."
                  (or
                   (perlnow-module-code-p)
                   (perlnow-script-p)
+                  ;; This is used to check if a perl mode should be enabled,
+                  ;; so we can't check this here
                   ;; (perlnow-perl-mode-p)
                   ))))
     (switch-to-buffer initial) ;; save-excursion doesn't always work
@@ -3015,7 +3033,6 @@ be opens the file to look for a package line or a hashbang line."
                 nil))))
     retval))
 
-
 (defun perlnow-test-select-menu-p ()
   "Identify whether the current buffer looks like a test select menu.
 Checks mode and buffer name."
@@ -3036,7 +3053,6 @@ Checks mode and buffer name."
                (t
                 nil)))
     retval))
-
 
 (defun perlnow-perlish-true-p (arg)
   "Return t if perl would call ARG true.
@@ -6709,7 +6725,7 @@ It does three things:
     (message "not so mod, eh?")))
 
 (defun perlnow-report-perl-mode-p ()
-  "Report whether the current buffer looks like a perl script."
+  "Report whether the current buffer is in a perl mode."
   (interactive)
   (if perlnow-trace (perlnow-message "Calling perlnow-report-script-p"))
   (if (perlnow-perl-mode-p)
@@ -6717,15 +6733,15 @@ It does three things:
     (message "not in the mode, eh?")))
 
 (defun perlnow-report-test-p ()
-  "Report whether the current buffer looks like a perl script."
+  "Report whether the current buffer looks like perl test code."
   (interactive)
   (if perlnow-trace (perlnow-message "Calling perlnow-report-script-p"))
   (if (perlnow-test-p)
       (message "you little test you.")
-    (message "live dang young")))
+    (message "the un-tested life: worth living?")))
 
 (defun perlnow-report-exporter-code-p ()
-  "Report whether the current buffer looks like a perl script."
+  "Report whether the current buffer looks like an exporter-based module."
   (interactive)
   (if perlnow-trace (perlnow-message "Calling perlnow-report-script-p"))
   (if (perlnow-exporter-code-p)
@@ -6733,14 +6749,12 @@ It does three things:
     (message "isolationist")))
 
 (defun perlnow-report-perl-code-p ()
-  "Report whether the current buffer looks like a perl script."
+  "Report whether the current buffer looks like perl code."
   (interactive)
   (if perlnow-trace (perlnow-message "Calling perlnow-report-script-p"))
   (if (perlnow-perl-code-p)
       (message "perlish")
     (message "sadly unperlish")))
-
-
 
 (defun perlnow-report-sub-at-point ()
    "Echoes the output from of \[[perlnow-sub-at-point]]."
