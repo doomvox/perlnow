@@ -1220,7 +1220,8 @@ This form of the command is something like \\\[cperl-check-syntax]
 \(it has one less prompt, and does not require mode-compile.el\).
 When run with a prefix argument \(i.e. after hitting C-u\), it
 runs a more elaborate suite of checks, doing podchecker and
-perlcritic in addition to a \"perl -cw\"."
+perlcritic in addition to a \"perl -cw\".
+This skips using perlcritic or podchecker if it can't find them."
   (interactive "P")
   (if perlnow-trace (perlnow-message "Calling perlnow-run-check"))
   (let* ( (full-file (buffer-file-name))
@@ -1229,12 +1230,28 @@ perlcritic in addition to a \"perl -cw\"."
           (default-directory location)
           (perl (perlnow-how-to-perl))
 
+          ;; podchecker --help 2>1 | grep 'Usage:'
+          (podchecker-probe
+           (concat perlnow-podchecker-program " --help 2>1 | grep 'Usage:'"))
+          (podchecker-p (shell-command-to-string podchecker-probe))
+          (podchecker (cond (podchecker-p perlnow-podchecker-program)
+                            (t nil)))
+
           (podchecker perlnow-podchecker-program)
-          ;; TODO probe for perlcritic, set to nil if it's not installed.
+          ;; probe for perlcritic, set to nil if it's not installed.
           ;;   perlcritic --version  =>  1.102
-          (perlcritic perlnow-perlcritic-program)
+          (perlcritic-probe (concat perlnow-perlcritic-program " --version 2>/dev/null"))
+          (perlcritic-p (shell-command-to-string perlcritic-probe))
+          (perlcritic (cond (perlcritic-p perlnow-perlcritic-program)
+                            (t nil)))
           )
     (save-buffer)
+    (unless perlcritic-p
+      (message
+       "perlcritic not installed: Install Perl::Critic from cpan,\ne.g. 'cpanm Perl::Critic'."))
+    (unless podchecker-p
+      (message
+       "podchecker not found. You can install it from cpan,\n e.g. 'cpanm Pod::Checker'"))
     (cond ( (not arg) ; no prefix
             (setq compile-command
                   (format "%s -Mstrict -cw \'%s\'" perl filename))
