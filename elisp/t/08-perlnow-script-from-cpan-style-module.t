@@ -143,7 +143,11 @@
                    (concat test-name ": associated code for mod is the script"))    ;; ok 8
 
      (set-buffer script-buffer)
-     (perlnow-edit-test-file)
+     ;; (perlnow-edit-test-file)
+     ;; (perlnow-edit-test-file 1)
+     ;; Faking a simple "edit-test" call, without arguments
+     (perlnow-open-test-file
+      (perlnow-get-test-file-name))
      (setq t-script-file   (buffer-file-name))
      (setq t-script-buffer (current-buffer))
 

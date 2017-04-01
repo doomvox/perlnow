@@ -176,7 +176,9 @@
      ;; if we switch to the pm, and do an *edit-test*, then the pm's rs changes to t
      ;; back to pm, then do an edit-test
      (set-buffer pm-buffer)
-     (perlnow-edit-test-file t-file)
+     ;; (perlnow-edit-test-file 1 t-file)
+     (perlnow-open-test-file t-file) ;; faking an edit-test, non-interactively
+
      (set-buffer pm-buffer)
 
      ;; "perl /home/doom/tmp/perlnow_test/dev/Planet-Ten/t/01-Planet-Ten.t"

@@ -72,7 +72,11 @@
 
 ;;              (perlnow-edit-test-file)     ;; TODO this brings up the select menu buffer!  WTF?
 ;;              (perlnow-edit-test-file nil)     ;; TODO how about this?  Just saw same behavior in edebug-- Fri  March 31, 2017  14:49
-              (perlnow-edit-test-file)
+              ;; (perlnow-edit-test-file 1)  ;; a harder-setting of less-than-four
+
+              ;; Faking a simple "edit-test" call, without arguments
+              (perlnow-open-test-file
+               (perlnow-get-test-file-name))
 
 ;;               ;; DEBUGING coping out on interactive issue, forcing the t-file open
 ;;               (cond ((perlnow-test-select-menu-p)
@@ -137,7 +141,11 @@
               (find-file expected-pm-file)
 ;;              (perlnow-edit-test-file)   ;; TODO can be select menu buffer, but not always?
 ;;              (perlnow-edit-test-file nil)     ;; TODO experimental.  Okay?
-              (perlnow-edit-test-file)
+;;              (perlnow-edit-test-file)
+;;              (perlnow-edit-test-file 1)
+              ;; Faking a simple "edit-test" call, without arguments
+              (perlnow-open-test-file
+               (perlnow-get-test-file-name))
               (perlnow-back-to-code)     ;; ... but if so this still works.
               ;; Now, we should be back in the original pm file.
               (setq back-worked-p

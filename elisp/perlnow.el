@@ -1891,46 +1891,43 @@ module-starter will create the \"staging area\"\) and the PACKAGE-NAME
 ;; edit-test and a few related functions
 ;; (aka the feature from hell, the Hard Part, the Serious Mess)
 ;;
-(defun perlnow-edit-test-file (&optional testfile)
-  "Find \(or create\) an appropriate TESTFILE for the current perl code.
-This command follows this process:
-  o Uses the given testfile (if run non-interactively).
-  o Checks if the code looks like a module or a script: Scripts
-    have a modified test policy: they always use naming style
-    \"basename\".  (( TODO? ))
-  o Look for an existing file in place dictated by test policy.
-  o If not, searches the test path (`perlnow-test-path'), looks for
-    an existing file, and if more than one is found it makes a guess.
-      (( TODO perlnow-test-path is not currently in use ))
-  o If no existing file is found, creates one as determined by the
-    test policy.
-  o Finally, the run string for the current buffer is set so that
-    it will run this test.
-((TODO SOON downplay discussion like this.))
-The test policy is defined by a trio of settings, see docs for these variables:
-`perlnow-test-policy-test-location', e.g. \".\", \"./t\", \"../t\", etc.
-`perlnow-test-policy-dot-definition' i.e.  \"fileloc\" or \"incspot\"
-`perlnow-test-policy-naming-style'   e.g. \"hyphenized\", \"numeric\", or \"fullauto\"
-If run with the prefix command, finds the likely \"t\" location
-opens a menu to choose a test from an existing one."
-  ;; Remember the *run-string* is a bit different for
-  ;; a cpan-style module than a regular module.
-  (interactive)
+
+(defun perlnow-edit-test-file ()
+  "Find \(or create\) an appropriate testfile for the current perl code.
+In interactive use, tries to identify a 't' directory related to
+the current buffer, and if run without an argument, tries to
+guess which test file is likely to be of interest.  If run with a
+prefix argument (C-u) this opens a test select menu, allowing the
+user to select a test file manually.
+
+This function doesn't work reliably when called non-interactively,
+instead you should most likely do this:
+
+         (perlnow-open-test-file
+          (perlnow-get-test-file-name))
+
+Or if a specific testfile is known already:
+
+         (perlnow-open-test-file testfile)
+
+Or to simulate a calling prefix and open a test select menu:
+
+   (perlnow-edit-test-file-harder 4)
+
+"
   (if perlnow-trace (perlnow-message "* Calling perlnow-edit-test-file"))
-  (let* ((harder-setting (car current-prefix-arg)))   ;; TODO how does this interact with testfile setting?
-    (cond (harder-setting  ;; if so, perlnow-select-file has to handle open, etc
+
+  (let* ((harder-setting (car current-prefix-arg))
+         )
+    (cond ((> harder-setting 1)  ;; if so, perlnow-select-file has to handle open, etc
            (perlnow-edit-test-file-harder harder-setting))
           (t
-           (cond ((not testfile)
+           (cond ((not testfile) ;; no testfile given (an interactive run)
                   (setq testfile
                         (perlnow-get-test-file-name))
-                  ;; TODO an okay place to set these, but are they sufficient?
-                  (setq perlnow-recent-pick testfile)
-                  (setq perlnow-recent-pick-global testfile)  ;; TODO experimental
                   ))
            (perlnow-open-test-file testfile)
            ))))
-
 
 ;; Used by: perlnow-edit-test-file, perlnow-test-create-manually, perlnow-select-create-test
 (defun perlnow-open-test-file (testfile)
@@ -4019,6 +4016,13 @@ like: \"/home/doom/tmp/../bin\"."
             (setq testfile (perlnow-get-test-file-name-script)))
           (t
            (setq testfile (perlnow-get-test-file-name-script))))
+
+    ;; TODO
+    ;; (1) This is an okay place to set these, is it sufficient?
+    ;; (2) Here, I'm saving the *last guess*.  More important: manual entries.
+    (setq perlnow-recent-pick testfile)
+    (setq perlnow-recent-pick-global testfile)  ;; TODO experimental
+
     testfile))
 
 (defun perlnow-get-test-file-name-module ()
@@ -4786,7 +4790,7 @@ This only checks the first character in NAME."
 (define-key perlnow-select-mode-map "p"        'previous-line)
 (define-key perlnow-select-mode-map [tab]      'perlnow-select-forward-hotspot)
 (define-key perlnow-select-mode-map [backtab]  'perlnow-select-previous-hotspot)
-(define-key perlnow-select-mode-map "a"        'perlnow-select-create-test) ;; TODO experimental binding
+(define-key perlnow-select-mode-map "a"        'perlnow-select-create-test)
 (define-key perlnow-select-mode-map "\C-c/b"   'perlnow-back-to-code)       ;; TODO experimental binding
 
 ;; These seem kind of hacky, but I think that's the nature of next-single-property-change
@@ -4899,7 +4903,7 @@ no file-name is found on the current line."
            ))
     selected-file))
 
-;; bind this to "a" in perlnow-select-mode
+;; bound to "a" in perlnow-select-mode
 ;; Note: somewhat similar to perlnow-test-create-manually
 (defun perlnow-select-create-test (&optional testfile )
   "Create a new test file via minibuffer with a default

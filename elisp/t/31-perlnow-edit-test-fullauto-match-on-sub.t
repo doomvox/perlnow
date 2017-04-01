@@ -48,9 +48,7 @@
      (perlnow-ensure-directory-exists perlnow-pm-location)
 
      (let*
-         ((funcname "perlnow-edit-test-file")
-          (test-name
-           (concat "Testing " funcname ))
+         ((test-name (concat "Testing perlnow-edit-test-file" ))
           (package-name "Rabid::Foosball")
           (expected-pm-base "Foosball.pm")
           (expected-pm-file
@@ -85,7 +83,9 @@
        ;; Do an edit-test (note: we're inside first sub)
        (setq expected-first-t-file
              (concat expected-t-loc "01-Rabid-Foosball-spin.t"))
-       (perlnow-edit-test-file)
+       ;; Faking a simple "edit-test" call, without arguments
+              (perlnow-open-test-file
+               (perlnow-get-test-file-name))
        (setq first-t-file (buffer-file-name))
 
        (assert-equal expected-first-t-file first-t-file
@@ -102,7 +102,9 @@
        ;; Do an edit-test from the new sub.
        (setq expected-second-t-file
              (concat expected-t-loc "02-Rabid-Foosball-jerk.t"))
-       (perlnow-edit-test-file)
+       ;; Faking a simple "edit-test" call, without arguments
+              (perlnow-open-test-file
+               (perlnow-get-test-file-name))
        (setq second-t-file (buffer-file-name))
 
        (assert-equal expected-second-t-file second-t-file
@@ -116,7 +118,9 @@
 
        ;; Do an edit-test.
        ;; Should re-open the first test file, matching on both module and sub.
-       (perlnow-edit-test-file)
+       ;; Faking a simple "edit-test" call, without arguments
+              (perlnow-open-test-file
+               (perlnow-get-test-file-name))
        (setq again-first-t-file (buffer-file-name))
 
        (assert-equal expected-first-t-file again-first-t-file
@@ -127,7 +131,9 @@
        (set-buffer pm-buffer)
        (goto-char (point-max))
        (forward-line -12)
-       (perlnow-edit-test-file)
+       ;; Faking a simple "edit-test" call, without arguments
+              (perlnow-open-test-file
+               (perlnow-get-test-file-name))
        (setq again-second-t-file (buffer-file-name))
        (assert-equal expected-second-t-file again-second-t-file
           (concat test-name ": re-opened existing test file, going for most recent match on module."))

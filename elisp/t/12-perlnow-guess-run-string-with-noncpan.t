@@ -95,7 +95,9 @@
       (perlnow-module-code-p)
       "Testing that perlnow-object-module left new pm buffer active.") ;; ok 1
 
-     (perlnow-edit-test-file)
+     ;; Faking a simple "edit-test" call, without arguments
+              (perlnow-open-test-file
+               (perlnow-get-test-file-name))
      (setq t-file   (buffer-file-name))
      (setq t-buffer (current-buffer))
 
@@ -175,7 +177,8 @@
      ;; just to make sure
      (set-buffer pm-buffer)
      ;; (perlnow-edit-test-file exp-t)
-     (perlnow-edit-test-file)
+     ;; (perlnow-edit-test-file 1 exp-t)
+     (perlnow-open-test-file exp-t) ;; faking an "edit-test" call
      ;; and back to the generating pm buffer
      (set-buffer pm-buffer)
 

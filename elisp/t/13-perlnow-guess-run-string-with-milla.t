@@ -171,7 +171,12 @@
      ;; if we switch to the pm, and do an *edit-test*, then the pm's rs changes to t
      ;; back to pm, then do an edit-test
      (set-buffer pm-buffer)
-     (perlnow-edit-test-file t-file)  ;; TODO why pass in the test file name?
+     ;; (perlnow-edit-test-file 1 t-file)
+     ;; TODO why pass in the test file name?
+;;     (perlnow-open-test-file t-file)  ;; faking an "edit-test" call
+     (perlnow-open-test-file
+        (perlnow-get-test-file-name))  ;; faking a simple "edit-test" call, without arguments
+
      (set-buffer pm-buffer)
 
      ;; "perl /home/doom/tmp/perlnow_test/dev/Osnome-Gnome/t/01-Osnome-Gnome.t"

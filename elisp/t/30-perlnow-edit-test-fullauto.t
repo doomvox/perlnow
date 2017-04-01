@@ -106,7 +106,10 @@ sub terranean {
        (move-beginning-of-line nil)
 
        ;; Do an edit-test: confirm that creates the first test file.
-       (perlnow-edit-test-file) ;; 01-Bongo-Doom-mission.t
+       ;; (perlnow-edit-test-file 1) ;; 01-Bongo-Doom-mission.t
+       ;; Faking a simple "edit-test" call, without arguments
+              (perlnow-open-test-file
+               (perlnow-get-test-file-name)) ;; 01-Bongo-Doom-mission.t
 
        (setq first-t-file (buffer-file-name))
 
@@ -139,7 +142,10 @@ sub terranean {
              (call-process-shell-command cmd)
              ))
 
-         (perlnow-edit-test-file) ;; 28-Bongo-Doom-mission.t
+;;         (perlnow-edit-test-file 1) ;; 28-Bongo-Doom-mission.t
+         ;; Faking a simple "edit-test" call, without arguments
+              (perlnow-open-test-file
+               (perlnow-get-test-file-name)) ;; 28-Bongo-Doom-mission.t
 
          (setq t-file (buffer-file-name))
 

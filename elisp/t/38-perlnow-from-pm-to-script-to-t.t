@@ -153,7 +153,9 @@
      ;; Create a test for the script, using "edit-test":
      (set-buffer script-buffer)   ;; TODO right around here, bombs when stepping through with edebug
                                   ;;      Q: would switch-buffer be better?
-     (perlnow-edit-test-file)
+     ;; Faking a simple "edit-test" call, without arguments
+              (perlnow-open-test-file
+               (perlnow-get-test-file-name))
 
      (setq t-buffer (current-buffer))
      (setq t-file-name (buffer-file-name))

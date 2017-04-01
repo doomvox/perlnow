@@ -119,7 +119,7 @@ sub stitute {
        (search-forward "sub mission")
        (move-beginning-of-line nil)
 
-       ;; Do an edit-test: confirm that creates the first test file.
+       ;; Do a create-test: confirm that creates the first test file.
        (perlnow-test-create) ;; 01-Doom-Bongos-mission.t
 
        (setq first-t-file (buffer-file-name))
@@ -139,7 +139,7 @@ sub stitute {
        ;; move to a known point in the buffer near the second sub
        (search-forward "=item terranean")
 
-       ;; Do an edit-test: confirm that creates the test file.
+       ;; Do an create-test: confirm that creates the test file.
        (perlnow-test-create) ;; 02-Doom-Bongos-terranean.t
 
        (setq second-t-file (buffer-file-name))

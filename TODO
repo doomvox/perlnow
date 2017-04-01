@@ -404,6 +404,11 @@ A fix might be to re-envision it as an "associated test" feature.
    script  <--> script.t
 
 
+  (( Could you spy on such association networks to find
+     clusters of files associated with a project?
+
+     Might add new types of associations... ))
+
 
 ===
 
@@ -497,35 +502,65 @@ default to being inside the tree, in the right place, maybe:
     perlnow-search-through-test-path called.
     setq: Args out of range: "notes-nxhtml", 13, 12
 
-===
 
-BUG               Thu Jan  7 23:06:26 2010
-                 ((  Reproduced: Sun  January 22, 2017  15:46 ))
-                 ((  And again:  Wed  March 29, 2017  18:39 ))
+As of 2017:
 
-With a weird set-up, trying to manually set a run-string can
-fail with a no such file or directory, because of an attempt
-at setting up an intelligent default:  trap big problems
-like this, and just go with *no* default:
+From this file, sees:
+
+               file-location:  /home/doom/End/Cave/Perlnow/lib/perlnow/
+
+perlnow-test-create:
+
+  Calling perlnow-new-test-file-name
+  Calling perlnow-next-test-prefix
+  let*: Wrong type argument: stringp, nil
+
+perlnow-edit-test-file:
+
+* Calling perlnow-edit-test-file
+* Calling perlnow-get-test-file-name
+Calling perlnow-cpan-style-code-p
+Calling perlnow-find-cpan-style-staging-area
+perlnow-find-cpan-style-staging-area return: nil
+Calling perlnow-module-code-p
+Calling perlnow-get-package-name-from-module-buffer
+Calling perlnow-script-p
+Calling perlnow-perl-mode-p
+Calling perlnow-get-test-file-name-script
+Calling perlnow-test-from-policy
+* perlnow-test-from-policy w/ ../t fileloc fullauto
+Calling perlnow-get-package-name-from-module-buffer
+Calling perlnow-find-cpan-style-staging-area
+perlnow-find-cpan-style-staging-area return: nil
+package-name: nil
+Calling perlnow-testloc-from-policy testloc: "../t" dotdef: "fileloc" namestyle: "fullauto"
+Calling perlnow-find-cpan-style-staging-area
+perlnow-find-cpan-style-staging-area return: nil
+Calling perlnow-get-package-name-from-module-buffer
+Calling perlnow-script-p
+Calling perlnow-perl-mode-p
+Calling perlnow-ensure-directory-exists
+not: Wrong type argument: stringp, nil
 
 
-Issue with an unusual additional "lib" inside of the "t" location:
+This gets into the general issues I struggle with:
+Having text files about your code project under development is an obvious thing
+to want.  (These might be thought of as documentation, but they
+aren't necessarily.)  There's no standard place to put such
+things.... if you're in a text file, related to a code project,
+can perlnow *possibly* figure out where the related code is?
 
-Down in here:
-         ~/End/Cave/TextCap/Wall/Cpan/Text-Capitalize/t/lib/Test/Locale/Utils.pm
-Doing a  C-c / R
+Concievably, you could fall back to looking at a "recent-pick"...
+Or just doing something that works for cpan projects given a
+newly invented "labnotes" directory.  Or works for me in the Cave....
 
-Messages:
+  I actually kind of like the labnotes idea.
+  Might be better not to ship your notes, though:
+  chilling effect.
 
-perlnow-list-test-files, looking at buffer: Utils.pm
-warning /home/doom/End/Cave/TextCap/Wall/Cpan/Text-Capitalize/t/t/ is not a directory
-setq: Opening directory: no such file or directory, /home/doom/End/Cave/TextCap/Wall/Cpan/Text-Capitalize/t/t/
+  So, "labnotes" is up above the staging areas,
+  and has a parallel set of those names there.
 
-What I want to do is *set* the run-string.
-I know it's doing this crap to set-up an intelligent
-default, but it's not failing gracefully.
-
-  (( trapping the problems and going with no default would be better ))
 
 ===
 
@@ -715,16 +750,6 @@ versions, then make them the live "standard" ones.
 
 ===
 
-TODO
-                                           Thu Dec 22 08:49:30 2011
-The word is Distzilla.  Understand why.
-
-(( Sun  January 22, 2017  15:01
-   I'm thinking milla and MBT, these days...
-))
-
-===
-
 BUG
 
 If a script begins with a flag like this:
@@ -755,13 +780,6 @@ use y/n questions rather than yes/no.
 Sat  July 16, 2016  15:16
 My request: get everything working smoothly.
 
-Be a little less stupid about smartly searching for *.t files,
-for example.  (( Big problem was a bad heuristic for identifying
-cpan-style projects.  Fixed: Version 0.5, Jan 2017. ))
-
-If something is changed accidentally, make it easier to
-restore it... e.g. a history to M-p back through.
-(( Added one for run strings: version 0.5, Jan 2017. ))
 
 Maybe: more menu of options buffers...
 
