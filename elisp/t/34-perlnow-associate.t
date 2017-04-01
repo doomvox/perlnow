@@ -69,13 +69,11 @@
      (find-file t-file)
      (setq t-asscode perlnow-associated-code)
      ;; check that pm-asscode is t-file
-     (assert-t
-      (string= pm-asscode t-file)
+     (assert-equal t-file pm-asscode
       (concat test-name ": pm has association with t") )
 
      ;; check that t-asscode is pm-file
-     (assert-t
-      (string= t-asscode pm-file)
+     (assert-equal pm-file t-asscode
       (concat test-name ": t has association with pm") )
      )
 
@@ -118,11 +116,11 @@
      (find-file t-file)
      (setq t-asscode perlnow-associated-code)
      ;; check that pm-asscode is t-file
-     (assert-equal pm-asscode t-file
+     (assert-equal t-file pm-asscode
                    (concat test-name ": pm has association with t") )
 
      ;; check that t-asscode is pm-file
-     (assert-equal t-asscode pm-file
+     (assert-equal pm-file t-asscode
                    (concat test-name ": t has association with pm"))
      )
 

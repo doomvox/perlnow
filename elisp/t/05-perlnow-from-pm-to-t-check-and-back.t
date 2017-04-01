@@ -21,7 +21,7 @@
    ;; project-specific include file (with standard name)
     (if (file-exists-p "test-init.el")
         (load-file "test-init.el"))
-
+    (perlnow-tron)
    (let* (
           (test-loc (test-init))
           (funcname "perlnow-module-starter")
@@ -39,6 +39,7 @@
           (expected-t
            (concat
             (file-name-as-directory (concat staging-area "t")) "01-Lost-In-Test.t"))
+          pm-buffer
           )
      (test-init-safe-recursive-delete staging-area)
 
@@ -67,8 +68,18 @@
               ;; /home/doom/tmp/perlnow_test/lib/Lost-In-Test/
               ;;    lib/Lost/In/Test.pm
               (find-file expected-pm-file)
+              (setq pm-buffer (current-buffer))
+
 ;;              (perlnow-edit-test-file)     ;; TODO this brings up the select menu buffer!  WTF?
-              (perlnow-edit-test-file nil)     ;; TODO how about this?
+;;              (perlnow-edit-test-file nil)     ;; TODO how about this?  Just saw same behavior in edebug-- Fri  March 31, 2017  14:49
+              (perlnow-edit-test-file)
+
+;;               ;; DEBUGING coping out on interactive issue, forcing the t-file open
+;;               (cond ((perlnow-test-select-menu-p)
+;;                      (switch-to-buffer pm-buffer)
+;;                      (perlnow-edit-test-file expected-t)  ;; this brings up select test menu too!
+;;                       ))
+
               (if perlnow-debug
                   (message "TRALALA: the t I hope: %s" (pp-to-string (buffer-file-name))))
               (setq t-found-p
@@ -125,7 +136,8 @@
               ;;    lib/Lost/In/Test.pm
               (find-file expected-pm-file)
 ;;              (perlnow-edit-test-file)   ;; TODO can be select menu buffer, but not always?
-              (perlnow-edit-test-file nil)     ;; TODO experimental.  Okay?
+;;              (perlnow-edit-test-file nil)     ;; TODO experimental.  Okay?
+              (perlnow-edit-test-file)
               (perlnow-back-to-code)     ;; ... but if so this still works.
               ;; Now, we should be back in the original pm file.
               (setq back-worked-p

@@ -1156,8 +1156,7 @@ See \\[perlnow-associate-last-with-current].")
 ;;;==========================================================
 ;;; set-up functions
 
-;; This version is more DRY, at the expense of some hackery with
-;; eval-read in mode hooks.
+;; This version is DRYer, via some hackery with eval-read in mode hooks.
 (defun perlnow-define-standard-keymappings ( &optional prefix )
   "Quickly define some recommended keymappings for perlnow
 functions.  By default, perlnow.el makes no changes to the user's
@@ -1318,11 +1317,13 @@ and works with the `perlnow-run-string-harder' variable."
     (cond
      (module-p
       (setq run-string
+            ;; funky "or"
             (cond (perlnow-module-run-string)
                   (t
                    (perlnow-guess-run-string harder-setting)))))
       (t  ;;  assume it's a script since it's not a module.
        (setq run-string
+             ;; funky "or"
              (cond (perlnow-script-run-string)
                    (t
                     (perlnow-guess-run-string harder-setting)
@@ -2193,9 +2194,9 @@ e.g. run all tests rather than just one."
                             (perlnow-list-test-files
                              perlnow-test-policy-test-location-cpan  ;; "../t"
                              perlnow-test-policy-dot-definition-cpan ;; "incspot"
-                             perlnow-test-policy-naming-style-cpan   ;; "fullauto", was "numeric"
+                             perlnow-test-policy-naming-style-cpan   ;; "fullauto"
                              t  ;; return fullpath
-                             t  ;; recurse ;; TODO EXPERIMENTAL this one is dicey.
+                             t  ;; recurse
                              ))))
                     )
                    (t ; non-cpan-style
@@ -2208,6 +2209,8 @@ e.g. run all tests rather than just one."
                     ))
              ))) ;; end "standard run" cases
           )
+    (if perlnow-trace
+        (message "   Returning from 'guess'"))
     run-string))
 
 (defun perlnow-cpan-style-test-run-string (staging-area)
@@ -2581,28 +2584,55 @@ both locations. Note: expects that THERE will be an existing file.
 Opens the file, if not open already. Both arguments should be full paths."
   (if perlnow-trace (perlnow-message "Calling perlnow-set-associated-code-pointers"))
   (let* ((initial (current-buffer))
-         (here (or here (buffer-file-name)))
-         )
-    (unless (file-exists-p there)
-      (error (concat "perlnow-set-associated-code-pointers "
-                     "needs THERE to be path to existing file: "
-                     (pp-to-string there)
-                     )))
-    (unless (file-exists-p here)
-      (error (concat "perlnow-set-associated-code-pointers "
-                     "needs HERE to be path to existing file: "
-                     (pp-to-string here)
-                     )))
-    (find-file here)
-    (setq perlnow-associated-code
-          (convert-standard-filename there) )
-
-    (find-file there)
-    (setq perlnow-associated-code
-          (convert-standard-filename here) )
-
+         (here    (or here (buffer-file-name)))
+         retval )
+    (cond (perlnow-debug
+           (message "a merrily asscoding we go...")
+           (message "here: %s"  (pp-to-string here))
+           (message "there: %s" (pp-to-string there))))
+    (setq
+     retval
+     ;; here and there have to be full paths to files
+     (cond ((not (and
+                  there
+                  here
+                  (file-exists-p there)
+                  (file-exists-p here)))
+            (cond ((not (and there (stringp there)))
+                   (message
+                    (concat
+                     "perlnow-set-associated-code-pointers: "
+                     "'THERE' not a string, how can it be be a full file path?")) )
+                  ((not (and there
+                             (file-exists-p there)))
+                   (message
+                    (concat "perlnow-set-associated-code-pointers: "
+                            "needs THERE to be path to existing file: "
+                            (pp-to-string there)))) )
+            (cond ((not (and here (stringp here)))
+                   (message
+                    (concat
+                     "perlnow-set-associated-code-pointers: "
+                     "'HERE' not a string, how can it be be a full file path?")) )
+                  ((not (and here
+                             (file-exists-p here)))
+                   (message
+                    (concat "perlnow-set-associated-code-pointers "
+                            "needs HERE to be path to existing file: "
+                            (pp-to-string here)))))
+            nil)
+           (t ;; valid arguments, so do it
+            (find-file here)
+            (setq perlnow-associated-code
+                  (convert-standard-filename there) )
+            (find-file there)
+            (setq perlnow-associated-code
+                  (convert-standard-filename here))
+            )))
     (switch-to-buffer initial)
-    ))
+    (if perlnow-trace
+        (message "   Returning from 'set-associated-code-pointers'"))
+    retval))
 
 (defun perlnow-generate-run-string-and-associate (program-file)
   "Generates a direct run-string for the perl PROGRAM-FILE.
@@ -2619,20 +2649,19 @@ given PROGRAM-FILE with the current buffer's file."
 ;; TODO verify that program-file is code? (perlnow-perl-code-p file)
 (defun perlnow-generate-run-string (program-file)
   "Generates a direct run-string for the perl PROGRAM-FILE.
-This is used internally by routines such as \\[perlnow-guess-run-string]."
+This is used internally by routines such as \\[perlnow-guess-run-string].
+If PROGRAM-FILE is nil or empty-string, this returns an empty-string."
   (if perlnow-trace (perlnow-message "Calling perlnow-generate-run-string"))
-  ;; TODO hack
-  (unless program-file
-          (setq program-file ""))
-  ;; a centralized place to apply shell quoting, etc.
-  ;; TODO docs for combine-and-quote-strings say it's not for shell quoting
+  (unless program-file (setq program-file ""))
   (let* ((perl-command (perlnow-how-to-perl))
-         (runstring ""))
-    ;; Can't run perl-command through quote, handles "perl -T" wrong.
-    (setq runstring
-          (concat perl-command " "
-                  (combine-and-quote-strings
-                   (list program-file))))
+         runstring)
+    ;; If we've got a pf it'S just "perl pf", if not it's just "" *not* "perl ".
+    (cond ((and program-file (not (string= program-file "")))
+           (setq runstring
+                 (concat perl-command " " ;; can't quote perl-command, handles "perl -T" wrong.
+                         (shell-quote-argument program-file))))
+          (t
+           (setq runstring "")))
     runstring))
 
 
@@ -3941,6 +3970,8 @@ Relative locations are resolved by pre-pending the default-directory."
                 (t
                  (perlnow-fixdir (concat location slash "..")))
                 ))
+    (if perlnow-trace
+        (message "   Returning from 'oneup'"))
     location))
 
 (defun perlnow-expand-dots-relative-to (dot_means given_path)
@@ -3968,6 +3999,8 @@ like: \"/home/doom/tmp/../bin\"."
     (setq newpath
           (replace-regexp-in-string one-dot-pat dot_means newpath))
     (setq newpath (perlnow-fixdir newpath))
+    (if perlnow-trace
+        (message "   Returning from 'expand'"))
     newpath))
 
 ;;;==========================================================
@@ -4464,68 +4497,70 @@ RECURSE-OPT implies FULLPATH-OPT.
 " ;; TODO why not just remove the fullpath-opt?  I always want full paths.
   (if perlnow-trace (perlnow-message "Calling perlnow-list-test-files"))
   ;;;; Note, code mutated from above: perlnow-test-from-policy
-  (message "perlnow-list-test-files, looking at buffer: %s" (buffer-name))
-  (let* (
-         (full-file (buffer-file-name))
+  (if perlnow-debug
+      (message "  perlnow-list-test-files: looking at buffer: %s" (buffer-name)))
+  (let* ((full-file (buffer-file-name))
          (file-path
-           (file-name-directory full-file))
+          (file-name-directory full-file))
          package-name   incspot   testloc-absolute
-         test-file-list
-
-         )
-    (unless file-path ;; TODO but what about test select menu?  Or even, dired?
-      (error "perlnow-list-test-files: buffer has no associated file, giving up."))
-
-    ;; check whether current-buffer is perl code?
-    ;;    perlnow-find-cpan-style-staging-area
-    ;;    perlnow-script-p
-    ;;    perlnow-test-p
-    ;;    perlnow-test-select-menu-p
-
-    (cond (;; is module
-           (setq package-name (perlnow-get-package-name-from-module-buffer))
-           (setq incspot (perlnow-get-incspot package-name file-path))
-;;            (setq hyphenized-package-name
-;;                  (mapconcat 'identity (split-string package-name "::") "-"))
-           )
-          ((perlnow-test-p)
-           (setq incspot (perlnow-incspot-from-t full-file))
-           )
-;;      (t ;; handle non-module, non-test cases,
-;;       )
-     )
-
-    (if perlnow-debug
-        (message "perlnow-list-test-files: file-path: %s testloc: %s " file-path testloc ))
-
-    (setq testloc-absolute
-          (perlnow-fixdir
-           (cond ((string= dotdef "fileloc") ;; may be for script or module
-                   (perlnow-expand-dots-relative-to file-path testloc))
-                 ((string= dotdef "incspot") ;; only defined with modules
-                  (cond (incspot
-                         (perlnow-expand-dots-relative-to incspot testloc))
-                        (t
-                         (error (format "Could not determine incspot for file: %s" file-path))
-                         ))
+         test-file-list   )
+    (cond (file-path
+           ;; handle other cases?
+           ;;    perlnow-find-cpan-style-staging-area
+           ;;    perlnow-script-p
+           ;;    perlnow-test-select-menu-p
+           (cond (;; is module
+                  (setq package-name (perlnow-get-package-name-from-module-buffer))
+                  (setq incspot (perlnow-get-incspot package-name file-path))
                   )
-                 (t
-                  (error (concat
-                          "Invalid perlnow-test-policy-dot-definition, "
-                          "should be fileloc or incspot"))))))
+                 ((perlnow-test-p)
+                  (setq incspot (perlnow-incspot-from-t full-file))
+                  )
+                 ;;      (t ;; handle non-module, non-test cases,
+                 ;;       )
+                 )
+           (if perlnow-debug
+               (message "perlnow-list-test-files: file-path: %s testloc: %s " file-path testloc ))
 
-    (unless (file-directory-p testloc-absolute)
-      (message "warning %s is not a directory" testloc-absolute))
+           (setq testloc-absolute
+                 (perlnow-fixdir
+                  (cond ((string= dotdef "fileloc") ;; may be for script or module
+                         (perlnow-expand-dots-relative-to file-path testloc))
+                        ((string= dotdef "incspot") ;; only defined with modules
+                         (cond (incspot
+                                (perlnow-expand-dots-relative-to incspot testloc))
+                               (t
+                                (error (format "Could not determine incspot for file: %s" file-path))
+                                ))
+                         )
+                        (t
+                         (error (concat
+                                 "Invalid perlnow-test-policy-dot-definition, "
+                                 "should be fileloc or incspot"))))))
 
-    (let* ((test-file-pat "\\\.t$"))
-      (setq test-file-list
-            (cond (recurse-opt
-                   (directory-files-recursively testloc-absolute test-file-pat)
-                   )
-                  (t
-                   (directory-files testloc-absolute fullpath-opt test-file-pat)
-                   ))))
+           (unless (file-directory-p testloc-absolute)
+             (message "warning %s is not a directory" testloc-absolute))
 
+           (cond ((file-directory-p testloc-absolute) ;; if loc is there, get the files there
+                  (let* ((test-file-pat "\\\.t$"))
+                    (setq test-file-list
+                          (cond (recurse-opt
+                                 (directory-files-recursively testloc-absolute test-file-pat)
+                                 )
+                                (t
+                                 (directory-files testloc-absolute fullpath-opt test-file-pat)
+                                 )))))
+                 (t ;; if dir not there, we won't find anything will we?
+                  (message "warning %s is not a directory" testloc-absolute)
+                  (setq test-file-list ())
+                  ))
+           )
+          (t ;; TODO but what about test select menu?  Or even, dired?
+           (message "perlnow-list-test-files: buffer has no associated file, returning empty list.")
+           (setq test-file-list ())
+           ))
+    (if perlnow-trace
+        (message "   Returning from 'list-test-files'"))
     test-file-list))
 
 ;; Adding "harder" awareness to:  perlnow-edit-test-file
@@ -4917,8 +4952,11 @@ By latest, we mean the one that's most recently modified,
 on the theory that that's the one you're likely to want to
 work on again."
   (if perlnow-trace (perlnow-message "Calling perlnow-latest-test-file"))
-  (perlnow-most-recently-modified-file test-file-list)
-  )
+  (let ((latest
+         (perlnow-most-recently-modified-file test-file-list)) )
+    (if perlnow-trace
+        (message "   Returning from 'latest-test-file'"))
+    latest))
 
 ;;--------
 ;; getting the most recently modified file
@@ -4932,8 +4970,7 @@ work on again."
          ( mtime-low  (nth 1 mtime-pair))
          ( mtime      (+ (* 65536 mtime-high) mtime-low))
          )
-    mtime
-    ))
+    mtime))
 
 (defun perlnow-file-mtime-p (a b)
   "A \"predicate\" to sort files in order of decreasing age."
@@ -4943,15 +4980,19 @@ work on again."
 (defun perlnow-sort-file-list-by-mtime (list)
   "Given the LIST of file names, sorts it by mtime."
   (if perlnow-trace (perlnow-message "Calling perlnow-sort-file-list-by-mtime"))
-  (let* ( (sorted-list (sort list 'perlnow-file-mtime-p))
-          )
+  (let* ((sorted-list (sort list 'perlnow-file-mtime-p)) )
+    (if perlnow-trace
+        (message "   Returning from 'sort-file-list-by-mtime'"))
     sorted-list))
 
 (defun perlnow-most-recently-modified-file (list)
   "Get the most recently modified file, given a LIST of files."
   (if perlnow-trace (perlnow-message "Calling perlnow-most-recently-modified-file"))
-  (car (perlnow-sort-file-list-by-mtime list)))
-
+  (let ((most-recent
+         (car (perlnow-sort-file-list-by-mtime list))))
+    (if perlnow-trace
+        (message "   Returning from 'most-recently-modified-file'"))
+    most-recent))
 
 ;; An older approach (circa 0.4), not currently in use
 (defun perlnow-latest-test-file-numeric-prefix (test-file-list)
@@ -4966,8 +5007,7 @@ numeric sort-order prefix."
           (new-list (sort new-list 'string<))
           (last-item (car (last new-list)))
           )
-    last-item
-    ))
+    last-item))
 
 ;;--------
 ;;

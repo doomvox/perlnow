@@ -52,11 +52,10 @@
           ;; pm: /home/doom/tmp/perlnow_test/dev/Osnome-Gnome/lib/Osnome/Gnome.pm
           (staging-area
            (perlnow-staging-area perlnow-dev-location package-name))
-
-          (exp-pm-base "Gnome.pm")
+          (exp-pm-base "Gnome")
           (exp-pm-file
            (concat staging-area "lib"
-                   perlnow-slash "Osnome" perlnow-slash exp-pm-base))
+                   perlnow-slash "Osnome" perlnow-slash exp-pm-base ".pm"))
 
           ;; pl: /home/doom/tmp/perlnow_test/dev/Osnome-Gnome/bin/diamondjock.pl
           (script-name "diamondjock.pl")
