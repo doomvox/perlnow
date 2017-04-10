@@ -2735,8 +2735,8 @@ two element list, dev-location and package-name."
     (while (file-exists-p staging-area)  ; really, directory exists
       (setq where-and-what  ; that's a list: (dev-location package-name)
             (call-interactively 'perlnow-prompt-for-cpan-style-again))
-      (setq where (car where-and-what))
-      (setq what (cadr where-and-what))
+      (setq where (car  where-and-what))
+      (setq what  (cadr where-and-what))
       (setq staging-area (perlnow-staging-area where what))
       )
     (list where what)))
@@ -5991,41 +5991,44 @@ This 'ask' behavior will be suppressed when `perlnow-quiet' is set."
 
 (defun perlnow-remove-line-from-file-regexp (file-name regexp)
   "Remove line from file FILE-NAME if it matches REGEXP."
-  (save-excursion
-    (find-file file-name)
-    (goto-char (point-min))
-    (cond ((re-search-forward regexp nil t)
-           (move-beginning-of-line 1)
-           (kill-line)
-           (delete-blank-lines)
-           (save-buffer)
-           ))
-    (switch-to-buffer initial-buffer) ;; don't trust no save-excursion
-    ))
+  (let ((initial-buffer (current-buffer)) )
+    (save-excursion
+      (find-file file-name)
+      (goto-char (point-min))
+      (cond ((re-search-forward regexp nil t)
+             (move-beginning-of-line 1)
+             (kill-line)
+             (delete-blank-lines)
+             (save-buffer)
+             ))
+      (switch-to-buffer initial-buffer) ;; don't trust no save-excursion
+      )))
 
 (defun perlnow-add-to-file (line file-name &optional regexp)
   "Add a LINE to FILE-NAME.
 If REGEXP is given, will try to add line just before line that
 matches given REGEXP.  Defaults to appending at end of file."
-  (save-excursion
-    (find-file file-name)
-    (goto-char (point-min))
-    ;; try to find match for before-spot
-    (cond ((re-search-forward regexp nil t)
-           (move-beginning-of-line 1)
-           (previous-line 1))
-          (t
-           (goto-char (point-max))
-           ))
-    ;; chomp any trailing newline (avoid adding one redundantly)
-    (setq line
-          (replace-regexp-in-string (concat "\n$") "" line))
-    (move-end-of-line 1)
-    (forward-char 1)
-    (open-line 1) ;; effectively, adds a "\n"
-    (insert line)
-    (save-buffer)
-    (switch-to-buffer initial-buffer) ;; don't trust no save-excursion
+  (let ((initial-buffer (current-buffer)) )
+    (save-excursion
+      (find-file file-name)
+      (goto-char (point-min))
+      ;; try to find match for before-spot
+      (cond ((re-search-forward regexp nil t)
+             (move-beginning-of-line 1)
+             (previous-line 1))
+            (t
+             (goto-char (point-max))
+             ))
+      ;; chomp any trailing newline (avoid adding one redundantly)
+      (setq line
+            (replace-regexp-in-string (concat "\n$") "" line))
+      (forward-line 1)
+      (move-beginning-of-line 1)
+      (open-line 1) ;; effectively, adds a "\n"
+      (insert line)
+      (save-buffer)
+      (switch-to-buffer initial-buffer) ;; don't trust no save-excursion
+      )
     ))
 
 ;; TODO use directory-files-recursively
