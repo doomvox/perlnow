@@ -1,5 +1,5 @@
 #!/usr/local/bin/emacs --script
-;; /usr/bin/emacs
+;; #! /usr/bin/emacs --script
 ;; 08-perlnow-script-from-cpan-style-module.t
 
 ;; Test story:

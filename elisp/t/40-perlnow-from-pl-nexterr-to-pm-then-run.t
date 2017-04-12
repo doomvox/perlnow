@@ -1,5 +1,5 @@
 #!/usr/local/bin/emacs --script
-;; /usr/bin/emacs
+;; #! /usr/bin/emacs --script
 
 ;; 40-perlnow-from-pl-nexterr-to-pm-then-run.t
 

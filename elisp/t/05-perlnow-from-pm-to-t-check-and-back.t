@@ -1,5 +1,5 @@
 #!/usr/local/bin/emacs --script
-;; /usr/bin/emacs
+;; #! /usr/bin/emacs --script
 ;;; 05-perlnow-from-pm-to-t-check-and-back.t
 
 ;; The test story:

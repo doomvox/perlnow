@@ -1,5 +1,5 @@
 #!/usr/local/bin/emacs --script
-;; /usr/bin/emacs
+;; #! /usr/bin/emacs --script
 ;; 42-perlnow-weird-lib-inside-t-loc.t
 
 ;; Test story:

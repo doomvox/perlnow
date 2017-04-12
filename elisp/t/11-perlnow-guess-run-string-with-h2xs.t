@@ -1,5 +1,5 @@
 #!/usr/local/bin/emacs --script
-;; /usr/bin/emacs
+;; #! /usr/bin/emacs --script
 ;; 11-perlnow-guess-run-string-with-h2xs.t
 
 ;; Test story:

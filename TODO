@@ -4,6 +4,12 @@
 
 Master list of known bugs and feature requests
 
+Using this as the working location (April 2017):
+
+  /home/doom/End/Cave/Perlnow/Notes/summary-TODO-consolidated
+
+Import anything left-over there to here.
+
 ===
 FEATURE
 Doing a perlnow code creation command while inside a dired buffer
@@ -59,6 +65,8 @@ sub awareness
   o move sub (both code and pod, if any, adjacent or not).
        i.e. "refactoring" tools.
   o display current sub in status bar.
+     (( There's a new elisp package that does that, no? April 09, 2017  ))
+
 
                                      Thu Apr 15 12:49:52 2010
   Maybe: come up with a style of two-window display for subs.
@@ -91,10 +99,6 @@ Beyond etags: better indexing of perl code.  Swish-E?  A distro feature?
 Maybe use B:* modules to report on all subs: definitions *and* where called
    B::Xref - Generates cross reference reports for Perl programs
 Note: look into glimpse and "glimpse-mode" (Tom Lane likes glimpse).
-
-                                       Thu Apr 15 12:52:29 2010
-(1) perlnow-ack is an excellent stop-gap for this kind of thing.
-(2) need to review what other people have got (sepia, etc).
 
 ===
 
@@ -803,45 +807,12 @@ that reference the file?  Or a .perlnow stash on disk?
 
 TODO         2017JAN
 FEATURE
-FOR REAL: NEED THIS
 
-o  when you save a *.pm, if needed the inkspot should
-   be temporarily (?) added to the version of PERL5LIB
-   that emacs sees-- from within emacs, you should always
-   be able to run the code you're working on.
-
-
-There are two envars it's hard to get away with needing to mess
-with during development:  PATH and PERL5LIB.
-
-perlnow should, on the fly, effectively change these to work with
-the code under development *from the point of view of emacs*,
-without actually munging the settings in .bashrc.
-
-emacs can change it's own envar values, correct?
-  (setenv "VAR" "value")
+Consider: When you save a script, automatically adjust the PATH
+envar to find it.  Less important than the (already done)
+PERL5LIB adjustments, but an analogus bashrc include could be useful.
 
 There may be emacs vars like exec-path that need to be adjusted also.
-
-
-   Every time you save a *.pm file, it should
-   identify the inkspot, make sure it's in INC,
-   and if not add it to (effective) PERL5LIB.
-
-   Q: potential confusion: "this ran inside emacs,
-      why not in the shell?"
-
-   Q: this worked in emacs a minute ago, why not now?
-      (you edited a *.pm file, so now it sees the dev
-      version, not the installed one).
-
-   Ditto on a perl script (either .pl or .t, or a
-   c?perl-mode buffer without *.pm), but then it should mess
-   the PATH and exec-path, not PERL5LIB.
-
-   Add a feature to edit both of these directly.
-
-   Also features to make changes permanent, i.e. save to .bashrc?
 
 ===
 

@@ -1,5 +1,5 @@
 #!/usr/local/bin/emacs --script
-;; /usr/bin/emacs
+;; #! /usr/bin/emacs --script
 ;; 24-perlnow-next-test-prefix.t
 
 ;; The test story:

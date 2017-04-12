@@ -1,5 +1,5 @@
 #!/usr/local/bin/emacs --script
-;; /usr/bin/emacs
+;; #! /usr/bin/emacs --script
 ;; 31-perlnow-edit-test-fullauto-match-on-sub.t
 
 ;; The test story:

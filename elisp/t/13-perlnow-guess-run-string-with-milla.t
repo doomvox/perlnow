@@ -1,5 +1,5 @@
 #!/usr/local/bin/emacs --script
-;; /usr/bin/emacs
+;; #! /usr/bin/emacs --script
 ;; 13-perlnow-guess-run-string-with-milla.t
 
 ;; Test story:

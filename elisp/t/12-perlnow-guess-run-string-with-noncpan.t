@@ -1,5 +1,5 @@
 #!/usr/local/bin/emacs --script
-;; /usr/bin/emacs
+;; #! /usr/bin/emacs --script
 ;; 12-perlnow-guess-run-string-with-noncpan.t
 
 ;; Test story:

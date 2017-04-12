@@ -1,5 +1,5 @@
 #!/usr/local/bin/emacs --script
-;; /usr/bin/emacs
+;; #! /usr/bin/emacs --script
 ;; /home/doom/End/Cave/Perlnow/lib/perlnow/elisp/t/34-perlnow-associate.t
 
 ;; The test story:

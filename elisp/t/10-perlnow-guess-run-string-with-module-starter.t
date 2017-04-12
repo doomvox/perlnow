@@ -1,5 +1,5 @@
 #!/usr/local/bin/emacs --script
-;; /usr/bin/emacs
+;; #! /usr/bin/emacs --script
 ;; 10-perlnow-guess-run-string-with-module-starter.t
 
 ;; Test story:

@@ -1,5 +1,5 @@
 #!/usr/local/bin/emacs --script
-;; Or: /usr/bin/emacs
+;; #! /usr/bin/emacs --script
 
 ;;; perlnow-test.t ---
 

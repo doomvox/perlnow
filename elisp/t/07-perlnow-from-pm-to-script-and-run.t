@@ -1,5 +1,5 @@
 #!/usr/local/bin/emacs --script
-;; /usr/bin/emacs
+;; #! /usr/bin/emacs --script
 ;; 07-perlnow-from-pm-to-script-and-run.t
 
 ;; A test story for you:

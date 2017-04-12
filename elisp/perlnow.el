@@ -1797,7 +1797,7 @@ module-starter will create the \"staging area\"\) and the PACKAGE-NAME
   (interactive
    (let ((default-directory perlnow-dev-location))
      (call-interactively 'perlnow-prompt-for-cpan-style)))
-  (if perlnow-trace (perlnow-message "Calling perlnow-module-starter"))
+  (if perlnow-trace (perlnow-message "Calling perlnow-milla"))
   (setq cpan-location (perlnow-fixdir cpan-location))
 
   (unless (file-exists-p cpan-location)
@@ -2914,37 +2914,51 @@ If FILE is given, opens that first."
       retval)))
 
 (defun perlnow-test-p (&optional file)
-  "Determine if FILE looks like a perl test, defaults to current buffer.
-Does the simplest possible check: looks for a *.t extension on file name."
-;; TODO might also look for a 'use Test::' line
-;;    (use-test-pattern "\\b\\(require\\|use\\)[ \t]+Test::\\b")
+  "Determine if FILE looks like a perl test, defaulting to the current buffer.
+Looks for a *.t extension on file name, then looks for a 'use Test::' line."
   (if perlnow-trace (perlnow-message "Calling perlnow-script-p"))
-  (unless file
-    (setq file (buffer-file-name)))
-  (let* ((retval  nil))
-    (if file
-        (if (string-match "\\\.t$" file)
-            (setq retval t)
-            ))
+  (let* ((retval  nil)
+         (use-test-pattern "\\b\\(require\\|use\\)[ \t]+Test::\\b")
+         (initial-buffer (current-buffer))
+         (initial-point  (point))
+         )
+    (save-excursion
+      (cond((not file)
+            (setq file (buffer-file-name)))
+           (t
+            (find-file file)))
+
+      (cond ((and file (string-match "\\\.t$" file))
+             (goto-char (point-min))
+             (if (re-search-forward use-test-pattern nil t)
+                 (setq retval t))
+             ))
+      )
+    (switch-to-buffer initial-buffer)
+    (goto-char initial-point)
     retval))
 
 (defun perlnow-module-code-p (&optional file)
   "Determine if the buffer looks like a perl module.
-If given FILE, opens that first.
-This looks for the package line near the top.
-Note: it's usually more useful to just do a
-\\[perlnow-get-package-name-from-module-buffer]."
+If given FILE, opens that first.  This looks for the package line
+near the top, and checks for a file extension of \"pm\".
+Note: it's often more useful to just try to get the package
+name directly: \\[perlnow-get-package-name-from-module-buffer]."
   (if perlnow-trace (perlnow-message "Calling perlnow-module-code-p"))
-  (let ((initial-buffer (current-buffer)) )
-    (cond (file
-           (find-file file))
-          (t
-           (setq file (buffer-file-name))
-           ))
-    (let ((package-name (perlnow-get-package-name-from-module-buffer))
-          )
+  (let* ((initial-buffer (current-buffer))
+         ext  package-name
+         )
+      (cond (file (find-file file)
+             )
+            (t
+             (setq file (buffer-file-name))
+             ))
+      (if file
+          (setq ext (file-name-extension file)))
+      (if (string= ext "pm")
+          (setq package-name (perlnow-get-package-name-from-module-buffer)))
       (switch-to-buffer initial-buffer)
-      package-name)))
+      package-name))
 
 (defun perlnow-exporter-code-p (&optional file)
   "Return t if the current buffer looks like an Exporter-based module.
@@ -3129,6 +3143,8 @@ Checks for non-nil and non-empty string and non-zero."
 ;;          (filename         (nth 8  md))
 ;;          (fileloc          (nth 9  md))
 ;;          (basename         (nth 10 md))
+;;          (context          (nth 10 md))
+;;          (sub-name         (nth 11 md))
 ;;          )
 ;;     ;; ...
 ;;     ))
@@ -3136,19 +3152,24 @@ Checks for non-nil and non-empty string and non-zero."
 ;; TODO
 ;; At present, this is just used by perlnow-test-create and
 ;; perlnow-test-create-manually.  Refactor to use more widely?
-;; TODO add support for script file and test file buffers
 (defun perlnow-metadata (&optional file-name)
   "Tries to give you \"metadata\" for the relevant perl code.
-That is to say, it tries to tell you what you want to know,
-given your present context: the default is typically to
-report on the present buffer.  If you're looking at a
-\"*select test file*\" buffer, it tries to tell you something
-about the module it figures you're testing.
-If given a FILE-NAME, it will do a find-file on
-that first, though it restores the original buffer display afterwards.
-The central idea here is to centralize some tasks that frequently
-need to be performed by perlnow functions.
-This returns the metadata as an ordered list.
+Based on your present context (as inferred from the current buffer,
+of the FILE-NAME if given), it determines various pieces of
+information often needed by different perlnow functions.
+
+If a module file is open, it tells information about that module,
+if a test file is open, it tells you about the test file, but
+also tries to determine the module being tested by the code, and
+provides some information about that.  The case of a script
+file is similar to that of the test file \(thought at present,
+not as well supported\).
+
+If a \"*select test file*\" buffer, it again tries to tell you
+something about the module it figures you're testing, making
+inferences based on the current line.
+
+The metadata is returned as an ordered list.
 
 An example of returned metadata.
 
@@ -3163,17 +3184,24 @@ An example of returned metadata.
                    file-name:  /home/doom/lib/Skank/Mama.pm
                file-location:  /home/doom/lib/Skank/
                     basename:  Mama
+                    context:   object
+                   sub-name:   clean_up
+
+Note, \"context\" is a string code which may be:
+  module object cpan script test test-select-menu unknown \(others?\)
+
 "
   (if perlnow-trace (perlnow-message "Calling perlnow-metadata"))
   (let (;; save-excursion often seems flaky, so I do this
         (initial-point (point))
         (initial-buffer (current-buffer))
 
-        testloc dotdef namestyle
+        testloc  dotdef  namestyle
         testloc-absolute
-        package-name incspot hyphenized-package-name
-        buffer file-name file-location basename
+        package-name  incspot  hyphenized-package-name
+        buffer  file-name  file-location  basename
         policy-metadata
+        context
 
         ;; TODO populate following, append to the returned list
         sub-name
@@ -3186,44 +3214,55 @@ An example of returned metadata.
         associated-module-file
         associated-module-package-name
         associated-module-hyphenized
-
         )
     (cond (file-name
            (find-file file-name)
-        ))
-    ;; first, do test policy settings (may need them here later)
+           ))
+    ;; first, do test policy settings (need later in this function)
+
+    ;; We default to a "module" test policy, and override later as appropriate
+    ;; (Note: the "overrides" are no-ops *except* for script, with it's dotdef='fileloc')
+    (setq testloc   perlnow-test-policy-test-location-module  )
+    (setq dotdef    perlnow-test-policy-dot-definition-module )
+    (setq namestyle perlnow-test-policy-naming-style-module   )
     (cond
           ((perlnow-cpan-style-code-p)  ;; works even in a test select menu buffer
            (setq testloc   perlnow-test-policy-test-location-cpan  )
            (setq dotdef    perlnow-test-policy-dot-definition-cpan )
            (setq namestyle perlnow-test-policy-naming-style-cpan   )
+           (setq context "cpan")
            )
-          ((perlnow-module-code-p)
-           (setq testloc   perlnow-test-policy-test-location-module  )
-           (setq dotdef    perlnow-test-policy-dot-definition-module )
-           (setq namestyle perlnow-test-policy-naming-style-module   )
+          ((setq package-name
+                 (perlnow-module-code-p))
+           (setq context "module")
+           (if (not (perlnow-exporter-code-p))
+               (setq context "object"))
            )
           ((perlnow-script-p) ;; TODO do trial runs some time (ntigas)
            (setq testloc   perlnow-test-policy-test-location-script  )
            (setq dotdef    perlnow-test-policy-dot-definition-script )
            (setq namestyle perlnow-test-policy-naming-style-script   )
+           (setq context "script")
            )
           ((perlnow-test-select-menu-p) ;; Act like a module (TODO, okay?)
-           (setq testloc   perlnow-test-policy-test-location-module  )
-           (setq dotdef    perlnow-test-policy-dot-definition-module )
-           (setq namestyle perlnow-test-policy-naming-style-module   )
+           (setq context "test-select-menu")
            )
+          ((perlnow-test-p)
+           ;; TODO determine test-policy from test?  Is it a script or module test?
+           (setq context "test")
+          )
           (t ;; other (whatever that would be...)
-           (setq testloc   "../t" )
-           (setq dotdef    "incspot" )
-           (setq namestyle "numeric")
+           (setq testloc    "../t" )
+           (setq dotdef     "incspot")
+           (setq namestyle  "numeric")
+           (setq context    "unknown")
            )
           )
     ;; partial metadata list with just the first three test policy items
     (setq policy-metadata (list testloc dotdef namestyle))
-
     (cond
-     ((perlnow-test-select-menu-p)
+     (;; (perlnow-test-select-menu-p)
+      (string= context "test-select-menu")
       ;; get the module name from the test file name
       (let* (
              (selected-file-compact (perlnow-select-file-from-current-line))
@@ -3241,43 +3280,53 @@ An example of returned metadata.
         ;; the select menu buffer, which is literally the current buffer.  TODO okay?
         (setq buffer    (current-buffer))
         ))
-
-     (t ;; not a test-select-menu, thus a basic file-buffer (TODO: other cases, like man?  Or just wrong place?)
+;; TODO this was causing problems... why exactly?
+;;      (;; Man or WoMan buffer
+;;       (setq package-name (perlnow-get-package-name-from-man))
+;;       ;; TODO anything else?
+;;        )
+     (t ;; not a test-select-menu or man page: assuming it's a basic file-buffer
       ;; For every file buffer
       (cond ((setq file-name     (buffer-file-name))
              (setq file-location (file-name-directory file-name))
              (setq buffer        (current-buffer))
              (setq basename      (file-name-sans-extension (file-name-nondirectory file-name)))
              ))
-
       (cond
        (;; if module
+        (or (string= context "module") (string= context "object") (string= context "cpan"))
         (setq package-name (perlnow-get-package-name-from-module-buffer))
+        (setq sub-name (or (perlnow-sub-at-point) ""))
         (setq testloc-absolute
               (perlnow-testloc-from-policy testloc dotdef namestyle))
+        (if perlnow-debug
+            (message " package-name: %s file-location: %s"   package-name file-location))
         (setq incspot (perlnow-get-incspot package-name file-location))
         )
-
-       ((perlnow-test-p)
+       (;; (perlnow-test-p)
+        (string= context "test")
         (let* (
-               (selected-file-compact (file-name-nondirectory file-name))
                (path (file-name-directory file-name))
                (testfile file-name)
                (hyphenized (perlnow-extract-hyphenized-from-standard-t-name testfile))
                (colonized (replace-regexp-in-string "-" "::" hyphenized))
                )
           (setq package-name colonized)
+          (message "ACES! testfile: %s" testfile)
           (setq testloc-absolute (perlnow-t-dir-from-t testfile))
+          (message "ACES! testloc-absolute: %s" testloc-absolute)
           (setq incspot (perlnow-incspot-from-t testfile policy-metadata))
+          (setq sub-name (or (perlnow-sub-at-point) ""))
 
           ;; TODO Question though: if in the select buffer, I'd return info about the related module file.
           ;; Should I do that here with the *.t file?   Could be... multiple fields, code-* and test-*?
           )
-
          ;;;; TODO what about from a test created from a script?
          ;;;;      can you trace from that script to a module?
         )
-       ((perlnow-script-p)
+       (;; (perlnow-script-p)
+        (string= context "script")
+        (setq sub-name (or (perlnow-sub-at-point) ""))
         (setq testloc-absolute (perlnow-testloc-from-policy testloc dotdef namestyle))
         (cond (perlnow-associated-code
                (let* ( (candidate (perlnow-follow-associations-to-non-test-code))
@@ -3289,7 +3338,6 @@ An example of returned metadata.
                               (perlnow-get-package-name-from-module-buffer candidate))
                         (setq incspot (perlnow-get-incspot package-name candidate))
                         )))))
-
         (unless package-name
           (cond ((setq staging-area (perlnow-find-cpan-style-staging-area))
                  (setq incspot staging-area)
@@ -3306,25 +3354,24 @@ An example of returned metadata.
 
                    ;; TODO this is location of cpan-style staging-area.  Any use?
                    ;;    incspot-path
-                   ))))
 
+                   ))))
         ;; TODO if package-name might not be defined if script has no asscode and is non-cpan.
         ;;      any way to handle?   (unless package-name ...
         ;; TODONT hypothetically, could scrape script for likely-looking "use"
         ;;        e.g. one that has an open buffer, a mention as a recent pick, etc.
-
         ))))
-
-    (cond ((and package-name (not hyphenized-package-name) )
+    (cond ((and package-name (not hyphenized-package-name))
            (setq hyphenized-package-name
                  (mapconcat 'identity (split-string package-name "::") "-"))
            ))
-
     (setq ret-list
           (list testloc dotdef namestyle
                 testloc-absolute
                 hyphenized-package-name package-name incspot
                 buffer file-name file-location basename
+                context
+                sub-name
                 ))
 
     (perlnow-stash-put testloc-absolute incspot)
@@ -3345,6 +3392,8 @@ An example of returned metadata.
           (format "%30s %-40s\n" "file-name: " file-name)
           (format "%30s %-40s\n" "file-location: " file-location)
           (format "%30s %-40s\n" "basename: " basename)
+          (format "%30s %-40s\n" "context: " context)
+          (format "%30s %-40s\n" "sub-name: " sub-name)
           "   ~~~\n"
           )))
 
@@ -3410,14 +3459,14 @@ If not a man page buffer, returns nil.  This version is fairly
 simple to avoid returning false positives."
   (if perlnow-trace (perlnow-message "Calling perlnow-get-package-name-from-man"))
   (save-excursion
-    (let ( return buffer-name-string candidate-list
-                  candidate
-                  (buffer-name-string (buffer-name))
-                  )
-      (goto-char (point-min))
-      (cond ((string-match "\\*\\(Wo\\)*Man \\(.*\\)\\*$" buffer-name-string)
-             (setq candidate (match-string 2 buffer-name-string))
-             ))
+    (let ((buffer-name-string (buffer-name))
+          return   buffer-name-string   candidate-list  candidate
+          )
+      (cond (buffer-name-string
+             (goto-char (point-min))
+             (cond ((string-match "\\*\\(Wo\\)*Man \\(.*\\)\\*$" buffer-name-string)
+                    (setq candidate (match-string 2 buffer-name-string))
+                    ))))
       candidate)))
 
 
@@ -3544,9 +3593,11 @@ This just looks at the first character of STR, and silently ignores the rest."
 (defun perlnow-t-dir-from-t ( testfile )
   "Given a TESTFILE with absolute path, looks above it find a \"t\" directory.
 Returns path to \"t\" (including \"t\")."
-  (let* ( (path (perlnow-fixdir (file-name-directory testfile)))
-          path-sans-slash dir t-loc
-          )
+  (let* (
+         ;; (path (perlnow-fixdir (file-name-directory testfile)))
+         (path testfile) ;; starting here handles the no-intermediaries case better
+         path-sans-slash dir t-loc
+         )
     (setq t-loc
           (catch 'ROCK
             (while (> (length path) 1 ) ;; TODO unix-only?
@@ -3601,7 +3652,7 @@ An optional MD stash can be passed in provide hints. (TODO)."
     incspot))
 
 ;; TODO move this function to a utility package
-;; (was used by perlnow-get-package-name-from-man-ng)
+;; (was used by perlnow-get-package-name-from-man)
 (defun perlnow-vote-on-candidates (candidate-list)
   "Pick the most commonly occuring string from a list of strings.
 The list should be given as the argument CANDIDATE-LIST,
@@ -3847,9 +3898,10 @@ Returns nil on failure, sub name on success."
 (defun perlnow-list-all-subs ( &optional internals )
   "Extracts the sub names for all routines in the current buffer.
 Presumes the current buffer is a perl module.  If the INTERNALS
-option is set to t, subs with leading underscores are included,
+option is set to t, (TODO) subs with leading underscores are included,
 otherwise they're skipped."
- ;; TODO implement internal  (if perlnow-trace (perlnow-message "Calling perlnow-list-all-subs"))
+  ;; TODO implement internals
+  (if perlnow-trace (perlnow-message "Calling perlnow-list-all-subs"))
   (interactive) ;; DEBUG only
   (if perlnow-trace (perlnow-message "Calling perlnow-list-all-subs"))
   (unless (perlnow-module-code-p)
@@ -4201,6 +4253,9 @@ the script basename with the HYPHENIZED-PACKAGE-NAME, if defined."
   (let* ((prefix (perlnow-next-test-prefix testloc-absolute))
          new-name
          )
+    (if perlnow-debug
+        (message "testloc-absolute: %s  hyphenized-package-name: %s"
+                 (pp-to-string testloc-absolute) (pp-to-string hyphenized-package-name)))
     (cond ((perlnow-module-code-p) ;; once again have a current-buffer dependency...
            (setq new-name
                  (cond (;; if we got a sub-name, use it
@@ -4208,6 +4263,7 @@ the script basename with the HYPHENIZED-PACKAGE-NAME, if defined."
                         (concat testloc-absolute
                                 prefix "-" hyphenized-package-name "-" perlnow-perl-sub-name ".t"))
                        (t  ;; no sub-name, so skip it
+                        (if perlnow-debug (message "perlnow-new-test-name: no sub-name"))
                         (concat testloc-absolute
                                 prefix "-" hyphenized-package-name ".t")
                         ))) )
@@ -4233,30 +4289,38 @@ the script basename with the HYPHENIZED-PACKAGE-NAME, if defined."
   "Look at the test files in TESTLOC-ABSOLUTE and get the next numeric prefix.
 If no files are found in TESTLOC-ABSOLUTE, returns 01."
   (if perlnow-trace (perlnow-message "Calling perlnow-next-test-prefix"))
-  (let* ((test-files (directory-files testloc-absolute t "\\.t$" nil))
-         (next-prefix "01")
+  (if perlnow-debug (message "   testloc-absolute: %s" (pp-to-string testloc-absolute)))
+
+  (let* (test-files
          prefix-list
          numeric-list
          sorted-list
          next-numeric
+         (next-prefix "01") ;; default
          )
-    (cond (test-files ;; if no test-files, just skip all this
-           (setq prefix-list
-                 (mapcar (lambda (file)
-                           (let* ((basename
-                                    (file-name-sans-extension (file-name-nondirectory file))) )
-                             (car (split-string basename "-"))
-                             ))
-                         test-files))
-           (setq numeric-list
-                 (mapcar (lambda (item)
-                           (string-to-number item)
-                           )
-                         prefix-list))
-           (setq sorted-list (sort numeric-list '<))
-           (setq next-numeric (1+ (car (last sorted-list)))) ;; TODO limit checking: what if over 99?
-           (setq next-prefix (format "%02d" next-numeric))
-           ))
+    (cond (testloc-absolute
+           (setq test-files (directory-files testloc-absolute t "\\.t$" nil))
+           (cond (test-files
+                  (setq prefix-list
+                        (mapcar (lambda (file)
+                                  (let* ((basename
+                                          (file-name-sans-extension (file-name-nondirectory file))) )
+                                    (car (split-string basename "-"))
+                                    ))
+                                test-files))
+                  (setq numeric-list
+                        (mapcar (lambda (item)
+                                  (string-to-number item)
+                                  )
+                                prefix-list))
+                  (setq sorted-list (sort numeric-list '<))
+                  (setq next-numeric (1+ (car (last sorted-list)))) ;; TODO limit checking: what if over 99?
+                  (setq next-prefix (format "%02d" next-numeric))
+                  ))
+           )
+          (t
+           (message "perlnow-next-test-prefix: working with a nil 'testloc-absolute' won't get far."))
+          )
     next-prefix))
 
 ;; Used by perlnow-test-from-policy and hence perlnow-get-test-file-name,

@@ -1,5 +1,5 @@
 #!/usr/local/bin/emacs --script
-;;    /usr/bin/emacs
+;; #! /usr/bin/emacs --script
 ;;                                                 March 07, 2017
 ;; /home/doom/End/Cave/Perlnow/lib/perlnow/elisp/t/36-perlnow-perlnow-list-test-files.t
 
@@ -27,7 +27,7 @@
  (lambda ()
    (if (file-exists-p "test-init.el")
        (load-file "test-init.el"))
-   ;; (perlnow-tron)
+   (perlnow-tron)
    (let* (
           (test-loc (test-init))
           (test-name "Testing perlnow-list-test-files")
@@ -48,8 +48,10 @@
             ))
 
      (test-init-safe-recursive-delete staging-area)
+     (message "AAA")
      (perlnow-milla perlnow-dev-location package-name)
 
+     (message "BBB")
      (assert-t
       (perlnow-module-code-p)
       "Testing that perlnow-milla created a module")
@@ -68,6 +70,7 @@
             test-files   test-files-sorted
             )
 
+       (message "111")
             (setq test-files
                   (perlnow-list-test-files testloc dotdef namestyle fullpath-opt))
 
@@ -80,7 +83,9 @@
              (concat test-name ": default tests from perlnow-milla"))
 
             (set-buffer pm-buffer) ;; back to the pm
+       (message "222")
             (perlnow-test-create) ;; 02-Trantor-Skateboard.t
+       (message "333")
             (setq test-files
                   (perlnow-list-test-files testloc dotdef namestyle fullpath-opt))
             (setq test-files-sorted
@@ -95,8 +100,10 @@
              (concat test-name ": additional via perlnow-test-create"))
 
             (set-buffer pm-buffer) ;; back to the pm
+       (message "444")
             (perlnow-test-create) ;; 03-Trantor-Skateboard.t
             ;; (perlnow-tron)
+       (message "555")
             (setq test-files
                   (perlnow-list-test-files testloc dotdef namestyle fullpath-opt))
             (setq test-files-sorted
