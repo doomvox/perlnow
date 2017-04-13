@@ -3308,15 +3308,21 @@ Note, \"context\" is a string code which may be:
         (let* (
                (path (file-name-directory file-name))
                (testfile file-name)
-               (hyphenized (perlnow-extract-hyphenized-from-standard-t-name testfile))
+               ;; (hyphenized (perlnow-extract-hyphenized-from-standard-t-name testfile))
+
+               (fields (perlnow-parse-standard-t-name testfile))
+               (prefix      (nth 0 fields))
+               (hyphenized  (nth 1 fields))
+               (subname     (nth 2 fields))
+               (description (nth 3 fields))
+
                (colonized (replace-regexp-in-string "-" "::" hyphenized))
                )
           (setq package-name colonized)
-          (message "ACES! testfile: %s" testfile)
           (setq testloc-absolute (perlnow-t-dir-from-t testfile))
-          (message "ACES! testloc-absolute: %s" testloc-absolute)
           (setq incspot (perlnow-incspot-from-t testfile policy-metadata))
-          (setq sub-name (or (perlnow-sub-at-point) ""))
+          ;; (setq sub-name (or (perlnow-sub-at-point) ""))
+          (setq sub-name subname)
 
           ;; TODO Question though: if in the select buffer, I'd return info about the related module file.
           ;; Should I do that here with the *.t file?   Could be... multiple fields, code-* and test-*?
@@ -3498,52 +3504,93 @@ the COLONIZED-FLAG option can be set to request double-colon separators."
                (t-file (concat path selected-file-compact))
                ))))
   (let* (
-         (hyphenized (perlnow-extract-hyphenized-from-standard-t-name t-file))
+
+;;         (hyphenized (perlnow-extract-hyphenized-from-standard-t-name t-file))
+
+         (fields (perlnow-parse-standard-t-name t-file))
+         ;; (prefix      (nth 0 fields))
+         (hyphenized  (nth 1 fields))
+         ;; (subname     (nth 2 fields))
+         ;; (description (nth 3 fields))
+
          (colonized (replace-regexp-in-string "-" "::" hyphenized))
          (ret (cond (colonized-flag colonized) (t hyphenized)))
          )
     ;; TODO try other methods of scraping module info?
     ret))
 
-;; TODO
-;;   o  would be better to have a general routine that parses
-;;      the name into pieces... then pick out hyphenized if that's all you want.
-(defun perlnow-extract-hyphenized-from-standard-t-name ( t-file )
-  "Tries to find a module name embedded in a test file name, T-FILE.
+
+;; Example usage:
+;;      (let* (
+;;             (fields (perlnow-parse-standard-t-name test-file-full-path))
+;;             (prefix      (nth 0 fields))
+;;             (hyphenized  (nth 1 fields))
+;;             (subname     (nth 2 fields))
+;;             (description (nth 3 fields))
+;;          )
+(defun perlnow-parse-standard-t-name ( t-file )
+  "Parses a perlnow standard test file name, T-FILE.
 If everything is named according to typical perlnow conventions,
 the test file name may look something like this:
    06-Funky-Wintermute-black_ice-verify_fatal.t
-Where the string we're looking for is \"Funky-Wintermute\", for
-a module named \"Funky::Wintermute\".  This naming convention
-is discussed in \\[perlnow-documentation-test-file-strategies].
-To find the break between the module name and the sub name, we
-presume conventional capitalization rules were used on both."
+
+That will be subdivided into:
+   06
+   Funky-Wintermute
+   black_ice
+   verify_fatal
+
+Where the four fields are: prefix, hyphenized, subname, description.
+These fields are optional (though not all at the same time):
+empty fields are returned as nil.
+
+The fields are roughly delimited by hyphens, with the exception
+of the transition between hyphenized module name and sub name,
+which is marked by a case-change.
+
+This naming convention is discussed in \\[perlnow-documentation-test-file-strategies].
+"
   (let* (
          (t-file-basename
            (file-name-sans-extension (file-name-nondirectory t-file)))
          (fragments (split-string t-file-basename "-"))
          (integer-pat     "^[0-9]+$" )
-         words
+
+         fragment words
+
+         prefix hyphenized subname description
          )
-    ;; discard the leading numeric prefix
+
+    ;; get the leading numeric prefix, if any
     (if (string-match integer-pat (nth 0 fragments))
-        (pop fragments))
+        (setq prefix (pop fragments)))
 
     ;; save up capitalized terms, bail when not capitalized
-    (catch 'AGAINSTWALL
-      (dolist (fragment fragments)
+    (catch 'CHAIN
+      (while (setq fragment (pop fragments))
         (cond ((perlnow-bigletter-p fragment)
-               (push fragment words)
-               )
+               (push fragment words))
               (t
-               (throw 'AGAINSTWALL nil)
-               )
+               (setq subname fragment)
+               (throw 'CHAIN nil))
               )))
-      (let ( hyphenized )
-        ;; glue together into hyphenized module name
-        (setq hyphenized
-              (mapconcat 'identity (reverse words) "-"))
-      hyphenized)))
+
+    ;; glue together words into hyphenized module name
+    (setq hyphenized
+          (mapconcat 'identity (reverse words) "-"))
+
+    (if (string= hyphenized "")
+        (setq hyphenized nil))
+
+    ;; any remaining fragments are the description
+    (if fragments
+        (setq description
+              (mapconcat 'identity fragments "-")))
+
+    (list prefix hyphenized subname description)
+    ))
+
+
 
 (defun perlnow-bigletter-p (str)
   "Try to determine whether the single-character string STR is a \"big letter\".
@@ -3556,6 +3603,7 @@ This just looks at the first character of STR, and silently ignores the rest."
         (t
          (let*
              (
+              (case-fold-search nil)
               (chr (substring str 0 1))
               (big-letter-pat "^[A-Z]"   )  ;; unicode, what's that?
               (small-letter-pat "^[a-z]" )
