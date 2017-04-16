@@ -28,6 +28,7 @@
 (provide 'perlnow)
 (require 'cl-lib)
 (require 'cperl-mode)
+(require 'json)
 
 (defconst perlnow-version "0.7"
   "The version number of the installed perlnow.el package.
@@ -1072,8 +1073,8 @@ when \\[perlnow-run-check] is invoked with a prefix argument.")
 Used only by the somewhat deprecated \"simple\" functions:
 \\[perlnow-script-simple] \\[perlnow-perlify-this-buffer-simple]")
 
-;;;==========================================================
-;;; internally used vars
+;;;--------
+;;; plist stash from t/incspot associations
 
 ;; A global (not buffer-local for once) where perlnow can save the
 ;; associations between the "t" directories and the lib directories.
@@ -1085,6 +1086,17 @@ You can go from a *.pm file to a \"t\" via the test policy \"testloc\"
 setting.  Once that's done, we'll save that relationship here,
 so that later, given a *.t file, we'll be able to find the location
 of the code it tests.")
+
+(defvar perlnow-etc-location
+  (perlnow-fixdir (concat "$HOME" perlnow-slash ".emacs.d" perlnow-slash "perlnow"))
+  "Location in ~/emacs.d for miscellanious perlnow files.")
+(perlnow-mkpath perlnow-etc-location)
+
+(defvar perlnow-incspot-from-t-json-file (concat perlnow-etc-location "incspot_from_t.json")
+  "A json file used to preserve the plist of t/incspot associations.")
+
+;;;==========================================================
+;;; internally used vars
 
 (defvar perlnow-run-string nil
   "Tells \\[perlnow-run] how to run the code in a particular file buffer.
@@ -2335,7 +2347,7 @@ a buffer object.  This can work on a read-only buffer."
           (set-buffer buffer)
           (setq original-read-only-status buffer-read-only)
           (setq buffer-read-only nil) ;; make sure buffer is writeable
-          (mark-whole-buffer)
+          (mark-whole-buffer) ;; supposedly for interactive use only?
           (delete-region (mark) (point))
           (setq buffer-read-only original-read-only-status) ;; make it read-only if we found it that way
           )
@@ -3358,7 +3370,7 @@ Note, \"context\" is a string code which may be:
                    (setq hyphenized-package-name incspot-sans-path)
                    (setq package-name (mapconcat 'identity (split-string hyphenized-package-name "-") "::"))
 
-                   ;; TODO this is location of cpan-style staging-area.  Any use?
+                   ;; TODO this is location of cpan-style staging-area.  Return? (always oneup from incspot)
                    ;;    incspot-path
 
                    ))))
@@ -6335,6 +6347,70 @@ the LIST-OF-LISTS."
 ;;--------
 ;; plist utilities
 
+(defun perlnow-stash-reload ( &optional json-file plist-symbol )
+  "Reloads a plist from a json file.
+The PLIST-SYMBOL defaults to the global: `perlnow-incspot-from-t-plist'
+JSON-FILE defaults to: ~/.emacs.d/perlnow/incspot_from_t.json"
+  (unless plist-symbol (setq plist-symbol 'perlnow-incspot-from-t-plist))
+  (unless json-file    (setq json-file perlnow-incspot-from-t-json-file))
+
+  (cond ((file-exists-p json-file)
+         ;; there are multiple ways a json file can map to lisp datastructures...
+         (let* ((json-object-type 'plist)  ;; default 'alist
+                (json-array-type  'list)   ;; default 'vector
+
+                ;; None of these actually work
+                ;;   (json-key-type `symbol)
+                ;;   (json-key-type `string)
+                ;;   (json-key-type `keyword)
+
+                (input-data (json-read-file perlnow-incspot-from-t-json-file))
+                (input-data-fixed (perlnow-plist-keys-string-to-symbol input-data))
+                )
+           (set plist-symbol input-data-fixed)
+           ))))
+
+;; Note: this is hack to deal with the fact that I can't convince json-read-file
+;; to restore my key-symbol/value-strings structure, it insists on keys as strings
+(defun perlnow-plist-keys-string-to-symbol (plist)
+  "Go through a plist with key strings and converting them to symbols."
+  ;; Step through the list and skip the even values
+  (let ( flip  new-data )
+    (setq flip t)
+    (setq new-data
+          (mapcar
+           (lambda (item)
+             (cond ( flip
+                     ;; TODO maybe make conversion to symbol conditional on stringp
+                     (setq item (intern item)) ;; string-to-symbol
+                     (setq flip nil)
+                     )
+                   (t ;; if not flip we flip to t
+                    (setq flip t))
+                   )
+             item)
+           plist))
+    new-data))
+
+(defun perlnow-write-plist-file ( &optional json-file plist-symbol )
+  "Writes the data from plist to a json file.
+The PLIST-SYMBOL defaults to the global: `perlnow-incspot-from-t-plist'
+JSON-FILE defaults to: ~/.emacs.d/perlnow/incspot_from_t.json"
+  (save-excursion
+    (unless plist-symbol (setq plist-symbol 'perlnow-incspot-from-t-plist))
+    (unless json-file    (setq json-file perlnow-incspot-from-t-json-file))
+    (let* ((data
+            (json-encode (eval plist-symbol)))
+           )
+      (find-file json-file)
+      (widen)
+      (delete-region (point-min) (point-max))
+      (insert data)
+      (save-buffer)
+      ;; TODO close buffer, or just bury it?
+      )))
+
+;; TODO maybe, make this an optional argument: perlnow-incspot-from-t-json-file
 (defun perlnow-stash-put ( keystr value &optional plist-symbol )
   "Put pair of KEYSTR and VALUE in the plist indicated by optional PLIST-SYMBOL.
 The PLIST-SYMBOL defaults to the global `perlnow-incspot-from-t-plist'.
@@ -6342,14 +6418,27 @@ The PLIST-SYMBOL defaults to the global `perlnow-incspot-from-t-plist'.
      (perlnow-stash-put \"one\" \"alpha\" 'my-special-plist)
 If KEYSTR is nil, does nothing and returns nil. If VALUE is nil,
 silently converts it to an empty string."
-  (cond (keystr
-         (unless value (setq value ""))
-         (unless plist-symbol (setq plist-symbol 'perlnow-incspot-from-t-plist))
-         (set plist-symbol
-              (plist-put (symbol-value plist-symbol) (intern keystr) value))
-         )
-        (t
-         nil)))
+  (let ((ret
+         (cond (keystr
+                (unless value (setq value ""))
+                (unless plist-symbol (setq plist-symbol 'perlnow-incspot-from-t-plist))
+                (set plist-symbol
+                     (plist-put (symbol-value plist-symbol) (intern keystr) value))
+
+                (message "PU perlnow-incspot-from-t-plist: %s" (pp-to-string perlnow-incspot-from-t-plist))
+
+                (if perlnow-debug
+                    (message "perlnow-stash-put: json: %s"
+                             (pp-to-string (json-encode (eval plist-symbol)))))
+
+                (let ((json-file perlnow-incspot-from-t-json-file)
+                      )
+                  (perlnow-write-plist-file json-file plist-symbol)
+                  )
+                )
+               (t
+                nil))))
+    ret))
 
 (defun perlnow-stash-lookup ( keystr &optional plist-symbol )
   "Look-up string KEYSTR in plist indicated by optional PLIST-SYMBOL.
@@ -6357,15 +6446,22 @@ The PLIST-SYMBOL defaults to the global `perlnow-incspot-from-t-plist'.
   Example:
   (setq value
     (perlnow-stash-lookup \"one\" 'my-special-plist)
-If KEYSTR is nil, returns nil."
+If KEYSTR is nil, returns nil.
+First tries a symbol form of the key, and if that fails tries the raw string."
+;; And that, by the way, is a nasty hack to cover for json-read-file never doing
+;; what I want, irrespective of the json-key-type setting
   (cond (keystr
          (unless plist-symbol (setq plist-symbol 'perlnow-incspot-from-t-plist))
-         (let ( (value (lax-plist-get (symbol-value plist-symbol) (intern keystr))) )
+         (let ( (value
+                 (or
+                  (lax-plist-get (symbol-value plist-symbol) (intern keystr))
+                  (lax-plist-get (symbol-value plist-symbol) keystr)
+                  )) )
            value))
         (t
          nil)))
 
-;; Like perl's "keys":  it's hard to believe I needed to write this.
+;; This is like perl's "keys", and it's hard to believe I needed to write this.
 (defun perlnow-plist-keys ( plist )
   "Return all keys of the given plist as a list of strings."
 ;; Step through a list and skipping the even values
