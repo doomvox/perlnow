@@ -10,18 +10,8 @@ PUSHOUT PROCEEDURE (for *local* use):
 cp -f ~/End/Cave/Perlnow/lib/perlnow/templates/standard/*.tpl ~/.templates
 cp -f ~/End/Cave/Perlnow/lib/perlnow/templates/dev/*.tpl      ~/.templates
 
-Features:
 
-(a) embedded pod style
-(b) expanded "use <module>" list" (esp. for scripts, including *.t)
-(c) dropping __END__ (breaks mod_perl)
-
-(d) still using Class::Base (will probably change this)
-    fixed CB data-inheritence (AUTOLOAD change).
-
-(e) Scripts now use: Getopt::Long
-
-(f) Exporter style now follows the new "Playing Safe" section of Exporter docs.
+As of April 2017, rm-ing all of the files here: "standard" is being
+updated for the third big release.
 
 ===
-

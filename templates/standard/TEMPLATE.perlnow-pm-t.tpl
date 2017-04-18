@@ -1,30 +1,39 @@
-# Test file created outside of h2xs framework.
-# Run this like so: `perl (>>>FILE<<<)'
-#   (>>>AUTHOR<<<)     (>>>VC_DATE<<<)
+# Perl test file, can be run like so:
+#   `perl (>>>FILE<<<)'
+#         (>>>AUTHOR<<<)     (>>>VC_DATE<<<)
 
-#########################
-
-# change 'tests => 1' to 'tests => last_test_to_print';
-
+use (>>>MINIMUM_PERL_VERSION<<<);
 use warnings;
 use strict;
 $|=1;
-my $DEBUG = 1;
+my $DEBUG = 1;              # TODO set to 0 before ship
 use Data::Dumper;
+use File::Path      qw( mkpath );
+use File::Basename  qw( fileparse basename dirname );
+use File::Copy      qw( copy move );
+use Fatal           qw( open close mkpath copy move );
+use Cwd             qw( cwd abs_path );
+use Env             qw( HOME );
+use List::MoreUtils qw( any );
 
 use Test::More;
-BEGIN { plan tests => 1 };
-(>>>9<<<)
 
 BEGIN {
-  use_ok( '(>>>PERL_MODULE_NAME<<<)' );
+  use_ok( '(>>>PERL_MODULE_NAME<<<)' )
 }
 
-ok(1); # If we made it this far, we're ok.
+ok(1, "Traditional: If we made it this far, we're ok.");
 
-#########################
+# $DB::single = 1;
+# Insert your test code below.  Consult perldoc Test::More for help.
 
-# Insert your test code below, the Test::More module is used here so read
-# its man page ( perldoc Test::More ) for help writing this test script.
+{  my $subname = "(>>>PERL_SUB_NAME<<<)";
+   my $test_name = "Testing $subname";
 
-(>>>POINT<<<)
+   # use (>>>PERL_MODULE_NAME<<<);
+   # (>>>PERL_SUB_NAME<<<)();
+
+    (>>>POINT<<<)
+ }
+
+done_testing();

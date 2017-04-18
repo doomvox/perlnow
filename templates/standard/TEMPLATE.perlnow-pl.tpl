@@ -2,41 +2,86 @@
 # (>>>FILE<<<)                   (>>>AUTHOR<<<)
 # (>>>PNFS<<<)                   (>>>DATE<<<)
 
+=head1 NAME
+
+(>>>FILE<<<) - (( TODO insert brief description ))
+
+=head1 SYNOPSIS
+
+  (>>>FILE<<<) -[options] [arguments]
+
+  TODO
+
+=head1 DESCRIPTION
+
+B<(>>>FILE<<<)> is a script which
+
+(( TODO  insert explanation
+   This is stub documentation created by template.el.  ))
+
+=cut
+
 use warnings;
 use strict;
 $|=1;
+use Carp;
 use Data::Dumper;
 
-use File::Path qw(mkpath);
-use File::Basename;
-use Env qw(HOME);
+use File::Path      qw( mkpath );
+use File::Basename  qw( fileparse basename dirname );
+use File::Copy      qw( copy move );
+use Fatal           qw( open close mkpath copy move );
+use Cwd             qw( cwd abs_path );
+use Env             qw( HOME );
+use List::MoreUtils qw( any );
+use String::ShellQuote qw( shell_quote_best_effort );
+use Config::Std;
+use Getopt::Long    qw( :config no_ignore_case bundling );
+use List::Util      qw( first max maxstr min minstr reduce shuffle sum );
 
-use Getopt::Std;
-my %opts;
-getopts('d', \%opts);
-my $DEBUG = $opts{d} || 1;
+our $VERSION = 0.01;
+my  $prog    = basename($0);
 
+my $DEBUG   = 1;                 # TODO set default to 0 when in production
+GetOptions ("d|debug"    => \$DEBUG,
+            "v|version"  => sub{ say_version(); },
+            "h|?|help"   => sub{ say_usage();   },
+           ) or say_usage();
+#           "length=i" => \$length,        # numeric
+#           "file=s"   => \$file,          # string
 
 (>>>POINT<<<)
 
 
 
+
+### end main, into the subs
+
+sub say_usage {
+  my $usage=<<"USEME";
+  $prog -[options] [arguments]
+
+  Options:
+     -d          debug messages on
+     --debug     same
+     -h          help (show usage)
+     -v          show version
+     --version   show version
+
+TODO add additional options
+
+USEME
+  print "$usage\n";
+  exit;
+}
+
+sub say_version {
+  print "Running $prog version: $VERSION\n";
+  exit 1;
+}
+
+
 __END__
-
-=head1 NAME
-
-(>>>FILE<<<)
-
-=head1 SYNOPSIS
-
-=head1 DESCRIPTION
-
-Stub documentation for (>>>FILE<<<),
-created by template.el.
-
-It looks like the author of this script was negligent
-enough to leave the stub unedited.
-
 
 =head1 AUTHOR
 
@@ -46,9 +91,7 @@ enough to leave the stub unedited.
 
 Copyright (C) (>>>YEAR<<<) by (>>>USER_NAME<<<)
 
-This program is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself, either Perl version 5.8.2 or,
-at your option, any later version of Perl 5 you may have available.
+(>>>LICENSE<<<)
 
 =head1 BUGS
 

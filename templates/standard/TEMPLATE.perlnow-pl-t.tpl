@@ -1,30 +1,38 @@
-# Test file created outside of h2xs framework.
-# Run this like so: `perl (>>>FILE<<<)'
-#   (>>>AUTHOR<<<)     (>>>VC_DATE<<<)
-
-#########################
-
-# change 'tests => 1' to 'tests => last_test_to_print';
+# Perl test file, which can be run like so:
+#   `perl (>>>FILE<<<)'
+#        (>>>AUTHOR<<<)     (>>>VC_DATE<<<)
 
 use warnings;
 use strict;
 $|=1;
 my $DEBUG = 1;
 use Data::Dumper;
+use File::Path      qw( mkpath );
+use File::Basename  qw( fileparse basename dirname );
+use File::Copy      qw( copy move );
+use Fatal           qw( open close mkpath copy move );
+use Cwd             qw( cwd abs_path );
+use Env             qw( HOME );
+use List::MoreUtils qw( any );
 
 use Test::More;
-BEGIN { plan tests => 1 };
+BEGIN { plan tests => 1 };  # TODO # change to 'tests => last_test_to_print';
 
-ok(1); # If we made it this far, we're ok.
+ok(1, "Traditional: If we made it this far, we're ok.");
 
-is( `(>>>PERL_SCRIPT_NAME<<<)` , (>>>POINT<<<), "Test name: (>>>2<<<)")
-# Enter the expected output from the script as the second argument
-# Possibly add arguments after the script name given in the first agrument
-# ((would it be better to fill in a runstring?))
+my $script_name = '(>>>PERL_SCRIPT_NAME<<<)';
+my $script_basename = basename( $script_name );
 
-#########################
+{
+  my $test_name = "Testing script $script_basename";
 
-# Insert your test code below, the Test::More module is used here so read
-# its man page ( perldoc Test::More ) for help writing this test script.
+# TODO Enter the expected output from the script
+my $expected=<<"EXPECTED";
+(>>>POINT<<<)
+EXPECTED
 
+  # TODO any arguments to add after the script name?
+  my $result = qx{ $script_name };
+  is( $result, $expected, "$test_name" )
+}
 

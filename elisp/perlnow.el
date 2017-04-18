@@ -679,6 +679,14 @@ See http://dev.perl.org/licenses/ for more information."
   "Software license message available to templates as LICENSE.
 The default value is the traditional boilerplate for open source perl code.")
 
+(defcustom perlnow-bugs-message
+  "Please report any bugs or feature requests to C<bug-emacs-run at rt.cpan.org>, or
+through the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Emacs-Run>.
+I will be notified, and then you'll automatically be notified of progress
+on your bug as I make changes."
+  "Bug reporting instructions which can be inserted in templates using
+the tag \(>>>BUGS<<<\)." )
+
 (defcustom perlnow-sub-doc-pod "=item"
   "Pod tag used to introduce a block of sub documentation.
 Defaults to '=item', and should probably stay that way, but I've known
@@ -729,18 +737,26 @@ Defines the PERL_SUB_NAME expansion.")
 ;; Defining additional "expansions" for use in template.el templates.
 ;;
 (defvar perlnow-documentation-7-template-expansions t
-  "The perlnow template.el templates use some custom
-expansions defined in perlnow.el.  A template.el
-\"expansion\" is a place holder in the template that
-gets replaced by something else when the template is
-used.  For example, \(>>>DATE<<<\) will become the
-current date.
+
+  "The perlnow template.el templates use some custom expansions
+defined in perlnow.el.  A template.el \"expansion\" is a place
+holder in the template that gets replaced by something else when
+the template is used.  For example, \(>>>DATE<<<\) will become
+the current date.
 
 The perlnow custom expansions:
 
 \(>>>EMAIL_DOT_EMACS<<<\)
 This inserts the users email address as determined from
 their .emacs setting of the variable `user-mail-address'.
+
+\(>>>LICENSE<<<\)
+Inserts the code licensing message from the variable
+`perlnow-license-message'.
+
+\(>>>BUGS<<<\)
+Inserts the bug reporting procedure from the variable
+`perlnow-bugs-message'.
 
 \(>>>PERL_MODULE_NAME<<<\)
 becomes the perl module name \(in double-colon
@@ -862,13 +878,22 @@ defined expansions.")
        '("LICENSE" (insert perlnow-license-message))
        template-expansion-alist))
 
-(defvar perlnow-minimum-perl-version "5.006"
+(setq template-expansion-alist
+      (cons
+       '("BUGS" (insert perlnow-bugs-message))
+       template-expansion-alist))
+
+
+(defvar perlnow-minimum-perl-version "5.10.0"
   "The minimum perl version you are interested in supporting.
-This is used to define the template expansion for \(>>>MINIMUM_PERL_VERSION<<<\).
-For versions of perl later than 5.006, version numbers looking like
-5.7.0 or 5.8.2 were often used.  My guess -- the subject is actually
-insanely complicated -- is that you're safest with a version such
-as \"5.008002\" rather than \"5.8.2\".")
+This is used to define the template expansion for
+\(>>>MINIMUM_PERL_VERSION<<<\).  For versions of perl later than
+5.006, version numbers looking like 5.7.0 or 5.8.2 were often
+used.  My impression -- the subject is actually insanely
+complicated -- is that you can use the new form now without any
+trouble, though you might want to play it safe with a version
+such as \"5.008002\" rather than \"5.8.2\".")
+
 ;; Defining feature MINIMUM_PERL_VERSION to insert the above as an
 ;; an "expansion" in a template.el template: (>>>MINIMUM_PERL_VERSION<<<);
 (setq template-expansion-alist
@@ -3118,19 +3143,6 @@ Checks mode and buffer name."
                 nil)))
     retval))
 
-(defun perlnow-perlish-true-p (arg)
-  "Return t if perl would call ARG true.
-Checks for non-nil and non-empty string and non-zero."
-  (cond (arg ;; arg is non-nil
-         (cond ((stringp arg)
-                (not (string= arg "")))
-               ((numberp arg)
-                (not (equal arg 0)))
-               (t ;; some other non-nil type
-                t)))
-        (t   ;; arg is nil
-         nil)))
-
 ;; end  buffer probes
 
 ;;========
@@ -3420,6 +3432,211 @@ Note, \"context\" is a string code which may be:
     (goto-char initial-point)
     ret-list))
 
+
+;;=======
+;; buffer scraping -- extracting info from code buffer
+(defun perlnow-hashbang ()
+  "What is the hash bang line for this file buffer?
+Returns nil if there is none."
+  (if perlnow-trace (perlnow-message "Calling perlnow-hashbang"))
+  (save-excursion
+    (let ( (hash-bang-pat (concat     ; Want:  "^#!(rest captured)"
+                           "^"
+                           "[ \t]*"   ; Allowing whitespace between everything
+                           "#"
+                           "[ \t]*"
+                           "!"
+                           "[ \t]*"
+                           "\\(.*\\)$"
+                           ))
+           (return "")
+           )
+      (goto-char (point-min)) ; Presume the hash bang, if any, is the first line (no blanks or comments)
+      (if (looking-at hash-bang-pat)
+          (setq return
+                (match-string 1)))
+      )))
+
+(defun perlnow-sub-at-point ()
+ "Returns the name of the current perl sub, or nil if there is none.
+When run inside an open buffer of perl code.  It tries to find
+the name of the current perl sub \(the one that the cursor is
+either inside of, or just in front of\).  Returns nil on failure,
+sub name on success."
+  (if perlnow-trace (perlnow-message "Calling perlnow-sub-at-point"))
+;; Algorithm:  save initial location
+;;             skip back to previous ^sub.  scrape name
+;;               if that's nil, then skip forward, scrape name: done
+;;             skip to close of sub: check that location.
+;;               if this is *after* the initial location, we've got our sub
+;;               if this is *before* the inital location, we were between subs
+;;                  skip forward to next ^sub.  scrape name.
+ (let* ((initial-point (point))
+        (open-brace-pat "[\\{]")          ;; open curly brace (TODO optimize?)
+        subname return)
+   (save-excursion
+     (setq return
+         (catch 'IT
+           ;; (setq subname (perlnow-previous-sub))
+           (setq subname (perlnow-find-sub -1)) ;; previous
+           (cond ((not subname)
+                  ;; (setq subname (perlnow-forward-sub))
+                  (setq subname (perlnow-find-sub 1))
+                  (throw 'IT subname)
+                  ))
+
+           (re-search-forward open-brace-pat nil t)
+           (backward-char 1)
+           (forward-sexp 1)
+           (if (> (point) initial-point)
+               (throw 'IT subname))
+           ;; (setq subname (perlnow-forward-sub))))
+           (setq subname (perlnow-find-sub 1))))
+   return)))
+
+(defun perlnow-find-sub ( &optional direction )
+ "Looks for nearest sub definition, and returns the name of sub.
+If DIRECTION is -1 it will search backward. The default is to
+search forward (DIRECTION is nil or +1)."
+  (if perlnow-trace (perlnow-message "Calling perlnow-find-sub"))
+ (let* ((sub-begin-pat "^[ \t]*sub ")     ;; perl "sub" keyword at bol
+        (after-subname-pat "[ \\\\(\\{]") ;; either paren or curly, after space
+        (open-brace-pat "[\\{]")          ;; open curly brace (TODO optimize?)
+        current-word return)
+   (unless direction
+     (setq direction 1))
+      ;;;; first we will skip forward to start of sub
+      ;; if we're *on top* of the keyword "sub", move backward so regexp works
+      (forward-word 1) (backward-word 1) ;; twiddle to position at start of word
+      (setq current-word (thing-at-point 'word))
+      (cond ((string= current-word "sub")
+             (backward-word 1)
+             ))
+      (setq return
+            (catch 'OUT
+              (unless (re-search-forward sub-begin-pat nil t direction)
+                (throw 'OUT nil))
+              ;; skip past whitespace to start of name
+              (cond ((= direction -1)
+                     (forward-word 1)))
+              (forward-word 1)
+              (backward-word 1)
+
+              (let ((beg (point)))
+                (unless (re-search-forward after-subname-pat nil t)
+                  (throw 'OUT nil))
+                (backward-word 1)
+                (forward-word 1)
+                (setq return
+                      (buffer-substring-no-properties beg (point)))
+                )))
+    return))
+
+;; Used by perlnow-script-using-this-module (via perlnow-do-script-from-module)
+;; perlnow-edit-test-file (via perlnow-open-test-file)
+;;   and ... fullauto ... to make testing easier
+(defun perlnow-sub-name-to-var ()
+  "Assigns the current perl sub name to `perlnow-perl-sub-name'.
+It is then available as the \(>>>PERL_SUB_NAME<<<\) template expansion.
+This is intended to be run inside an open buffer of perl code.
+The \"current sub\" is as determined by \\[perlnow-sub-at-point].
+Returns nil on failure, sub name on success."
+  (interactive)
+  (if perlnow-trace (perlnow-message "Calling perlnow-sub-name-to-var"))
+  (let ((sub-name (or (perlnow-sub-at-point) "")))
+    (setq perlnow-perl-sub-name sub-name)))
+
+;;;--------
+;; perlnow-revise-export-list and related functions
+;;
+;; At present: the following assumes a layout like this:
+;;
+;;   our %EXPORT_TAGS = ( 'all' => [
+;;     # names of items to export
+;;     qw(
+;;        nada
+;;        slackoff
+;;       ) ] );
+;;   # The above allows declaration	use Modular::Stuff ':all';
+;;
+;;   our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
+;;   our @EXPORT = qw(  ); # items to export into callers namespace by default.
+;;                         # (don't use this without a very good reason.)
+;;
+(defun perlnow-list-all-exported-symbols ()
+  "Extracts the exported symbols."
+  (if perlnow-trace (perlnow-message "Calling perlnow-list-all-exported-symbols"))
+  (unless (perlnow-module-code-p)
+    (error "perlnow-list-all-subs expects to be called from a module buffer."))
+  (let* ((original-case-fold case-fold-search)
+         (export-pattern "EXPORT[ \t]+=")
+         (open-quoted-words-pattern
+          "qw(")
+         (closing-quoted-words-pattern
+          ")")
+         beg end export-string-1 export-string-2 export-list
+         )
+    (setq case-fold-search nil)
+    (save-excursion
+      (goto-char (point-min))
+      (re-search-forward "EXPORT_TAGS" nil t)
+      (re-search-forward open-quoted-words-pattern nil t)
+      (setq beg (+ (point) 1))
+      (re-search-forward closing-quoted-words-pattern nil t)
+      (setq end (- (point) 1))
+      (setq export-string-1 (buffer-substring-no-properties beg end))
+
+      ;;      (re-search-forward export-pattern nil t) ;; skip EXPORT_OK one
+
+      (re-search-forward export-pattern nil t)
+      (re-search-forward open-quoted-words-pattern nil t)
+      (setq beg (+ (point) 1))
+      (re-search-forward closing-quoted-words-pattern nil t)
+      (setq end (- (point) 1))
+      (setq export-string-2 (buffer-substring-no-properties beg end))
+      )
+
+    ;; split export-string-1 && export-string-2 on whitespace (including newlines)
+    (setq export-list
+          (append
+           (split-string export-string-1)
+           (split-string export-string-2))
+          )
+    (setq case-fold-search original-case-fold)
+    export-list
+    ))
+
+(defun perlnow-list-all-exported-symbols-report ()
+  "Echoes output of \\[perlnow-list-all-exported-symbols] via message."
+  (interactive)
+  (if perlnow-trace (perlnow-message "Calling perlnow-list-all-exported-symbols-report"))
+  (let* ( (list (perlnow-list-all-exported-symbols) )
+          )
+    (message "%s" list)
+    ))
+;; end  implemented for perlnow-revise-export-list
+
+;;;--------
+;;; package-name scraping functions
+
+;; Not in use: typically need to know if it came from a code
+;; buffer or a man page.
+(defun perlnow-get-package-name ()
+  "Return the module name  \(in perl's double colon separated form\)
+from either a module buffer or a Man page showing the perldoc for it,
+or nil if none is found."
+  (if perlnow-trace (perlnow-message "Calling perlnow-get-package-name"))
+  (let (return)
+    (cond
+     ((setq return (perlnow-get-package-name-from-module-buffer))
+      )
+     ((setq return (perlnow-get-package-name-from-man))
+      )
+     (t
+      (setq return nil)
+      ))
+    return))
+
 (defun perlnow-get-package-name-from-module-buffer (&optional file-name)
   "Get the module name from the first package line.
 This will be in perl's double colon separated form, or it will
@@ -3453,24 +3670,6 @@ looks like a perl module."
                ))
       module-name)))
 
-;; Not in use: typically need to know if it came from a code
-;; buffer or a man page.
-(defun perlnow-get-package-name ()
-  "Return the module name  \(in perl's double colon separated form\)
-from either a module buffer or a Man page showing the perldoc for it,
-or nil if none is found."
-  (if perlnow-trace (perlnow-message "Calling perlnow-get-package-name"))
-  (let (return)
-    (cond
-     ((setq return (perlnow-get-package-name-from-module-buffer))
-      )
-     ((setq return (perlnow-get-package-name-from-man))
-      )
-     (t
-      (setq return nil)
-      ))
-    return))
-
 (defun perlnow-get-package-name-from-man ()
   "Return the module name from a man page buffer displaying the perldoc.
 If not a man page buffer, returns nil.  This version is fairly
@@ -3487,6 +3686,8 @@ simple to avoid returning false positives."
                     ))))
       candidate)))
 
+;;;---------
+;;; perlnow-module-from-t-file (package name scraping continued)
 
 ;; TODO
 ;; There may be fancier ways of infering the module a test file is
@@ -3602,8 +3803,7 @@ This naming convention is discussed in \\[perlnow-documentation-test-file-strate
     (list prefix hyphenized subname description)
     ))
 
-
-
+;; Just used by perlnow-parse-standard-t-name
 (defun perlnow-bigletter-p (str)
   "Try to determine whether the single-character string STR is a \"big letter\".
 Which is to say, is it capitalized or title-case and not lowercase?
@@ -3649,28 +3849,6 @@ This just looks at the first character of STR, and silently ignores the rest."
                         nil) ))
            bigletter-p))))
 
-;;          (setq testloc-absolute (file-name-directory testfile))
-(defun perlnow-t-dir-from-t ( testfile )
-  "Given a TESTFILE with absolute path, looks above it find a \"t\" directory.
-Returns path to \"t\" (including \"t\")."
-  (let* (
-         ;; (path (perlnow-fixdir (file-name-directory testfile)))
-         (path testfile) ;; starting here handles the no-intermediaries case better
-         path-sans-slash dir t-loc
-         )
-    (setq t-loc
-          (catch 'ROCK
-            (while (> (length path) 1 ) ;; TODO unix-only?
-              (setq path (perlnow-fixdir (concat path "..")))
-              (setq path-sans-slash (replace-regexp-in-string "/$" "" path))
-              (setq dir (file-name-nondirectory path-sans-slash))
-              (if (string= dir "t")
-                  (throw 'ROCK path))))
-              )
-    (if (< (length t-loc) 1)
-        (setq t-loc nil))
-    t-loc))
-
 (defun perlnow-incspot-from-t (testfile &optional md)
   "Given TESTFILE return the associated incspot.
 An optional MD stash can be passed in provide hints. (TODO)."
@@ -3711,250 +3889,38 @@ An optional MD stash can be passed in provide hints. (TODO)."
     (goto-char initial-point)
     incspot))
 
-;; TODO move this function to a utility package
-;; (was used by perlnow-get-package-name-from-man)
-(defun perlnow-vote-on-candidates (candidate-list)
-  "Pick the most commonly occuring string from a list of strings.
-The list should be given as the argument CANDIDATE-LIST,
-the return value will be the string itself.  In the event of a tie
-this favors the earlier occurrence in the list."
-  (if perlnow-trace (perlnow-message "Calling perlnow-vote-on-candidates"))
-  (let (score-alist)
-    (dolist (candidate candidate-list)
-      (let ((score 0))
-        (dolist (compare candidate-list)
-          (if (string= candidate compare)
-              (setq score (+ 1 score)))
-          )
-        (setq score-alist (cons (cons candidate score) score-alist))))
-    ;; Now find max value in score-alist, return key.
-    (let ( string score high_scorer
-                  (largest 0))
-      (dolist (connie score-alist)
-        (setq string (car connie))
-        (setq score (cdr connie))
-        (if (> score largest)
-            (progn
-              (setq largest score)
-              (setq high_scorer string))
-          ))
-      high_scorer)))
-
-;; DEBUG
-;; (perlnow-vote-on-candidates
-;;  '("wuh" "tew" "tew" "thuree" "tew" "wuh" "wuh")) ;; returns whu (good)
-;; (perlnow-vote-on-candidates '()) ;; returns nil (good)
-;; (perlnow-vote-on-candidates '("wuh" "tew" "thuree")) ;; returns thuree (wrong!)
-
-;;=======
-;; buffer navigation (( TODO rename section?  Move? ))
-
-;; Used only by: perlnow-open-test-file
-(defun perlnow-jump-to-use (package-name &optional import-string)
-  "Given the PACKAGE-NAME, jumps to the point before the \'use\' line.
-Specifically, these leaves the cursor at the start of the line
-that does a \"use\" or \"use_ok\" of the named module specified in
-perl's double-colon seperated form, e.g. \"Modular::Stuff\".
-If given the optional IMPORT-STRING, incorporates it into the use line."
-  (if perlnow-trace (perlnow-message "Calling perlnow-jump-to-use"))
-  (if perlnow-debug
-      (message "  perlnow-jump-to-use, package-name: %s import-string: %s"
-               package-name
-               (pp-to-string import-string)))
-  (let (( pattern (format "^\\([ \t]*\\)use.*?\\b%s\\b" package-name))
-        ( whitespace "" ))
-    (goto-char (point-min))
-    (re-search-forward pattern nil t)
-    (setq whitespace (match-string 1))
-    (cond (import-string
-           (if (re-search-forward "'[ \t]*" nil t)
-               (insert ", "))
-           (insert import-string)
-           ))
-    (move-beginning-of-line 1)
-    whitespace))
-
-;;=======
-;; buffer scraping -- extracting info from code buffer
-(defun perlnow-hashbang ()
-  "What is the hash bang line for this file buffer?
-Returns nil if there is none."
-  (if perlnow-trace (perlnow-message "Calling perlnow-hashbang"))
-  (save-excursion
-    (let ( (hash-bang-pat (concat     ; Want:  "^#!(rest captured)"
-                           "^"
-                           "[ \t]*"   ; Allowing whitespace between everything
-                           "#"
-                           "[ \t]*"
-                           "!"
-                           "[ \t]*"
-                           "\\(.*\\)$"
-                           ))
-           (return "")
-           )
-      (goto-char (point-min)) ; Presume the hash bang, if any, is the first line (no blanks or comments)
-      (if (looking-at hash-bang-pat)
-          (setq return
-                (match-string 1)))
-      )))
-
-(defun perlnow-sub-at-point ()
- "Returns the name of the current perl sub, or nil if there is none.
-When run inside an open buffer of perl code.  It tries to find
-the name of the current perl sub \(the one that the cursor is
-either inside of, or just in front of\).  Returns nil on failure,
-sub name on success."
-  (if perlnow-trace (perlnow-message "Calling perlnow-sub-at-point"))
-;; Algorithm:  save initial location
-;;             skip back to previous ^sub.  scrape name
-;;               if that's nil, then skip forward, scrape name: done
-;;             skip to close of sub: check that location.
-;;               if this is *after* the initial location, we've got our sub
-;;               if this is *before* the inital location, we were between subs
-;;                  skip forward to next ^sub.  scrape name.
- (let* ((initial-point (point))
-        (open-brace-pat "[\\{]")          ;; open curly brace (TODO optimize?)
-        subname return)
-   (save-excursion
-     (setq return
-         (catch 'IT
-           ;; (setq subname (perlnow-previous-sub))
-           (setq subname (perlnow-find-sub -1)) ;; previous
-           (cond ((not subname)
-                  ;; (setq subname (perlnow-forward-sub))
-                  (setq subname (perlnow-find-sub 1))
-                  (throw 'IT subname)
-                  ))
-
-           (re-search-forward open-brace-pat nil t)
-           (backward-char 1)
-           (forward-sexp 1)
-           (if (> (point) initial-point)
-               (throw 'IT subname))
-           ;; (setq subname (perlnow-forward-sub))))
-           (setq subname (perlnow-find-sub 1))))
-   return)))
-
-(defun perlnow-find-sub ( &optional direction )
- "Looks for nearest sub definition, and returns the name of sub.
-If DIRECTION is -1 it will search backward. The default is to
-search forward (DIRECTION is nil or +1)."
-  (if perlnow-trace (perlnow-message "Calling perlnow-find-sub"))
- (let* ((sub-begin-pat "^[ \t]*sub ")     ;; perl "sub" keyword at bol
-        (after-subname-pat "[ \\\\(\\{]") ;; either paren or curly, after space
-        (open-brace-pat "[\\{]")          ;; open curly brace (TODO optimize?)
-        current-word return)
-   (unless direction
-     (setq direction 1))
-      ;;;; first we will skip forward to start of sub
-      ;; if we're *on top* of the keyword "sub", move backward so regexp works
-      (forward-word 1) (backward-word 1) ;; twiddle to position at start of word
-      (setq current-word (thing-at-point 'word))
-      (cond ((string= current-word "sub")
-             (backward-word 1)
-             ))
-      (setq return
-            (catch 'OUT
-              (unless (re-search-forward sub-begin-pat nil t direction)
-                (throw 'OUT nil))
-              ;; skip past whitespace to start of name
-              (cond ((= direction -1)
-                     (forward-word 1)))
-              (forward-word 1)
-              (backward-word 1)
-
-              (let ((beg (point)))
-                (unless (re-search-forward after-subname-pat nil t)
-                  (throw 'OUT nil))
-                (backward-word 1)
-                (forward-word 1)
-                (setq return
-                      (buffer-substring-no-properties beg (point)))
-                )))
-    return))
-
-;; Used by perlnow-script-using-this-module (via perlnow-do-script-from-module)
-;; perlnow-edit-test-file (via perlnow-open-test-file)
-;;   and ... fullauto ... to make testing easier
-(defun perlnow-sub-name-to-var ()
-  "Assigns the current perl sub name to `perlnow-perl-sub-name'.
-It is then available as the \(>>>PERL_SUB_NAME<<<\) template expansion.
-This is intended to be run inside an open buffer of perl code.
-The \"current sub\" is as determined by \\[perlnow-sub-at-point].
-Returns nil on failure, sub name on success."
-  (interactive)
-  (if perlnow-trace (perlnow-message "Calling perlnow-sub-name-to-var"))
-  (let ((sub-name (or (perlnow-sub-at-point) "")))
-    (setq perlnow-perl-sub-name sub-name)))
-
-;; the following defuns were implemented for perlnow-revise-export-list
-;;
-;; At present: the following assumes a layout like this:
-;;
-;;   our %EXPORT_TAGS = ( 'all' => [
-;;     # names of items to export
-;;     qw(
-;;        nada
-;;        slackoff
-;;       ) ] );
-;;   # The above allows declaration	use Modular::Stuff ':all';
-;;
-;;   our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
-;;   our @EXPORT = qw(  ); # items to export into callers namespace by default.
-;;                         # (don't use this without a very good reason.)
-;;
-(defun perlnow-list-all-exported-symbols ()
-  "Extracts the exported symbols."
-  (if perlnow-trace (perlnow-message "Calling perlnow-list-all-exported-symbols"))
-  (unless (perlnow-module-code-p)
-    (error "perlnow-list-all-subs expects to be called from a module buffer."))
-  (let* ((original-case-fold case-fold-search)
-         (export-pattern "EXPORT[ \t]+=")
-         (open-quoted-words-pattern
-          "qw(")
-         (closing-quoted-words-pattern
-          ")")
-         beg end export-string-1 export-string-2 export-list
+;;          (setq testloc-absolute (file-name-directory testfile))
+(defun perlnow-t-dir-from-t ( testfile )
+  "Given a TESTFILE with absolute path, looks above it find a \"t\" directory.
+Returns path to \"t\" (including \"t\")."
+  (let* (
+         ;; (path (perlnow-fixdir (file-name-directory testfile)))
+         (path testfile) ;; starting here handles the no-intermediaries case better
+         path-sans-slash dir t-loc
          )
-    (setq case-fold-search nil)
-    (save-excursion
-      (goto-char (point-min))
-      (re-search-forward "EXPORT_TAGS" nil t)
-      (re-search-forward open-quoted-words-pattern nil t)
-      (setq beg (+ (point) 1))
-      (re-search-forward closing-quoted-words-pattern nil t)
-      (setq end (- (point) 1))
-      (setq export-string-1 (buffer-substring-no-properties beg end))
+    (setq t-loc
+          (catch 'ROCK
+            (while (> (length path) 1 ) ;; TODO unix-only?
+              (setq path (perlnow-fixdir (concat path "..")))
+              (setq path-sans-slash (replace-regexp-in-string "/$" "" path))
+              (setq dir (file-name-nondirectory path-sans-slash))
+              (if (string= dir "t")
+                  (throw 'ROCK path))))
+              )
+    (if (< (length t-loc) 1)
+        (setq t-loc nil))
+    t-loc))
 
-      ;;      (re-search-forward export-pattern nil t) ;; skip EXPORT_OK one
+;; end of perlnow-module-from-t-file related functions
 
-      (re-search-forward export-pattern nil t)
-      (re-search-forward open-quoted-words-pattern nil t)
-      (setq beg (+ (point) 1))
-      (re-search-forward closing-quoted-words-pattern nil t)
-      (setq end (- (point) 1))
-      (setq export-string-2 (buffer-substring-no-properties beg end))
-      )
 
-    ;; split export-string-1 && export-string-2 on whitespace (including newlines)
-    (setq export-list
-          (append
-           (split-string export-string-1)
-           (split-string export-string-2))
-          )
-    (setq case-fold-search original-case-fold)
-    export-list
-    ))
+;;;--------
+;;; more sub info: all subs in buffer
+;;   (also see perlnow-sub-at-point above)
 
-(defun perlnow-list-all-exported-symbols-report ()
-  "Echoes output of \\[perlnow-list-all-exported-symbols] via message."
-  (interactive)
-  (if perlnow-trace (perlnow-message "Calling perlnow-list-all-exported-symbols-report"))
-  (let* ( (list (perlnow-list-all-exported-symbols) )
-          )
-    (message "%s" list)
-    ))
-
+;; TODO currently unused:
+;;    o  might be used to implement a side display, an overview and navigation aid.
+;;    o  might be used to talk to an existing tool like that (cedet?)
 (defun perlnow-list-all-subs ( &optional internals )
   "Extracts the sub names for all routines in the current buffer.
 Presumes the current buffer is a perl module.  If the INTERNALS
@@ -3997,7 +3963,33 @@ otherwise they're skipped."
     (message "%s" sub-list)
     ))
 
-;; end  implemented for perlnow-revise-export-list
+;;=======
+;; buffer navigation (( TODO rename section?  Move? ))
+
+;; Used only by: perlnow-open-test-file
+(defun perlnow-jump-to-use (package-name &optional import-string)
+  "Given the PACKAGE-NAME, jumps to the point before the \'use\' line.
+Specifically, these leaves the cursor at the start of the line
+that does a \"use\" or \"use_ok\" of the named module specified in
+perl's double-colon seperated form, e.g. \"Modular::Stuff\".
+If given the optional IMPORT-STRING, incorporates it into the use line."
+  (if perlnow-trace (perlnow-message "Calling perlnow-jump-to-use"))
+  (if perlnow-debug
+      (message "  perlnow-jump-to-use, package-name: %s import-string: %s"
+               package-name
+               (pp-to-string import-string)))
+  (let (( pattern (format "^\\([ \t]*\\)use.*?\\b%s\\b" package-name))
+        ( whitespace "" ))
+    (goto-char (point-min))
+    (re-search-forward pattern nil t)
+    (setq whitespace (match-string 1))
+    (cond (import-string
+           (if (re-search-forward "'[ \t]*" nil t)
+               (insert ", "))
+           (insert import-string)
+           ))
+    (move-beginning-of-line 1)
+    whitespace))
 
 ;;=======
 ;;  path crunching
@@ -5298,9 +5290,11 @@ a module's incspot."
     t-list
     ))
 
+
 ;; TODO can this idea be blended with the job that
 ;; perlnow-find-t-directories does (finding the most appropriate
 ;; t-dir).  How do you prioritize these?
+;; (( This isn't really in use. ))
 (defun perlnow-find-all-t-directories (&optional root)
   "Find all directories named \"t\" in the tree.
 Looks under the given ROOT, or under the `default-directory'.
@@ -6051,6 +6045,9 @@ uninteresting filenames patterns, otherwise nil."
     (not (string-match ignore-pat string))
     ))
 
+;;-------
+;; file and directory manipulation
+
 (defun perlnow-divide-module-path-dir-and-tail (string)
   "Split a file system path into directory and trailing name fragment.
 Allows for the use of perl's double-colon package
@@ -6073,12 +6070,7 @@ Perl package example: given \"/home/doom/lib/Taxed::Reb\" should return
            (message "match failed") ))
          (list directory fragment) ))
 
-;;;==========================================================
-;;; General utilities (which might not really belong in this package)
-
-;;-------
-;; file and directory manipulation
-
+;; general utility
 (defun perlnow-ensure-directory-exists (dir &optional ask-message)
   "Make sure that given DIR exists, asking if it needs to be created.
 Typically DIR should contain the full path to the the directory.
@@ -6096,6 +6088,7 @@ This 'ask' behavior will be suppressed when `perlnow-quiet' is set."
                     (perlnow-mkpath dir))
                 )))))
 
+;; general utility
 (defun perlnow-ensure-file-exists (file template)
   "If the given FILE doesn't exist, creates it using the TEMPLATE."
   (if perlnow-trace (perlnow-message "Calling perlnow-ensure-file-exists"))
@@ -6111,7 +6104,7 @@ This 'ask' behavior will be suppressed when `perlnow-quiet' is set."
 
 
 ;;--------
-;; file editing utilities (e.g. to add or remove a line from the bashrc include for perl5lib)
+;; file editing (e.g. to add or remove a line from the bashrc include for perl5lib)
 
 (defun perlnow-remove-line-from-file-regexp (file-name regexp)
   "Remove line from file FILE-NAME if it matches REGEXP."
@@ -6342,7 +6335,40 @@ the LIST-OF-LISTS."
                    )))))
   foundling))
 
+;; TODO move this function to a utility package
+;; (was used by perlnow-get-package-name-from-man)
+(defun perlnow-vote-on-candidates (candidate-list)
+  "Pick the most commonly occuring string from a list of strings.
+The list should be given as the argument CANDIDATE-LIST,
+the return value will be the string itself.  In the event of a tie
+this favors the earlier occurrence in the list."
+  (if perlnow-trace (perlnow-message "Calling perlnow-vote-on-candidates"))
+  (let (score-alist)
+    (dolist (candidate candidate-list)
+      (let ((score 0))
+        (dolist (compare candidate-list)
+          (if (string= candidate compare)
+              (setq score (+ 1 score)))
+          )
+        (setq score-alist (cons (cons candidate score) score-alist))))
+    ;; Now find max value in score-alist, return key.
+    (let ( string score high_scorer
+                  (largest 0))
+      (dolist (connie score-alist)
+        (setq string (car connie))
+        (setq score (cdr connie))
+        (if (> score largest)
+            (progn
+              (setq largest score)
+              (setq high_scorer string))
+          ))
+      high_scorer)))
 
+;; DEBUG
+;; (perlnow-vote-on-candidates
+;;  '("wuh" "tew" "tew" "thuree" "tew" "wuh" "wuh")) ;; returns whu (good)
+;; (perlnow-vote-on-candidates '()) ;; returns nil (good)
+;; (perlnow-vote-on-candidates '("wuh" "tew" "thuree")) ;; returns thuree (wrong!)
 
 ;;--------
 ;; plist utilities
@@ -6493,6 +6519,22 @@ First tries a symbol form of the key, and if that fails tries the raw string."
     (reverse accumulator)))
 
 
+;;;========
+;; making elisp more like perl
+
+(defun perlnow-perlish-true-p (arg)
+  "Return t if perl would call ARG true.
+Checks for non-nil and non-empty string and non-zero."
+  (cond (arg ;; arg is non-nil
+         (cond ((stringp arg)
+                (not (string= arg "")))
+               ((numberp arg)
+                (not (equal arg 0)))
+               (t ;; some other non-nil type
+                t)))
+        (t   ;; arg is nil
+         nil)))
+
 
 ;;========
 ;; perltidy
@@ -6574,9 +6616,6 @@ is an OOP module, otherwise, an ordinary sub."
                 (call-interactively 'perlnow-insert-basic-sub)))
          )))
 
-;; perl-OOP-oriented:
-;; Currently these are limited to hashref-based oop.
-;; Need more preference settings, ideally with project specific overrides.
 (defun perlnow-insert-method (name)
   "Insert the framework of a perl method definition"
   (interactive "sMethod name: ")
