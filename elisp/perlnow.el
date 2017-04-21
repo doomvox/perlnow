@@ -3733,6 +3733,136 @@ the COLONIZED-FLAG option can be set to request double-colon separators."
     ret))
 
 
+(defun perlnow-get-package-name-from-useok ()
+  "Get the module package name found in a use_ok line.
+A perl test file often has a uses \"use_ok\" rather than \"use\",
+and that can be a good hint about which module the test file
+is primarily intended to exercise.  Example:
+
+    use_ok( 'WildSide::Glam' ,  qw(sashay) );
+
+When there's more than one use_ok line in the file, this picks the last one."
+  (if perlnow-trace (perlnow-message "Calling perlnow-get-package-name-from-useok"))
+  (let* (
+         (initial-buffer (current-buffer))
+         (initial-point  (point))
+         (useok "use_ok")
+         ;; Note: this should skip any commented out 'use_ok' lines
+         (find-pat (concat "^\\s*?" useok "\\b"))
+         (capture-pat (perlnow-generate-capturing-pat))
+         (cmd-fmt "perl -e 'print %s'")
+         useok-line   quoted-package   package-name  cmd
+         )
+    (save-excursion
+      (save-restriction
+        (widen)
+        (goto-char (point-max))
+        (re-search-backward find-pat nil t)
+        (setq useok-line (perlnow-extract-current-line))
+
+        ;; trim string to the quoted package name with capture-pat
+        (string-match capture-pat useok-line)
+
+        ;; get the package-name with surrounding perl quotes
+        (setq quoted-package
+              (match-string 1 useok-line))
+;;         ;; use perl to interpret the quoting ((issues with shell quoting now...))
+;;         (setq cmd (format cmd-fmt (shell-quote-argument quoted-package)))
+;;         (message "cmd: %s" (pp-to-string cmd))
+;;         (setq package-name (shell-command-to-string cmd))
+
+        (setq package-name
+              (perlnow-strip-perl-quotage quoted-package))
+
+        ;; covering for save-excursion flakiness
+        (switch-to-buffer initial-buffer)
+        (goto-char initial-point)
+        ))
+    package-name))
+
+;; (defun perlnow-generate-capturing-pat ( lead-pat )
+(defun perlnow-generate-capturing-pat ()
+  "Generate a regexp tuned up to extract a quoted package-name from a use_ok line.
+This regexp punts on the problem of interpreting the myriad types
+of allowed perl quotes and just includes them with the
+package-name.  Primarily this was broken out into it's own
+function to facilitate testing of the regexp."
+  (let* (
+         (useok "use_ok")
+         ;; Note this should skip any commented out 'use_ok' line
+         (useok-pat (concat "^\\s*?" useok "\\b"))
+;;         (lead-pat (cond ((not lead-pat) useok-pat)))
+
+         (capture-pat  ;; dodging need for a parser again (just barely)
+             (concat
+              "^[ \t]*?"
+              "use_ok"
+              ;; "\\b"    ;; definitely not needed
+
+              "(?"          ;; allow a paren
+              "[ \t]*?"        ;; allow spaces
+              "\\("         ;; open capture
+
+              "\\(?:"       ;; non-capturing 'shy group'
+              "['\"]"       ;;   simple double or single quotes...
+              "\\|"          ;;   or...
+              "q[^x]"       ;;   something like qq{ or q{, but *not* qx{
+              "\\)"         ;; close shy group
+
+              ".*?"         ;;   anything, including the quotes
+              "\\)"         ;; close capture, right before either...
+
+              "\\(?:"       ;; non-capturing 'shy group'
+              ","           ;; a comma
+              "\\|"          ;; or... something like a ");"
+              "[ \t]*?"     ;;  optional whitespace
+              ")?"          ;;  optional closing paren
+              "[ \t]*?"     ;;  optional whitespace
+              ";"           ;;  The end of all good things
+              "\\)"         ;; close shy group
+              ))
+
+         )
+    capture-pat))
+
+;; general string utility
+(defun perlnow-strip-perl-quotage (str)
+  "Remove perl-style quoting from the given STR and return it.
+Perl quotes include various qq{} variants as well as singles and doubles."
+;; Now, with extra-added ugly hackiness.
+  (let* ((beg-pat-ng "^[ \t]*?\\(?:['\"]\\|q.?[\\W]?\\)[ \t]*?")
+         (end-pat-ng "[ \t]*?['\"\\W]*[ \t]*?$")
+
+         (pat1 "^[ \t'\"]")
+         (pat2 "[ \t'\"]$")
+
+         (pat3 "^qq?[{\(\[\|^#% ]+")
+         (pat4 "[}\)\]\|^#% ]+$")
+
+         (pat5 "[}|\)]$")
+         )
+
+    (setq str
+          (replace-regexp-in-string pat1 "" str))
+    (setq str
+          (replace-regexp-in-string pat2 "" str))
+
+    (setq str
+          (replace-regexp-in-string pat3 "" str))
+    (setq str
+          (replace-regexp-in-string pat4 "" str))
+
+    (setq str
+          (replace-regexp-in-string pat5 "" str))
+
+    (setq str
+          (replace-regexp-in-string pat1 "" str))
+    (setq str
+          (replace-regexp-in-string pat2 "" str))
+    str))
+
+
+
 ;; Example usage:
 ;;      (let* (
 ;;             (fields (perlnow-parse-standard-t-name test-file-full-path))
@@ -4877,17 +5007,51 @@ This only checks the first character in NAME."
   (if perlnow-trace (perlnow-message "Calling perlnow-select-file-from-current-line"))
   (save-excursion
     (let (selected-file beg end)
+      ;; TODO refactor to use: (setq selected-file (perlnow-extract-current-line))
+      ;; TODO REFACTOR BEG
       (move-beginning-of-line 1)
       (setq beg (point))
       (move-end-of-line 1)
       (setq end (point))
       (setq selected-file (buffer-substring beg end))
+      ;; TODO REFACTOR END
       ;; trim leading/trailing spaces
+
+      ;; TODO refactor to use:
+      ;;   (setq selected-file (perlnow-strip-leading-trailing-spaces selected-file))
+      ;; TODO REFACTOR BEG
       (setq selected-file
             (replace-regexp-in-string "^\s+" "" selected-file))
       (setq selected-file
             (replace-regexp-in-string "\s+$" "" selected-file))
+      ;; TODO REFACTOR END
       selected-file)))
+
+;; I seem to want to do this all the time...
+;; general buffer string utility
+(defun perlnow-extract-current-line ()
+  "Get the current line from the buffer and return it as a string."
+  (save-excursion  ;; this might even work, without a find-file in there.
+    (save-restriction
+      (widen)
+      (let (current-line)
+        (move-beginning-of-line 1)
+        (setq beg (point))
+        (move-end-of-line 1)
+        (setq end (point))
+        (setq current-line (buffer-substring beg end))
+        current-line))))
+
+;; general string utility
+(defun perlnow-strip-leading-trailing-spaces (str)
+  "Remove leading and trailing spaces from the given STR and return it."
+  ;; trim leading/trailing spaces
+  (setq str
+        (replace-regexp-in-string "^\s+" "" str))
+  (setq str
+        (replace-regexp-in-string "\s+$" "" str))
+  str)
+
 
 ;; Used indirectly by perlnow-select-file
 (defun perlnow-select-read-full-file-name ()
