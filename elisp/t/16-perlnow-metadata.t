@@ -35,10 +35,11 @@
 
           (funcname "perlnow-metadata")
           (test-name (concat "Testing " funcname ))
+          (slash perlnow-slash)
           (package-name "Beat::Skip")
           (expected-pm-base "Skip.pm")
           (expected-pm-file
-           (concat perlnow-pm-location "Beat" perlnow-slash expected-pm-base))
+           (concat perlnow-pm-location "Beat" slash expected-pm-base))
           (perl "/usr/bin/perl")
           (expected-subname "blue_stone")
 
@@ -54,7 +55,7 @@
      ;; The pm file should exist on disk now.
      (assert-t
       (file-exists-p expected-pm-file)
-      (concat "perlnow-module created file: \n  " expected-pm-file ))
+      (concat "perlnow-module created file: " expected-pm-file ))
 
      (assert-t
       (perlnow-module-file-p (buffer-file-name))
@@ -65,11 +66,9 @@
       "Testing perlnow-script-file-p to confirm module is not like script.")
 
      (if perlnow-debug
-         (message "calling %s on MODULE~~~" funcname))
+         (message "calling %s on file-type MODULE" funcname))
 
-     (let* (
-            (md
-             (perlnow-metadata))
+     (let* ((md (perlnow-metadata))
             (md-testloc          (nth 0  md))
             (md-dotdef           (nth 1  md))
             (md-namestyle        (nth 2  md))
@@ -81,31 +80,26 @@
             (md-filename         (nth 8  md))
             (md-fileloc          (nth 9  md))
             (md-basename         (nth 10 md))
-            (md-context          (nth 11 md))  ;; context:   module
-            (md-subname          (nth 12 md))  ;; sub-name:  blue_stone
-
-            (ignore0
-             (message "md-context: >>>%s<<<<" md-context))
-
-            (ignore1
-             (message "md-subname: >>>%s<<<<" md-subname))
-
+            (md-file-type        (nth 11 md))  ;; context:   module
+            (md-project-type     (nth 12 md))
+            (md-subname          (nth 13 md))  ;; sub-name:  blue_stone
             (expected-testloc "../t")
             (expected-dotdef "incspot")
             (expected-namestyle "fullauto")
             ;; (expected-testloc-absolute "/home/doom/tmp/perlnow_test/t16/t/")
-            (expected-testloc-absolute (concat test-loc "t" perlnow-slash))
-            (expected-hyphenized "Beat-Skip")
+            (expected-testloc-absolute (concat test-loc "t" slash))
+            (expected-hyphenized   "Beat-Skip")
             (expected-package-name "Beat::Skip")
             ;; (expected-incspot "/home/doom/tmp/perlnow_test/t16/lib/")
-            (expected-incspot (concat test-loc "lib" perlnow-slash))
+            (expected-incspot (concat test-loc "lib" slash))
             ;; (expected-filename "/home/doom/tmp/perlnow_test/t16/lib/Beat/Skip.pm")
             (expected-lib expected-incspot)
             ;; (expected-fileloc "/home/doom/tmp/perlnow_test/t16/lib/Beat/")
-            (expected-fileloc (concat expected-lib "Beat" perlnow-slash))
+            (expected-fileloc (concat expected-lib "Beat" slash))
             (expected-filename (concat expected-fileloc "Skip.pm"))
             (expected-basename "Skip")
-            (expected-context "module")
+            (expected-file-type "module")
+            (expected-project-type "noncpan")
             )
        (assert-equal
         expected-testloc md-testloc
@@ -152,23 +146,28 @@
         (format "Testing that %s got expected %s from module" funcname "basename"))
 
        (assert-equal
-        expected-context md-context
-        (format "Testing that %s got expected %s from module" funcname "context"))
+        expected-file-type md-file-type
+        (format "Testing that %s got expected %s from module" funcname "md-file-type"))
+
+       (assert-equal
+        expected-project-type md-project-type
+        (format "Testing that %s got expected %s from module" funcname "md-project-type"))
 
        (assert-equal
         expected-subname md-subname
         (format "Testing that %s got expected %s from module" funcname "subname"))
        )
-
+     (perlnow-tron)
      (switch-to-buffer pm-buffer)
      (goto-char sub-point)
      (perlnow-test-create)
 
+     (setq perlnow-debug t) ;; TODO why would I need to do this here?
+
      (if perlnow-debug
-         (message "calling %s on TEST~~~" funcname))
-     (let* (
-            (md
-             (perlnow-metadata))
+         (message "calling %s on file-type TEST" funcname))
+
+     (let* ((md (perlnow-metadata))
             (md-testloc          (nth 0  md))
             (md-dotdef           (nth 1  md))
             (md-namestyle        (nth 2  md))
@@ -180,87 +179,57 @@
             (md-filename         (nth 8  md))
             (md-fileloc          (nth 9  md))
             (md-basename         (nth 10 md))
-            (md-context          (nth 11 md))
-            (md-subname          (nth 12 md))
-
-            (expected-testloc "../t")
-            (expected-dotdef "incspot")
-            (expected-namestyle "fullauto")
-            (expected-testloc-absolute (concat test-loc "t" perlnow-slash))
-            (expected-hyphenized "Beat-Skip")
+            (md-file-type        (nth 11 md))
+            (md-project-type     (nth 12 md))
+            (md-subname          (nth 13 md))
+            (expected-testloc     "../t")
+            (expected-dotdef      "incspot")
+            (expected-namestyle   "fullauto")
+            (expected-testloc-absolute (concat test-loc "t" slash))
+            (expected-hyphenized   "Beat-Skip")
             (expected-package-name "Beat::Skip")
-            (expected-incspot (concat test-loc "lib" perlnow-slash))
+            (expected-incspot (concat test-loc "lib" slash))
             (expected-lib expected-incspot)
             ;; (expected-fileloc "/home/doom/tmp/perlnow_test/t16/t/")
             (expected-fileloc expected-testloc-absolute)
             (expected-filename (concat expected-fileloc "01-Beat-Skip-blue_stone.t"))
-            (expected-basename "01-Beat-Skip-blue_stone")
-            (expected-context "test")
-            (expected-subname "blue_stone")
+            (expected-basename     "01-Beat-Skip-blue_stone")
+            (expected-file-type    "test")
+            (expected-project-type "noncpan")
+            (expected-subname      "blue_stone")
             )
 
+    (setq perlnow-debug t) ;; TODO What keeps resetting this?
     (if perlnow-debug
-        (message
-         (concat
-          "   ~~~\n"
-          (format "%30s %-40s\n" "testloc: " md-testloc)
-          (format "%30s %-40s\n" "dotdef: " md-dotdef)
-          (format "%30s %-40s\n" "namestyle: " md-namestyle)
-          (format "%30s %-40s\n" "testloc-absolute: " md-testloc-absolute)
-          (format "%30s %-40s\n" "hyphenized-package-name: " md-hyphenized)
-          (format "%30s %-40s\n" "package-name: " md-package-name)
-          (format "%30s %-40s\n" "incspot: " md-incspot)
-          (format "%30s %-40s\n" "buffer: " (pp-to-string md-buffer))
-          (format "%30s %-40s\n" "file-name: " md-filename)
-          (format "%30s %-40s\n" "file-location: " md-fileloc)
-          (format "%30s %-40s\n" "basename: " md-basename)
-          (format "%30s %-40s\n" "context: " md-context)
-          (format "%30s %-40s\n" "sub-name: " md-subname)
-          "   ~~~\n"
-          )))
-
-;; Currently getting this:
-;;                      testloc:  ../t
-;;                       dotdef:  incspot
-;;                    namestyle:  fullauto
-;;             testloc-absolute:  nil
-;;      hyphenized-package-name:  Beat-Skip-blue_stone        want: Beat-Skip
-;;                 package-name:  Beat::Skip::blue_stone      want: Beat::Skip
-;;                      incspot:  /home/doom/tmp/perlnow_test/t16/lib/
-;;                       buffer:  #<buffer 01-Beat-Skip-blue_stone.t>
-;;                    file-name:  /home/doom/tmp/perlnow_test/t16/t/01-Beat-Skip-blue_stone.t
-;;                file-location:  /home/doom/tmp/perlnow_test/t16/t/
-;;                     basename:  01-Beat-Skip-blue_stone
-;;                      context:  test
-;;                     sub-name:
+      (perlnow-report-metadata md))
 
        (assert-equal
         expected-testloc md-testloc
-        (format "Testing that %s got expected %s from %s" funcname "testloc" expected-context))
+        (format "Testing that %s got expected %s from %s" funcname "testloc" expected-file-type))
 
        (assert-equal
         expected-dotdef md-dotdef
-        (format "Testing that %s got expected %s from %s" funcname "dotdef" expected-context))
+        (format "Testing that %s got expected %s from %s" funcname "dotdef" expected-file-type))
 
        (assert-equal
         expected-namestyle md-namestyle
-        (format "Testing that %s got expected %s from %s" funcname "namestyle" expected-context))
+        (format "Testing that %s got expected %s from %s" funcname "namestyle" expected-file-type))
 
        (assert-equal
         expected-testloc-absolute md-testloc-absolute
-        (format "Testing that %s got expected %s from %s" funcname "testloc-absolute" expected-context))
+        (format "Testing that %s got expected %s from %s" funcname "testloc-absolute" expected-file-type))
 
        (assert-equal
         expected-hyphenized md-hyphenized
-        (format "Testing that %s got expected %s from %s" funcname "hyphenized" expected-context))
+        (format "Testing that %s got expected %s from %s" funcname "hyphenized" expected-file-type))
 
        (assert-equal
         expected-package-name md-package-name
-        (format "Testing that %s got expected %s from %s" funcname "package-name" expected-context))
+        (format "Testing that %s got expected %s from %s" funcname "package-name" expected-file-type))
 
        (assert-equal
         expected-incspot md-incspot
-        (format "Testing that %s got expected %s from %s" funcname "%s" expected-context))
+        (format "Testing that %s got expected %s from %s" funcname "%s" expected-file-type))
 
        (assert-t
         (bufferp md-buffer)
@@ -268,25 +237,146 @@
 
        (assert-equal
         expected-filename md-filename
-        (format "Testing that %s got expected %s from %s" funcname "filename" expected-context))
+        (format "Testing that %s got expected %s from %s" funcname "filename" expected-file-type))
 
        (assert-equal
         expected-fileloc md-fileloc
-        (format "Testing that %s got expected %s from %s" funcname "fileloc" expected-context))
+        (format "Testing that %s got expected %s from %s" funcname "fileloc" expected-file-type))
 
        (assert-equal
         expected-basename md-basename
-        (format "Testing that %s got expected %s from %s" funcname "basename" expected-context))
+        (format "Testing that %s got expected %s from %s" funcname "basename" expected-file-type))
 
        (assert-equal
-        expected-context md-context
-        (format "Testing that %s got expected %s from %s" funcname "context" expected-context))
+        expected-file-type md-file-type
+        (format "Testing that %s got expected %s from %s" funcname "context" expected-file-type))
+
+       (assert-equal
+        expected-project-type md-project-type
+        (format "Testing that %s got expected %s from module" funcname "md-project-type"))
 
        (assert-equal
         expected-subname md-subname
-        (format "Testing that %s got expected %s from %s" funcname "subname" expected-context))
+        (format "Testing that %s got expected %s from %s" funcname "subname" expected-file-type))
+       ) ;; end let* perlnow-metadata on TEST
 
-       )
+
+     (let*(
+           (expected-package-name "Interociter::Comedian")
+           (expected-subname "know_her")
+           )
+       (perlnow-milla perlnow-dev-location expected-package-name)
+       (perlnow-insert-sub expected-subname)
+       (insert "return 0;")
+       (save-buffer)
+
+       (setq perlnow-debug t) ;; TODO why would I need to do this here?
+
+       (if perlnow-debug
+           (message "calling %s on file-type OBJECT, project-type CPAN" funcname))
+
+       (let* ((md (perlnow-metadata))
+              (md-testloc          (nth 0  md))
+              (md-dotdef           (nth 1  md))
+              (md-namestyle        (nth 2  md))
+              (md-testloc-absolute (nth 3  md))
+              (md-hyphenized       (nth 4  md))
+              (md-package-name     (nth 5  md))
+              (md-incspot          (nth 6  md))
+              (md-buffer           (nth 7  md))
+              (md-filename         (nth 8  md))
+              (md-fileloc          (nth 9  md))
+              (md-basename         (nth 10 md))
+              (md-file-type        (nth 11 md))
+              (md-project-type     (nth 12 md))
+              (md-subname          (nth 13 md))
+              (expected-testloc     "../t")
+              (expected-dotdef      "incspot")
+              (expected-namestyle   "fullauto")
+
+              (expected-hyphenized   "Interociter-Comedian")
+              (expected-package-name "Interociter::Comedian")
+
+
+              (expected-staging-area
+               (concat perlnow-dev-location expected-hyphenized slash))
+
+              (expected-incspot (concat expected-staging-area "lib" slash))
+
+              (expected-testloc-absolute (concat expected-staging-area "t" slash))
+
+              (expected-fileloc (concat expected-incspot "Interociter" slash))
+
+              (expected-filename (concat expected-fileloc "Comedian.pm"))
+              (expected-basename     "Comedian")
+              (expected-file-type    "object")
+              (expected-project-type "cpan")
+              )
+
+         (setq perlnow-debug t) ;; TODO What keeps resetting this?
+         (if perlnow-debug
+             (perlnow-report-metadata md))
+
+         (assert-equal
+          expected-testloc md-testloc
+          (format "Testing that %s got expected %s from %s" funcname "testloc" expected-file-type))
+
+         (assert-equal
+          expected-dotdef md-dotdef
+          (format "Testing that %s got expected %s from %s" funcname "dotdef" expected-file-type))
+
+         (assert-equal
+          expected-namestyle md-namestyle
+          (format "Testing that %s got expected %s from %s" funcname "namestyle" expected-file-type))
+
+         (assert-equal
+          expected-testloc-absolute md-testloc-absolute
+          (format "Testing that %s got expected %s from %s" funcname "testloc-absolute" expected-file-type))
+
+         (assert-equal
+          expected-hyphenized md-hyphenized
+          (format "Testing that %s got expected %s from %s" funcname "hyphenized" expected-file-type))
+
+         (assert-equal
+          expected-package-name md-package-name
+          (format "Testing that %s got expected %s from %s" funcname "package-name" expected-file-type))
+
+         (assert-equal
+          expected-incspot md-incspot
+          (format "Testing that %s got expected %s from %s" funcname "%s" expected-file-type))
+
+         (assert-t
+          (bufferp md-buffer)
+          (format "Testing that %s got a buffer in field for buffer" funcname))
+
+         (assert-equal
+          expected-filename md-filename
+          (format "Testing that %s got expected %s from %s" funcname "filename" expected-file-type))
+
+         (assert-equal
+          expected-fileloc md-fileloc
+          (format "Testing that %s got expected %s from %s" funcname "fileloc" expected-file-type))
+
+         (assert-equal
+          expected-basename md-basename
+          (format "Testing that %s got expected %s from %s" funcname "basename" expected-file-type))
+
+         (assert-equal
+          expected-file-type md-file-type
+          (format "Testing that %s got expected %s from %s" funcname "context" expected-file-type))
+
+         (assert-equal
+          expected-project-type md-project-type
+          (format "Testing that %s got expected %s from module" funcname "md-project-type"))
+
+         (assert-equal
+          expected-subname md-subname
+          (format "Testing that %s got expected %s from %s" funcname "subname" expected-file-type))
+         ))
+
+
+
+
 
      )
    (end-tests)

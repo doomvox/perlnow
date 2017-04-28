@@ -2884,6 +2884,77 @@ renaming with an '.OLD' suffix."
 ;; end file creation
 
 ;;========
+;;  dynamically set dev/lib/bin
+
+(defun perlnow-XXX ( &optional md )
+  ""
+  (if perlnow-trace (perlnow-message "Calling XXX"))
+  (unless md (setq md perlnow-metadata))
+
+  (let* (
+         (testloc          (nth 0  md))
+         (dotdef           (nth 1  md))
+         (namestyle        (nth 2  md))
+         (testloc-absolute (nth 3  md))
+         (hyphenized       (nth 4  md))
+         (package-name     (nth 5  md))
+         (incspot          (nth 6  md))
+         (buffer           (nth 7  md))
+         (filename         (nth 8  md))
+         (fileloc          (nth 9  md))
+         (basename         (nth 10 md))
+         (context          (nth 10 md))
+         ;; (sub-name         (nth 11 md))
+
+         (slash perlnow-slash)
+
+         dev lib bin t-loc
+         )
+
+    (cond ((string= context "module")
+           (setq dev nil)
+           (setq lib incspot)
+           (setq bin nil)
+           (setq t-loc nil) ;; testloc-absolute
+           )
+          ((string= context "object")
+           (setq dev nil)
+           (setq lib incspot)
+           (setq bin nil)
+           (setq t-loc nil) ;; testloc-absolute
+           )
+          ((string= context "cpan")
+           (setq dev (perlnow-fixdir (concat incspot slash ".." slash)))
+           (setq lib incspot)
+           (setq bin (concat slash "script" slash)) ;; good default, but should check it
+           (setq t-loc (concat slash "t" slash)) ;; testloc-absolute !
+           )
+          ((string= context "script")
+           (setq dev nil)
+           (setq lib nil)
+           (setq bin fileloc)
+           (setq t-loc nil)
+           )
+          ((string= context "test")
+           (setq dev nil)
+           (setq lib incspot) ;; metadata calls incspot-from-t
+           (setq bin fileloc)
+           (setq t-loc nil)
+           )
+          ;;         ((string= context '')
+          ;;          )
+          (t
+           (setq dev nil)
+           (setq lib nil)
+           (setq bin nil)
+           (setq t-loc nil)
+           )
+          )
+    (list dev lib bin t-loc)
+ ))
+
+
+;;========
 ;; buffer/file probes (determine what kind of code it is, etc)
 
 (defun perlnow-nix-script-p ()
@@ -3143,7 +3214,7 @@ Checks mode and buffer name."
                 nil)))
     retval))
 
-;; end  buffer probes
+;; end buffer probes
 
 ;;========
 ;; buffer scraping -- get metadata about the code buffer
@@ -3167,8 +3238,9 @@ Checks mode and buffer name."
 ;;          (filename         (nth 8  md))
 ;;          (fileloc          (nth 9  md))
 ;;          (basename         (nth 10 md))
-;;          (context          (nth 10 md))
-;;          (sub-name         (nth 11 md))
+;;          (project-type     (nth 11 md))
+;;          (file-type        (nth 12 md))
+;;          (sub-name         (nth 13 md))
 ;;          )
 ;;     ;; ...
 ;;     ))
@@ -3208,26 +3280,42 @@ An example of returned metadata.
                    file-name:  /home/doom/lib/Skank/Mama.pm
                file-location:  /home/doom/lib/Skank/
                     basename:  Mama
-                    context:   object
-                   sub-name:   clean_up
+                   file-type:  object
+                project-type:  cpan
+                    sub-name:  clean_up
 
-Note, \"context\" is a string code which may be:
-  module object cpan script test test-select-menu unknown \(others?\)
+\"project-type\" is a string code which at present
+just \"cpan\" or \"noncpan\": it tells you something
+about the larger context of the current file.
+
+\"file-type\" is a string code which may be:
+  module  object script  test  test-select-menu  man-page unknown
+
+Note: \"test-select-menu\" and \"man-page\" are strictly a
+file-types, but rather buffer-types: this might be thought of
+as \"calling-context\".  It indicates something about the active
+buffer when metadata was called:
+
+  module             an exporter-based module  (TODO: module-exporter?)
+  object             a oop-based module        (TODO: module-object?)
+  script             a script
+  test               a test file
+  test-select-menu   menu of test files
+  man-page           man page for a perl module
+  unknown            something else
 
 "
   (if perlnow-trace (perlnow-message "Calling perlnow-metadata"))
-  (let (;; save-excursion often seems flaky, so I do this
-        (initial-point (point))
+  (let ((initial-point  (point))
         (initial-buffer (current-buffer))
-
+        md-list
         testloc  dotdef  namestyle
         testloc-absolute
         package-name  incspot  hyphenized-package-name
-        buffer  file-name  file-location  basename
+        buffer
+        file-name  file-location  basename
         policy-metadata
-        context
-
-        ;; TODO populate following, append to the returned list
+        file-type project-type
         sub-name
 
         staging-area
@@ -3242,83 +3330,108 @@ Note, \"context\" is a string code which may be:
     (cond (file-name
            (find-file file-name)
            ))
-    ;; first, do test policy settings (need later in this function)
 
-    ;; We default to a "module" test policy, and override later as appropriate
-    ;; (Note: the "overrides" are no-ops *except* for script, with it's dotdef='fileloc')
-    (setq testloc   perlnow-test-policy-test-location-module  )
-    (setq dotdef    perlnow-test-policy-dot-definition-module )
-    (setq namestyle perlnow-test-policy-naming-style-module   )
-    (cond
-          ((perlnow-cpan-style-code-p)  ;; works even in a test select menu buffer
-           (setq testloc   perlnow-test-policy-test-location-cpan  )
-           (setq dotdef    perlnow-test-policy-dot-definition-cpan )
-           (setq namestyle perlnow-test-policy-naming-style-cpan   )
-           (setq context "cpan")
-           )
-          ((setq package-name
-                 (perlnow-module-code-p))
-           (setq context "module")
-           (if (not (perlnow-exporter-code-p))
-               (setq context "object"))
-           )
-          ((perlnow-script-p) ;; TODO do trial runs some time (ntigas)
-           (setq testloc   perlnow-test-policy-test-location-script  )
-           (setq dotdef    perlnow-test-policy-dot-definition-script )
-           (setq namestyle perlnow-test-policy-naming-style-script   )
-           (setq context "script")
-           )
-          ((perlnow-test-select-menu-p) ;; Act like a module (TODO, okay?)
-           (setq context "test-select-menu")
-           )
-          ((perlnow-test-p)
-           ;; TODO determine test-policy from test?  Is it a script or module test?
-           (setq context "test")
-          )
-          (t ;; other (whatever that would be...)
-           (setq testloc    "../t" )
-           (setq dotdef     "incspot")
-           (setq namestyle  "numeric")
-           (setq context    "unknown")
-           )
-          )
-    ;; partial metadata list with just the first three test policy items
-    (setq policy-metadata (list testloc dotdef namestyle))
-    (cond
-     (;; (perlnow-test-select-menu-p)
-      (string= context "test-select-menu")
+   ;; presuming by buffer we mean the calling context buffer (same as initial-buffer)
+   ;; TODO maybe trace asscode links back from non-file buffers to first code?
+   (setq buffer (current-buffer))
+
+   ;; Now let's define file-context and project-context
+   (setq file-type     "unknown")
+   (setq project-type  "noncpan")
+   (cond ((perlnow-cpan-style-code-p)  ;; works even in a test select menu buffer ((man-page, too? TODO))
+          (setq project-type "cpan")))
+   (cond ((setq package-name (perlnow-module-code-p))
+          (cond ((perlnow-exporter-code-p)
+                 (setq file-type "module"))
+                (t
+                 (setq file-type "object"))))
+         ((perlnow-script-p)
+          (setq file-type "script"))
+         ((perlnow-test-select-menu-p)
+          (setq file-type "test-select-menu"))
+         ((perlnow-test-p)
+          (setq file-type "test"))
+         ;; (;; Man or WoMan buffer  ;; TODO Q: does this cause problems her?
+         ;;     (setq package-name (perlnow-get-package-name-from-man))
+         ;;     (setq file-type "man-page"))
+         )
+   ;; package-name set already for module and object and maybe man-page
+   ;; TODO better to do the others here?  Make a guess for test and script
+
+   ;; now do the test policy settings (may need later in this function)
+   ;; We default to a "module" test policy, and override later as appropriate,
+   ;; but really, the "overrides" are noops *except* for script, with it's dotdef='fileloc'
+   (setq testloc   perlnow-test-policy-test-location-module  )
+   (setq dotdef    perlnow-test-policy-dot-definition-module )
+   (setq namestyle perlnow-test-policy-naming-style-module   )
+   (cond
+    ((string= project-type "cpan")
+     (setq testloc   perlnow-test-policy-test-location-cpan  )
+     (setq dotdef    perlnow-test-policy-dot-definition-cpan )
+     (setq namestyle perlnow-test-policy-naming-style-cpan   )
+     )
+    (
+     (string= file-type "module")
+     ;; nothing to do: we already used the module values as a default
+     )
+    ((perlnow-script-p) ;; TODO do trial runs some time (ntigas)
+     (setq testloc   perlnow-test-policy-test-location-script  )
+     (setq dotdef    perlnow-test-policy-dot-definition-script )
+     (setq namestyle perlnow-test-policy-naming-style-script   )
+     )
+    ((string= file-type "test-select-menu")
+     ;; TODO for now, just treat this case like a module ((really: hope policy dies))
+     )
+    ((string= file-type "test")
+     ;; TODO need to know if this is a script or module test
+     )
+    (t ;; other (whatever that would be...)
+     (setq testloc    "../t" )
+     (setq dotdef     "incspot")
+     (setq namestyle  "numeric")
+     )) ;; end policy
+   (setq test-policy-trio (list testloc dotdef namestyle))
+   (cond
+     ((string= file-type "test-select-menu")
       ;; get the module name from the test file name
-      (let* (
-             (selected-file-compact (perlnow-select-file-from-current-line))
+      (let* ((selected-file-compact (perlnow-select-file-from-current-line))
              (path (perlnow-get-path-from-markedup-name selected-file-compact))
-             (testfile (concat path selected-file-compact))
-             )
+             (testfile (concat path selected-file-compact)))
         (setq package-name (perlnow-module-from-t-file testfile t))
         (setq testloc-absolute (perlnow-t-dir-from-t testfile))
-        (perlnow-incspot-from-t testfile policy-metadata)
+        (perlnow-incspot-from-t testfile test-policy-trio)
 
         (setq file-name (perlnow-full-path-to-module incspot package-name))
         (setq file-location file-name)
         (setq basename (file-name-sans-extension (file-name-nondirectory file-name)))
 
         ;; the select menu buffer, which is literally the current buffer.  TODO okay?
-        (setq buffer    (current-buffer))
-        ))
+        (setq buffer    (current-buffer))  ;; TODO factor out above.  there's always a buffer.
+        )) ;; end test-select-menu
 ;; TODO this was causing problems... why exactly?
 ;;      (;; Man or WoMan buffer
 ;;       (setq package-name (perlnow-get-package-name-from-man))
-;;       ;; TODO anything else?
+;;       (setq file-type "man-page")
 ;;        )
      (t ;; not a test-select-menu or man page: assuming it's a basic file-buffer
-      ;; For every file buffer
+      ;; We do all of the following for every file buffer
+      ;; First, the basic file information
       (cond ((setq file-name     (buffer-file-name))
              (setq file-location (file-name-directory file-name))
-             (setq buffer        (current-buffer))
+             (setq buffer        (current-buffer)) ;; TODO factor out above.  there's always a buffer.
              (setq basename      (file-name-sans-extension (file-name-nondirectory file-name)))
              ))
+      ;; TODO I think: for every block, check whether we're cpan-style?
+      ;;      OR: a separate block first, if cpan-style, skip the others...
+
       (cond
+;;        (;; if cpan-style
+;;         (string= project-type "cpan")
+;;         ;; maybe?
+;;        )
+
        (;; if module
-        (or (string= context "module") (string= context "object") (string= context "cpan"))
+        (or (string= file-type "module") (string= file-type "object"))
         (setq package-name (perlnow-get-package-name-from-module-buffer))
         (setq sub-name (or (perlnow-sub-at-point) ""))
         (setq testloc-absolute
@@ -3327,8 +3440,7 @@ Note, \"context\" is a string code which may be:
             (message " package-name: %s file-location: %s"   package-name file-location))
         (setq incspot (perlnow-get-incspot package-name file-location))
         )
-       (;; (perlnow-test-p)
-        (string= context "test")
+       ((string= file-type "test")
         (let* (
                (path (file-name-directory file-name))
                (testfile file-name)
@@ -3344,7 +3456,7 @@ Note, \"context\" is a string code which may be:
                )
           (setq package-name colonized)
           (setq testloc-absolute (perlnow-t-dir-from-t testfile))
-          (setq incspot (perlnow-incspot-from-t testfile policy-metadata))
+          (setq incspot (perlnow-incspot-from-t testfile test-policy-trio))
           ;; (setq sub-name (or (perlnow-sub-at-point) ""))
           (setq sub-name subname)
 
@@ -3354,8 +3466,7 @@ Note, \"context\" is a string code which may be:
          ;;;; TODO what about from a test created from a script?
          ;;;;      can you trace from that script to a module?
         )
-       (;; (perlnow-script-p)
-        (string= context "script")
+       ((string= file-type "script")
         (setq sub-name (or (perlnow-sub-at-point) ""))
         (setq testloc-absolute (perlnow-testloc-from-policy testloc dotdef namestyle))
         (cond (perlnow-associated-code
@@ -3369,6 +3480,7 @@ Note, \"context\" is a string code which may be:
                         (setq incspot (perlnow-get-incspot package-name candidate))
                         )))))
         (unless package-name
+          ;; TODO move/copy this sort of thing to a context='cpan' block?
           (cond ((setq staging-area (perlnow-find-cpan-style-staging-area))
                  (setq incspot staging-area)
                  (let* (
@@ -3391,49 +3503,28 @@ Note, \"context\" is a string code which may be:
         ;; TODONT hypothetically, could scrape script for likely-looking "use"
         ;;        e.g. one that has an open buffer, a mention as a recent pick, etc.
         ))))
-    (cond ((and package-name (not hyphenized-package-name))
-           (setq hyphenized-package-name
-                 (mapconcat 'identity (split-string package-name "::") "-"))
-           ))
-    (setq ret-list
-          (list testloc dotdef namestyle
-                testloc-absolute
-                hyphenized-package-name package-name incspot
-                buffer file-name file-location basename
-                context
-                sub-name
-                ))
-
-    (perlnow-stash-put testloc-absolute incspot)
-
-    (if perlnow-debug
-        (message
-         (concat
-          "   ~~~\n"
-          (format "%30s %-40s\n" "testloc: " testloc)
-          (format "%30s %-40s\n" "dotdef: " dotdef)
-          (format "%30s %-40s\n" "namestyle: " namestyle)
-          (format "%30s %-40s\n" "testloc-absolute: " testloc-absolute)
-          (format "%30s %-40s\n" "hyphenized-package-name: "
-                  hyphenized-package-name)
-          (format "%30s %-40s\n" "package-name: " package-name)
-          (format "%30s %-40s\n" "incspot: " incspot)
-          (format "%30s %-40s\n" "buffer: " (pp-to-string buffer))
-          (format "%30s %-40s\n" "file-name: " file-name)
-          (format "%30s %-40s\n" "file-location: " file-location)
-          (format "%30s %-40s\n" "basename: " basename)
-          (format "%30s %-40s\n" "context: " context)
-          (format "%30s %-40s\n" "sub-name: " sub-name)
-          "   ~~~\n"
-          )))
-
+   (cond ((and package-name (not hyphenized-package-name))
+          (setq hyphenized-package-name
+                (mapconcat 'identity (split-string package-name "::") "-"))
+          ))
+   (perlnow-stash-put testloc-absolute incspot) ;; very important side-effect.  move elsewhere?
+   (setq md-list
+         (list testloc dotdef namestyle
+               testloc-absolute
+               hyphenized-package-name package-name incspot
+               buffer file-name file-location basename
+               file-type
+               project-type
+               sub-name
+               ))
+    (if perlnow-debug (perlnow-report-metadata md-list))
     ;; returning from any excursions
     (switch-to-buffer initial-buffer)
     (goto-char initial-point)
-    ret-list))
+    md-list))
 
 
-;;=======
+;;------
 ;; buffer scraping -- extracting info from code buffer
 (defun perlnow-hashbang ()
   "What is the hash bang line for this file buffer?
@@ -3708,32 +3799,30 @@ near point, presuming a \"*select test file*\" menu is the
 current buffer.  Return defaults to \"hyphenized\" form, but
 the COLONIZED-FLAG option can be set to request double-colon separators."
   (cond ((not t-file)
-          ;; bad, actually opens the file on current line:
-          ;; (setq t-file (perlnow-select-file))
-          (let*
-              (
-               (selected-file-compact (perlnow-select-file-from-current-line))
-               (path (perlnow-get-path-from-markedup-name selected-file-compact))
-               (t-file (concat path selected-file-compact))
-               ))))
-  (let* (
+         (let*
+             ((selected-file-compact (perlnow-select-file-from-current-line))
+              (path (perlnow-get-path-from-markedup-name selected-file-compact))
+              (t-file (concat path selected-file-compact))
+              )))) ;; end cond not t-file
 
-;;         (hyphenized (perlnow-extract-hyphenized-from-standard-t-name t-file))
-
-         (fields (perlnow-parse-standard-t-name t-file))
-         ;; (prefix      (nth 0 fields))
-         (hyphenized  (nth 1 fields))
-         ;; (subname     (nth 2 fields))
-         ;; (description (nth 3 fields))
-
-         (colonized (replace-regexp-in-string "-" "::" hyphenized))
-         (ret (cond (colonized-flag colonized) (t hyphenized)))
-         )
-    ;; TODO try other methods of scraping module info?
+  (let ( colonized  hyphenized  fields  ret )
+    (cond ((setq fields (perlnow-parse-standard-t-name t-file))
+           (setq hyphenized (nth 1 fields))
+           (setq colonized (replace-regexp-in-string "-" "::" hyphenized))
+           )
+          ((setq colonized (perlnow-get-package-name-from-useok t-file))
+           (setq hyphenized (replace-regexp-in-string "::" "-" colonized))
+           )
+          ;; TODO try still other methods of scraping module info?
+          (t
+           (message "Could not determine module from t-file.")
+           )
+          )
+    (setq ret (cond (colonized-flag colonized) (t hyphenized)))
     ret))
 
 
-(defun perlnow-get-package-name-from-useok ()
+(defun perlnow-get-package-name-from-useok ( &optional t-file )
   "Get the module package name found in a use_ok line.
 A perl test file often has a uses \"use_ok\" rather than \"use\",
 and that can be a good hint about which module the test file
@@ -3741,7 +3830,9 @@ is primarily intended to exercise.  Example:
 
     use_ok( 'WildSide::Glam' ,  qw(sashay) );
 
-When there's more than one use_ok line in the file, this picks the last one."
+When there's more than one use_ok line in the file, this picks the last one.
+By default presumes the current buffer shows a *.t file, but a T-FILE to examine
+can be passed  in as an optional argument."
   (if perlnow-trace (perlnow-message "Calling perlnow-get-package-name-from-useok"))
   (let* (
          (initial-buffer (current-buffer))
@@ -3750,10 +3841,12 @@ When there's more than one use_ok line in the file, this picks the last one."
          ;; Note: this should skip any commented out 'use_ok' lines
          (find-pat (concat "^\\s*?" useok "\\b"))
          (capture-pat (perlnow-generate-capturing-pat))
-         (cmd-fmt "perl -e 'print %s'")
+         ;; (cmd-fmt "perl -e 'print %s'")
          useok-line   quoted-package   package-name  cmd
          )
     (save-excursion
+      (if t-file
+          (find-file t-file))
       (save-restriction
         (widen)
         (goto-char (point-max))
@@ -3766,7 +3859,9 @@ When there's more than one use_ok line in the file, this picks the last one."
         ;; get the package-name with surrounding perl quotes
         (setq quoted-package
               (match-string 1 useok-line))
-;;         ;; use perl to interpret the quoting ((issues with shell quoting now...))
+
+;;     ;; use perl to interpret the quoting
+;;     ;; --or so I thought: *now* have issues with shell quoting the quotes...
 ;;         (setq cmd (format cmd-fmt (shell-quote-argument quoted-package)))
 ;;         (message "cmd: %s" (pp-to-string cmd))
 ;;         (setq package-name (shell-command-to-string cmd))
@@ -3780,52 +3875,42 @@ When there's more than one use_ok line in the file, this picks the last one."
         ))
     package-name))
 
-;; (defun perlnow-generate-capturing-pat ( lead-pat )
 (defun perlnow-generate-capturing-pat ()
-  "Generate a regexp tuned up to extract a quoted package-name from a use_ok line.
+  "Generate a regexp to extract a package-name with quotes from a use_ok line.
 This regexp punts on the problem of interpreting the myriad types
-of allowed perl quotes and just includes them with the
-package-name.  Primarily this was broken out into it's own
-function to facilitate testing of the regexp."
+of allowed perl quotes and just includes them with the package-name."
   (let* (
-         (useok "use_ok")
-         ;; Note this should skip any commented out 'use_ok' line
-         (useok-pat (concat "^\\s*?" useok "\\b"))
-;;         (lead-pat (cond ((not lead-pat) useok-pat)))
-
          (capture-pat  ;; dodging need for a parser again (just barely)
              (concat
               "^[ \t]*?"
               "use_ok"
-              ;; "\\b"    ;; definitely not needed
 
-              "(?"          ;; allow a paren
-              "[ \t]*?"        ;; allow spaces
-              "\\("         ;; open capture
+              "(?"      ;; allow a paren
+              "[ \t]*?" ;; allow spaces
+              "\\("     ;; open capture
 
-              "\\(?:"       ;; non-capturing 'shy group'
-              "['\"]"       ;;   simple double or single quotes...
-              "\\|"          ;;   or...
-              "q[^x]"       ;;   something like qq{ or q{, but *not* qx{
-              "\\)"         ;; close shy group
+              "\\(?:"   ;; non-capturing 'shy group'
+              "['\"]"   ;;   simple double or single quotes...
+              "\\|"     ;;   or...
+              "q[^x]"   ;;   something like qq{ or q{, but *not* qx{
+              "\\)"     ;; close shy group
 
-              ".*?"         ;;   anything, including the quotes
-              "\\)"         ;; close capture, right before either...
+              ".*?"     ;;   anything, including the quotes
+              "\\)"     ;; close capture, right before either...
 
-              "\\(?:"       ;; non-capturing 'shy group'
-              ","           ;; a comma
-              "\\|"          ;; or... something like a ");"
-              "[ \t]*?"     ;;  optional whitespace
-              ")?"          ;;  optional closing paren
-              "[ \t]*?"     ;;  optional whitespace
-              ";"           ;;  The end of all good things
-              "\\)"         ;; close shy group
+              "\\(?:"   ;; non-capturing 'shy group'
+              ","       ;; a comma
+              "\\|"     ;; or... something like a ");"
+              "[ \t]*?" ;;  optional whitespace
+              ")?"      ;;  optional closing paren
+              "[ \t]*?" ;;  optional whitespace
+              ";"       ;;  The end of all good things
+              "\\)"     ;; close shy group
               ))
-
          )
     capture-pat))
 
-;; general string utility
+;; special purpose hack of limited utility
 (defun perlnow-strip-perl-quotage (str)
   "Remove perl-style quoting from the given STR and return it.
 Perl quotes include various qq{} variants as well as singles and doubles."
@@ -4049,7 +4134,7 @@ Returns path to \"t\" (including \"t\")."
 ;;   (also see perlnow-sub-at-point above)
 
 ;; TODO currently unused:
-;;    o  might be used to implement a side display, an overview and navigation aid.
+;;    o  might be used to implement a side display, an overview and navigation aid. (better: ecb + etags?)
 ;;    o  might be used to talk to an existing tool like that (cedet?)
 (defun perlnow-list-all-subs ( &optional internals )
   "Extracts the sub names for all routines in the current buffer.
@@ -4242,7 +4327,7 @@ Used by \\[perlnow-get-test-file-name]."
 (defun perlnow-test-from-policy (testloc dotdef namestyle)
   "Get the test file name for the current perl buffer, given a test policy.
 This is used by \\[perlnow-get-test-file-name] and relatives.
-A test policy (see `perlnow-documentation-test-file-strategies')
+A test policy \(see `perlnow-documentation-test-file-strategies'\)
 is defined by three pieces of information:
 the TESTLOC \(see `perlnow-test-policy-test-location'\)
 the DOTDEF \(see `perlnow-test-policy-dot-definition' \)
@@ -4583,7 +4668,7 @@ The template used is specified by the variable `perlnow-perl-test-module-templat
   "Looks for test files appropriate for the current file.
 Uses the three given elements of a \"test policy\", to find
 appropriate test files:
-A test policy (see `perlnow-documentation-test-file-strategies')
+A test policy \(see `perlnow-documentation-test-file-strategies'\)
 is defined by three pieces of information:
 the TESTLOC \(see `perlnow-test-policy-test-location'\)
 the DOTDEF \(see `perlnow-test-policy-dot-definition' \)
@@ -5675,7 +5760,6 @@ passes it through unchanged."
         minor1)
     (cond
      ((string-match new-version-pat given-version)
-       ;;       (message "Looks like minimum perl version is in the new style: %s" given-version) ;; DEBUG
        given-version )
      ((string-match old-version-pat given-version)
        (setq major (match-string 1 given-version))
@@ -6749,12 +6833,14 @@ see: \\[perlnow-run-perltidy]."
 ;; Insert boilerplate commands.
 ;;
 ;; TODO There might be some reason to use skeleton.el or tempo.el for these.
+;;      Or yasnippet?
 ;;
 ;; Note: the following presume interspersed pod style.
 ;;
 ;; Ideally, there would be some way of customizing these, but then,
 ;; just writing your own routine is easy enough.
 
+;; TODO needs a tail hook: probably wnat to save-buffer, then regenerate etags
 (defun perlnow-insert-sub (&optional name)
   "Insert the framework for a new sub.
 Adapts to context and inserts an OOP framework if this
@@ -7000,7 +7086,6 @@ Much derided though it may be.  Note: no leading zeros on MM or DD."
 (defun perlnow-full-date ()
   "Return the date in the fully-spelled out American format.
 For example: \"August 8, 2009\" (which I realize is not *just* American)."
-  ;;  (interactive) ;; DEBUG
   (if perlnow-trace (perlnow-message "Calling perlnow-full-date"))
   (let* (
          (month (format-time-string "%B"))
@@ -7331,7 +7416,6 @@ It does three things:
   (perlnow-show-buffer-other-window display-buffer window-size t)
   (perlnow-blank-out-display-buffer display-buffer t)
   (insert mess)
-  ;;;; (message mess) ;; DEBUG
   ))
 
 (defun perlnow-vars-report-string ()
@@ -7395,17 +7479,49 @@ It does three things:
     (message "%s" (mapconcat 'identity t-list "\n"))
     ))
 
-(defun perlnow-report-metadata ()
+(defun perlnow-report-metadata ( &optional md )
   "Trial run of \\[perlnow-metadata], now with auto-tron!"
   (interactive)
-  (perlnow-tron)
-   (let* (
-          (md (perlnow-metadata))
-          )
-     (message "md: %s" (pp-to-string md))
-     )
-  (perlnow-troff)
-  )
+  ;; (perlnow-tron)
+  (unless md (setq md (perlnow-metadata)))
+  (let* (
+         (testloc          (nth 0  md))
+         (dotdef           (nth 1  md))
+         (namestyle        (nth 2  md))
+         (testloc-absolute (nth 3  md))
+         (hyphenized       (nth 4  md))
+         (package-name     (nth 5  md))
+         (incspot          (nth 6  md))
+         (buffer           (nth 7  md))
+         (filename         (nth 8  md))
+         (fileloc          (nth 9  md))
+         (basename         (nth 10 md))
+         (file-type        (nth 11 md))
+         (project-type     (nth 12 md))
+         (sub-name         (nth 13 md))
+         )
+    ;; (message "md: %s" (pp-to-string md))
+    (message
+         (concat
+          ")}>\n"
+          (format "%30s %-40s\n" "testloc: "          testloc)
+          (format "%30s %-40s\n" "dotdef: "           dotdef)
+          (format "%30s %-40s\n" "namestyle: "        namestyle)
+          (format "%30s %-40s\n" "testloc-absolute: " testloc-absolute)
+          (format "%30s %-40s\n" "hyphenized: "        hyphenized)
+          (format "%30s %-40s\n" "package-name: "     package-name)
+          (format "%30s %-40s\n" "incspot: "          incspot)
+          (format "%30s %-40s\n" "buffer: " (pp-to-string buffer))
+          (format "%30s %-40s\n" "filename: "         filename)
+          (format "%30s %-40s\n" "file-location: "    fileloc)
+          (format "%30s %-40s\n" "basename: "         basename)
+          (format "%30s %-40s\n" "file-type: "        file-type)
+          (format "%30s %-40s\n" "project-type: "     project-type)
+          (format "%30s %-40s\n" "sub-name: "         sub-name)
+          "<({\n"
+          ))
+    )
+  (perlnow-troff))
 
 (defun perlnow-report-script-p ()
   "Report whether the current buffer looks like a perl script."

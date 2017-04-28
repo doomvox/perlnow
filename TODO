@@ -193,8 +193,17 @@ adviseable, e.g. pick out "cd blah;" and translate it into
 a default-directory change, possibly translate "make test"
 into something the debugger can use
 
+  (a) alternately: perlnow-perldb looks for a leading "perl"
+  invocation, and if it's not there, it ignores the runstring,
+  and tries to guess it's own runstring.
+
 (3) add yet another buffer-local run-string, one solely for
 debugger use.  (least painful, no? -- Thu Apr 15 13:00:02 2010)
+
+  (a) and plays well with point (a) above.  use general
+  run-string if you can, fall back to perldb runstring if
+  you have to, and once again: reset and edit commands...
+
 
 ===
 
