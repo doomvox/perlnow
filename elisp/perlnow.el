@@ -2886,13 +2886,26 @@ renaming with an '.OLD' suffix."
 ;;========
 ;;  dynamically set dev/lib/bin
 
-(defun perlnow-XXX ( &optional md )
-  ""
+;; Experiment: "DYNODIRS".
+;; This is a wrapper around metadata that tries to use the returned
+;; info to determine values to change the global code location
+;; variables.  The theory was I would experiment with scattering
+;; calls to this everywhere throughout the code, so that the defaults
+;; for new creation would track the last things created.
+;; The more I think about it, the worse this idea sounds:
+;; real programmers switch tasks a lot and don't want the last
+;; project's values to infect the next.
+(defun perlnow-set-code-locs-from-md ( &optional md )
+  "Dynamically set the code locations inferred from metadata.
+If the metadata is not given as an argument, it's determined
+by running \\[perlnow-metadata].  If possible, any of the
+global vars `perlnow-dev-location', `perlnow-pm-location'
+or `perlnow-script-location' may be modified to match current
+use. Returns a list of those three locations in that order, plus
+a fourth, the absolute test location."
   (if perlnow-trace (perlnow-message "Calling XXX"))
   (unless md (setq md perlnow-metadata))
-
-  (let* (
-         (testloc          (nth 0  md))
+  (let* ((testloc          (nth 0  md))
          (dotdef           (nth 1  md))
          (namestyle        (nth 2  md))
          (testloc-absolute (nth 3  md))
@@ -2903,43 +2916,37 @@ renaming with an '.OLD' suffix."
          (filename         (nth 8  md))
          (fileloc          (nth 9  md))
          (basename         (nth 10 md))
-         (context          (nth 10 md))
-         ;; (sub-name         (nth 11 md))
-
+         (file-type        (nth 11 md))
+         (project-type     (nth 12 md))
+         (sub-name         (nth 13 md))
          (slash perlnow-slash)
-
          dev lib bin t-loc
          )
-
-    (cond ((string= context "module")
+    (cond ((string= project-context "cpan")
+           (cond (incspot
+                  (setq dev
+                        (perlnow-fixdir (concat incspot slash "..")))
+                  (setq lib incspot)
+                  (setq bin (concat dev slash "script" slash)) ;; good guess, but should check that name
+                  (setq t-loc (concat dev slash "t" slash)) ;; same as testloc-absolute
+                  )))
+          ((or (string= file-context "module") (string= file-context "object"))
            (setq dev nil)
            (setq lib incspot)
            (setq bin nil)
-           (setq t-loc nil) ;; testloc-absolute
-           )
-          ((string= context "object")
-           (setq dev nil)
-           (setq lib incspot)
-           (setq bin nil)
-           (setq t-loc nil) ;; testloc-absolute
-           )
-          ((string= context "cpan")
-           (setq dev (perlnow-fixdir (concat incspot slash ".." slash)))
-           (setq lib incspot)
-           (setq bin (concat slash "script" slash)) ;; good default, but should check it
-           (setq t-loc (concat slash "t" slash)) ;; testloc-absolute !
+           (setq t-loc testloc-absolute)
            )
           ((string= context "script")
            (setq dev nil)
            (setq lib nil)
            (setq bin fileloc)
-           (setq t-loc nil)
+           (setq t-loc testloc-absolute)
            )
           ((string= context "test")
            (setq dev nil)
            (setq lib incspot) ;; metadata calls incspot-from-t
            (setq bin fileloc)
-           (setq t-loc nil)
+           (setq t-loc testloc-absolute)
            )
           ;;         ((string= context '')
           ;;          )
@@ -2950,6 +2957,9 @@ renaming with an '.OLD' suffix."
            (setq t-loc nil)
            )
           )
+    (setq perlnow-dev-location dev)
+    (setq perlnow-pm-location  lib)
+    (setq perlnow-script-location bin)
     (list dev lib bin t-loc)
  ))
 
@@ -3238,9 +3248,10 @@ Checks mode and buffer name."
 ;;          (filename         (nth 8  md))
 ;;          (fileloc          (nth 9  md))
 ;;          (basename         (nth 10 md))
-;;          (project-type     (nth 11 md))
-;;          (file-type        (nth 12 md))
+;;          (file-type        (nth 11 md))
+;;          (project-type     (nth 12 md))
 ;;          (sub-name         (nth 13 md))
+
 ;;          )
 ;;     ;; ...
 ;;     ))
@@ -5581,13 +5592,37 @@ falls back to just \"perl\"."
            (setq how-to-perl "perl")))
     how-to-perl))
 
+(defun perlnow-find-git-location ( &optional file-name )
+  "Returns the ancestral location where git control begins.
+Looks upward from the current file buffer (or the given FILE-NAME)
+looking for the location containing a \".git\"."
+;;  (interactive)
+  (if perlnow-trace (perlnow-message "Calling perlnow-find-git-location"))
+  (let* ( git-loc ;; the return
+         (buffname (buffer-file-name))
+         (pnts-file (perlnow-select-read-full-file-name)) ;; nil if not select test buffer
+         (input-file
+          (or file-name buffname pnts-file perlnow-associated-code perlnow-recent-pick-global))
+         (target-list (list ".git"))
+         (pre-screen-pattern "^[.][^.][^.]+") ;; Just look at dot files
+         )
+    (setq git-loc
+          (cond (input-file
+                 (perlnow-find-location-with-target
+                  input-file target-list pre-screen-pattern))
+                (t nil)))
+    (if perlnow-debug
+        (message "perlnow-find-cpan-style-git-loc git-loc: %s" git-loc))
+    git-loc))
+
+
 (defun perlnow-find-cpan-style-staging-area ( &optional file-name )
   "Determines if the current file buffer is located in an cpan-style tree.
 Should return the path to the current cpan-style staging area, or
 nil if it's not found.  The staging area is located by searching
 upwards from the location of a file to a location with files that
 look like a cpan-style project (as currently implemented, it
-looks for either a \"Makefile.PL\" or a \"Build.PL\"\).
+looks for at least one of \"Makefile.PL\", \"Build.PL\"\ or \"cpanfile\").
 This defaults to working on the current buffer's file \(if available\),
 but can use the optional FILE-NAME instead.  For the special case of a
 \"*perlnow select test*\" buffer, it works with a file name extracted
@@ -5597,36 +5632,58 @@ from the buffer."
   ;;   ~/perldev/Horror-Grossout/t/Horror-Grossout.t
   (interactive)
   (if perlnow-trace (perlnow-message "Calling perlnow-find-cpan-style-staging-area"))
-  (let* (
-         return
-         ;; args for directory-files function:
-         (dir        "")        ;; candidate directory under examination
-         (full-names nil)
-         (pattern    "^[ltMB]") ;; to pre-screen listing for interesting results only
-                                ;;    lib, t, Makefile.PL, Build.PL, etc
-         (nosort     t  )
-         (file-list  () )       ;; file listing of the candidate directory (pre-screened)
-         ;;
-         (buffy (buffer-file-name))
+  (let* ( staging-area ;; the return
+         (buffname (buffer-file-name))
          (pnts-file (perlnow-select-read-full-file-name)) ;; nil if not select test buffer
          (input-file
-          (or file-name buffy pnts-file perlnow-associated-code perlnow-recent-pick-global))
+          (or file-name buffname pnts-file perlnow-associated-code perlnow-recent-pick-global))
+         (target-list (list "Makefile.PL" "Build.PL" "cpanfile"))
+         (pre-screen-pattern "^[ltMBc]") ;; to constrain listing, but still include:
+                                 ;;    lib, t, Makefile.PL, Build.PL, cpanfile
+         )
+    (setq staging-area
+          (cond (input-file
+                 (perlnow-find-location-with-target
+                  input-file target-list pre-screen-pattern))
+                (t nil)))
+
+;;     ;; TODO this func is supposed to *find*, why do a build as a side-effect?
+;;     (if staging-area ;; skip if nothing found (note, that means dir is "/")
+;;         (perlnow-cpan-style-build staging-area))
+
+    (if perlnow-debug
+        (message "perlnow-find-cpan-style-staging-area staging-area: %s" staging-area))
+    staging-area))
+
+(defun perlnow-find-location-with-target ( file-name target-files prescreen-pat )
+  "Looks for an ancestor of given FILE-NAME with one of TARGET-FILES.
+Uses PRESCREEN-PAT to limit the files that will be checked.
+Note: PRESCREEN-PAT should probably match all of TARGET-FILES.
+"
+  (if perlnow-trace (perlnow-message "Calling perlnow-find-location-with-target"))
+  (let* (
+         staging-area
+         ;; args for directory-files function:
+         (dir        "")        ;; candidate directory under examination
+         (nopath     nil)       ;; no paths included in file-listing
+         (nosort     t  )
+         (file-list  () )       ;; file listing of the candidate directory (pre-screened)
          )
     (cond (input-file
            (setq dir (perlnow-fixdir (file-name-directory input-file)))
            ;; Look at dir, and each level above it, stepping up one each time,
-           ;; give up when dir is so short we must be at root (( TODO but: Windows?  ))
-           (setq return
+           ;; give up when we reach a level that's not "accessible" (just above $HOME?)
+           ;; *or* when it's so short it must be root (unix "/").
+           (setq staging-area
                  (catch 'UP
                    (while (> (length dir) 1)
-                     (setq file-list (directory-files dir full-names pattern nosort))
-
+                     (setq file-list (directory-files dir nopath pre-screen-pattern nosort))
+                     (message "file-list: %s" (pp-to-string file-list)) ;; DEBUG
                      (dolist (file file-list)
-                       (if (or
-                            (string= file "Makefile.PL")
-                            (string= file "Build.PL")) ;; we found it!
-                           (throw 'UP dir))
-                       ) ;; end dolist
+                       (dolist (target target-list)
+                         (if (string= file target)
+                             (throw 'UP dir))
+                         ))
 
                      ;; go up a directory level
                      (setq dir (perlnow-fixdir (concat dir "..")))
@@ -5636,19 +5693,18 @@ from the buffer."
 
                      ) ;; end while
                    nil ) ;; end catch, ran the gauntlet without success, so return nil
-                 ) ;; end setq return
+                 ) ;; end setq staging-area
            )
           (t
-           (setq return nil)))
+           (setq staging-area nil)))
 
     ;; TODO this func is supposed to *find*, why do a build as a side-effect?
-    (if return ;; skip if nothing found (note, that means dir is "/")
+    (if staging-area ;; skip if nothing found (note, that means dir is "/")
         (perlnow-cpan-style-build dir))
 
     (if perlnow-debug
-        (message "perlnow-find-cpan-style-staging-area return: %s" return))
-    return))
-
+        (message "perlnow-find-cpan-style-staging-area staging-area: %s" staging-area))
+    staging-area))
 
 (defun perlnow-cpan-style-build (staging-area)
   "Does the cpan-style build in the STAGING-AREA (but only if needed).
@@ -6825,9 +6881,6 @@ see: \\[perlnow-run-perltidy]."
             (message "perltidy script not found.")
            ) )
     ))
-
-
-
 
 ;;=======
 ;; Insert boilerplate commands.
