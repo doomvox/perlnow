@@ -291,12 +291,12 @@ if I were saner, I might\). Consider this the \"alpha\" release.
     or \"scripts\" directory.
 
     Integrating the work from multiple cpan-style projects is
-    most simply done by just installing them on the system.
-    (Though that's hardly ideal and you'll probably do something else.)
+    beyond the scope here \(one way is to just intall them on the
+    system\).
 
- o  I recommend initiating a cpan-style project with Miyagawa's \"milla\" (see
-    App::Milla on CPAN), which uses Module::Build::Tiny.  Use this until you
-    have a reason to do something else.  See \\[perlnow-milla].
+ o  Currently, I initiate cpan-style projects using Miyagawa's \"milla\" (see
+    App::Milla on CPAN), which uses Module::Build::Tiny. Use this until you
+    have a reason to do something else. See \\[perlnow-milla].
 
  o  Ideally, test files should target one sub in one module, and be named
     something like this \(for Modular::Stuff with sub do_something\):
@@ -369,14 +369,14 @@ place, the `perlnow-script-location' that you've defined for it. You can, of
 course, choose a different place to put a script at creation time: the default
 is inserted into the minibuffer so that you can use it as a starting point to
 edit into some new location. Similarly you can use your minibuffer history to
-start with something you've used before (try Alt-p, the typical binding for
-\\[previous-history-element]).
+start with something you've used before \(try Alt-p, the typical binding for
+\\[previous-history-element]\).
 
 You also might want to change the default location on-the-fly: you can use
 \\[set-variable] to change `perlnow-script-location'.
 
 While you're working on the code, at any time, you can do a \"perlnow-run-check\"
-(\\[perlnow-run-check]) to check for syntax errors and warnings.
+\(\\[perlnow-run-check]\) to check for syntax errors and warnings.
 This is a wrapper around the emacs compile-command facility running it with
 \"perl -cw\".  Errors and warnings are listed in another buffer, and doing
 a \"next-error\" rotates you through these, skipping you directly to the point
@@ -401,7 +401,6 @@ default is going to be wrong a lot.
 
 The next subject, developing perl modules:
   `perlnow-documentation-tutorial-2-module-development'")
-
 
 (defvar perlnow-documentation-tutorial-2-module-development t
   "When you're interested in writing a module, the procedure
@@ -2121,6 +2120,8 @@ to be associated with the given TESTFILE." ;; TODO expand docstring
     (perlnow-open-test-file tf-input)
     ))
 
+;; end: perlnow-edit-test-file related functions
+;;
 ;;-------
 ;; user-level navigation commands ((TODO rename? relocate?))
 
@@ -3788,6 +3789,20 @@ simple to avoid returning false positives."
                     ))))
       candidate)))
 
+
+;; simple variant of package-name scraping, to get the incspot (done frequently)
+(defun perlnow-incspot-if-module ()
+sa  "If the current buffer is a perl module, return the incspot.
+Otherwise, return nil."
+  (let (package-name file-name file-location lib-loc incspot)
+    (setq incspot
+          (cond ((setq package-name (perlnow-get-package-name-from-module-buffer))
+                 (setq file-name     (buffer-file-name))
+                 (setq file-location (file-name-directory file-name))
+                 (perlnow-get-incspot package-name file-location) )
+                (t nil)))
+    incspot))
+
 ;;;---------
 ;;; perlnow-module-from-t-file (package name scraping continued)
 
@@ -5099,7 +5114,10 @@ This only checks the first character in NAME."
 
 ;; Used by perlnow-select-file
 (defun perlnow-select-file-from-current-line ()
-  "This version just returns the current line as a string."
+  "Return the current line as a string.
+Strips leading and trailing spaces.  From the test menu, returns
+the filename without path, leaving the path hidden in a text property.
+See: \\[perlnow-select-full-file-from-current-line]."
   (if perlnow-trace (perlnow-message "Calling perlnow-select-file-from-current-line"))
   (save-excursion
     (let (selected-file beg end)
@@ -5202,6 +5220,15 @@ The default TESTFILE can also be supplied as a function argument."
     (setq perlnow-recent-pick-global tf-input)
     (perlnow-open-test-file          tf-input)
     ))
+
+(defun perlnow-select-full-file-from-current-line ()
+  "Get the testfile name with full path from the \"*select test file*\" buffer."
+  (let* ((selected-file-compact (perlnow-select-file-from-current-line))
+         (path (perlnow-get-path-from-markedup-name selected-file-compact))
+         (testfile (concat path selected-file-compact)))
+    testfile))
+
+
 
 ;; end of test file selection menu code
 ;;--------
@@ -5482,14 +5509,15 @@ has been chosen as the default to work on perl code."
   (if perlnow-trace (perlnow-message "Calling perlnow-assoc-regexp"))
   (assoc-default pattern alist 'string-match default))
 
-
-
 ;; concept: if given a module, you can get the module root
 ;; and from there, you peek up one level (check for "../t"),
 ;; and scan downwards, adding the "t"s found to the list.
-;; Order should be top to bottom.;; (and how to deal with scripts?
-;; for now: use script location in place of module root.
-;; exception: if it's inside a cpan-style package).
+;; Order should be top to bottom.
+;; (and how to deal with scripts?  for now: use script location
+;; in place of module root.  exception: if it's inside a
+;; cpan-style package).
+;; Only used in one place
+;;    perlnow-test-run-string-harder
 (defun perlnow-find-t-directories ()
   "Find 't' directories associated with current file.
 Order them in rough order of likely priority. At present, that is
@@ -5548,13 +5576,13 @@ a module's incspot."
              ))
           )
     t-list
-    ))
+    )) ;; end perlnow-find-t-directories
 
-
-;; TODO can this idea be blended with the job that
+;; not in use (or not yet)
+;;
+;; TODO can this idea be blended with the job that the above
 ;; perlnow-find-t-directories does (finding the most appropriate
-;; t-dir).  How do you prioritize these?
-;; (( This isn't really in use. ))
+;; t-dir).  How do you prioritize all the t-locs found?
 (defun perlnow-find-all-t-directories (&optional root)
   "Find all directories named \"t\" in the tree.
 Looks under the given ROOT, or under the `default-directory'.
@@ -5562,12 +5590,106 @@ Note: at present, this has nothing to do with \\[perlnow-find-t-directories]."
   (if perlnow-trace (perlnow-message "Calling perlnow-find-all-t-directories"))
   (unless root
     (setq root default-directory))
-  (perlnow-recursive-file-listing root "/t$" "d"))
-
+  (perlnow-recursive-file-listing root "/t$" "d")) ;; TODO use directory-files-recursively
 ;; (perlnow-find-all-t-directories "/home/doom/End/Cave/EmacsPerl/Wall/")
 
+(defun perlnow-scan-tree-for-directory ( tree-root target-names )
+  "Scans tree at TREE-ROOT for a directory with a name in TARGET-NAMES.
+TARGET-NAMES is a list of names without paths. If there's more than one match,
+returns just one of them and warns about the others."
+  (let* ((name-pat-frag
+          (mapconcat 'identity target-names "\\|"))
+         (name-pat (concat "^\\(" name-pat-frag "\\)$"))
+         (include-directories-option t)
 
-;;; The end of perlnow-edit-test-file family of functions
+         (mixed-hits
+          (directory-files-recursively tree-root name-pat include-directories-option))
+         (hit-count (length mixed-hits))
+         hits   pick
+         )
+    ;; filter for directories, ignore any files.
+    (dolist (name mixed-hits)
+      (cond ((file-directory-p name)
+             (setq hits (cons name hits))
+             )))
+    (setq hits (reverse hits))
+    (setq pick (pop hits))
+    (if (> hit-count 1)
+        (message "Returned pick: %s is not unique. Others: %s"
+                 pick
+                 (pp-to-string hits)))
+    pick))
+
+;; TODO needs test
+;; Limitation:
+;;  only works in a project that is git-controlled and/or cpan-style
+;; Following "scan-tree" functions inherit this limitation
+(defun perlnow-tree-root ()
+  "Find the root of the project tree related to the current buffer."
+  (interactive)
+  (let ( file  tree-root )
+    (setq file
+          (cond ((perlnow-test-select-menu-p)
+                 (perlnow-select-full-file-from-current-line))
+                (t
+                 (buffer-file-name))
+                ))
+    (setq tree-root
+          (cond ((perlnow-find-git-location file))
+                ((perlnow-find-cpan-style-staging-area))
+                ;; TODO A sloppy heuristic... if you can check this is correct, might use this...
+                ;; ((setq incspot (perlnow-incspot-from-buffer))
+                ;;  (perlnow-one-up incspot)
+                ;;  )
+                (t
+                 nil)
+                ))
+    tree-root))
+
+(defun perlnow-scan-tree-for-script-loc ()
+  "Look for the script/bin directory in current tree."
+  (interactive)
+  (let* (
+         (tree-root (perlnow-tree-root))
+
+         (target-list (list "bin" "script" "scripts"))
+         (script-loc
+           (perlnow-scan-tree-for-directory
+             tree-root target-list))
+       )
+    (message "found script-loc: %s" script-loc)
+    script-loc))
+
+
+(defun perlnow-scan-tree-for-t-loc ()
+  "Look for the \"t\" directory in current tree."
+  (interactive)
+  (let* ((tree-root (perlnow-tree-root))
+         (target-list (list "t"))
+         (t-loc
+           (perlnow-scan-tree-for-directory
+            tree-root target-list))
+         )
+    (message "found t-loc: %s" t-loc)
+    t-loc))
+
+(defun perlnow-scan-tree-for-lib-loc ()
+  "Look for the \"lib\" directory in current tree."
+  (interactive)
+  (let (tree-root  lib-loc  package-name  candidate)
+    (cond ( ;; if we're inside a module, just use it's incspot
+           (lib-loc perlnow-incspot-if-module)
+           )
+          ((setq tree-root (perlnow-tree-root))
+           (setq pm-list (directory-files-recursively tree-root "\\.pm$" t))
+           (setq candidate (car pm-list)) ;; any better way to choose?
+           (setq package-name
+                 (perlnow-get-package-name-from-module-buffer candidate))
+           (setq lib-loc (perlnow-get-incspot package-name candidate))
+           )
+          )
+    (message "found lib-loc: %s" lib-loc)
+    lib-loc))
 
 
 ;;;==========================================================
@@ -5615,7 +5737,6 @@ looking for the location containing a \".git\"."
         (message "perlnow-find-cpan-style-git-loc git-loc: %s" git-loc))
     git-loc))
 
-
 (defun perlnow-find-cpan-style-staging-area ( &optional file-name )
   "Determines if the current file buffer is located in an cpan-style tree.
 Should return the path to the current cpan-style staging area, or
@@ -5646,11 +5767,9 @@ from the buffer."
                  (perlnow-find-location-with-target
                   input-file target-list pre-screen-pattern))
                 (t nil)))
-
 ;;     ;; TODO this func is supposed to *find*, why do a build as a side-effect?
 ;;     (if staging-area ;; skip if nothing found (note, that means dir is "/")
 ;;         (perlnow-cpan-style-build staging-area))
-
     (if perlnow-debug
         (message "perlnow-find-cpan-style-staging-area staging-area: %s" staging-area))
     staging-area))
@@ -6331,7 +6450,7 @@ uninteresting filenames patterns, otherwise nil."
 ;;; TODO
 ;;; Shouldn't silently use completion-ignored-extensions.
 ;;; Break it out as a defvar
-;;; "perlnow-interesting-file-name-pat" or something.
+
 ;;; Let the user define what's interesting.
   (let (
         (ignore-pat
