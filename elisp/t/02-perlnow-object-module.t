@@ -33,7 +33,7 @@
       (concat test-name ": creates expected file, " expected-file ) )
 
      ;; now, look over the open code buffer
-     (setq new-package-name (perlnow-get-package-name-from-module-buffer))
+     (setq new-package-name (perlnow-get-package-name-from-module))
 
      (assert-equal package-name new-package-name
                    (concat test-name ":package line looks right"))

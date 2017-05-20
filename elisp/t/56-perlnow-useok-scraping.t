@@ -24,7 +24,7 @@
    (let* (
           (test-loc (test-init))
           (test-name "Testing useok scraping regexp")
-          (capture-pat (perlnow-generate-capturing-pat))
+          (capture-pat (perlnow-package-capture-from-useok-pat))
           )
 
      ;; (a) doing a visual inspection
