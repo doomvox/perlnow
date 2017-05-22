@@ -4404,7 +4404,7 @@ Returns nil if not called on a script."
     (if perlnow-trace (perlnow-closing-func))
     incspot))
 
-;; TODO needs test, and then adjust: perlnow-recurse-limit
+;; TODO needs test, and then consider increase of perlnow-recurse-limit
 (defun perlnow-find-dir-where-relative-path-begins (dirs file-relative)
   "From the list of locations DIRS, fan out looking for FILE-RELATIVE.
 Returns a location where the FILE-RELATIVE path starts."
@@ -4471,7 +4471,6 @@ Returns a list of full paths, unsorted."
     (if perlnow-trace (perlnow-closing-func))
     items))
 
-;; formerly the CHECKEM block
 (defun perlnow-check-for-dir-containing (locations file-relative)
   "Given a list of LOCATIONS FILE-RELATIVE, look for pm-file (absolute) in each.
 LOCATIONS is a list of directories (typically with full-paths).
