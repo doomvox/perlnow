@@ -1,8 +1,21 @@
 #!/usr/local/bin/emacs --script
 ;; #! /usr/bin/emacs --script
-;;                                                 March 07, 2017
-;; /home/doom/End/Cave/Perlnow/lib/perlnow/elisp/t/36-perlnow-perlnow-list-test-files.t
+;;                                                   May 30, 2017
+;; /home/doom/End/Cave/Perlnow/lib/perlnow/elisp/t/62-perlnow-tree-root-etc.t
+;; Mutated from: 36-perlnow-perlnow-list-test-files.t
 
+;;  Current targets:
+
+;;  perlnow-tree-root
+;;  perlnow-scan-tree-for-t-loc
+;;  perlnow-list-perl-tests      (similar to the older perlnow-list-test-files)
+;;  perlnow-list-perl-scripts
+;;  perlnow-list-perl-files-in-project
+
+;; TODO To start with, using a hardcoded t-loc to run perlnow-list-perl-tests with.
+;; Next, use perlnow-scan-tree-for-t-loc to determine it.
+
+;; ((TODO update this, probably))
 ;; The test story:
 
 ;; For various contexts, run perlnow-list-test-files, let it
@@ -18,7 +31,6 @@
 ;; how it deals with choosing a canonical "t" (it won't use more
 ;; than one at a time).
 
-
 ;; The REAL story (Reviewing what this really does, as of: May 29, 2017)
 
 ;; create cpan-style project with milla
@@ -30,7 +42,7 @@
 ;;   check that all 3 tests are found *from the new test file*
 ;;   check that the stash lookup finds expected inc-spot from this test
 
-;; And now, I repeat the above for a lone perlnow-module *with* a sub inserted.
+;; the above is then repeated the above for a lone perlnow-module with a sub inserted.
 
 ;; TODO
 ;;  o  create a script from a module, get a listing of tests from the script
@@ -43,30 +55,21 @@
    (if (file-exists-p "test-init.el")
        (load-file "test-init.el"))
    (perlnow-tron)
-   (let* ((test-name "Testing perlnow-list-test-files")
+   (let* ((test-name "Testing perlnow-list-perl-tests")
           (test-loc (test-init))
           (dev-location (concat test-loc "dev"))
-
-          ;; TODO hard-coding cpan policy  Make sense?  ((El nopeo))
-          (testloc    perlnow-test-policy-test-location-cpan  )
-          (dotdef     perlnow-test-policy-dot-definition-cpan )
-          (namestyle  perlnow-test-policy-naming-style-cpan   )
-
           )
      (let* ((test-context-name "cpan-style") ;; TODO use this in messaging
             (package-name "Trantor::Skateboard")
-            (staging-area
+            (staging-area  ;; /home/doom/tmp/perlnow_test/t62/dev/Trantor-Skateboard/
              (perlnow-staging-area dev-location package-name))
             (expected-pm (concat staging-area "lib" perlnow-slash
                                  "Trantor" perlnow-slash "Skateboard.pm") )
             (expected-Pl (concat staging-area "Build.PL"))
             (expected-t-loc (test-init-fixdir (concat staging-area "t")))
+            (t-loc expected-t-loc) ;; TODO temporary
             pm-buffer
             )
-       (cond (perlnow-debug
-              (message "test-loc: %s"     test-loc)
-              (message "staging-area: %s" staging-area)
-              ))
        (test-init-safe-recursive-delete staging-area)
        (perlnow-milla perlnow-dev-location package-name)
        (assert-t (perlnow-module-code-p)
@@ -74,13 +77,15 @@
 
        (setq pm-buffer (current-buffer))
        (let* (
-              (fullpath-opt nil)  ;; Really, should be set to 't...
+              ;; TODO needs path
+              ;;  /home/doom/tmp/perlnow_test/t62/dev/Trantor-Skateboard/t/01-Trantor-Skateboard.t
               (expected-test-files '("01-Trantor-Skateboard.t"))
               test-files   test-files-sorted
               )
          (setq test-files
-               (perlnow-list-test-files testloc dotdef namestyle fullpath-opt))
+               (perlnow-list-perl-tests t-loc))
 
+         (message "TEST-FILES: %s" (pp-to-string test-files))
          (setq test-files-sorted
                (sort test-files 'string<))
 
@@ -90,7 +95,7 @@
          (set-buffer pm-buffer) ;; back to the pm
          (perlnow-test-create) ;; 02-Trantor-Skateboard.t
          (setq test-files
-               (perlnow-list-test-files testloc dotdef namestyle fullpath-opt))
+               (perlnow-list-perl-tests t-loc))
          (setq test-files-sorted
                (sort test-files 'string<))
 
@@ -103,7 +108,7 @@
          (set-buffer pm-buffer) ;; back to the pm
          (perlnow-test-create) ;; 03-Trantor-Skateboard.t
          (setq test-files
-               (perlnow-list-test-files testloc dotdef namestyle fullpath-opt))
+               (perlnow-list-perl-tests t-loc))
          (setq test-files-sorted
                (sort test-files 'string<))
 
@@ -142,22 +147,15 @@
             (expected-pm (concat staging-area "lib" perlnow-slash
                                  "Embobbler" perlnow-slash "ToolKit.pm") )
 
-            (expected-t-location
-             (test-init-fixdir (concat perlnow-pm-location "../t")))
+            (expected-t-loc (test-init-fixdir (concat perlnow-pm-location "../t")))
+            (t-loc expected-t-loc) ;; TODO temporary
 
             pm-buffer script-buffer t-buffer argument-text
 
-
-            (fullpath-opt nil) ;; TODO change to t, then add paths to expecteds
             ;;              (expected-test-files '("01-Embobbler-ToolKit.t"))
             (expected-test-files '())
             test-files   test-files-sorted
             )
-       (cond (perlnow-debug
-              (message "test-loc: %s"     test-loc)
-              (message "staging-area: %s" staging-area)
-              ))
-
        (perlnow-module perlnow-pm-location package-name)
        (assert-t (perlnow-module-code-p)
         "Testing that perlnow-module created a module")
@@ -165,7 +163,7 @@
        (setq pm-buffer (current-buffer))
        (setq expected-test-files '())
        (setq test-files
-             (perlnow-list-test-files testloc dotdef namestyle fullpath-opt))
+             (perlnow-list-perl-tests t-loc))
        (setq test-files-sorted
              (sort test-files 'string<))
        (assert-equal expected-test-files test-files-sorted
@@ -177,7 +175,7 @@
        (setq expected-test-files
              '("01-Embobbler-ToolKit-sharp_pop.t"))  ;;  "02-Embobbler-ToolKit.t"
        (setq test-files
-             (perlnow-list-test-files testloc dotdef namestyle fullpath-opt))
+             (perlnow-list-perl-tests t-loc))
        (setq test-files-sorted
              (sort test-files 'string<))
 
@@ -187,7 +185,7 @@
        (set-buffer pm-buffer) ;; back to the pm
        (perlnow-test-create)
        (setq test-files
-             (perlnow-list-test-files testloc dotdef namestyle fullpath-opt))
+             (perlnow-list-perl-tests t-loc))
        (setq test-files-sorted
              (sort test-files 'string<))
 

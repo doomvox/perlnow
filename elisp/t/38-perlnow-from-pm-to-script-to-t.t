@@ -48,11 +48,10 @@
           (expected-script
            (concat perlnow-script-location script-name))
 
-          (sub-code-core-str "  print $arg ,\"\\n\";") ;; Use with perlnow-insert-sub
-          (sub-code-str
-           "sub yodel {my $arg=shift; print $arg ,\"\n\";}")
-          (calling-code-str
-           "yodel($ARGV[0]);")
+;;           (sub-code-str
+;;            "sub yodel {my $arg=shift; print $arg ,\"\n\";}")
+          (sub-code-core-str "  print $arg ,\"\\n\";") ;; insert after perlnow-insert-sub
+          (calling-code-str "yodel($ARGV[0]);")
 
           (expected-t-location
            (test-init-fixdir (concat perlnow-pm-location "../t")))
@@ -68,24 +67,19 @@
      (perlnow-module perlnow-pm-location package-name)
      (setq pm-buffer (current-buffer))
 
-     ;; using the newly revised perlnow-insert-sub command
-     ;; TODO do this elsewhere, too: simplifies test code, and tests new functionality.
      (perlnow-insert-sub "yodel")
      (insert sub-code-core-str)
      (save-buffer)
 
-     (if perlnow-debug (message "01"))
      ;; The pm file should exist on disk now.
      (assert-t
       (file-exists-p expected-pm-file)
       (concat test-name ": created file:\n       " expected-pm-file ))
 
-     (if perlnow-debug (message "02"))
      (assert-t
       (perlnow-module-file-p (buffer-file-name))
       "Testing perlnow-module-file-p to confirm module looks like a module.")
 
-     (if perlnow-debug (message "03"))
      (assert-nil
       (perlnow-script-file-p (buffer-file-name))
       "Testing perlnow-script-file-p to confirm module is not like script.")
@@ -101,17 +95,14 @@
      (save-buffer)
 
      ;; now the script file should exist on disk
-     (if perlnow-debug (message "04"))
      (assert-t
       (file-exists-p expected-script)
       (concat test-name ": generated expected script: " script-name))
 
-     (if perlnow-debug (message "05"))
      (assert-t
       (perlnow-script-file-p (buffer-file-name))
       "Testing perlnow-script-file-p to confirm script looks like script.")
 
-     (if perlnow-debug (message "06"))
      (assert-nil
       (perlnow-module-file-p (buffer-file-name))
       "Testing perlnow-module-file-p to confirm script is not like module.")
