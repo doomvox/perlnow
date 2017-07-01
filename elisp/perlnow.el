@@ -1098,12 +1098,11 @@ Used only by the somewhat deprecated \"simple\" functions:
 ;; associations between the "t" directories and the lib directories.
 (defvar perlnow-incspot-from-t-plist ()
   "Pairs of \"t\" dirs and code dirs (e.g. \"lib\" directories, aka incspots).
-It's expected that there will be a one-to-one relationship between
-the location of a project's code directories and it's \"t\".
-You can go from a *.pm file to a \"t\" via the test policy \"testloc\"
-setting.  Once that's done, we'll save that relationship here,
-so that later, given a *.t file, we'll be able to find the location
-of the code it tests.")
+Typically there's a one-to-one relationship between the location
+of a project's code and its tests. It's easier to find the \"t\"
+from some code than vice-versa, so when we do that, we save the relationship
+to do reverse lookups later, so that, given a *.t file, we'll be able to find
+the project's code.")
 
 (defvar perlnow-etc-location
   (perlnow-fixdir (concat "$HOME" perlnow-slash ".emacs.d" perlnow-slash "perlnow"))
@@ -7439,6 +7438,11 @@ this favors the earlier occurrence in the list."
 ;;--------
 ;; plist utilities
 
+;; TODO temporary code switch Eventually, remove this, and clean-up code
+;; (e.g. get rid of perlnow-plist-keys-string-to-symbol)
+(defvar perlnow-stash-string-key-flag t
+  "Policy setting: do we use plist keys of symbols or strings?")
+
 (defun perlnow-stash-reload ( &optional json-file plist-symbol )
   "Reloads a plist from a json file.
 The PLIST-SYMBOL defaults to the global: `perlnow-incspot-from-t-plist'
@@ -7451,18 +7455,20 @@ JSON-FILE defaults to: ~/.emacs.d/perlnow/incspot_from_t.json"
          ;; there are multiple ways a json file can map to lisp datastructures...
          (let* ((json-object-type 'plist)  ;; default 'alist
                 (json-array-type  'list)   ;; default 'vector
-
-                ;; None of these actually work
+                ;; None of these actually work   TODO REPORT BUG
                 ;;   (json-key-type `symbol)
                 ;;   (json-key-type `string)
                 ;;   (json-key-type `keyword)
-
                 (input-data (json-read-file perlnow-incspot-from-t-json-file))
-                (input-data-fixed (perlnow-plist-keys-string-to-symbol input-data))
                 )
-           (set plist-symbol input-data-fixed)
+           (cond (perlnow-stash-string-key-flag
+                  (set plist-symbol input-data))
+                 (t
+                  (set plist-symbol (perlnow-plist-keys-string-to-symbol input-data))
+                  ;; (setq input-data (eval plist-symbol))
+                  ))
            (if perlnow-trace (perlnow-closing-func))
-           input-data-fixed))))
+           input-data))))
 
 ;; Note: this is hack to deal with the fact that I can't convince json-read-file
 ;; to restore my key-symbol/value-strings structure, it insists on keys as strings
@@ -7508,7 +7514,6 @@ JSON-FILE defaults to: ~/.emacs.d/perlnow/incspot_from_t.json"
       (if perlnow-trace (perlnow-closing-func))
       )))
 
-;; TODO maybe, make this an optional argument: perlnow-incspot-from-t-json-file
 (defun perlnow-stash-put ( keystr value &optional plist-symbol )
   "Put pair of KEYSTR and VALUE in the plist indicated by optional PLIST-SYMBOL.
 The PLIST-SYMBOL defaults to the global `perlnow-incspot-from-t-plist'.
@@ -7521,9 +7526,17 @@ silently converts it to an empty string."
          (cond (keystr
                 (unless value (setq value ""))
                 (unless plist-symbol (setq plist-symbol 'perlnow-incspot-from-t-plist))
-                (set plist-symbol
-                     (plist-put (symbol-value plist-symbol) (intern keystr) value))
+                (unless (stringp keystr)
+                  (message "perlnow-stash-put: KEYSTR should be a string: %s" (pp-to-string keystr)))
 
+                (cond (perlnow-stash-string-key-flag
+                       (set plist-symbol
+                            (plist-put (symbol-value plist-symbol) keystr value))
+                       )
+                      (t ;; use symbols as keys
+                       (set plist-symbol
+                            (plist-put (symbol-value plist-symbol) (intern keystr) value))
+                       ))
                 (if perlnow-debug
                     (perlnow-message
                      (format "PU perlnow-incspot-from-t-plist: %s" (pp-to-string perlnow-incspot-from-t-plist)) t))
@@ -7542,7 +7555,7 @@ silently converts it to an empty string."
     ret))
 
 (defun perlnow-stash-lookup ( keystr &optional plist-symbol )
-  "Look-up string KEYSTR in plist indicated by optional PLIST-SYMBOL.
+  "Look-up string KEYSTR in the plist indicated by optional PLIST-SYMBOL.
 The PLIST-SYMBOL defaults to the global `perlnow-incspot-from-t-plist'.
   Example:
   \(setq value
@@ -7575,11 +7588,15 @@ First tries a symbol form of the key, and if that fails tries the raw string."
          accumulator
          ret )
     (dolist (item plist)
-        (cond ( flip
-                (let ( (key (symbol-name item)) ) ;; symbols-to-strings
-                  (push key accumulator) )
-                (setq flip nil)
-                )
+        (cond (flip
+                (let (key)
+                  (cond ((symbolp item)
+                         (setq key (symbol-name item)) ;; symbol-to-string
+                         )
+                        (t
+                         (setq key item)))
+                  (push key accumulator))
+                (setq flip nil))
               (t ;; not flip
                (setq flip t))
               ))
@@ -7588,6 +7605,7 @@ First tries a symbol form of the key, and if that fails tries the raw string."
     (if perlnow-trace (perlnow-closing-func))
     ret))
 
+;; Currently unused
 (defun perlnow-plist-values ( plist )
   "Return all values of the given plist as a list."
 ;; Step through a list and skipping the odd values
@@ -7606,6 +7624,53 @@ First tries a symbol form of the key, and if that fails tries the raw string."
           (reverse accumulator))  ;; nreverse
     (if perlnow-trace (perlnow-closing-func))
     ret))
+
+
+;; ;; TODO BOOKMARK_THE_TWAIN_SHALL_SEAT
+;; ;; DEBUG
+;; (defun perlnow-plist-funking-around ()
+;;   ""
+;;   (let* (
+;;          (expected-t-list '("bunk.t" "funk.t" "skunk.t"))
+;;          (start-loc-list ())
+;;          (case-names-list '("demo1" "lameo2" "frameup3"))
+;;          (outer-plist ())
+;;          )
+;;     (push "Bink-A-Rink-A-Doo/lib/Bink/A/Rink/A/Doo.pm" start-loc-list)
+;;     (push "lib/Skull/Sockets.pm"                       start-loc-list)
+;;     (push "dev/lib/misty.pl"                           start-loc-list)
+
+;;     (message "start-loc-list: %s" (pp-to-string start-loc-list))
+
+;;     (dolist (case case-names-list)
+;;       (let (inner-plist)
+;;         (perlnow-stash-put
+;;          "startloc-list" start-loc-list
+;;          'inner-plist )
+
+;;         (perlnow-stash-put
+;;          "t-list" expected-t-list
+;;          'inner-plist)
+
+;;         (perlnow-stash-put
+;;          "t-list" expected-t-list
+;;          'inner-plist)
+
+;;         (perlnow-stash-put
+;;          case
+;;          inner-plist
+;;          'outer-plist)
+;;         ))
+
+;;     (let* ((json-file     "/home/doom/tmp/trial.json")
+;;            (plist-symbol  'outer-plist)
+;;            )
+;;       (perlnow-write-plist-file json-file plist-symbol )
+;;       )
+
+;;   ))
+
+;; (perlnow-plist-funking-around)
 
 
 ;;;========
