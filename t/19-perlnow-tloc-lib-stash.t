@@ -13,8 +13,10 @@
 ;;   Use perlnow-stash-put with the global plist, adding several key-value pairs
 ;;   Check the json file to see if the keys and values are accumulating
 ;;   Erase the global default plist stash var: perlnow-incspot-from-t-plist
-;;   Run a reload function to restore the global stash from disk: perlnow-stash-reload
-;;   Extract values from global plist with perlnow-stash-lookup
+
+;;   Use perlnow-stash-lookup to extracts some values.
+;;     Verifies that it runs perlnow-stash-reload internally.
+
 
 ;; Copyright 2017 Joseph Brenner
 ;;
@@ -62,7 +64,7 @@
      ;; The standard stash file:
      ;;   ~/.emacs.d/perlnow/incspot_from_t.json
      (if perlnow-debug
-         (message "perlnow-incspot-from-t-json-file: %s" perlnow-incspot-from-t-json-file))
+         (message "perlnow-incspot-from-t-stash-file: %s" perlnow-incspot-from-t-stash-file))
 
      ;; Use perlnow-stash-put with the global plist, adding several key-value pairs
      (perlnow-stash-put key1 val1)
@@ -81,7 +83,7 @@
        )
 
      ;; Check the json file to see if the keys and values are accumulating
-     (find-file perlnow-incspot-from-t-json-file)
+     (find-file perlnow-incspot-from-t-stash-file)
      (setq json-buffer (current-buffer))
      (goto-char (point-min))
      (assert-t
@@ -96,14 +98,18 @@
      ;; Erase the global default stash
      (setq perlnow-incspot-from-t-plist ())
 
-     ;; verify stash is empty
-     (setq check-val (perlnow-stash-lookup key1))
-     (assert-nil
-      check-val
-      (concat test-name ": Verified manually erased plist stash."))
+;;      ;; needs to blank the json-file as well, or lookup will reload from there.
+;;      (perlnow-write-plist-file) ;; this would fix the following check, but now would break the others.
 
-     ;; Run reload function to restore the global stash from disk
-     (perlnow-stash-reload)
+;;      ;; verify stash is empty
+;;      (setq check-val (perlnow-stash-lookup key1))
+;;      (assert-nil
+;;       check-val
+;;       (concat test-name ": Verified manually erased plist stash."))
+
+     ;; This is now redundant, "lookup" reads from disk automatically.
+     ;;      ;; Run reload function to restore the global stash from disk
+     ;;      (perlnow-stash-reload)
 
      ;; Extract values from global plist with perlnow-stash-lookup
      (let ( check-val

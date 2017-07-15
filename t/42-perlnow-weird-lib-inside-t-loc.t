@@ -48,7 +48,9 @@
 
           (exp-rs-from-pm "") ;; TODO
 
-          (perl "/usr/bin/perl") ;; same as hash-bang in script template
+          ;; (perl "/usr/bin/perl") ;; same has hash-bang in script template
+          (perl "perl") ;; but much better to let the PATH sort it out
+
           rs-from-pm
 
          )

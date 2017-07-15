@@ -1,4 +1,4 @@
-;;; test-init-elisp.el ---
+;;; test-init.el ---
 
 ;; Copyright 2017 Joseph Brenner
 ;;
@@ -54,6 +54,7 @@ the default-directory or the ROOT setting."
 (defconst test-init-slash (convert-standard-filename "/")
   "A more portable form of the file system name separator.")
 
+;; TODO why not the full test-init-* prefix on the following vars?
 (defvar test-bin
   (file-name-directory
    (cond (load-file-name load-file-name)
@@ -63,6 +64,10 @@ the default-directory or the ROOT setting."
   "Location of this test script.
 Falls back to unix /tmp if not run as script.")
 
+(defvar test-data
+  (file-name-as-directory
+   (concat test-bin "dat")))
+
 (defvar test-loc
   (file-name-as-directory
    (substitute-in-file-name
@@ -71,9 +76,8 @@ Falls back to unix /tmp if not run as script.")
             "perlnow_test")))
   "Root location for perlnow tests: a tree of scratch directories.")
 
-(defvar test-data
-  (file-name-as-directory
-   (concat test-bin "dat")))
+(defvar test-init-loc-isolated ""
+  "Full path to a specific scratch directory for the current tests.")
 
 (require 'test-simple)
 (require 'template)
@@ -90,7 +94,6 @@ Falls back to unix /tmp if not run as script.")
 Wrapper around test-init-standard with perlnow-specific customizations."
   (setq perlnow-quiet t) ;; ask me no questions
   ;; (perlnow-tron)
-
   (let ((loc (test-init-standard)) )
     loc))
 
@@ -108,7 +111,6 @@ Returns the full-path to the new sub-directory."
           (test-init-fixdir (concat test-loc sub-directory)))
          )
     (test-init-safe-recursive-delete deep-test-loc)
-
     (test-init-mkpath deep-test-loc)
 
     (setq perlnow-script-location
@@ -121,13 +123,22 @@ Returns the full-path to the new sub-directory."
     (test-init-mkpath perlnow-script-location)
     (test-init-mkpath perlnow-pm-location)
     (test-init-mkpath perlnow-dev-location)
+    (setq test-init-loc-isolated deep-test-loc) ;; EXPERIMENTAL
     deep-test-loc))
 
-;; perlnow specific (TODO try to write a general purpose version, someday)
 (defun test-init-standard ()
   "Generates a test tree in a sub-directory named with the script's file-name prefix.
 E.g. for 02-check_it.t, creates a \"t02\" in `test-loc' by running
-\\[test-init-setup-perlnow-locations]."
+\\[test-init-setup-perlnow-locations].  Returns the full path to the new location."
+  (let (test-loc-subdir)
+    (setq test-loc-subdir (test-init-standard-core))
+    (test-simple-start) ;; Zero counters and start the stop watch.
+    test-loc-subdir))
+
+(defun test-init-standard-core ()
+  "Implements main work done by \\[test-init-standard].
+You might call this directly if you want the test location
+without running \\[test-simple-start], but also see `test-init-loc-isolated'."
   (let* ( count-args
           script-file-name
           file-prefix
@@ -151,8 +162,9 @@ E.g. for 02-check_it.t, creates a \"t02\" in `test-loc' by running
                  "tXXXX"
                  )))
     (setq test-loc-subdir (test-init-setup-perlnow-locations sub-directory))
-    (test-simple-start) ;; Zero counters and start the stop watch.
+    ;; (test-simple-start) ;; Zero counters and start the stop watch.
     test-loc-subdir))
+
 
 ;;========
 ;; General purpose file-system utilities
@@ -177,19 +189,19 @@ Default EXTENSION is \".OLD\""
           ))
    ))
 
-(defun test-init-safe-recursive-delete (dirname &optional backup-location)
+(defun test-init-safe-recursive-delete (dirname &optional backup-location safety-override)
   "Given a DIRNAME including a full-path, move it to the BACKUP-LOCATION.
 BACKUP-LOCATION defaults to a sub-directory named \"Old\".
 If a directory of this name already exists in the backup-location,
 this will delete it first: we preserve only the last version.
 As a safety feature, this first checks to make sure that the DIRNAME
 contains a word such as 'tmp', 'temp' or 'test', indicating that
-it's intended to be ephemeral."
+it's intended to be ephemeral.  If SAFETY-OVERRIDE is non-nil, this check is skipped"
   (setq dirname (test-init-fixdir dirname))
   (cond ((file-exists-p dirname)
          (let* (
                 ;; remove trailing slash so file-name-directory & nondirectory can work
-                (last-slash-pat (concat perlnow-slash "$"))
+                (last-slash-pat (concat test-init-slash "$"))
                 (dirname-trimmed
                  (replace-regexp-in-string last-slash-pat "" dirname))
                 (dirname-path      (file-name-directory    dirname-trimmed))
@@ -220,6 +232,7 @@ it's intended to be ephemeral."
                (setq count (1+ count)) ))
 
            (cond ((or
+                   safety-override
                    (string-match "\\btest\\b" dirname)
                    (string-match "\\btmp\\b"  dirname)
                    (string-match "\\btemp\\b" dirname)
@@ -233,6 +246,134 @@ it's intended to be ephemeral."
                       (delete-directory new-backup t))
                   (copy-directory new-backup-temp new-backup nil t t)
                   ))))))
+
+(defun test-init-copy-tree (this there)
+  "Copies the tree of files THIS over to location THERE.
+Shells out to the tar command.  If it it looks like THIS is in
+THERE aready, does a \\[test-init-safe-recursive-delete] on it
+first."
+  (unless (file-accessible-directory-p this)
+    "The first argument must be an existing directory.")
+  (unless (file-accessible-directory-p there)
+    "The second argument must be an existing directory.") ;; TODO Letting me run with non-existant there dir?
+  (setq this  (test-init-fixdir this))
+  (setq there (test-init-fixdir there))
+  (let* (
+         ;; remove trailing slash so file-name-directory & nondirectory can work
+         (tail-slash-pat (concat perlnow-slash "$"))
+         (this-trimmed
+              (replace-regexp-in-string tail-slash-pat "" this))
+         (orig-loc  (file-name-directory this-trimmed))
+         (this-name (file-name-nondirectory this-trimmed))
+         (basename  (file-name-sans-extension this-name))
+         (new-tree (concat there this-name))
+         (tar-file (concat basename ".tgz"))
+         (tar-program  "tar")
+         (tar-args (list "czf" tar-file "."))
+         (display-buffname "*test-init*")
+         (display-buffer (get-buffer-create display-buffname))
+         (save-loc default-directory)
+         )
+    (if (file-accessible-directory-p new-tree)
+        (test-init-safe-recursive-delete new-tree nil t))
+
+;;    (cd (concat orig-loc basename))
+    (cd this)
+
+    ;; tar-cmd-1
+;;     (call-process tar-program nil nil display-buffer
+;;                   "czf" tar-file ".")
+;;    (call-process tar-program nil nil display-buffer
+;;                  tar-args) ;; How do you expand this list?
+     (call-process tar-program nil nil display-buffer
+                   "czf" tar-file ".")
+
+    (message "tar-file: %s" tar-file) ;; DEBUG
+    (message "there: %s" there)       ;; DEBUG
+    (test-init-mkpath there)
+    (copy-file tar-file there t) ;; over-write is okay
+    ;; tar-cmd-2
+    (setq save-loc default-directory)
+    (cd there)
+    (call-process tar-program nil nil display-buffer "xzf" tar-file)
+    (cd save-loc)
+    ))
+
+(defun test-init-subdirs (loc)
+  "A simple listing of sub-directories in the given directory LOC.
+Skips hidden directories (names with leading \".\").
+Restricts the listing to accessible directories.
+Does not include the path.  Returns a sorted list."
+  (dolist (dir (directory-files test-set nil "^[^.]"))
+    (if (and
+         (file-accessible-directory-p dir)
+         (not (string-equal dir "meta")))
+        (push dir cases)))
+  cases)
+
+;; initialize the 'perlnow_test/tNN' location from 'code/sNN':
+;; e.g.
+;;   /home/doom/End/Cave/Perlnow/lib/perlnow/t/dat/code/s65/*
+;; ==>
+;;   /home/doom/tmp/perlnow_test/t65
+;;
+;; full path to "dat" should be in var: test-data
+(defun test-init-load-setup-code (dir-basename &optional deep-test-loc)
+  "Copies initial version of directory named DIR-BASENAME to test location.
+Moves any existing copy of it out of the way.  The test location
+DEEP-TEST-LOC defaults to the return from \\[test-init-standard-core],
+passed via `test-init-loc-isolated'."
+  (unless deep-test-loc (setq deep-test-loc test-init-loc-isolated))
+  (message "test-init-loc-isolated: %s" test-init-loc-isolated) ;; /home/doom/tmp/perlnow_test/t65/
+  (let* ((slash test-init-slash)
+         (data-loc   (test-init-fixdir (concat default-directory "dat" slash)))
+         (source-loc (concat data-loc "code" slash dir-basename slash))
+;;         (source-loc default-directory)
+         )
+  (message "source-loc: %s" source-loc) ;; /home/doom/End/Cave/Perlnow/lib/perlnow/t/dat/code/s65/
+
+  (test-init-copy-tree source-loc deep-test-loc)
+  ))
+
+
+(defun test-init-load-data (file)
+  "Re-load data structure from elisp FILE generated by a pp dump."
+  (let ( raw-string  data )
+    (unless (file-exists-p file)
+      (message "test-init-load-data: file does not exist: %s" file))
+    (find-file file)
+    (setq raw-string (buffer-substring-no-properties (point-min) (point-max)))
+    (setq data (read raw-string))
+    (kill-buffer)
+    data))
+
+(defun test-init-preserve-data (data file)
+  "Save given elisp DATA to the FILE, using a pp dump."
+  (let ( raw-string )
+   (find-file file)
+    ;; TODO what safety feature can I put on this?
+    (delete-region (point-min) (point-max))
+    (insert (pp-to-string data))
+    (basic-save-buffer)
+    ))
+
+;; simpler vesion of perlnow-stash-lookup, but evals the val
+(defun test-init-plist-lookup (keystr plist-symbol)
+  "Look-up string KEYSTR in the plist indicated by PLIST-SYMBOL.
+If KEYSTR is nil, returns nil." ;; TODO not sure it matters if KEYSTR is a string
+  (let ((ret
+         (cond (keystr
+                (let* ((raw (lax-plist-get (symbol-value plist-symbol) keystr))
+                       (value (eval raw))
+                      )
+                  value))
+               (t
+                nil))))
+    ret))
+
+
+
+
 
 
 ;; LICENSE

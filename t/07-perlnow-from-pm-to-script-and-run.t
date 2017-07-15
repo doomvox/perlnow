@@ -40,7 +40,8 @@
           (sub-code-core-str "  print $arg, \"\\n\";") ;; Use with perlnow-insert-sub
           (calling-code-str
            "  echo( $ARGV[ 0 ] );")
-          (perl "/usr/bin/perl") ;; same has hash-bang in script template
+          ;; (perl "/usr/bin/perl") ;; same has hash-bang in script template
+          (perl "perl") ;; but much better to let the PATH sort it out
           pm-buffer
           )
      (setq test-name "Testing perlnow-module")
@@ -116,6 +117,7 @@
      (let* ( ( compilation-results (buffer-string) )
              ( trash-out-pat "^TRASH!")
              )
+       (message "~~~ comp-res: %s" compilation-results);; DEBUG
        (setq check-ok-p
              (assert-t
               (string-match trash-out-pat compilation-results)

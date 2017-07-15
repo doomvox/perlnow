@@ -54,7 +54,9 @@
           (test-ext-from  "") ;; pl, pm, or t
           (test-ext-new   "") ;; pl, pm, or t
           (test-mess      "") ;; for "new", from "from", in "context"
-          (perl "/usr/bin/perl")  ;; should match script template hashbang
+          ;; (perl "/usr/bin/perl") ;; same has hash-bang in script template
+          (perl "perl") ;; but much better to let the PATH sort it out
+  ;; should match script template hashbang
 
           ;; stand-alone module created with object template
           (package-name "Modoc::Aims")

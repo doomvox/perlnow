@@ -26,7 +26,8 @@
 
 ;;; Code:
 (provide 'perlnow)
-;; (require 'cl-lib)
+(require 'cl-lib)      ;; cl-remove-duplicates
+;; (require 'list-utils)  ;; list-utils-uniq
 (require 'cperl-mode)
 (require 'json)
 
@@ -1072,7 +1073,7 @@ it make more sense to use an empty string?")
   "Set this to provide a hint about your preferred perl binary.
 For example, make it \"/usr/local/bin/perl\" if you would rather
 use that than the system's perl.  Defaults to just \"perl\"
-\(and let's the shell path sort it out\).  Note: this is used only in
+\(and let's the shell PATH sort it out\).  Note: this is used only in
 some cases, e.g. \\[perlnow-module-starter], where possible perlnow
 uses whatever is specified in the hash-bang line.")
 
@@ -1109,8 +1110,8 @@ the project's code.")
   "Location in ~/emacs.d for miscellanious perlnow files.")
 (perlnow-mkpath perlnow-etc-location)
 
-(defvar perlnow-incspot-from-t-json-file (concat perlnow-etc-location "incspot_from_t.json")
-  "A json file used to preserve the plist of t/incspot associations.")
+(defvar perlnow-incspot-from-t-stash-file (concat perlnow-etc-location "incspot_from_t.json") ;; TODO change json?
+  "A file used to preserve the associations of t and incspot.")
 
 ;;;==========================================================
 ;;; internally used vars
@@ -4350,6 +4351,7 @@ Returns path to \"t\" (including \"t\")."
           (catch 'ROCK
             (while (> (length path) 1 ) ;; TODO unix-only?
               (setq path (perlnow-fixdir (concat path "..")))
+              ;; TODO build-up this regexp using perlnow-slash
               (setq path-sans-slash (replace-regexp-in-string "/$" "" path))
               (setq dir (file-name-nondirectory path-sans-slash))
               (if (string= dir "t")
@@ -4406,13 +4408,14 @@ Starts looking around START-LOC or the current buffer-file-name."
                  (catch 'WORM
                    ;; first, check each location in @PERL5LIB
                    (setq p5lib-list (split-string (getenv "PERL5LIB") sep))
+                   (setq p5lib-list (perlnow-filter-list p5lib-list "^$")) ;; NOEMPTIES
                    (setq lib
                          (perlnow-check-for-dir-containing p5lib-list pm-file-relative))
                    (if lib (throw 'WORM lib))
                    ;; look around start-loc: fan out, look up, across, and down
                    (setq lib
                          (perlnow-find-dir-where-relative-path-begins
-                          '(list start-loc) file-relative))
+                          (list start-loc) pm-file-relative))
                    (if lib (throw 'WORM lib))
                    ))
            )
@@ -4430,22 +4433,38 @@ Returns a location where the FILE-RELATIVE path starts."
   (if perlnow-trace (perlnow-message "Calling perlnow-find-dir-where-relative-path-begins"))
   (if perlnow-debug
       (perlnow-message
-       (format "perlnow-find-dir-where-relative-path-begins, dirs: %s file-relative: %s"
+       (format "perlnow-find-dir-where-relative-path-begins: dirs: %s file-relative: %s"
                (pp-to-string dirs) file-relative) t))
+  (setq dirs (perlnow-filter-list dirs "^$")) ;; NOEMPTIES
   (let ( lib  incspot new-dirs )
+    (message "GREEPSTER") ;; DEBUG
     (cond ((< perlnow-recurse-count perlnow-recurse-limit)
+           (message "gronk") ;; DEBUG
           (setq incspot
                 (catch 'THE_WIND
                   ;; first check the list of given dirs to see if one contains the file
+                  (message "  dirs: %s"          (pp-to-string dirs)) ;; DEBUG
+                  (message "  file-relative: %s" file-relative)       ;; DEBUG
                   (setq lib
                         (perlnow-check-for-dir-containing dirs file-relative))
+                  (message "GRONT: lib: %s" lib);; DEBUG
                   (if lib (throw 'THE_WIND lib))
-                  ;; Now, fan out from the dirs, looking up and down one level
+                  (message "grizzly") ;; DEBUG
+                  ;; Now, fan out from the dirs, looking in them and one level above
                   (dolist (dir dirs)
                     (setq new-dirs
                           (append (perlnow-dirs-from-one-up dir) new-dirs))
                     (setq new-dirs
-                          (append (perlnow-dirs dir) new-dirs)) )
+                          (append (perlnow-dirs dir) new-dirs)))
+
+                  ;; hacky: not sure where dupes were coming from
+                  (setq new-dirs
+                        (cl-remove-duplicates new-dirs))
+
+                  ;; DEBUG
+                  (message "perlnow-find-dir-where-relative-path-begins, cursed: %d :new-dirs: %s"
+                           perlnow-recurse-count (pp-to-string new-dirs))
+
                   ;; recursive call on new-dirs
                   (setq perlnow-recurse-count (1+ perlnow-recurse-count))
                   (setq lib
@@ -4460,32 +4479,48 @@ Returns a location where the FILE-RELATIVE path starts."
               "perlnow-recurse-limit" perlnow-recurse-limit)
            ))
     (if perlnow-trace (perlnow-closing-func))
+    (message "returning from perlnow-find-dir-where-relative-path-begins: incspot: %s" (pp-to-string incspot)) ;; DEBUG
     incspot))
 
 (defun perlnow-dirs-from-one-up (here)
   "List all directories in the containing directory for HERE, excluding HERE."
   (if perlnow-trace (perlnow-message "Calling perlnow-dirs-from-one-up"))
-  (let (container temp-dirs dirs)
-    (setq container (perlnow-one-up fileloc))
+  (let (container  temp-dirs  dirs)
+    (setq container (perlnow-one-up-simple here))
     (setq temp-dirs
-          (pelnow-dirs container))
+          (perlnow-dirs container))
     (dolist (dir temp-dirs)
       (if (not (string= dir here))
           (push dir dirs)) )
     (if perlnow-trace (perlnow-closing-func))
     dirs))
 
-(defun pelnow-dirs (location)
+(defun perlnow-dirs (location &optional all-opt)
   "A simple directory listing of given LOCATION, limited to sub-directories.
+Restricts listing to accessible directories, and skips the
+special directories \".\" and \"..\" unless the ALL-OPT is t.
 Returns a list of full paths, unsorted."
-  (if perlnow-trace (perlnow-message "Calling pelnow-dirs"))
-  (let (items)
+  (if perlnow-trace (perlnow-message "Calling perlnow-dirs"))
+  (message "perlnow-dirs: %s" location);; DEBUG
+  (let (items  dirs)
     (setq items (directory-files location t "" t))
-    (dolist (item items)
-      (if (file-directory-p item)
-          (push item dirs)))
+    (cond (all-opt
+           (dolist (item items)
+             (if (file-directory-p item)
+                 (push item dirs)))
+           )
+          (t
+           (dolist (item items)
+             (if (and
+                  (file-accessible-directory-p item)
+                  (not (string-match "/\\.$"    item))
+                  (not (string-match "/\\.\\.$" item))
+                  )
+                 (push item dirs)))
+           ))
+    (message "perlnow-dirs returning: %s" (pp-to-string dirs))
     (if perlnow-trace (perlnow-closing-func))
-    items))
+    dirs))
 
 (defun perlnow-check-for-dir-containing (locations file-relative)
   "Given a list of LOCATIONS FILE-RELATIVE, look for pm-file (absolute) in each.
@@ -4500,10 +4535,12 @@ as a file."
                (pp-to-string locations) file-relative) t))
   (let ((lib-loc
          (catch 'FLY
-           (dolist (lib locations)
-             (cond ((file-exists-p (concat lib pm-file-relative))
-                    (throw 'FLY lib)
-                    )))))
+           (dolist (loc locations)
+             (let ((trial-loc (perlnow-fixdir loc)))
+               (message "perlnow-check-for-dir-containing: checking loc: %s" loc)
+               (cond ((file-exists-p (concat trial-loc file-relative))
+                      (throw 'FLY loc)
+                      ))))))
         )
     (if perlnow-trace (perlnow-closing-func))
     lib-loc))
@@ -4525,7 +4562,7 @@ use line."
            (initial-point  (point))
            (pn-label "# added by perlnow")
            ;; patterns to find lines
-           (find-use-pat (concat "^\\s*?" use "\\b")) ;; skips commented out ones
+           (find-use-pat (concat "^\\s*?" "use" "\\b")) ;; skips commented out ones
            (find-pn-add-pat (concat pn-label "[ \t]*?" "$" ))
            ;; pattern to extract package from a line
            (capture-pat (perlnow-package-capture-from-use-pat))
@@ -4732,6 +4769,26 @@ Relative locations are resolved by pre-pending the `default-directory'."
         (message "   Returning from 'oneup'"))
     (if perlnow-trace (perlnow-closing-func))
     location))
+
+;; Experimental variation of the above that just does string surgery
+;; to hack off the last level.  Does NOT handle corners same way:
+;;    empty string, root location, string without any slashs => nil
+;;    otherwise relative paths, are handled ok, but stay relative
+(defun perlnow-one-up-simple (location)
+  "Get an absolute path to the location one above the given LOCATION.
+This just acts on the given string, ignores any trailing
+delimiter (on unix, slash), and tries to strip off the end of the
+string up the previous delimiter.  If that can't be done, returns nil."
+  (if perlnow-trace (perlnow-message "Calling perlnow-one-up"))
+  (let* ((slash perlnow-slash)
+         (spacer (make-string 50 ? ))
+         (trailing-slash-pat (concat slash "$"))
+         (path-sans-slash (replace-regexp-in-string trailing-slash-pat "" location))
+         (one-up (file-name-directory path-sans-slash)))
+    (if perlnow-trace
+        (message (concat spacer "Returning from 'oneup'")))
+    (if perlnow-trace (perlnow-closing-func))
+    one-up))
 
 (defun perlnow-expand-dots-relative-to (dot_means given_path)
   "Using the dot definition DOT_MEANS, expand the GIVEN_PATH.
@@ -6029,7 +6086,7 @@ just \"top to bottom\", currently this does not use the test
 policy settings.  Note: this code looks for \"t\" files directly
 adjacent to one of the significant levels of the code's path,
 it does not, for example, do a full recursive descent from
-a module's incspot."
+a module's incspot." ;; or a project root, which is more to the point
   (if perlnow-trace (perlnow-message "Calling perlnow-find-t-directories"))
   (let* ( (slash (convert-standard-filename "/"))
           (levels () )
@@ -6116,18 +6173,16 @@ returns just one of them and warns about the others."
           (mapconcat 'identity target-names "\\|"))
          (name-pat (concat "^\\(" name-pat-frag "\\)$"))
          (include-directories-option t)
-
          (mixed-hits
           (directory-files-recursively tree-root name-pat include-directories-option))
          (hit-count (length mixed-hits))
          hits   pick
          )
-
     ;; (message "mixed-hits: %s" (pp-to-string mixed-hits));; DEBUG
-
     ;; filter for directories, ignore any files.
     (dolist (name mixed-hits)
-      (cond ((file-directory-p name)
+;;      (cond ((file-directory-p name)
+      (cond ((file-accessible-directory-p name)
              (setq hits (cons name hits))
              )))
     ;; (message "1: hits: %s" (pp-to-string hits));; DEBUG
@@ -6171,7 +6226,8 @@ returns just one of them and warns about the others."
                                 (setq package-name (perlnow-get-package-name-from-module))
                                 (perlnow-get-incspot package-name file-loc))))
                    ;; TODO a weak guess, but one hopes you won't need this
-                   (setq tree-root (perlnow-one-up incspot))))))
+                   (setq tree-root (perlnow-one-up-simple incspot))))))
+    (message "ZIP tree-root: %s" tree-root) ;; DEBUG
     (if perlnow-trace (perlnow-closing-func))
     tree-root))
 
@@ -6253,27 +6309,38 @@ returns just one of them and warns about the others."
 (defun perlnow-list-perl-scripts (loc)
   "Recursively search for perl scripts in the given tree, LOC.
 A perl script may end in extension *.pl or be identified by it's
-hash-bang line."  ;; TODO exclude *.t or not?
+hash-bang line.  Excludes back-up files \(ending in ~\)."
+;; TODO exclude *.t or not?  Trying this-- Sun  July 09, 2017  17:19  tango
   (if perlnow-trace (perlnow-message "Calling perlnow-list-perl-scripts"))
   (let* ((file-list (directory-files-recursively loc "" t))
           script-list  ret-list )
     (dolist (file file-list)
       (if
           (or (string-match "\\.pl$" file)
-              (perlnow-script-p file)) ;; alt: (perlnow-script-not-test-p file)
-          (push file script-list))
+;;              (perlnow-script-p file)) ;; alt: (perlnow-script-not-test-p file)
+              (perlnow-script-not-test-p file))
+          (if (not (string-match "~$" file))
+              (push file script-list)))
       )
     (setq ret-list (nreverse script-list))
     (if perlnow-trace (perlnow-closing-func))
     ret-list))
 
-(defun perlnow-list-perl-tests (loc)
-  "List perl test files found in tree LOC."
+(defun perlnow-list-perl-tests (&optional loc)
+  "List perl test files found in tree LOC.
+Checks the default-directory, if loc is nil."
   (if perlnow-trace (perlnow-message "Calling perlnow-list-perl-tests"))
-  (let ( t-loc t-files )
-    (setq t-loc      (perlnow-scan-tree-for-t-loc))
+  (let ((save-dir default-directory)
+        t-loc  t-files
+        )
+    (cond ((file-directory-p loc)
+           (if loc (cd loc))
+           ))
+    (setq t-loc      (perlnow-scan-tree-for-t-loc)) ;; scans default-directory
+    (message "scan-tree found t-loc: %s" t-loc) ;; DEBUG
     (setq t-files    (perlnow-list-perl-files t-loc))
     (if perlnow-trace (perlnow-closing-func))
+    (cd save-dir)
     t-files))
 
 ;;;==========================================================
@@ -6366,8 +6433,8 @@ from the buffer."
 (defun perlnow-find-location-with-target ( file-name target-files prescreen-pat )
   "Looks for an ancestor of given FILE-NAME with one of TARGET-FILES.
 Uses PRESCREEN-PAT to limit the files that will be checked.
-Note: PRESCREEN-PAT should probably match all of TARGET-FILES.
-"
+Note: PRESCREEN-PAT should usually match all of TARGET-FILES."
+;; TODO if it doesn't match any, should warn, and return nil
   (if perlnow-trace (perlnow-message "Calling perlnow-find-location-with-target"))
   (let* (
          staging-area
@@ -6941,10 +7008,10 @@ be bound to the \"?\" key during the minibuffer read."
 ;;; codename: huh
   (interactive)
   (if perlnow-trace (perlnow-message "Calling perlnow-read-minibuffer-completion-help"))
-  (let* ((raw_string (buffer-substring-no-properties (point-min) (point-max)))
+  (let* ((raw-string (buffer-substring-no-properties (point-min) (point-max)))
          (pat ": ")
-         (field-start (+ (string-match pat raw_string) (length pat)))
-         (string (substring raw_string field-start))
+         (field-start (+ (string-match pat raw-string) (length pat)))
+         (string (substring raw-string field-start))
          ;; Treat input string as a directory plus fragment
          (two-pieces-list
            (perlnow-divide-module-path-dir-and-tail string))
@@ -7443,15 +7510,15 @@ this favors the earlier occurrence in the list."
 (defvar perlnow-stash-string-key-flag t
   "Policy setting: do we use plist keys of symbols or strings?")
 
-(defun perlnow-stash-reload ( &optional json-file plist-symbol )
+(defun perlnow-stash-reload ( &optional stash-file plist-symbol )
   "Reloads a plist from a json file.
 The PLIST-SYMBOL defaults to the global: `perlnow-incspot-from-t-plist'
-JSON-FILE defaults to: ~/.emacs.d/perlnow/incspot_from_t.json"
+STASH-FILE defaults to: ~/.emacs.d/perlnow/incspot_from_t.json"
   (if perlnow-trace (perlnow-message "Calling perlnow-stash-reload"))
   (unless plist-symbol (setq plist-symbol 'perlnow-incspot-from-t-plist))
-  (unless json-file    (setq json-file perlnow-incspot-from-t-json-file))
+  (unless stash-file    (setq stash-file perlnow-incspot-from-t-stash-file))
 
-  (cond ((file-exists-p json-file)
+  (cond ((file-exists-p stash-file)
          ;; there are multiple ways a json file can map to lisp datastructures...
          (let* ((json-object-type 'plist)  ;; default 'alist
                 (json-array-type  'list)   ;; default 'vector
@@ -7459,7 +7526,7 @@ JSON-FILE defaults to: ~/.emacs.d/perlnow/incspot_from_t.json"
                 ;;   (json-key-type `symbol)
                 ;;   (json-key-type `string)
                 ;;   (json-key-type `keyword)
-                (input-data (json-read-file perlnow-incspot-from-t-json-file))
+                (input-data (json-read-file perlnow-incspot-from-t-stash-file))
                 )
            (cond (perlnow-stash-string-key-flag
                   (set plist-symbol input-data))
@@ -7494,18 +7561,20 @@ JSON-FILE defaults to: ~/.emacs.d/perlnow/incspot_from_t.json"
     (if perlnow-trace (perlnow-closing-func))
     new-data))
 
-(defun perlnow-write-plist-file ( &optional json-file plist-symbol )
+(defun perlnow-write-plist-file (&optional stash-file plist-symbol)
   "Writes the data from plist to a json file.
 The PLIST-SYMBOL defaults to the global: `perlnow-incspot-from-t-plist'
 JSON-FILE defaults to: ~/.emacs.d/perlnow/incspot_from_t.json"
   (if perlnow-trace (perlnow-message "Calling perlnow-write-plist-file"))
   (save-excursion
     (unless plist-symbol (setq plist-symbol 'perlnow-incspot-from-t-plist))
-    (unless json-file    (setq json-file perlnow-incspot-from-t-json-file))
+    (unless stash-file   (setq stash-file perlnow-incspot-from-t-stash-file))
     (let* ((data
             (json-encode (eval plist-symbol)))
+            ;; better, maybe: json-encode-plist?
+
            )
-      (find-file json-file)
+      (find-file stash-file)
       (widen)
       (delete-region (point-min) (point-max))
       (insert data)
@@ -7514,7 +7583,7 @@ JSON-FILE defaults to: ~/.emacs.d/perlnow/incspot_from_t.json"
       (if perlnow-trace (perlnow-closing-func))
       )))
 
-(defun perlnow-stash-put ( keystr value &optional plist-symbol )
+(defun perlnow-stash-put ( keystr value &optional plist-symbol stash-file)
   "Put pair of KEYSTR and VALUE in the plist indicated by optional PLIST-SYMBOL.
 The PLIST-SYMBOL defaults to the global `perlnow-incspot-from-t-plist'.
    Example:
@@ -7526,6 +7595,7 @@ silently converts it to an empty string."
          (cond (keystr
                 (unless value (setq value ""))
                 (unless plist-symbol (setq plist-symbol 'perlnow-incspot-from-t-plist))
+                (unless stash-file   (setq stash-file perlnow-incspot-from-t-stash-file))
                 (unless (stringp keystr)
                   (message "perlnow-stash-put: KEYSTR should be a string: %s" (pp-to-string keystr)))
 
@@ -7540,39 +7610,46 @@ silently converts it to an empty string."
                 (if perlnow-debug
                     (perlnow-message
                      (format "PU perlnow-incspot-from-t-plist: %s" (pp-to-string perlnow-incspot-from-t-plist)) t))
-
                 (if perlnow-debug
                     (perlnow-message
                              (format "perlnow-stash-put: json: %s"
                                      (pp-to-string (json-encode (eval plist-symbol))))
                              t))
-                (let ((json-file perlnow-incspot-from-t-json-file))
-                  (perlnow-write-plist-file json-file plist-symbol))
-                )
+                (perlnow-write-plist-file stash-file plist-symbol))
                (t
                 nil))))
     (if perlnow-trace (perlnow-closing-func))
     ret))
 
-(defun perlnow-stash-lookup ( keystr &optional plist-symbol )
+(defun perlnow-stash-lookup ( keystr &optional plist-symbol stash-file)
   "Look-up string KEYSTR in the plist indicated by optional PLIST-SYMBOL.
 The PLIST-SYMBOL defaults to the global `perlnow-incspot-from-t-plist'.
   Example:
   \(setq value
     \(perlnow-stash-lookup \"one\" 'my-special-plist\)\)
 If KEYSTR is nil, returns nil.
-First tries a symbol form of the key, and if that fails tries the raw string."
+"
+;; TODO document stash-file stuff, along with reload
+
+;; Thought I might do this:
+;;   First tries a symbol form of the key, and if that fails tries the raw string.
+;; But looking up the symbol form throws a listp error.  Would need to trap this?
+
   ;; And that, by the way, is a nasty hack to cover for json-read-file never doing
   ;; what I want, irrespective of the json-key-type setting
   (if perlnow-trace (perlnow-message "Calling perlnow-stash-lookup"))
   (let ((ret
          (cond (keystr
                 (unless plist-symbol (setq plist-symbol 'perlnow-incspot-from-t-plist))
-                (let ( (value
+                (unless stash-file   (setq stash-file   perlnow-incspot-from-t-stash-file))
+                (perlnow-stash-reload stash-file plist-symbol)
+
+                (let ((value
                         (or
-                         (lax-plist-get (symbol-value plist-symbol) (intern keystr))
+                         ;; (lax-plist-get (symbol-value plist-symbol) (intern keystr)) ;; listp error (why?)
                          (lax-plist-get (symbol-value plist-symbol) keystr)
-                         )) )
+                         )
+                        ))
                   value))
                (t
                 nil))))
@@ -7624,54 +7701,6 @@ First tries a symbol form of the key, and if that fails tries the raw string."
           (reverse accumulator))  ;; nreverse
     (if perlnow-trace (perlnow-closing-func))
     ret))
-
-
-;; ;; TODO BOOKMARK_THE_TWAIN_SHALL_SEAT
-;; ;; DEBUG
-;; (defun perlnow-plist-funking-around ()
-;;   ""
-;;   (let* (
-;;          (expected-t-list '("bunk.t" "funk.t" "skunk.t"))
-;;          (start-loc-list ())
-;;          (case-names-list '("demo1" "lameo2" "frameup3"))
-;;          (outer-plist ())
-;;          )
-;;     (push "Bink-A-Rink-A-Doo/lib/Bink/A/Rink/A/Doo.pm" start-loc-list)
-;;     (push "lib/Skull/Sockets.pm"                       start-loc-list)
-;;     (push "dev/lib/misty.pl"                           start-loc-list)
-
-;;     (message "start-loc-list: %s" (pp-to-string start-loc-list))
-
-;;     (dolist (case case-names-list)
-;;       (let (inner-plist)
-;;         (perlnow-stash-put
-;;          "startloc-list" start-loc-list
-;;          'inner-plist )
-
-;;         (perlnow-stash-put
-;;          "t-list" expected-t-list
-;;          'inner-plist)
-
-;;         (perlnow-stash-put
-;;          "t-list" expected-t-list
-;;          'inner-plist)
-
-;;         (perlnow-stash-put
-;;          case
-;;          inner-plist
-;;          'outer-plist)
-;;         ))
-
-;;     (let* ((json-file     "/home/doom/tmp/trial.json")
-;;            (plist-symbol  'outer-plist)
-;;            )
-;;       (perlnow-write-plist-file json-file plist-symbol )
-;;       )
-
-;;   ))
-
-;; (perlnow-plist-funking-around)
-
 
 ;;;========
 ;; making elisp more like perl

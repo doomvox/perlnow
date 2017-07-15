@@ -37,7 +37,9 @@
           (test-ext-from  "") ;; pl, pm, or t
           (test-ext-new   "") ;; pl, pm, or t
           (test-mess      "") ;; for "new", from "from", in "context"
-          (perl "/usr/bin/perl")
+          ;; (perl "/usr/bin/perl") ;; same has hash-bang in script template
+          (perl "perl") ;; but much better to let the PATH sort it out
+
           (package-name "Borgia::BananaPeel")
 
           ;; pm: /home/doom/tmp/perlnow_test/dev/Osnome-Gnome/lib/Osnome/Gnome.pm

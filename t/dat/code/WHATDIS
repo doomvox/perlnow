@@ -1,0 +1,11 @@
+These are source copies of files to use with tests, e.g. 65-*.t:
+
+  t/dat/code/s65
+
+These are the test working areas:
+
+  /home/doom/tmp/perlnow_test
+  drwxr-xr-x  1 doom doom    18 Jul  1 11:21 tXX
+  drwxr-xr-x  1 doom doom    18 Jun 30 23:20 t65
+
+tXX is used when run via edebug.

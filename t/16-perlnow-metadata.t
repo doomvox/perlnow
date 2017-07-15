@@ -40,7 +40,9 @@
           (expected-pm-base "Skip.pm")
           (expected-pm-file
            (concat perlnow-pm-location "Beat" slash expected-pm-base))
-          (perl "/usr/bin/perl")
+          ;; (perl "/usr/bin/perl") ;; same has hash-bang in script template
+          (perl "perl") ;; but much better to let the PATH sort it out
+
           (expected-subname "blue_stone")
 
           sub-point  pm-buffer

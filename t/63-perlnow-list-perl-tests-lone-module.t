@@ -39,12 +39,14 @@
 
        (setq pm-buffer (current-buffer))
        (setq expected-test-files '())
-       (message "Reading the tea leaves and the t-loc: %s" (pp-to-string t-loc))
-       (setq test-files
-             (perlnow-list-perl-tests t-loc))
+
+       ;; (message "Reading the tea leaves and the t-loc: %s" (pp-to-string t-loc)) ;; DEBUG
+       ;; (setq test-files (perlnow-list-perl-tests t-loc))
+       (setq test-files (perlnow-list-perl-tests staging-area))
        (setq test-files-sorted
              (sort test-files 'string<))
-       (message "^v^A^v^")
+
+       ;; (message "^v^A^v^")
        (assert-equal expected-test-files test-files-sorted
           (concat test-name ": " test-context-name ", none created yet"))
 
@@ -55,30 +57,28 @@
        (setq expected-test-files
              '("01-Embobbler-ToolKit-sharp_pop.t"))
        (setq expected-test-files-full
-             (mapcar '(lambda (file) (concat t-loc file)) expected-test-files))
-       (setq test-files
-             (perlnow-list-perl-tests t-loc))
+             (mapcar (lambda (file) (concat t-loc file)) expected-test-files))
+       ;; (message "expected-test-files-full: %s" (pp-to-string expected-test-files-full));; DEBUG
+
+       ;; (setq test-files (perlnow-list-perl-tests t-loc))
+       (setq test-files (perlnow-list-perl-tests staging-area))
        (setq test-files-sorted
              (sort test-files 'string<))
-       (message "^v^B^v^")
-;;        (assert-equal expected-test-files test-files-sorted
-;;           (concat test-name ": " test-context-name ",  add via perlnow-test-create"))
+       ;; (message "^v^B^v^")
        (assert-equal expected-test-files-full test-files-sorted
           (concat test-name ": " test-context-name ",  add via perlnow-test-create"))
 
        (set-buffer pm-buffer) ;; back to the pm
        (perlnow-test-create)
-       (setq test-files
-             (perlnow-list-perl-tests t-loc))
+       ;; (setq test-files (perlnow-list-perl-tests t-loc))
+       (setq test-files (perlnow-list-perl-tests staging-area))
        (setq test-files-sorted
              (sort test-files 'string<))
 
        (setq expected-test-files
              '("01-Embobbler-ToolKit-sharp_pop.t" "02-Embobbler-ToolKit-sharp_pop.t"))
        (setq expected-test-files-full
-             (mapcar '(lambda (file) (concat t-loc file)) expected-test-files))
-;;        (assert-equal expected-test-files test-files-sorted
-;;         (concat test-name ": " test-context-name ", another via perlnow-test-create"))
+             (mapcar (lambda (file) (concat t-loc file)) expected-test-files))
        (assert-equal expected-test-files-full test-files-sorted
         (concat test-name ": " test-context-name ", another via perlnow-test-create"))
 

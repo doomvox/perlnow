@@ -63,6 +63,8 @@
           (test-loc (test-init))
           (dev-location (concat test-loc "dev"))
           )
+     (message "test-loc: %s" test-loc)         ;; DEBUG
+     (message "dev-location: %s" dev-location) ;; DEBUG
      (let* ((test-context-name "cpan-style") ;; TODO use this in messaging
             (package-name "Trantor::Skateboard")
             (staging-area  ;; /home/doom/tmp/perlnow_test/t62/dev/Trantor-Skateboard/
@@ -74,7 +76,9 @@
             (t-loc expected-t-loc) ;; TODO temporary
             pm-buffer
             )
+       (message "staging-area: %s" staging-area)
        (test-init-safe-recursive-delete staging-area)
+       (message "perlnow-dev-location: %s" perlnow-dev-location) ;; DEBUG
        (perlnow-milla perlnow-dev-location package-name)
        (assert-t (perlnow-module-code-p)
         "Testing that perlnow-milla created a module")
@@ -83,7 +87,7 @@
        (let* ( test-files   test-files-sorted   expected-test-files  expected-test-files-full )
          (setq expected-test-files '("01-Trantor-Skateboard.t"))
          (setq expected-test-files-full
-               (mapcar '(lambda (file) (concat t-loc file)) expected-test-files))
+               (mapcar (lambda (file) (concat t-loc file)) expected-test-files))
          (setq test-files
                (perlnow-list-perl-tests t-loc))
          (setq test-files-sorted
@@ -102,7 +106,7 @@
          (setq expected-test-files
                '("01-Trantor-Skateboard.t" "02-Trantor-Skateboard.t"))
          (setq expected-test-files-full
-               (mapcar '(lambda (file) (concat t-loc file)) expected-test-files))
+               (mapcar (lambda (file) (concat t-loc file)) expected-test-files))
 
          (assert-equal expected-test-files-full test-files-sorted
             (concat test-name ": " test-context-name ", added one via perlnow-test-create"))
@@ -117,7 +121,7 @@
          (setq expected-test-files
                '("01-Trantor-Skateboard.t" "02-Trantor-Skateboard.t" "03-Trantor-Skateboard.t"))
          (setq expected-test-files-full
-               (mapcar '(lambda (file) (concat t-loc file)) expected-test-files))
+               (mapcar (lambda (file) (concat t-loc file)) expected-test-files))
          (assert-equal expected-test-files-full test-files-sorted
             (concat test-name ": " test-context-name
                 ", added one more via perlnow-test-create"))
