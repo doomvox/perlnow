@@ -88,10 +88,9 @@ Falls back to unix /tmp if not run as script.")
 
 ;;========
 ;; perlnow-specific functions
-;;
+
 (defun test-init ()
-  "Initialize a perlnow test.
-Wrapper around test-init-standard with perlnow-specific customizations."
+  "Initialize a perlnow test. Wrapper around test-init-standard."
   (setq perlnow-quiet t) ;; ask me no questions
   ;; (perlnow-tron)
   (let ((loc (test-init-standard)) )
@@ -100,7 +99,7 @@ Wrapper around test-init-standard with perlnow-specific customizations."
 (defun test-init-setup-perlnow-locations ( sub-directory )
   "Sets up standard perlnow locations using the given SUB-DIRECTORY.
 Creates the SUB-DIRECTORY in the `test-loc' location, and adds
-the tree of standard perlnow locations (bin, lib, dev), setting
+the tree of standard perlnow locations (bin, lib, dev, etc), setting
 the perlnow customization variables to those locations.
 NOTE: if SUB-DIRECTORY already exists it is deleted first
 with `test-init-safe-recursive-delete'.
@@ -108,22 +107,24 @@ The goal here is isolated tests without side-effects on each
 other.
 Returns the full-path to the new sub-directory."
   (let* ((deep-test-loc
-          (test-init-fixdir (concat test-loc sub-directory)))
-         )
+          (test-init-fixdir (concat test-loc sub-directory))))
     (test-init-safe-recursive-delete deep-test-loc)
     (test-init-mkpath deep-test-loc)
-
     (setq perlnow-script-location
           (file-name-as-directory (concat deep-test-loc "bin")))
     (setq perlnow-pm-location
           (file-name-as-directory (concat deep-test-loc "lib")))
     (setq perlnow-dev-location
           (file-name-as-directory (concat deep-test-loc "dev")))
-
+    (setq perlnow-etc-location
+          (file-name-as-directory (concat deep-test-loc "etc")))
+    (setq perlnow-incspot-from-t-stash-file
+          (concat perlnow-etc-location "incspot_from_t.json"))
     (test-init-mkpath perlnow-script-location)
     (test-init-mkpath perlnow-pm-location)
     (test-init-mkpath perlnow-dev-location)
-    (setq test-init-loc-isolated deep-test-loc) ;; EXPERIMENTAL
+    (test-init-mkpath perlnow-etc-location)
+    (setq test-init-loc-isolated deep-test-loc)
     deep-test-loc))
 
 (defun test-init-standard ()

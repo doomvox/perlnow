@@ -1,0 +1,12 @@
+Tests from Pillar.pm. To choose one, cursor to it and hit return.
+/home/doom/tmp/perlnow_test/t68/test_set/nestnon2/t/cake/: 
+   03-Marble-Cake.t
+
+/home/doom/tmp/perlnow_test/t68/test_set/nestnon2/t/catseye/: 
+   01-Marble-CatsEye.t
+   02-Marble-CatsEye-fire.t
+   03-Marble-CatsEye-hit.t
+
+/home/doom/tmp/perlnow_test/t68/test_set/nestnon2/t/pillar/: 
+   01-Marble-Pillar.t
+   02-Marble-Pillar-hit.t

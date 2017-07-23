@@ -1,4 +1,5 @@
-#! /usr/bin/emacs --script
+#!/usr/local/bin/emacs --script
+;; #! /usr/bin/emacs --script
 ;; 60-perlnow-incspot-from-script-for-noncpan-nongit.t
 
 

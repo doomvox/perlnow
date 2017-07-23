@@ -1,10 +1,11 @@
 #!/usr/local/bin/emacs --script
 ;; #! /usr/bin/emacs --script
 ;;                                                   June 18, 2017
-;; ~/End/Cave/Perlnow/lib/perlnow/elisp/t/65-perlnow-list-perl-tests-no-history.t
-;; Mutated from: 63-perlnow-list-perl-tests-lone-module.t
+;; ~/End/Cave/Perlnow/lib/perlnow/elisp/t/68-perlnow-test-harder-select-menu.t
+;; Mutated from: 65-perlnow-list-perl-tests-no-history.t
 
-;; See discussion at top of: 62-perlnow-list-perl-tests-cpan-style.t
+;; Starting with 65-*.t to use the code that reads in the meta file
+;; looping over All Cases is okay too, even if there's just one case
 
 (funcall
  (lambda ()
@@ -26,8 +27,7 @@
           (test-set        (concat test-loc "test_set" slash))
           (test-case-file  (concat test-set "meta" slash "test_cases.el"))
                  ;; /home/doom/tmp/perlnow_test/t65/test_set/meta/test_cases.el
-
-          test-case-data-raw   test-case-data
+          test-case-data
           cases
           )
      (test-init-load-setup-code "s65" test-set)
@@ -43,7 +43,7 @@
         (let ((case-data
                (test-init-plist-lookup case-name 'test-case-data))
               (case-loc
-                (concat test-set case-name slash)) ;; /home/doom/tmp/perlnow_test/tXX/test_set/non1/
+                (concat test-set case-name slash)) ;; e.g. /home/doom/tmp/perlnow_test/tXX/test_set/non1/
                start-file-list  expected-t-list  t-list-raw   t-list  t-loc-list t-loc
               )
           (message "for case: %s, case-data: %s" case-name (pp-to-string case-data)) ;; DEBUG
@@ -63,8 +63,12 @@
           (dolist (start-file start-file-list)
             (find-file (concat case-loc start-file))
             ;; the code under test
+            ;; TODO instead of this, want to test perlnow-test-harder (or ?)
+            ;;      then capture the generated buffer, and compare it to
+            ;;      an expected version (or ?)
             (setq t-list-raw
                           (perlnow-list-perl-tests case-loc))
+
             (setq t-list
                   (mapcar (lambda (file) (file-name-nondirectory file))
                           (sort t-list-raw 'string<)))

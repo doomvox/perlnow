@@ -65,7 +65,7 @@
 
      (assert-nil
       (perlnow-script-file-p (buffer-file-name))
-      "Testing perlnow-script-file-p to confirm module is not like script.")
+      "Testing perlnow-script-file-p to confirm module is not like script.")  ;; ok 3
 
      ;; move a pre-existing script out of the way
      ;; (noninteractive call to perlnow-script doesn't deal with this well...)
@@ -82,15 +82,15 @@
      ;; now the script file should exist on disk
      (assert-t
       (file-exists-p expected-script)
-      (concat test-name ": generated expected script: " script-name))
+      (concat test-name ": generated expected script: " script-name)) ;; ok 4
 
      (assert-t
       (perlnow-script-file-p (buffer-file-name))
-      "Testing perlnow-script-file-p to confirm script looks like script.")
+      "Testing perlnow-script-file-p to confirm script looks like script.") ;; ok 5
 
      (assert-nil
       (perlnow-module-file-p (buffer-file-name))
-      "Testing perlnow-module-file-p to confirm script is not like module.")
+      "Testing perlnow-module-file-p to confirm script is not like module.")  ;; ok 6
 
      (setq test-name "Testing perlnow-run")
      (if perlnow-debug (message "SMELL_O_DOOM: %s" test-name))
@@ -121,7 +121,7 @@
        (setq check-ok-p
              (assert-t
               (string-match trash-out-pat compilation-results)
-              (concat "Testing that perlnow-run worked, and generated output")))
+              (concat "Testing that perlnow-run worked, and generated output")))  ;; ok 7
        ))
    (end-tests)
    ))
