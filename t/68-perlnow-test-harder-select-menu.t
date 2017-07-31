@@ -10,7 +10,7 @@
  (lambda ()
    (if (file-exists-p "test-init.el")
        (load-file "test-init.el"))
-   (perlnow-tron)
+    (perlnow-tron)
 
    ;; debugging convenience hack
    (let ((my-dev "/home/doom/End/Cave/Perlnow/lib/perlnow/t/"))
@@ -39,7 +39,8 @@
 
      (setq cases  (reverse (test-init-subdirs test-set)))
      (dolist (case-name cases)
-        (message "case-name: %s" case-name)
+       (if perlnow-debug
+        (message "case-name: %s" case-name))
         (let ((case-data
                (test-init-plist-lookup case-name 'test-case-data))
               (case-loc
@@ -49,7 +50,8 @@
                expected-select-buffer-text
 
               )
-          (message "for case: %s, case-data: %s" case-name (pp-to-string case-data)) ;; DEBUG
+          (if perlnow-debug
+              (message "for case: %s, case-data: %s" case-name (pp-to-string case-data)))
 
           ;; file paths relative to the case-loc
           (setq start-file-list
@@ -60,8 +62,9 @@
                 (test-init-plist-lookup "t-list" 'case-data))
 
           ;; start-files: list of places to try to list test files from
-          (message "for case: %s, start-file-list: %s" case-name
-                   (pp-to-string start-file-list)) ;; DEBUG
+          (if perlnow-debug
+              (message "for case: %s, start-file-list: %s" case-name
+                       (pp-to-string start-file-list)))
 
           (setq expected-select-buffer-text-file
                 (concat test-set "meta" slash
@@ -87,7 +90,6 @@
 ;;               (assert-equal expected-t-list t-list
 ;;                             (concat test-name ": case: " case-name ": start-file " start-file)))
 
-
             ;; the real test
             (let* ((harder-setting 4))
               (perlnow-edit-test-file-harder harder-setting))
@@ -103,9 +105,10 @@
               (delete-region (point-min) (point-max))
               (insert select-buffer-text)
               (basic-save-buffer)
-               (message "file from scraped buffer: %s" select-buffer-text-file)
-;;               ;; /home/doom/tmp/perlnow_test/t68/scraped-buffer-text.txt
-               (message "compare to expected: %s" expected-select-buffer-text-file)
+              (cond (perlnow-debug
+                     (message "file from scraped buffer: %s" select-buffer-text-file) ;; ~/tmp/perlnow_test/t68/scraped-buffer-text.txt
+                     (message "compare to expected: %s" expected-select-buffer-text-file)
+                     ))
               ))
           ))
      )

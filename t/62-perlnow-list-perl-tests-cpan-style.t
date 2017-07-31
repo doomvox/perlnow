@@ -6,7 +6,7 @@
 
 ;;  Current targets:
 
-;;  perlnow-tree-root
+;;  perlnow-project-root
 ;;  perlnow-scan-tree-for-t-loc
 ;;  perlnow-list-perl-tests      (similar to the older perlnow-list-test-files)
 ;;  perlnow-list-perl-scripts
@@ -81,7 +81,7 @@
        (message "perlnow-dev-location: %s" perlnow-dev-location) ;; DEBUG
        (perlnow-milla perlnow-dev-location package-name)
        (assert-t (perlnow-module-code-p)
-        "Testing that perlnow-milla created a module")
+        "Testing that perlnow-milla created a module")  ;; ok 1
 
        (setq pm-buffer (current-buffer))
        (let* ( test-files   test-files-sorted   expected-test-files  expected-test-files-full )
@@ -94,7 +94,7 @@
                (sort test-files 'string<))
 
          (assert-equal expected-test-files-full test-files-sorted
-            (concat test-name ": " test-context-name ", default test files"))
+            (concat test-name ": " test-context-name ", default test files")) ;; ok 2
 
          (set-buffer pm-buffer) ;; back to the pm
          (perlnow-test-create) ;; 02-Trantor-Skateboard.t
@@ -109,7 +109,7 @@
                (mapcar (lambda (file) (concat t-loc file)) expected-test-files))
 
          (assert-equal expected-test-files-full test-files-sorted
-            (concat test-name ": " test-context-name ", added one via perlnow-test-create"))
+            (concat test-name ": " test-context-name ", added one via perlnow-test-create"))  ;; ok 3
 
          (set-buffer pm-buffer) ;; back to the pm
          (perlnow-test-create) ;; 03-Trantor-Skateboard.t
@@ -124,7 +124,7 @@
                (mapcar (lambda (file) (concat t-loc file)) expected-test-files))
          (assert-equal expected-test-files-full test-files-sorted
             (concat test-name ": " test-context-name
-                ", added one more via perlnow-test-create"))
+                ", added one more via perlnow-test-create"))  ;; ok 4
 
          (if perlnow-debug
              (message "perlnow-incspot-from-t-plist: %s" (pp perlnow-incspot-from-t-plist)))
@@ -139,7 +139,7 @@
            (cond (testfile
                   (setq inc-spot
                         (perlnow-stash-lookup (file-name-directory testfile)))
-                  (assert-equal expected-inc-spot inc-spot test-name-alt)
+                  (assert-equal expected-inc-spot inc-spot test-name-alt)  ;; ok 5
                   )))
          ))
      ) ;; end outer let*

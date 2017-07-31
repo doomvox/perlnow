@@ -190,6 +190,9 @@ Default EXTENSION is \".OLD\""
           ))
    ))
 
+;; TODO could you replace this with:
+;;   (setq trash-directory "Old")
+;;   (move-file-to-trash dirname)
 (defun test-init-safe-recursive-delete (dirname &optional backup-location safety-override)
   "Given a DIRNAME including a full-path, move it to the BACKUP-LOCATION.
 BACKUP-LOCATION defaults to a sub-directory named \"Old\".
@@ -248,6 +251,9 @@ it's intended to be ephemeral.  If SAFETY-OVERRIDE is non-nil, this check is ski
                   (copy-directory new-backup-temp new-backup nil t t)
                   ))))))
 
+;; TODO
+;; Might be able to just use this: dired-copy-file-recursive
+;; but it is has no documentation.
 (defun test-init-copy-tree (this there)
   "Copies the tree of files THIS over to location THERE.
 Shells out to the tar command.  If it it looks like THIS is in
@@ -277,22 +283,14 @@ first."
          )
     (if (file-accessible-directory-p new-tree)
         (test-init-safe-recursive-delete new-tree nil t))
-
-;;    (cd (concat orig-loc basename))
     (cd this)
-
-    ;; tar-cmd-1
-;;     (call-process tar-program nil nil display-buffer
-;;                   "czf" tar-file ".")
-;;    (call-process tar-program nil nil display-buffer
-;;                  tar-args) ;; How do you expand this list?
+     ;; tar-cmd-1
      (call-process tar-program nil nil display-buffer
                    "czf" tar-file ".")
-
-    (message "tar-file: %s" tar-file) ;; DEBUG
-    (message "there: %s" there)       ;; DEBUG
     (test-init-mkpath there)
     (copy-file tar-file there t) ;; over-write is okay
+    (move-file-to-trash tar-file) ;; EXPERIMENTAL
+
     ;; tar-cmd-2
     (setq save-loc default-directory)
     (cd there)
@@ -325,13 +323,13 @@ Moves any existing copy of it out of the way.  The test location
 DEEP-TEST-LOC defaults to the return from \\[test-init-standard-core],
 passed via `test-init-loc-isolated'."
   (unless deep-test-loc (setq deep-test-loc test-init-loc-isolated))
-  (message "test-init-loc-isolated: %s" test-init-loc-isolated) ;; /home/doom/tmp/perlnow_test/t65/
+  ;; (message "test-init-loc-isolated: %s" test-init-loc-isolated) ;; /home/doom/tmp/perlnow_test/t65/
   (let* ((slash test-init-slash)
          (data-loc   (test-init-fixdir (concat default-directory "dat" slash)))
          (source-loc (concat data-loc "code" slash dir-basename slash))
 ;;         (source-loc default-directory)
          )
-  (message "source-loc: %s" source-loc) ;; /home/doom/End/Cave/Perlnow/lib/perlnow/t/dat/code/s65/
+  ; (message "source-loc: %s" source-loc) ;; /home/doom/End/Cave/Perlnow/lib/perlnow/t/dat/code/s65/
 
   (test-init-copy-tree source-loc deep-test-loc)
   ))

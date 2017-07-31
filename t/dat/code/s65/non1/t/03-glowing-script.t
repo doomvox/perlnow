@@ -20,7 +20,7 @@ use Test::More;
 
 ok(1, "Traditional: If we made it this far, we're ok.");
 
-my $script_name = '/home/doom/End/Cave/Perlnow/lib/perlnow/t/dat/arc/s65/non1/bin/glowing.pl';
+my $script_name = '/home/doom/End/Cave/Perlnow/lib/perlnow/t/dat/code/s65/non1/bin/glowing.pl';
 my $script_basename = basename( $script_name );
 
 {

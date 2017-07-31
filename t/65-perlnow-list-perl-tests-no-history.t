@@ -4,8 +4,21 @@
 ;; ~/End/Cave/Perlnow/lib/perlnow/elisp/t/68-perlnow-test-harder-select-menu.t
 ;; Mutated from: 65-perlnow-list-perl-tests-no-history.t
 
-;; Starting with 65-*.t to use the code that reads in the meta file
-;; looping over All Cases is okay too, even if there's just one case
+;; This test reads in the file dat/code/s65/meta/test_cases.el, and uses that 
+;; to drive the tests.  As of this writing, that file contains three main
+;; cases "cpan1", "git1" and "non1", which have corresponding directory trees
+;; in dat/code/s65.  These trees contain dummy perl dev environments that 
+;; have been set-up in advance, so we step into them without knowing anything
+;; about how they were created (we have "no history" for them).
+;; Each test case has a "start-file-list", a list of files we're going to
+;; open in turn before running perlnow-list-perl-tests.  We call it a pass 
+;; when  the result matches the expected one supplied in the "t-list" field of 
+;; the test cases.
+
+;; The major cases:
+;;   cpan1 is a cpan-style structure (created with milla).
+;;   git1  is a git-controlled project
+;;   non1  is a non-cpan/non-git project (the hardest case)
 
 (funcall
  (lambda ()
@@ -32,33 +45,27 @@
           )
      (test-init-load-setup-code "s65" test-set)
      (setq test-case-data (test-init-load-data test-case-file))
-
-     (setq cases (test-init-subdirs test-set))
-;;     (setq cases '("cpan1")) ;; DEBUG
-;;     (setq cases '("git1")) ;; DEBUG
-;;     (setq cases '("non1")) ;; DEBUG
+     (setq cases (test-init-subdirs test-set)) ;; cpan1 git1 non1
      (setq cases (reverse cases))
       (dolist (case-name cases)
-        (message "case-name: %s" case-name)
+        (if perlnow-debug
+            (message "case-name: %s" case-name))
         (let ((case-data
                (test-init-plist-lookup case-name 'test-case-data))
               (case-loc
                 (concat test-set case-name slash)) ;; e.g. /home/doom/tmp/perlnow_test/tXX/test_set/non1/
                start-file-list  expected-t-list  t-list-raw   t-list  t-loc-list t-loc
               )
-          (message "for case: %s, case-data: %s" case-name (pp-to-string case-data)) ;; DEBUG
-
+          (if perlnow-debug
+              (message "for case: %s, case-data: %s" case-name (pp-to-string case-data))) 
           ;; file paths relative to the case-loc
-          (setq start-file-list
-                (test-init-plist-lookup "start-file-list" 'case-data))
-
+          (setq start-file-list (test-init-plist-lookup "start-file-list" 'case-data))
           ;; file names sans path
-          (setq expected-t-list
-                (test-init-plist-lookup "t-list" 'case-data))
-
+          (setq expected-t-list (test-init-plist-lookup "t-list" 'case-data))
           ;; start-files: list of places to try to list test files from
-          (message "for case: %s, start-file-list: %s" case-name
-                   (pp-to-string start-file-list)) ;; DEBUG
+          (if perlnow-debug
+              (message "for case: %s, start-file-list: %s" case-name
+                       (pp-to-string start-file-list)))
 
           (dolist (start-file start-file-list)
             (find-file (concat case-loc start-file))
@@ -66,14 +73,12 @@
             ;; TODO instead of this, want to test perlnow-test-harder (or ?)
             ;;      then capture the generated buffer, and compare it to
             ;;      an expected version (or ?)
-            (setq t-list-raw
-                          (perlnow-list-perl-tests case-loc))
-
+            (setq t-list-raw (perlnow-list-perl-tests case-loc))
             (setq t-list
                   (mapcar (lambda (file) (file-name-nondirectory file))
                           (sort t-list-raw 'string<)))
-            (message "XXX t-list: %s" (pp-to-string t-list))
-
+            (if perlnow-debug
+                (message "XXX t-list: %s" (pp-to-string t-list)))
             (assert-equal expected-t-list t-list
                           (concat test-name ": case: " case-name ": start-file " start-file))
             )
