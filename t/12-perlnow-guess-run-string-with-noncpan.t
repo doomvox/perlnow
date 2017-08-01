@@ -43,8 +43,7 @@
  (lambda ()
    (if (file-exists-p "test-init.el")
        (load-file "test-init.el"))
-
-   ;; (perlnow-tron)
+   (perlnow-tron)
    (let* (
           (test-loc (test-init))
 
@@ -76,6 +75,8 @@
           ;; (t-loc  (concat (perlnow-fixdir (concat perlnow-pm-location "..")) "t/"))
           (exp-t  (concat test-loc "t" perlnow-slash t-name))
 
+          mess  some-file-name
+
           pm-file          pm-buffer
           t-file           t-buffer
           script-file      script-buffer
@@ -93,23 +94,40 @@
      (perlnow-object-module perlnow-pm-location package-name)
      (setq pm-file   (buffer-file-name))
      (setq pm-buffer (current-buffer))
-     (assert-t
-      (perlnow-module-code-p)
-      "Testing that perlnow-object-module left new pm buffer active.") ;; ok 1
+     (setq mess "Testing that perlnow-object-module left new pm buffer active.") 
+     (message "1")
+     (or
+      (assert-t (perlnow-module-code-p) mess) ;; ok 1
+      (message "NOT ok 1: %s" mess))
+     (message "GYPSUM 1")
 
      ;; Faking a simple "edit-test" call, without arguments
-              (perlnow-open-test-file
-               (perlnow-get-test-file-name))
+;;     (perlnow-open-test-file (perlnow-get-test-file-name))
+
+;;      (let* (fn (perlnow-get-test-file-name))
+;;        (message "XYZ perlnow-get-test-file-name returned: %s" fn)
+;;        (perlnow-open-test-file fn))
+
+      (setq some-file-name (perlnow-get-test-file-name))
+      (message "UVW perlnow-get-test-file-name returned: %s" some-file-name)
+      (perlnow-open-test-file some-file-name)
+      (message "OINK: Still standing, after perlnow-open-test-file")
+       
      (setq t-file   (buffer-file-name))
      (setq t-buffer (current-buffer))
 
-     (assert-equal exp-t t-file
-                   (concat "Testing perlnow-edit-test created test file: \n"
-                           "        " t-file )) ;; ok 2
+     (setq mess (concat "Testing perlnow-edit-test created test file: \n"
+                         "        " t-file ))
+     (message "2")
+     (or 
+      (assert-equal exp-t t-file mess) ;; ok 2
+      (message "NOT ok 2: %s" mess))
+     (message "HORSTONE 2")
 
      (setq test-ext-from  "pm") ;; pl, pm, or t
      (setq test-ext-new   "pl") ;; pl, pm, or t
      (setq test-mess (concat test-ext-new " from " test-ext-from " from pm style: " mod-style))
+     (message test-mess) ;; otherwise, unused? 
 
      ;; back to the pm
      (set-buffer pm-buffer)
@@ -120,8 +138,12 @@
      ;; (message "ZING rs-from-pm: %s" rs-from-pm)
 
      (if perlnow-debug (message "rs-from-pm pre-pl: %s" rs-from-pm))
-     (assert-equal exp-rs-from-pm rs-from-pm
-                   (concat "Testing " funcname " for pm " mod-style )) ;;  ok 3
+     (setq mess (concat "Testing " funcname " for pm " mod-style ))
+     (message "3")
+     (or 
+      (assert-equal exp-rs-from-pm rs-from-pm mess) ;;  ok 3
+      (message "NOT ok 3: %s" mess))
+     (message "IAGONITE 3")
 
      ;; start from the pm, again, create script
      (set-buffer pm-buffer)
@@ -130,9 +152,12 @@
      (perlnow-script exp-script)
      (setq script-file   (buffer-file-name))
      (setq script-buffer (current-buffer))
-     (assert-equal exp-script script-file
-                   (format "Testing perlnow-script from %s: \n %s" mod-style script-file)) ;; ok 4
-
+     (setq mess (format "Testing perlnow-script from %s: \n %s" mod-style script-file))
+     (message "4")
+     (or 
+      (assert-equal exp-script script-file mess ) ;; ok 4
+      (message "NOT ok 4: %s" mess))
+     (message "JOSEPHINE 4")
 
      ;; back to the module again, and guess
      (set-buffer pm-buffer)
@@ -141,19 +166,24 @@
      (setq exp-rs-from-pm (concat "perl " perlnow-script-location "cube.pl"))
      (setq rs-from-pm (perlnow-guess-run-string))
      (if perlnow-debug (message "rs-from-pm post-pl: %s" rs-from-pm))
-
-     (assert-equal exp-rs-from-pm rs-from-pm
-                   (concat "Testing " funcname " for pm, (" mod-style ") after script ")) ;; ok 5
+     (setq mess (concat "Testing " funcname " for pm, (" mod-style ") after script "))
+     (message "5")
+     (or 
+      (assert-equal exp-rs-from-pm rs-from-pm mess ) ;; ok 5
+      (message "NOT ok 5: %s" mess))
+     (message "KRYPTOGON 5")
 
      (set-buffer script-buffer)
      (setq rs-from-script (perlnow-guess-run-string))
      (if perlnow-debug (message "rs-from-script: %s" rs-from-script))
-
      ;; "/usr/bin/perl /home/doom/tmp/perlnow_test/dev/Planet-Ten/bin/overthrust.pl"
      (setq exp-rs-from-script (concat "/usr/bin/perl " perlnow-script-location "cube.pl"))
-     (assert-equal exp-rs-from-script rs-from-script
-                   (concat "Testing " funcname " for script from " mod-style )) ;; ok 6
-
+     (setq mess (concat "Testing " funcname " for script from " mod-style ))
+     (message "6")
+     (or 
+      (assert-equal exp-rs-from-script rs-from-script mess ) ;; ok 6
+      (message "NOT ok 6: %s" mess))
+     (message "LAETRILE 6")
 
      ;; switch to test file, and guess
      (set-buffer t-buffer)
@@ -162,19 +192,25 @@
 
      ;; "perl /home/doom/tmp/perlnow_test/bonk12/t/01-Modoc-Aims.t"
      (setq exp-rs-from-t (concat "perl " exp-t))
-     (assert-equal exp-rs-from-t rs-from-t
-                   (concat "Testing " funcname " for t for an " mod-style ))  ;; ok 7
+     (setq mess (concat "Testing " funcname " for t for an " mod-style ))
+     (message "7")
+     (or 
+      (assert-equal exp-rs-from-t rs-from-t mess )  ;; ok 7
+      (message "NOT ok 7: %s" mess))
+     (message "MORDOST 7")
 
      ;; back to pm, did guess in t change rs here?
      (set-buffer pm-buffer)
      ;; after we've done a guess in a *.t, it *doesn't* change the rs for the pm:
-     (setq exp-rs-from-pm
-           (concat "perl " perlnow-script-location "cube.pl"))
-
+     (setq exp-rs-from-pm (concat "perl " perlnow-script-location "cube.pl"))
      (setq rs-from-pm (perlnow-guess-run-string))
      (if perlnow-debug (message "rs-from-pm post-pl, after t again: %s" rs-from-pm))
-     (assert-equal exp-rs-from-pm rs-from-pm
-                   (concat "Testing " funcname " for pm (" mod-style ")" )) ;; ok 8
+     (setq mess (concat "Testing " funcname " for pm (" mod-style ")" ))
+     (message "8")
+     (or 
+      (assert-equal exp-rs-from-pm rs-from-pm mess) ;; ok 8
+      (message "NOT ok 8: %s" mess))
+     (message "OVALTINE 8")
 
      ;; just to make sure
      (set-buffer pm-buffer)
@@ -187,9 +223,12 @@
      (setq exp-rs-from-pm (concat "perl " exp-t))
      (setq rs-from-pm (perlnow-guess-run-string))
      (if perlnow-debug (message "rs-from-pm post-pl, after t again: %s" rs-from-pm))
-     (assert-equal exp-rs-from-pm rs-from-pm
-                   (concat "Testing " funcname " for pm " mod-style )) ;; *NOT* ok 9
-
+     (setq mess (concat "Testing " funcname " for pm " mod-style ))
+     (message "9")
+     (or 
+      (assert-equal exp-rs-from-pm rs-from-pm mess ) ;; *NOT* ok 9
+      (message "NOT ok 9: %s" mess))
+     (message "POGOID 9")
      )
    (end-tests)
    ))

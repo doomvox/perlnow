@@ -156,9 +156,9 @@
        (assert-equal expected-test-files test-files-sorted
           (concat test-name ": " test-context-name ", no test yet"))  ;; ok 8
 
-       (assert-nil (file-directory-p expected-t-location)
+       (assert-t (file-directory-p expected-t-location)
                    (format 
-                    "Verifying that no \"t\" created by perlnow-list-perl-tests: %s"
+                    "Verifying that \"t\" is now created by perlnow-list-perl-tests: %s"
                     expected-t-location))  ;; ok 9
 
        (set-buffer pm-buffer) ;; back to the pm

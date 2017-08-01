@@ -612,12 +612,15 @@ Some examples:
 Note: converts relative paths to absolute, using the current
 default-directory setting, unless specified otherwise with the
 ROOT option.  Note side-effect: converts the empty string into
-the default-directory or the ROOT setting."
-  (let ((return
-         (substitute-in-file-name
-          (convert-standard-filename
-           (file-name-as-directory
-            (expand-file-name dir root))))))
+the default-directory or the ROOT setting.   A nil argument is 
+treated in the same way."
+  (unless dir (setq dir ""))
+  (let ( return )
+    (setq return 
+          (substitute-in-file-name
+           (convert-standard-filename
+            (file-name-as-directory
+             (expand-file-name dir root)))))
     return))
 
 (defun perlnow-mkpath (dir)
@@ -1058,7 +1061,11 @@ Used by \\[perlnow-edit-test-file].  See:
 (setq perlnow-test-policy-naming-style-module    "fullauto")
 
 (setq perlnow-test-policy-test-location-script   "../t")
-(setq perlnow-test-policy-dot-definition-script  "fileloc")   ;; override
+
+;; TODO EXPERIMENTAL checking that scripts can deal with incspot dotdef now
+;; (setq perlnow-test-policy-dot-definition-script  "fileloc")   ;; override
+(setq perlnow-test-policy-dot-definition-script  "incspot")   ;; ALL ARE SAME NOW
+
 ;; TODO EXPERIMENTAL fullauto now best for scripts maybe?
 ;; (setq perlnow-test-policy-naming-style-script    "basename")  ;; override
 (setq perlnow-test-policy-naming-style-script    "fullauto")  ;; override
@@ -2093,7 +2100,7 @@ Or to simulate a calling prefix and open a test select menu:
   (if perlnow-trace (perlnow-message "* Calling perlnow-edit-test-file"))
 
   (let* ((harder-setting (car current-prefix-arg))
-         testfile ;; no longer passed in as an argument (so this has been broken since...?)
+         testfile ;; no longer passed in as an argument (so this has been broken since when...?)
          )
     (cond (
            (and harder-setting
@@ -2392,7 +2399,7 @@ Uses the HARDER-SETTING \(4 or 16\) to choose whether to do a
                      perlnow-test-policy-naming-style-module)))
     (setq run-string
           (cond ( (>= harder-setting 16) ;; even harder!
-                  (concat "cd " t-dir "; prove --nocolor -r"))
+                  (concat "cd " t-dir "; prove --nocolor -r")) ;; TODO --nocolor may be out-of-date now
                 ( t
                   (concat "cd " t-dir "; prove --nocolor *.t"))
                 ))
@@ -3623,7 +3630,8 @@ buffer when metadata was called:
     (t ;; other (whatever that would be...)
      (setq testloc    "../t" )
      (setq dotdef     "incspot")
-     (setq namestyle  "numeric")
+;;     (setq namestyle  "numeric")
+     (setq namestyle  "fullauto")
      )) ;; end policy
    (setq test-policy-trio (list testloc dotdef namestyle)) ;; TODO now this is unused
    (cond
@@ -3709,7 +3717,7 @@ buffer when metadata was called:
         )
        ((string= file-type "script")
         (setq sub-name (or (perlnow-sub-at-point) ""))
-        (setq testloc-absolute (perlnow-testloc-from-policy testloc dotdef namestyle))
+        (setq testloc-absolute (perlnow-testloc-from-policy testloc dotdef namestyle)) 
         (cond (perlnow-associated-code
                (let* ( (candidate (perlnow-follow-associations-to-non-test-code))
                        (ext (file-name-extension candidate))
@@ -5117,7 +5125,7 @@ script case. "
          (setq perlnow-perl-sub-name ""))) ;; nil causes problems
   (if perlnow-debug (message "   perlnow-perl-sub-name: %s" perlnow-perl-sub-name))
 
-  (let* ( test-file-from-policy ;; return value
+  (let* ( test-file ;; return value
           test-name-pat
           test-files )
     (cond ((string= mod-or-script "script")
@@ -5135,13 +5143,13 @@ script case. "
                   test-files-basename
                   )
              (cond (test-files-both ;; matches found on module *and* sub: pick latest
-                    (setq test-file-from-policy
+                    (setq test-file
                           (perlnow-most-recently-modified-file test-files-both))
                     )
                    (t  ;; we're without match on module/sub, so...
                     (cond ((not perlnow-perl-sub-name) ;; no sub name defined
                            (cond ((test-files-module)   ;; have matches on module: will pick latest
-                                  (setq test-file-from-policy
+                                  (setq test-file
                                         (perlnow-most-recently-modified-file test-files-module))
                                   )
                                  ((string= mod-or-script "script")  ;; could be a funny place to do this TODO
@@ -5149,24 +5157,25 @@ script case. "
                                          (setq test-files-basename
                                                (perlnow-grep-list test-files basename ))
 
-                                         (setq test-file-from-policy
+                                         (setq test-file
                                                (perlnow-most-recently-modified-file test-files-basename))
                                          )))
                                  (t ;; unused branch?  still no subname, plus not script and not modules-only matches
+                                    ;; TODO add a warning message here?
                                   )
                                  ))
                           (t ;; subname defined
-                           (setq test-file-from-policy
+                           (setq test-file
                                  ;; just create a new one (gets sub name from var)
                                  (perlnow-new-test-file-name testloc-absolute hyphenized-package-name))
                            ))
                     ))))
           (t ;; no test files (*and* no subname) pick a new test name
-            (setq test-file-from-policy
+            (setq test-file
                   (perlnow-new-test-file-name testloc-absolute hyphenized-package-name))
             ))
     (if perlnow-trace (perlnow-closing-func))
-    test-file-from-policy))
+    test-file))
 
 
 (defun perlnow-new-test-file-name (testloc-absolute hyphenized-package-name)
@@ -5259,8 +5268,34 @@ If no files are found in TESTLOC-ABSOLUTE, returns 01."
     (if perlnow-trace (perlnow-closing-func))
     next-prefix))
 
+
+;; 
 ;; Used by perlnow-test-from-policy and hence perlnow-get-test-file-name,
-(defun perlnow-testloc-from-policy (testloc dotdef namestyle)
+(defun perlnow-testloc-from-policy (&optional testloc dotdef namestyle)
+  "Get the test file location for the current perl buffer, given a test policy.
+This also tries to create the location if it doesn't already exist,
+asking the user unless `perlnow-quiet' is set.
+
+This is a transitional function, a wrapper around the new routine
+perlnow-scan-tree-for-t-loc, to replace the old perlnow-testloc-from-policy.
+Consequently this function accepts the old \"policy\" settings, but
+does nothing with them.
+"
+  (if perlnow-trace
+      (perlnow-message
+        "Calling perlnow-testloc-from-policy, a transitional wrapper around perlnow-scan-tree-for-t-loc"))
+  ;; TODO error out if in some non-perl project buffer where this can't work?
+  (let ( testloc-absolute )
+    (setq testloc-absolute (perlnow-scan-tree-for-t-loc))
+    ;; ensure that testloc-absolute exists
+    (perlnow-ensure-directory-exists testloc-absolute)   ;; TODO the one essential thing done here but not in perlnow-scan-tree-for-t-loc  (or so I thought)
+    (if perlnow-debug
+        (message "perlnow-testloc-from-policy (transitional) found: %s" testloc-absolute))
+    (if perlnow-trace (perlnow-closing-func))
+    testloc-absolute))
+
+;; Used by perlnow-test-from-policy and hence perlnow-get-test-file-name,
+(defun perlnow-testloc-from-policy-OLD (testloc dotdef namestyle)
   "Get the test file location for the current perl buffer, given a test policy.
 This also tries to create the location if it doesn't already exist,
 asking the user unless `perlnow-quiet' is set.
@@ -6226,18 +6261,29 @@ TYPE set to \"d\", you can relax that to all directories)."
     hits))
 
 (defun perlnow-scan-tree-for-t-loc ()
-  "Look for the \"t\" directory in current tree."
+  "Look for the \"t\" directory in current tree.
+(( TODO add remarks about doing a create if none found ))
+"
   (if perlnow-trace (perlnow-message "Calling perlnow-scan-tree-for-t-loc"))
-  (let ( project-root   target-list   t-locs   project-t-locs   t-loc )
+  (let ( project-root   target-list   t-locs   project-t-locs   t-loc  loc-count )
     (setq project-root (perlnow-project-root))
     (setq target-list (list "t"))
     (setq t-locs (perlnow-scan-tree-for-directory project-root target-list "a"))
     (setq project-t-locs (perlnow-only-in-here t-locs project-root))
-    (setq t-loc (car project-t-locs))
-    (cond ((> (length project-t-locs) 1)
+    (setq loc-count (length project-t-locs))
+    (cond ((= loc-count 0)
+           ;; TODO Q: do a conditional ask about this, right?  TODO document
+           (setq t-loc (perlnow-require-trailing-slash (concat project-root "t"))) ;; hardcoding what was once policy...
+           (perlnow-ensure-directory-exists t-loc)  
+           )
+          ((= loc-count 1)
+           (setq t-loc (perlnow-require-trailing-slash (car project-t-locs)))
+           )
+          ((> loc-count 1)
            (message "Found multiple candidate project-t-locs:\n %s\n"
                     (perlnow-list-to-string project-t-locs))
-           (message "Crossing-fingers and picking one: %s" t-loc)
+           (setq t-loc (perlnow-require-trailing-slash (car project-t-locs)))
+           (message "Crossing-fingers and picking one: %s" t-loc)  ;; TODO improve, no?
            ))
     (if perlnow-debug 
         (message "PICK: perlnow-scan-tree-for-t-loc found t-loc: \n    %s\n" t-loc))
@@ -7227,6 +7273,27 @@ Returns nil if STRING is nil."
          (mapconcat 'identity (split-string string "::") slash))
           (t 
            nil))))
+
+(defun perlnow-require-trailing-slash (path)
+  "Takes the given string, appends a forward slash to it.
+\(Actually, if not in unix-land, appends whatever would make sense to append.\)
+This is for those times when \\[perlnow-fixdir] won't quite do, 
+and you don't feel like re-learning which of the three elisp 
+commands would do this for you.  Treats a nil as an empty string, 
+and returns an empty string in either case, because returning the 
+root directory \"/\" is never going to be what you want.  
+And unlike perlnow-fixdir, this will not stick you with the
+default-directory in those cases."
+  (let* ((slash perlnow-slash)
+         (trailing-slash-pat (concat slash "$"))
+         )
+    (cond ((not path)
+           (setq path ""))
+          ((string= path "")
+           (setq path ""))
+          ((not (string-match trailing-slash-pat path))
+           (setq path (concat path slash))))
+    path))
 
 ;; general utility
 (defun perlnow-ensure-directory-exists (dir &optional ask-message)
