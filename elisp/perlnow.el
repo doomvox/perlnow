@@ -32,7 +32,7 @@
 (require 'json)
 ;; (require 'seq)  ;; seq-util (using perlnow-uniq-list for now)
 
-(defconst perlnow-version "0.7"
+(defconst perlnow-version "0.8"
   "The version number of the installed perlnow.el package.
 Check <http://obsidianrook.com/perlnow/> for the latest.")
 
@@ -978,6 +978,11 @@ may be set differently for different files.")
 ;; structure, but would that make them any easier for a user to
 ;; understand and modify?  If not, then what would be the point?
 
+;; TODO  Mon  July 31, 2017  20:21  tango
+;;      these could be removed, but instead I'm going to preserve them 
+;;      so that if someone has set them manually, things won't break on
+;;      upgrade.  revise docs to make it clear they don't do anything.
+
 ;; (defcustom perlnow-test-policy-test-location  "./t" ;; Old style, pre 0.5
 (defcustom perlnow-test-policy-test-location  "../t"
   "Test location for newly created test files.
@@ -1016,59 +1021,59 @@ Used by \\[perlnow-edit-test-file].  See:
 `perlnow-documentation-test-file-strategies'.")
 ;; (setq perlnow-test-policy-naming-style "fullauto") ;; DEBUG
 
-(defcustom perlnow-test-policy-test-location-cpan
-  perlnow-test-policy-test-location
-  "Like `perlnow-test-policy-test-location-cpan' but for cpan modules.")
-(defcustom perlnow-test-policy-dot-definition-cpan
-  perlnow-test-policy-dot-definition
-  "Like `perlnow-test-policy-dot-definition', but for cpan modules.")
-(defcustom perlnow-test-policy-naming-style-cpan
-  perlnow-test-policy-naming-style
-  "Like `perlnow-test-policy-naming-style', but for cpan modules.")
+;; (defcustom perlnow-test-policy-test-location-cpan
+;;   perlnow-test-policy-test-location
+;;   "Like `perlnow-test-policy-test-location-cpan' but for cpan modules.")
+;; (defcustom perlnow-test-policy-dot-definition-cpan
+;;   perlnow-test-policy-dot-definition
+;;   "Like `perlnow-test-policy-dot-definition', but for cpan modules.")
+;; (defcustom perlnow-test-policy-naming-style-cpan
+;;   perlnow-test-policy-naming-style
+;;   "Like `perlnow-test-policy-naming-style', but for cpan modules.")
 
-(defcustom perlnow-test-policy-test-location-module
-  perlnow-test-policy-test-location
-  "Like `perlnow-test-policy-test-location', but for non-cpan modules.")
-(defcustom perlnow-test-policy-dot-definition-module
-  perlnow-test-policy-dot-definition
-  "Like `perlnow-test-policy-dot-definition', but for non-cpan modules.")
-(defcustom perlnow-test-policy-naming-style-module
-  perlnow-test-policy-naming-style
-  "Like `perlnow-test-policy-naming-style', but for non-cpan modules.")
+;; (defcustom perlnow-test-policy-test-location-module
+;;   perlnow-test-policy-test-location
+;;   "Like `perlnow-test-policy-test-location', but for non-cpan modules.")
+;; (defcustom perlnow-test-policy-dot-definition-module
+;;   perlnow-test-policy-dot-definition
+;;   "Like `perlnow-test-policy-dot-definition', but for non-cpan modules.")
+;; (defcustom perlnow-test-policy-naming-style-module
+;;   perlnow-test-policy-naming-style
+;;   "Like `perlnow-test-policy-naming-style', but for non-cpan modules.")
 
-(defcustom perlnow-test-policy-test-location-script
-  perlnow-test-policy-test-location
-  "Like `perlnow-test-policy-test-location', but for scripts.")
-(defcustom perlnow-test-policy-dot-definition-script
-  "fileloc"
-  "Like `perlnow-test-policy-dot-definition', but for scripts.")
-(defcustom perlnow-test-policy-naming-style-script
-  "basename"
-  "Like `perlnow-test-policy-naming-style', but for scripts.")
+;; (defcustom perlnow-test-policy-test-location-script
+;;   perlnow-test-policy-test-location
+;;   "Like `perlnow-test-policy-test-location', but for scripts.")
+;; (defcustom perlnow-test-policy-dot-definition-script
+;;   "fileloc"
+;;   "Like `perlnow-test-policy-dot-definition', but for scripts.")
+;; (defcustom perlnow-test-policy-naming-style-script
+;;   "basename"
+;;   "Like `perlnow-test-policy-naming-style', but for scripts.")
 
-;; DEBUG SECTION TODO when settings here are golden,
-;; port up to the above defcustoms, and drop these setqs
-(setq perlnow-test-policy-test-location         "../t")
-(setq perlnow-test-policy-dot-definition        "incspot")
-(setq perlnow-test-policy-naming-style          "fullauto")
+;; ;; DEBUG SECTION TODO when settings here are golden,
+;; ;; port up to the above defcustoms, and drop these setqs
+;; (setq perlnow-test-policy-test-location         "../t")
+;; (setq perlnow-test-policy-dot-definition        "incspot")
+;; (setq perlnow-test-policy-naming-style          "fullauto")
 
-(setq perlnow-test-policy-test-location-cpan    "../t")
-(setq perlnow-test-policy-dot-definition-cpan   "incspot")
-(setq perlnow-test-policy-naming-style-cpan     "fullauto") ;; was 'numeric', re-test
+;; (setq perlnow-test-policy-test-location-cpan    "../t")
+;; (setq perlnow-test-policy-dot-definition-cpan   "incspot")
+;; (setq perlnow-test-policy-naming-style-cpan     "fullauto") ;; was 'numeric', re-test
 
-(setq perlnow-test-policy-test-location-module   "../t")
-(setq perlnow-test-policy-dot-definition-module  "incspot")
-(setq perlnow-test-policy-naming-style-module    "fullauto")
+;; (setq perlnow-test-policy-test-location-module   "../t")
+;; (setq perlnow-test-policy-dot-definition-module  "incspot")
+;; (setq perlnow-test-policy-naming-style-module    "fullauto")
 
-(setq perlnow-test-policy-test-location-script   "../t")
+;; (setq perlnow-test-policy-test-location-script   "../t")
 
-;; TODO EXPERIMENTAL checking that scripts can deal with incspot dotdef now
-;; (setq perlnow-test-policy-dot-definition-script  "fileloc")   ;; override
-(setq perlnow-test-policy-dot-definition-script  "incspot")   ;; ALL ARE SAME NOW
+;; ;; TODO EXPERIMENTAL checking that scripts can deal with incspot dotdef now
+;; ;; (setq perlnow-test-policy-dot-definition-script  "fileloc")   ;; override
+;; (setq perlnow-test-policy-dot-definition-script  "incspot")   ;; ALL ARE SAME NOW
 
-;; TODO EXPERIMENTAL fullauto now best for scripts maybe?
-;; (setq perlnow-test-policy-naming-style-script    "basename")  ;; override
-(setq perlnow-test-policy-naming-style-script    "fullauto")  ;; override
+;; ;; TODO EXPERIMENTAL fullauto now best for scripts maybe?
+;; ;; (setq perlnow-test-policy-naming-style-script    "basename")  ;; override
+;; (setq perlnow-test-policy-naming-style-script    "fullauto")  ;; override
 
 ;;;==========================================================
 ;;; other policy settings
@@ -3603,36 +3608,41 @@ buffer when metadata was called:
    ;; now do the test policy settings (may need later in this function)
    ;; We default to a "module" test policy, and override later as appropriate,
    ;; but really, the "overrides" are noops *except* for script, with it's dotdef='fileloc'
-   (setq testloc   perlnow-test-policy-test-location-module  )
-   (setq dotdef    perlnow-test-policy-dot-definition-module )
-   (setq namestyle perlnow-test-policy-naming-style-module   )
-   (cond
-    ((string= project-type "cpan")
-     (setq testloc   perlnow-test-policy-test-location-cpan  )
-     (setq dotdef    perlnow-test-policy-dot-definition-cpan )
-     (setq namestyle perlnow-test-policy-naming-style-cpan   )
-     )
-    (
-     (string= file-type "module")
-     ;; nothing to do: we already used the module values as a default
-     )
-    ((perlnow-script-p) ;; TODO do trial runs some time (ntigas)
-     (setq testloc   perlnow-test-policy-test-location-script  )
-     (setq dotdef    perlnow-test-policy-dot-definition-script )
-     (setq namestyle perlnow-test-policy-naming-style-script   )
-     )
-    ((string= file-type "test-select-menu")
-     ;; TODO for now, just treat this case like a module ((really: hope policy dies))
-     )
-    ((string= file-type "test")
-     ;; TODO need to know if this is a script or module test
-     )
-    (t ;; other (whatever that would be...)
-     (setq testloc    "../t" )
-     (setq dotdef     "incspot")
-;;     (setq namestyle  "numeric")
-     (setq namestyle  "fullauto")
-     )) ;; end policy
+;;    (setq testloc   perlnow-test-policy-test-location-module  )
+;;    (setq dotdef    perlnow-test-policy-dot-definition-module )
+;;    (setq namestyle perlnow-test-policy-naming-style-module   )
+
+   (setq testloc   perlnow-test-policy-test-location  )
+   (setq dotdef    perlnow-test-policy-dot-definition )
+   (setq namestyle perlnow-test-policy-naming-style   )
+
+;;    (cond
+;;     ((string= project-type "cpan")
+;;      (setq testloc   perlnow-test-policy-test-location-cpan  )
+;;      (setq dotdef    perlnow-test-policy-dot-definition-cpan )
+;;      (setq namestyle perlnow-test-policy-naming-style-cpan   )
+;;      )
+;;     (
+;;      (string= file-type "module")
+;;      ;; nothing to do: we already used the module values as a default
+;;      )
+;;     ((perlnow-script-p) ;; TODO do trial runs some time (ntigas)
+;;      (setq testloc   perlnow-test-policy-test-location-script  )
+;;      (setq dotdef    perlnow-test-policy-dot-definition-script )
+;;      (setq namestyle perlnow-test-policy-naming-style-script   )
+;;      )
+;;     ((string= file-type "test-select-menu")
+;;      ;; TODO for now, just treat this case like a module ((really: hope policy dies))
+;;      )
+;;     ((string= file-type "test")
+;;      ;; TODO need to know if this is a script or module test
+;;      )
+;;     (t ;; other (whatever that would be...)
+;;      (setq testloc    "../t" )
+;;      (setq dotdef     "incspot")
+;; ;;     (setq namestyle  "numeric")
+;;      (setq namestyle  "fullauto")
+;;      )) ;; end policy
    (setq test-policy-trio (list testloc dotdef namestyle)) ;; TODO now this is unused
    (cond
      ((string= file-type "test-select-menu")
@@ -4931,67 +4941,86 @@ like: \"/home/doom/tmp/../bin\"."
 ;;;==========================================================
 ;;; internal routines for perlnow-edit-test-file (and relatives)
 
-;; TODO does this work from select menu?  ((I doubt it))
+;; A transitional wrapper
 (defun perlnow-get-test-file-name ()
   "Looks for the test file for the current perl code buffer."
   (if perlnow-trace (perlnow-message "* Calling perlnow-get-test-file-name"))
   (let (testfile)
-    (cond ( (perlnow-cpan-style-code-p)
-            (setq testfile (perlnow-get-test-file-name-cpan-style)))
-          ( (perlnow-module-code-p)
-            (setq testfile (perlnow-get-test-file-name-module)))
-          ( (perlnow-script-p)
-            (setq testfile (perlnow-get-test-file-name-script)))
-          (t
-           (setq testfile (perlnow-get-test-file-name-script))))
-
+    (setq testfile
+          (perlnow-test-from-policy
+           perlnow-test-policy-test-location
+           perlnow-test-policy-dot-definition
+           perlnow-test-policy-naming-style))
     ;; TODO
     ;; (1) This is an okay place to set these, is it sufficient?
     ;; (2) Here, I'm saving the *last guess*.  More important: manual entries.
     (setq perlnow-recent-pick testfile)
     (setq perlnow-recent-pick-global testfile)  ;; TODO experimental
-
     (if perlnow-trace (perlnow-closing-func))
     testfile))
 
-(defun perlnow-get-test-file-name-module ()
-  "Get the test file name for the current perl module buffer.
-Used by \\[perlnow-get-test-file-name]."
-  (if perlnow-trace (perlnow-message "Calling perlnow-get-test-file-name-module"))
-  (let ((tf
-         (perlnow-test-from-policy
-          perlnow-test-policy-test-location-module
-          perlnow-test-policy-dot-definition-module
-          perlnow-test-policy-naming-style-module)))
-    (if perlnow-trace (perlnow-closing-func))
-    tf))
 
-(defun perlnow-get-test-file-name-cpan-style ()
-  "Get the test file name for the current perl module buffer.
-  Used by \\[perlnow-get-test-file-name]."
-  (if perlnow-trace (perlnow-message "Calling perlnow-get-test-file-name-cpan-style"))
-  (let ((tf
-         (perlnow-test-from-policy
-          perlnow-test-policy-test-location-cpan
-          perlnow-test-policy-dot-definition-cpan
-          perlnow-test-policy-naming-style-cpan)))
-    (if perlnow-trace (perlnow-closing-func))
-    tf))
+;; ;; TODO does this work from select menu?  ((I doubt it))
+;; (defun perlnow-get-test-file-name-OLD ()
+;;   "Looks for the test file for the current perl code buffer."
+;;   (if perlnow-trace (perlnow-message "* Calling perlnow-get-test-file-name"))
+;;   (let (testfile)
+;;     (cond ( (perlnow-cpan-style-code-p)
+;;             (setq testfile (perlnow-get-test-file-name-cpan-style)))
+;;           ( (perlnow-module-code-p)
+;;             (setq testfile (perlnow-get-test-file-name-module)))
+;;           ( (perlnow-script-p)
+;;             (setq testfile (perlnow-get-test-file-name-script)))
+;;           (t
+;;            (setq testfile (perlnow-get-test-file-name-script))))
+;;     ;; TODO
+;;     ;; (1) This is an okay place to set these, is it sufficient?
+;;     ;; (2) Here, I'm saving the *last guess*.  More important: manual entries.
+;;     (setq perlnow-recent-pick testfile)
+;;     (setq perlnow-recent-pick-global testfile)  ;; TODO experimental
 
-(defun perlnow-get-test-file-name-script ()
-  "Get the test file name for the current perl script buffer.
-Used by \\[perlnow-get-test-file-name]."
-  (if perlnow-trace (perlnow-message "Calling perlnow-get-test-file-name-script"))
-  (let ((tf
-         (perlnow-test-from-policy
-          perlnow-test-policy-test-location
-          perlnow-test-policy-dot-definition-script ;; "fileloc"
-          perlnow-test-policy-naming-style-script   ;; "basename"
-          )))
-    (if perlnow-trace (perlnow-closing-func))
-    tf))
+;;     (if perlnow-trace (perlnow-closing-func))
+;;     testfile))
 
-;;; Note: perlnow-edit-test-file docs explains a lot of what has to happen here.
+;; (defun perlnow-get-test-file-name-module ()
+;;   "Get the test file name for the current perl module buffer.
+;; Used by \\[perlnow-get-test-file-name]."
+;;   (if perlnow-trace (perlnow-message "Calling perlnow-get-test-file-name-module"))
+;;   (let ((tf
+;;          (perlnow-test-from-policy
+;;           perlnow-test-policy-test-location-module
+;;           perlnow-test-policy-dot-definition-module
+;;           perlnow-test-policy-naming-style-module)))
+;;     (if perlnow-trace (perlnow-closing-func))
+;;     tf))
+
+;; (defun perlnow-get-test-file-name-cpan-style ()
+;;   "Get the test file name for the current perl module buffer.
+;;   Used by \\[perlnow-get-test-file-name]."
+;;   (if perlnow-trace (perlnow-message "Calling perlnow-get-test-file-name-cpan-style"))
+;;   (let ((tf
+;;          (perlnow-test-from-policy
+;;           perlnow-test-policy-test-location-cpan
+;;           perlnow-test-policy-dot-definition-cpan
+;;           perlnow-test-policy-naming-style-cpan)))
+;;     (if perlnow-trace (perlnow-closing-func))
+;;     tf))
+
+;; (defun perlnow-get-test-file-name-script ()
+;;   "Get the test file name for the current perl script buffer.
+;; Used by \\[perlnow-get-test-file-name]."
+;;   (if perlnow-trace (perlnow-message "Calling perlnow-get-test-file-name-script"))
+;;   (let ((tf
+;;          (perlnow-test-from-policy
+;;           perlnow-test-policy-test-location
+;;           perlnow-test-policy-dot-definition-script ;; "fileloc"
+;;           perlnow-test-policy-naming-style-script   ;; "basename"
+;;           )))
+;;     (if perlnow-trace (perlnow-closing-func))
+;;     tf))
+
+;; ;;; Note: perlnow-edit-test-file docs explains a lot of what has to happen here.
+;; TODO really want to get rid of this... what do I use instead now?
 (defun perlnow-test-from-policy (testloc dotdef namestyle)
   "Get the test file name for the current perl buffer, given a test policy.
 This is used by \\[perlnow-get-test-file-name] and relatives.
@@ -5269,7 +5298,7 @@ If no files are found in TESTLOC-ABSOLUTE, returns 01."
     next-prefix))
 
 
-;; 
+;; ;; 
 ;; Used by perlnow-test-from-policy and hence perlnow-get-test-file-name,
 (defun perlnow-testloc-from-policy (&optional testloc dotdef namestyle)
   "Get the test file location for the current perl buffer, given a test policy.
@@ -5294,68 +5323,68 @@ does nothing with them.
     (if perlnow-trace (perlnow-closing-func))
     testloc-absolute))
 
-;; Used by perlnow-test-from-policy and hence perlnow-get-test-file-name,
-(defun perlnow-testloc-from-policy-OLD (testloc dotdef namestyle)
-  "Get the test file location for the current perl buffer, given a test policy.
-This also tries to create the location if it doesn't already exist,
-asking the user unless `perlnow-quiet' is set.
-See \\[perlnow-test-from-policy] for the meaning of TESTLOC, DOTDEF and NAMESTYLE."
-;; Actually, namestyle is unused here, but whatever.
-  (if perlnow-trace
-      (perlnow-message
-       (concat
-        "Calling perlnow-testloc-from-policy"
-        " testloc: "    (pp-to-string testloc)
-        " dotdef: "     (pp-to-string dotdef)
-        " namestyle: "  (pp-to-string namestyle)
-        )))
-  (let ( file-name  file-location
-         testloc-absolute   staging-area  incspot  package-name
-         )
-    (setq file-name
-          (cond ((buffer-file-name))
-                (perlnow-associated-code)
-                (t (error "perlnow-testloc-from-policy: Can't determine a perl code file."))
-                ))
-    (setq file-location
-          (file-name-directory file-name))
-    (setq testloc-absolute
-          (let (tla)
-            (cond
-             ;; cpan-style case (very simple)
-             ((setq staging-area (perlnow-find-cpan-style-staging-area) )
-              (setq tla (concat staging-area "t" perlnow-slash))
-              (if perlnow-debug
-                  (message "BING: perlnow-testloc-from-policy: \nfor: %s, cpan-style hit: %s" file-name tla))
-              tla)
-             ;; if a module
-             ((setq package-name
-                    (perlnow-get-package-name-from-module))
-              (setq incspot (perlnow-get-incspot package-name file-location))
-              (setq tla
-                    (cond ((string= dotdef "fileloc") ;; might be script or module
-                           (perlnow-expand-dots-relative-to file-location testloc))
-                          ((string= dotdef "incspot") ;; only with modules
-                           (perlnow-expand-dots-relative-to incspot testloc))
-                          (t
-                           (error
-                            (concat "Invalid perlnow-test-policy-dot-definition setting,"
-                                    " should be 'fileloc' or 'incspot'")))))
-              )
-             ((perlnow-script-p)
-              (setq tla
-                    (cond ((string= dotdef "fileloc") ;; might be script or module
-                           (perlnow-expand-dots-relative-to file-location testloc))
-                          (t
-                           (error
-                            (concat "Invalid perlnow-test-policy-dot-definition setting,"
-                                    " should be 'fileloc' or 'incspot'")))))
-              ))
-            tla))
-    ;; ensure that testloc-absolute exists
-    (perlnow-ensure-directory-exists testloc-absolute)
-    (if perlnow-trace (perlnow-closing-func))
-    testloc-absolute))
+;; ;; Used by perlnow-test-from-policy and hence perlnow-get-test-file-name,
+;; (defun perlnow-testloc-from-policy-OLD (testloc dotdef namestyle)
+;;   "Get the test file location for the current perl buffer, given a test policy.
+;; This also tries to create the location if it doesn't already exist,
+;; asking the user unless `perlnow-quiet' is set.
+;; See \\[perlnow-test-from-policy] for the meaning of TESTLOC, DOTDEF and NAMESTYLE."
+;; ;; Actually, namestyle is unused here, but whatever.
+;;   (if perlnow-trace
+;;       (perlnow-message
+;;        (concat
+;;         "Calling perlnow-testloc-from-policy"
+;;         " testloc: "    (pp-to-string testloc)
+;;         " dotdef: "     (pp-to-string dotdef)
+;;         " namestyle: "  (pp-to-string namestyle)
+;;         )))
+;;   (let ( file-name  file-location
+;;          testloc-absolute   staging-area  incspot  package-name
+;;          )
+;;     (setq file-name
+;;           (cond ((buffer-file-name))
+;;                 (perlnow-associated-code)
+;;                 (t (error "perlnow-testloc-from-policy: Can't determine a perl code file."))
+;;                 ))
+;;     (setq file-location
+;;           (file-name-directory file-name))
+;;     (setq testloc-absolute
+;;           (let (tla)
+;;             (cond
+;;              ;; cpan-style case (very simple)
+;;              ((setq staging-area (perlnow-find-cpan-style-staging-area) )
+;;               (setq tla (concat staging-area "t" perlnow-slash))
+;;               (if perlnow-debug
+;;                   (message "BING: perlnow-testloc-from-policy: \nfor: %s, cpan-style hit: %s" file-name tla))
+;;               tla)
+;;              ;; if a module
+;;              ((setq package-name
+;;                     (perlnow-get-package-name-from-module))
+;;               (setq incspot (perlnow-get-incspot package-name file-location))
+;;               (setq tla
+;;                     (cond ((string= dotdef "fileloc") ;; might be script or module
+;;                            (perlnow-expand-dots-relative-to file-location testloc))
+;;                           ((string= dotdef "incspot") ;; only with modules
+;;                            (perlnow-expand-dots-relative-to incspot testloc))
+;;                           (t
+;;                            (error
+;;                             (concat "Invalid perlnow-test-policy-dot-definition setting,"
+;;                                     " should be 'fileloc' or 'incspot'")))))
+;;               )
+;;              ((perlnow-script-p)
+;;               (setq tla
+;;                     (cond ((string= dotdef "fileloc") ;; might be script or module
+;;                            (perlnow-expand-dots-relative-to file-location testloc))
+;;                           (t
+;;                            (error
+;;                             (concat "Invalid perlnow-test-policy-dot-definition setting,"
+;;                                     " should be 'fileloc' or 'incspot'")))))
+;;               ))
+;;             tla))
+;;     ;; ensure that testloc-absolute exists
+;;     (perlnow-ensure-directory-exists testloc-absolute)
+;;     (if perlnow-trace (perlnow-closing-func))
+;;     testloc-absolute))
 
 ;; experimental -- currently not in use
 (defun perlnow-ensure-test-file-exists (test-file)

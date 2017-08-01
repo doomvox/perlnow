@@ -129,3 +129,10 @@ In the near future I hope to stabilize things to avoid this going
 forward.
 
 ===
+
+Mon  July 31, 2017  20:19  tango
+
+Version 0.8
+
+With this release, I'm stripping out the now obsolete test-policy features.
+
