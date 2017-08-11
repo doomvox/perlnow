@@ -4544,6 +4544,7 @@ Starts looking around START-LOC or the current buffer-file-name."
     (if perlnow-trace (perlnow-closing-func))
     incspot))
 
+;; TODO try an alternate method that uses regexp filtering of a file-listing rather than repeated file-system checks
 (defun perlnow-find-dir-where-relative-path-begins (dirs file-relative)
   "From the list of locations DIRS, fan out looking for FILE-RELATIVE.
 Returns a location where the FILE-RELATIVE path starts."
@@ -4565,7 +4566,7 @@ Returns a location where the FILE-RELATIVE path starts."
                   (if lib (throw 'THE_WIND lib))
                   ;; Now, fan out from the dirs, looking in them and one level above
                   (dolist (dir dirs)
-                    (setq container (perlnow-one-up-simple dir))
+                    (setq container (perlnow-one-up dir))
                     (push container new-dirs)
                     (setq new-dirs
                           (append (perlnow-dirs-from-one-up dir) new-dirs))
@@ -4604,7 +4605,7 @@ Returns a location where the FILE-RELATIVE path starts."
   (cond ((not here)
          (setq dirs nil))
         (t ;; here is defined
-         (setq container (perlnow-one-up-simple here))
+         (setq container (perlnow-one-up here))
          (setq temp-dirs
                (perlnow-dirs container))
           (dolist (dir temp-dirs)
@@ -4707,36 +4708,6 @@ use line."
         (goto-char initial-point)
         (if perlnow-trace (perlnow-closing-func))
         package-name))))
-
-;; currently un-used
-(defun perlnow-all-packages-from-use-lines ()
-  "Returns list of all perl packages \"use\"ed."
-  (if perlnow-trace (perlnow-message "Calling perlnow-all-packages-from-use-lines"))
-  (save-excursion
-    (let* (;;save-excursion seems flaky
-           (initial-buffer (current-buffer))
-           (initial-point  (point))
-;;           (pn-label "# added by perlnow")
-           ;; patterns to find lines
-           (find-use-pat (concat "^\\s*?" use "\\b")) ;; skips commented out ones
-;;           (find-pn-add-pat (concat pn-label "[ \t]*?" "$" ))
-           ;; pattern to extract package from a line
-           (capture-pat (perlnow-package-capture-from-use-pat))
-           use-list  use-line  package-name )
-      (save-restriction
-        (widen)
-        (goto-char (point-max))
-        (while (re-search-backward find-use-pat nil t)
-          (setq use-line (perlnow-extract-current-line))
-          (string-match capture-pat use-line)
-          (setq package-name (match-string 1 use-line))
-          (push package-name use-list)
-          )
-        (switch-to-buffer initial-buffer)
-        (goto-char initial-point)
-        (if perlnow-trace (perlnow-closing-func))
-        package-name))))
-
 
 ;; Example use lines to scrape (note: name ends with semicolon or space)
 ;;   use Data::Dumper;
@@ -4861,47 +4832,26 @@ If given the optional IMPORT-STRING, incorporates it into the use line."
 (defun perlnow-full-path-to-module (incspot package-name)
   "Piece together a INC-SPOT and a PACKAGE-NAME into a full file name.
 Given \"/home/doom/lib\" and the perl-style \"Text::Gibberish\" would
-yield /home/doom/lib/Text/Gibberish.pm or in other words, the
-filesys path."
+yield the file system path: \"/home/doom/lib/Text/Gibberish.pm\"."
   (if perlnow-trace (perlnow-message "Calling perlnow-full-path-to-module"))
-  (let ((filename
-         (concat
-          (mapconcat 'identity (split-string package-name "::") perlnow-slash)
-          ".pm"))
-        fullpath
-        )
+  (let ( filename  fullpath  )
+    (setq filename
+          (concat
+           (mapconcat 'identity (split-string package-name "::") perlnow-slash)
+           ".pm"))
     (setq incspot (file-name-as-directory incspot))
     (if perlnow-trace (perlnow-closing-func))
-    (setq fullpath
-          (concat  incspot filename))
-    ))
+    (setq fullpath (concat incspot filename))
+    fullpath))
 
 (defun perlnow-one-up (location)
   "Get an absolute path to the location one above the given LOCATION.
-The empty string is treated as a synonym for root \(\"/\"\).
-Relative locations are resolved by pre-pending the `default-directory'."
-  (if perlnow-trace (perlnow-message "Calling perlnow-one-up"))
-  (let* ( (slash perlnow-slash)
-          (root slash)  ;; TODO anything more portable?
-          )
-    (setq location
-          (cond ((string= location "")
-                 root)
-                (t
-                 (perlnow-fixdir (concat location slash "..")))
-                ))
-    (if perlnow-trace (perlnow-closing-func))
-    location))
-
-;; Experimental variation of the above that just does string surgery
-;; to hack off the last level.  Does NOT handle corners same way:
-;;    empty string, root location, string without any slashs => nil
-;;    otherwise relative paths, are handled ok, but stay relative
-(defun perlnow-one-up-simple (location)
-  "Get an absolute path to the location one above the given LOCATION.
 This just acts on the given string, ignores any trailing
 delimiter (on unix, slash), and tries to strip off the end of the
-string up the previous delimiter.  If that can't be done, returns nil."
+string up the previous delimiter.  If that can't be done, returns nil.
+So the following corner cases return nil:
+    empty string; root location; string without any slashs
+Relative paths remain relative."
   (if perlnow-trace (perlnow-message "Calling perlnow-one-up"))
   (let* ((slash perlnow-slash)
          (trailing-slash-pat (concat slash "$"))
@@ -4910,33 +4860,6 @@ string up the previous delimiter.  If that can't be done, returns nil."
     (if perlnow-trace (perlnow-closing-func))
     one-up))
 
-(defun perlnow-expand-dots-relative-to (dot_means given_path)
-  "Using the dot definition DOT_MEANS, expand the GIVEN_PATH.
-Given a directory path that leads with  \".\" or \"..\"
-expand to an absolute path using the given DOT_MEANS as
-the value for \".\".  Note: currently this is limited to
-*leading* dot expressions, and can not handle weirder stuff
-like: \"/home/doom/tmp/../bin\"."
-  (if perlnow-trace
-      (perlnow-message
-       (concat "Calling perlnow-expand-dots-relative-to: "
-               "dot_means: " (pp-to-string   dot_means) " "
-               "given_path: " (pp-to-string   given_path) )))
-  (let ((two-dot-pat "^\\.\\.")
-        (one-dot-pat "^\\.")
-           ;; must check two-dot-pat first or this could match there
-        newpath  )
-    (setq dot_means (perlnow-fixdir dot_means))
-    (setq newpath
-          (replace-regexp-in-string
-           two-dot-pat
-           (perlnow-one-up dot_means)
-           given_path))
-    (setq newpath
-          (replace-regexp-in-string one-dot-pat dot_means newpath))
-    (setq newpath (perlnow-fixdir newpath))
-    (if perlnow-trace (perlnow-closing-func))
-    newpath))
 
 ;;;==========================================================
 ;;; internal routines for perlnow-edit-test-file (and relatives)
@@ -5323,82 +5246,6 @@ does nothing with them.
     (if perlnow-trace (perlnow-closing-func))
     testloc-absolute))
 
-;; ;; Used by perlnow-test-from-policy and hence perlnow-get-test-file-name,
-;; (defun perlnow-testloc-from-policy-OLD (testloc dotdef namestyle)
-;;   "Get the test file location for the current perl buffer, given a test policy.
-;; This also tries to create the location if it doesn't already exist,
-;; asking the user unless `perlnow-quiet' is set.
-;; See \\[perlnow-test-from-policy] for the meaning of TESTLOC, DOTDEF and NAMESTYLE."
-;; ;; Actually, namestyle is unused here, but whatever.
-;;   (if perlnow-trace
-;;       (perlnow-message
-;;        (concat
-;;         "Calling perlnow-testloc-from-policy"
-;;         " testloc: "    (pp-to-string testloc)
-;;         " dotdef: "     (pp-to-string dotdef)
-;;         " namestyle: "  (pp-to-string namestyle)
-;;         )))
-;;   (let ( file-name  file-location
-;;          testloc-absolute   staging-area  incspot  package-name
-;;          )
-;;     (setq file-name
-;;           (cond ((buffer-file-name))
-;;                 (perlnow-associated-code)
-;;                 (t (error "perlnow-testloc-from-policy: Can't determine a perl code file."))
-;;                 ))
-;;     (setq file-location
-;;           (file-name-directory file-name))
-;;     (setq testloc-absolute
-;;           (let (tla)
-;;             (cond
-;;              ;; cpan-style case (very simple)
-;;              ((setq staging-area (perlnow-find-cpan-style-staging-area) )
-;;               (setq tla (concat staging-area "t" perlnow-slash))
-;;               (if perlnow-debug
-;;                   (message "BING: perlnow-testloc-from-policy: \nfor: %s, cpan-style hit: %s" file-name tla))
-;;               tla)
-;;              ;; if a module
-;;              ((setq package-name
-;;                     (perlnow-get-package-name-from-module))
-;;               (setq incspot (perlnow-get-incspot package-name file-location))
-;;               (setq tla
-;;                     (cond ((string= dotdef "fileloc") ;; might be script or module
-;;                            (perlnow-expand-dots-relative-to file-location testloc))
-;;                           ((string= dotdef "incspot") ;; only with modules
-;;                            (perlnow-expand-dots-relative-to incspot testloc))
-;;                           (t
-;;                            (error
-;;                             (concat "Invalid perlnow-test-policy-dot-definition setting,"
-;;                                     " should be 'fileloc' or 'incspot'")))))
-;;               )
-;;              ((perlnow-script-p)
-;;               (setq tla
-;;                     (cond ((string= dotdef "fileloc") ;; might be script or module
-;;                            (perlnow-expand-dots-relative-to file-location testloc))
-;;                           (t
-;;                            (error
-;;                             (concat "Invalid perlnow-test-policy-dot-definition setting,"
-;;                                     " should be 'fileloc' or 'incspot'")))))
-;;               ))
-;;             tla))
-;;     ;; ensure that testloc-absolute exists
-;;     (perlnow-ensure-directory-exists testloc-absolute)
-;;     (if perlnow-trace (perlnow-closing-func))
-;;     testloc-absolute))
-
-;; experimental -- currently not in use
-(defun perlnow-ensure-test-file-exists (test-file)
-  "If the given TEST-FILE doesn't exist, creates it using the test template.
-The template used is specified by the variable `perlnow-perl-test-module-template'."
-  (if perlnow-trace (perlnow-message "Calling perlnow-ensure-test-file-exists"))
-  (let* ((template perlnow-perl-test-module-template)
-         (retval (perlnow-ensure-file-exists test-file template))
-        )
-    (if perlnow-trace (perlnow-closing-func))
-    retval))
-
-;; Adding "harder" awareness to:  perlnow-edit-test-file
-;;    C-u C-c \ t
 ;; The harder-setting *here* is not used for anything.
 (defun perlnow-edit-test-file-harder (harder-setting)
   "Open a menu of all likely test files for user to choose from."
@@ -6255,7 +6102,7 @@ If given a LOCATION, uses that as a starting point instead."
                             nil)
                            (t ;; have incspot defined
                             ;; guessing that one-up works: gotta do something for non-cpan, non-git case
-                            (setq project-root (perlnow-one-up-simple incspot))
+                            (setq project-root (perlnow-one-up incspot))
                             ))
                      ))))
       project-root)))
@@ -6295,8 +6142,13 @@ TYPE set to \"d\", you can relax that to all directories)."
 "
   (if perlnow-trace (perlnow-message "Calling perlnow-scan-tree-for-t-loc"))
   (let ( project-root   target-list   t-locs   project-t-locs   t-loc  loc-count )
+
+  ;;;; TODO NEXT need features like:
+  ;;;;   o  short-circuit if a likely "t" is found in an obvious place
+  ;;;;   o  if "project-root" is $HOME, just give up
+
     (setq project-root (perlnow-project-root))
-    (setq target-list (list "t"))
+    (setq target-list (list "t"))  ;; TODO breakout as defvar, make sure used everywhere
     (setq t-locs (perlnow-scan-tree-for-directory project-root target-list "a"))
     (setq project-t-locs (perlnow-only-in-here t-locs project-root))
     (setq loc-count (length project-t-locs))
@@ -7439,7 +7291,7 @@ Usage examples:
     retval))
 
 ;; directory listing
-(defun perlnow-recursive-file-listing (start &optional regexp type)
+(defun perlnow-recursive-file-listing (start &optional regexp type include-hiddens)
   "Return a list of a tree of files beginning in location START.
 The optional REGEXP can be used to filter the returned names, and
 the option TYPE can be used to restrict the listing:
@@ -7447,11 +7299,13 @@ the option TYPE can be used to restrict the listing:
    \"d\"  directories
    \"a\"  accessible directories
 Full paths are used in the return, but the REGEXP matches on the
-filename without the path, e.g. \"^t$\" might find \"/tmp/t\".
+filename without the path, e.g. \"^t$\" could find \"/home/idjit/dev/t\".
 If START is nil, returns nil without signalling an error.
+Excludes anything named with a leading dot, unless INCLUDE-HIDDENS is t.
 Note: this is a wrapper around \\[directory-files-recursively]."
   (unless regexp (setq regexp ""))
-  (let (file-list)
+  (let ( file-list  skip-pat )
+    (setq skip-pat "^[.]|^RCS$")  ;; TODO break-out as defvar, consider expanding further
     (cond ((not start)  ;; told to look nowhere, so we find nothing
            (setq file-list ()))
           (t
@@ -7466,7 +7320,11 @@ Note: this is a wrapper around \\[directory-files-recursively]."
                    ((string= type "a")
                     (file-accessible-directory-p item)
                     ))
-                  (setq file-list (cons item file-list))))
+                  (cond ((and (not include-hiddens)
+                              (not (string-match skip-pat item)))
+                         (setq file-list (cons item file-list))
+                         ))
+                ))
             (directory-files-recursively start regexp t))))
     file-list))
 
