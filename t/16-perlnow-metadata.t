@@ -85,9 +85,13 @@
             (md-file-type        (nth 11 md))  ;; context:   module
             (md-project-type     (nth 12 md))
             (md-subname          (nth 13 md))  ;; sub-name:  blue_stone
-            (expected-testloc "../t")
-            (expected-dotdef "incspot")
-            (expected-namestyle "fullauto")
+;;             (expected-testloc "../t")
+;;             (expected-dotdef "incspot")
+;;             (expected-namestyle "fullauto")
+            (expected-testloc   nil)
+            (expected-dotdef    nil)
+            (expected-namestyle nil)
+
             ;; (expected-testloc-absolute "/home/doom/tmp/perlnow_test/t16/t/")
             (expected-testloc-absolute (concat test-loc "t" slash))
             (expected-hyphenized   "Beat-Skip")
@@ -184,9 +188,13 @@
             (md-file-type        (nth 11 md))
             (md-project-type     (nth 12 md))
             (md-subname          (nth 13 md))
-            (expected-testloc     "../t")
-            (expected-dotdef      "incspot")
-            (expected-namestyle   "fullauto")
+;;             (expected-testloc     "../t")
+;;             (expected-dotdef      "incspot")
+;;             (expected-namestyle   "fullauto")
+            (expected-testloc     nil)
+            (expected-dotdef      nil)
+            (expected-namestyle   nil)
+
             (expected-testloc-absolute (concat test-loc "t" slash))
             (expected-hyphenized   "Beat-Skip")
             (expected-package-name "Beat::Skip")
@@ -292,9 +300,14 @@
               (md-file-type        (nth 11 md))
               (md-project-type     (nth 12 md))
               (md-subname          (nth 13 md))
-              (expected-testloc     "../t")
-              (expected-dotdef      "incspot")
-              (expected-namestyle   "fullauto")
+
+;;               (expected-testloc     "../t")
+;;               (expected-dotdef      "incspot")
+;;               (expected-namestyle   "fullauto")
+            (expected-testloc     nil)
+            (expected-dotdef      nil)
+            (expected-namestyle   nil)
+
 
               (expected-hyphenized   "Interociter-Comedian")
               (expected-package-name "Interociter::Comedian")

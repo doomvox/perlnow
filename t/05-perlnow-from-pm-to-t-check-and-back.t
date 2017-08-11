@@ -112,7 +112,8 @@
 
                 (find-file expected-pm-file)
                 (perlnow-run-check 4) ;; run it "harder"
-                (sleep-for 2) ;; wait for compile (only thing in emacs that's async)
+                ;; (sleep-for 2) ;; wait for compile (only thing in emacs that's async)
+                (sleep-for 4) ;; wait for compile (only thing in emacs that's async)
                 (set-buffer "*compilation*")
                 (let* ( ( compilation-results (buffer-string) )
                         ( syntax-ok-1

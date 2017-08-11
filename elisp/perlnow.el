@@ -1019,61 +1019,6 @@ named Modular::Stuff:
 
 Used by \\[perlnow-edit-test-file].  See:
 `perlnow-documentation-test-file-strategies'.")
-;; (setq perlnow-test-policy-naming-style "fullauto") ;; DEBUG
-
-;; (defcustom perlnow-test-policy-test-location-cpan
-;;   perlnow-test-policy-test-location
-;;   "Like `perlnow-test-policy-test-location-cpan' but for cpan modules.")
-;; (defcustom perlnow-test-policy-dot-definition-cpan
-;;   perlnow-test-policy-dot-definition
-;;   "Like `perlnow-test-policy-dot-definition', but for cpan modules.")
-;; (defcustom perlnow-test-policy-naming-style-cpan
-;;   perlnow-test-policy-naming-style
-;;   "Like `perlnow-test-policy-naming-style', but for cpan modules.")
-
-;; (defcustom perlnow-test-policy-test-location-module
-;;   perlnow-test-policy-test-location
-;;   "Like `perlnow-test-policy-test-location', but for non-cpan modules.")
-;; (defcustom perlnow-test-policy-dot-definition-module
-;;   perlnow-test-policy-dot-definition
-;;   "Like `perlnow-test-policy-dot-definition', but for non-cpan modules.")
-;; (defcustom perlnow-test-policy-naming-style-module
-;;   perlnow-test-policy-naming-style
-;;   "Like `perlnow-test-policy-naming-style', but for non-cpan modules.")
-
-;; (defcustom perlnow-test-policy-test-location-script
-;;   perlnow-test-policy-test-location
-;;   "Like `perlnow-test-policy-test-location', but for scripts.")
-;; (defcustom perlnow-test-policy-dot-definition-script
-;;   "fileloc"
-;;   "Like `perlnow-test-policy-dot-definition', but for scripts.")
-;; (defcustom perlnow-test-policy-naming-style-script
-;;   "basename"
-;;   "Like `perlnow-test-policy-naming-style', but for scripts.")
-
-;; ;; DEBUG SECTION TODO when settings here are golden,
-;; ;; port up to the above defcustoms, and drop these setqs
-;; (setq perlnow-test-policy-test-location         "../t")
-;; (setq perlnow-test-policy-dot-definition        "incspot")
-;; (setq perlnow-test-policy-naming-style          "fullauto")
-
-;; (setq perlnow-test-policy-test-location-cpan    "../t")
-;; (setq perlnow-test-policy-dot-definition-cpan   "incspot")
-;; (setq perlnow-test-policy-naming-style-cpan     "fullauto") ;; was 'numeric', re-test
-
-;; (setq perlnow-test-policy-test-location-module   "../t")
-;; (setq perlnow-test-policy-dot-definition-module  "incspot")
-;; (setq perlnow-test-policy-naming-style-module    "fullauto")
-
-;; (setq perlnow-test-policy-test-location-script   "../t")
-
-;; ;; TODO EXPERIMENTAL checking that scripts can deal with incspot dotdef now
-;; ;; (setq perlnow-test-policy-dot-definition-script  "fileloc")   ;; override
-;; (setq perlnow-test-policy-dot-definition-script  "incspot")   ;; ALL ARE SAME NOW
-
-;; ;; TODO EXPERIMENTAL fullauto now best for scripts maybe?
-;; ;; (setq perlnow-test-policy-naming-style-script    "basename")  ;; override
-;; (setq perlnow-test-policy-naming-style-script    "fullauto")  ;; override
 
 ;;;==========================================================
 ;;; other policy settings
@@ -2212,11 +2157,6 @@ to be associated with the given TESTFILE." ;; TODO expand docstring
     ))
 
 
-;; TODO as written, this presumes you're inside a module, doesn't it?
-;;      if it's run inside a script, you get a badly named test:
-;;           /home/doom/t/14--say_usage.t
-;;      (if it has to be from a module, shouldn't it check that?)
-;;
 (defun perlnow-test-create (&optional testfile)
   "Create test file using automated guess."
   (interactive)
@@ -2225,11 +2165,11 @@ to be associated with the given TESTFILE." ;; TODO expand docstring
   (let ((harder-setting (car current-prefix-arg)))
     (unless testfile ;; guess a default value for testfile
       (let* ( (md (perlnow-metadata))
-              (testloc    (nth 3  md))
-              (hyphenized (nth 4  md))
+              (testloc-absolute  (nth 3  md)) 
+              (hyphenized        (nth 4  md))
               )
         (setq testfile
-              (perlnow-new-test-file-name testloc hyphenized))
+              (perlnow-new-test-file-name testloc-absolute hyphenized))
         ))
     (cond (harder-setting  ;; not the main entry point for this, but what other behavior? TODO
            ;; minibuffer entry with testfile as default
@@ -2249,11 +2189,11 @@ to be associated with the given TESTFILE." ;; TODO expand docstring
   (unless testfile
     ;; guess a default value for testfile
     (let* ( (md (perlnow-metadata))
-            (testloc    (nth 3  md))
-            (hyphenized (nth 4  md))
+            (testloc-absolute  (nth 3  md))
+            (hyphenized        (nth 4  md))
             )
       (setq testfile
-            (perlnow-new-test-file-name testloc hyphenized))
+            (perlnow-new-test-file-name testloc-absolute hyphenized))
       ))
   (let* ((tf-input
           (read-from-minibuffer
@@ -2398,10 +2338,6 @@ Uses the HARDER-SETTING \(4 or 16\) to choose whether to do a
     ;;    TODO test this behavior, new as of 2017
     (unless t-dir
       (setq t-dir (perlnow-testloc-from-policy
-;; TODO delete cruft soon: Fri  August 11, 2017  13:49  tango
-;;                      perlnow-test-policy-test-location-module
-;;                      perlnow-test-policy-dot-definition-module
-;;                      perlnow-test-policy-naming-style-module
                      perlnow-test-policy-test-location
                      perlnow-test-policy-dot-definition
                      perlnow-test-policy-naming-style
@@ -3472,9 +3408,8 @@ Checks mode and buffer name."
 ;;   (let* (
 ;;          (md (perlnow-metadata))
 
-;;          (testloc          (nth 0  md))
-;;          (dotdef           (nth 1  md))
-;;          (namestyle        (nth 2  md))
+;; Note: 0 .. 2 are currently unused
+
 ;;          (testloc-absolute (nth 3  md))
 ;;          (hyphenized       (nth 4  md))
 ;;          (package-name     (nth 5  md))
@@ -3511,13 +3446,11 @@ If a \"*select test file*\" buffer, it again tries to tell you
 something about the module it figures you're testing, making
 inferences based on the current line.
 
-The metadata is returned as an ordered list.
+The metadata is returned as an ordered list, where the first
+three elements are currently unused ((or the given tp echoed back for no purpose))
 
 An example of returned metadata.
 
-                     testloc:  ../t
-                      dotdef:  incspot
-                   namestyle:  fullauto
             testloc-absolute:  /home/doom/t/
      hyphenized-package-name:  Skank-Mama
                 package-name:  Skank::Mama
@@ -3609,45 +3542,10 @@ buffer when metadata was called:
    ;; package-name set already for module and object and maybe man-page
    ;; TODO better to do the others here?  Make a guess for test and script
 
-   ;; now do the test policy settings (may need later in this function)
-   ;; We default to a "module" test policy, and override later as appropriate,
-   ;; but really, the "overrides" are noops *except* for script, with it's dotdef='fileloc'
-;;    (setq testloc   perlnow-test-policy-test-location-module  )
-;;    (setq dotdef    perlnow-test-policy-dot-definition-module )
-;;    (setq namestyle perlnow-test-policy-naming-style-module   )
-
    (setq testloc   perlnow-test-policy-test-location  )
    (setq dotdef    perlnow-test-policy-dot-definition )
    (setq namestyle perlnow-test-policy-naming-style   )
 
-;;    (cond
-;;     ((string= project-type "cpan")
-;;      (setq testloc   perlnow-test-policy-test-location-cpan  )
-;;      (setq dotdef    perlnow-test-policy-dot-definition-cpan )
-;;      (setq namestyle perlnow-test-policy-naming-style-cpan   )
-;;      )
-;;     (
-;;      (string= file-type "module")
-;;      ;; nothing to do: we already used the module values as a default
-;;      )
-;;     ((perlnow-script-p) ;; TODO do trial runs some time (ntigas)
-;;      (setq testloc   perlnow-test-policy-test-location-script  )
-;;      (setq dotdef    perlnow-test-policy-dot-definition-script )
-;;      (setq namestyle perlnow-test-policy-naming-style-script   )
-;;      )
-;;     ((string= file-type "test-select-menu")
-;;      ;; TODO for now, just treat this case like a module ((really: hope policy dies))
-;;      )
-;;     ((string= file-type "test")
-;;      ;; TODO need to know if this is a script or module test
-;;      )
-;;     (t ;; other (whatever that would be...)
-;;      (setq testloc    "../t" )
-;;      (setq dotdef     "incspot")
-;; ;;     (setq namestyle  "numeric")
-;;      (setq namestyle  "fullauto")
-;;      )) ;; end policy
-   (setq test-policy-trio (list testloc dotdef namestyle)) ;; TODO now this is unused
    (cond
      ((string= file-type "test-select-menu")
       ;; get the module name from the test file name
@@ -3656,9 +3554,7 @@ buffer when metadata was called:
              (testfile (concat path selected-file-compact)))
         (setq package-name (perlnow-module-from-t-file testfile t))
         (setq testloc-absolute (perlnow-t-dir-from-t testfile))
-        (perlnow-incspot-from-t testfile
-                                ;; test-policy-trio
-                                )
+        (perlnow-incspot-from-t testfile)
 
         (setq file-name (perlnow-full-path-to-module incspot package-name))
         (setq file-location file-name)
@@ -3717,9 +3613,7 @@ buffer when metadata was called:
                )
           (setq package-name colonized)
           (setq testloc-absolute (perlnow-t-dir-from-t testfile))
-          (setq incspot (perlnow-incspot-from-t testfile
-                                                ;; test-policy-trio
-                                                ))
+          (setq incspot (perlnow-incspot-from-t testfile ))
           ;; (setq sub-name (or (perlnow-sub-at-point) ""))
           (setq sub-name subname)
 
@@ -3771,8 +3665,15 @@ buffer when metadata was called:
                 (mapconcat 'identity (split-string package-name "::") "-"))
           ))
    (perlnow-stash-put testloc-absolute incspot) ;; very important side-effect.  move elsewhere? TODO
+   ;; TODO currently, the first three elements are unused
    (setq md-list
-         (list testloc dotdef namestyle
+         (list 
+;;               testloc dotdef namestyle
+
+               nil
+               nil
+               nil
+
                testloc-absolute
                hyphenized-package-name package-name incspot
                buffer file-name file-location basename
