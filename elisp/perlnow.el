@@ -2392,16 +2392,20 @@ e.g. run all tests rather than just one."
 Uses the HARDER-SETTING \(4 or 16\) to choose whether to do a
 \"prove\" or \"prove -r\"."
   (if perlnow-trace (perlnow-message "Calling perlnow-test-run-string-harder"))
-  (let* ((run-string)
-         (t-dir (car (perlnow-find-t-directories)))
-         )
+  (let ( run-string  t-dir )
+    (setq t-dir (car (perlnow-find-t-directories)))
     ;; if no t directory was found, try to create according to default policy.
     ;;    TODO test this behavior, new as of 2017
     (unless t-dir
       (setq t-dir (perlnow-testloc-from-policy
-                     perlnow-test-policy-test-location-module
-                     perlnow-test-policy-dot-definition-module
-                     perlnow-test-policy-naming-style-module)))
+;; TODO delete cruft soon: Fri  August 11, 2017  13:49  tango
+;;                      perlnow-test-policy-test-location-module
+;;                      perlnow-test-policy-dot-definition-module
+;;                      perlnow-test-policy-naming-style-module
+                     perlnow-test-policy-test-location
+                     perlnow-test-policy-dot-definition
+                     perlnow-test-policy-naming-style
+                     )))
     (setq run-string
           (cond ( (>= harder-setting 16) ;; even harder!
                   (concat "cd " t-dir "; prove --nocolor -r")) ;; TODO --nocolor may be out-of-date now
@@ -4882,66 +4886,6 @@ Relative paths remain relative."
     (if perlnow-trace (perlnow-closing-func))
     testfile))
 
-
-;; ;; TODO does this work from select menu?  ((I doubt it))
-;; (defun perlnow-get-test-file-name-OLD ()
-;;   "Looks for the test file for the current perl code buffer."
-;;   (if perlnow-trace (perlnow-message "* Calling perlnow-get-test-file-name"))
-;;   (let (testfile)
-;;     (cond ( (perlnow-cpan-style-code-p)
-;;             (setq testfile (perlnow-get-test-file-name-cpan-style)))
-;;           ( (perlnow-module-code-p)
-;;             (setq testfile (perlnow-get-test-file-name-module)))
-;;           ( (perlnow-script-p)
-;;             (setq testfile (perlnow-get-test-file-name-script)))
-;;           (t
-;;            (setq testfile (perlnow-get-test-file-name-script))))
-;;     ;; TODO
-;;     ;; (1) This is an okay place to set these, is it sufficient?
-;;     ;; (2) Here, I'm saving the *last guess*.  More important: manual entries.
-;;     (setq perlnow-recent-pick testfile)
-;;     (setq perlnow-recent-pick-global testfile)  ;; TODO experimental
-
-;;     (if perlnow-trace (perlnow-closing-func))
-;;     testfile))
-
-;; (defun perlnow-get-test-file-name-module ()
-;;   "Get the test file name for the current perl module buffer.
-;; Used by \\[perlnow-get-test-file-name]."
-;;   (if perlnow-trace (perlnow-message "Calling perlnow-get-test-file-name-module"))
-;;   (let ((tf
-;;          (perlnow-test-from-policy
-;;           perlnow-test-policy-test-location-module
-;;           perlnow-test-policy-dot-definition-module
-;;           perlnow-test-policy-naming-style-module)))
-;;     (if perlnow-trace (perlnow-closing-func))
-;;     tf))
-
-;; (defun perlnow-get-test-file-name-cpan-style ()
-;;   "Get the test file name for the current perl module buffer.
-;;   Used by \\[perlnow-get-test-file-name]."
-;;   (if perlnow-trace (perlnow-message "Calling perlnow-get-test-file-name-cpan-style"))
-;;   (let ((tf
-;;          (perlnow-test-from-policy
-;;           perlnow-test-policy-test-location-cpan
-;;           perlnow-test-policy-dot-definition-cpan
-;;           perlnow-test-policy-naming-style-cpan)))
-;;     (if perlnow-trace (perlnow-closing-func))
-;;     tf))
-
-;; (defun perlnow-get-test-file-name-script ()
-;;   "Get the test file name for the current perl script buffer.
-;; Used by \\[perlnow-get-test-file-name]."
-;;   (if perlnow-trace (perlnow-message "Calling perlnow-get-test-file-name-script"))
-;;   (let ((tf
-;;          (perlnow-test-from-policy
-;;           perlnow-test-policy-test-location
-;;           perlnow-test-policy-dot-definition-script ;; "fileloc"
-;;           perlnow-test-policy-naming-style-script   ;; "basename"
-;;           )))
-;;     (if perlnow-trace (perlnow-closing-func))
-;;     tf))
-
 ;; ;;; Note: perlnow-edit-test-file docs explains a lot of what has to happen here.
 ;; TODO really want to get rid of this... what do I use instead now?
 (defun perlnow-test-from-policy (testloc dotdef namestyle)
@@ -5940,11 +5884,9 @@ has been chosen as the default to work on perl code."
                ;; regexp to match a regexp containing: [pP][Llm]
           )
     (cond ((setq mode
-                 (perlnow-assoc-regexp interpreter-rule interpreter-mode-alist default))
-           )
+                 (perlnow-assoc-regexp interpreter-rule interpreter-mode-alist default)))
           ((setq mode
-                 (perlnow-assoc-regexp auto-rule auto-mode-alist default))
-           )
+                 (perlnow-assoc-regexp auto-rule auto-mode-alist default)))
           (t
            (setq mode default)))
     (if perlnow-trace (perlnow-closing-func))
@@ -5977,12 +5919,11 @@ adjacent to one of the significant levels of the code's path,
 it does not, for example, do a full recursive descent from
 a module's incspot." ;; or a project root, which is more to the point
   (if perlnow-trace (perlnow-message "Calling perlnow-find-t-directories"))
-  (let* ( (slash (convert-standard-filename "/"))
-          (levels () )
-          (t-list () )
-          )
+  (let* ((slash (convert-standard-filename "/"))
+         (levels () )
+         (t-list () ))
     (cond ((perlnow-module-code-p)
-            (let* (
+           (let* (
                    (pm-file (buffer-file-name))
                    (pm-location (file-name-directory pm-file))
                    (package-name (perlnow-get-package-name-from-module))
@@ -6010,42 +5951,22 @@ a module's incspot." ;; or a project root, which is more to the point
               ))
           (t ;; assume it's a script then
            (let* ((full-file (buffer-file-name))
-                  (location (file-name-directory full-file))
-                  (filename (file-name-nondirectory full-file))
-                  )
+                  (location (file-name-directory    full-file))
+                  (filename (file-name-nondirectory full-file)))
              (setq candidate (perlnow-fixdir (concat location "../t")))
              (if (file-directory-p candidate)
                  (setq t-list (cons candidate t-list)))
-
              (setq candidate (perlnow-fixdir (concat location "t")))
              (if (file-directory-p candidate)
                  (setq t-list (cons candidate t-list)))
-             ))
-          )
+             )))
     (if perlnow-trace (perlnow-closing-func))
     t-list)) ;; end perlnow-find-t-directories
 
-;; not in use (or not yet)
-;;
-;; TODO can this idea be blended with the job that the above
-;; perlnow-find-t-directories does (finding the most appropriate
-;; t-dir).  How do you prioritize all the t-locs found?
-(defun perlnow-find-all-t-directories (&optional start)
-  "Find all directories named \"t\" in the tree.
-Defaults to checking the `default-directory', otherwise looks in option START.
-Note: at present, this has nothing to do with \\[perlnow-find-t-directories]."
-  (if perlnow-trace (perlnow-message "Calling perlnow-find-all-t-directories"))
-  (unless start
-    (setq start default-directory))
-  (let* ((name-pat "^t$")
-         (t-list (perlnow-recursive-file-listing start name-pat "d")))
-    (if perlnow-trace (perlnow-closing-func))
-    t-list))
 
 ;;--------
 ;;  perlnow-project-root and the "scan-tree" functions 
 ;;
-
 (defun perlnow-project-root ( &optional location )
   "Find the root of the project tree related to the current buffer.
 If given a LOCATION, uses that as a starting point instead."
@@ -6780,11 +6701,6 @@ array, or nil if it is not found."
     inc-path-list))
 
 
-
-
-
-
-
 ;;;==========================================================
 ;;; Read perlmodule path and names in one step
 ;;; (used by perlnow-module)
@@ -7351,7 +7267,6 @@ If BEFORE not found in list, second list is nil."
     (setq lead (reverse new))  ;; nreverse
     (if perlnow-trace (perlnow-closing-func))
     (list lead tail)))
-
 
 (defun perlnow-filter-list (string-list filter-regexp)
   "Filter the given list of strings (STRING-LIST) using the FILTER-REGEXP."
@@ -8422,16 +8337,7 @@ It does three things:
          )
     (message "%s" t-list) ;; The %s form does automatic conversion of list (pp?)
     ))
-
-(defun perlnow-report-all-t-directories ()
-  "Echoes output of \\[perlnow-find-all-t-directories] via message."
-  (interactive)
-  (let* (( t-list
-           (perlnow-find-all-t-directories))
-         )
-    (message "%s" (mapconcat 'identity t-list "\n"))
-    ))
-
+ 
 (defun perlnow-report-metadata ( &optional md )
   "Trial run of \\[perlnow-metadata], now with auto-tron!"
   (interactive)
