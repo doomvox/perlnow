@@ -603,6 +603,10 @@ Next:
 ;;  User Options, Variables
 ;;;==========================================================
 
+;;--------
+;; directory utilities
+;; (these are defined first so they can be used in variable definitions)
+;;
 (defun perlnow-fixdir (dir &optional root)
   "Fixes the DIR.
 Conditions directory paths for portability and robustness.
@@ -628,32 +632,66 @@ treated in the same way."
   (unless (file-directory-p dir)
      (make-directory dir t)))
 
+;;---------
+;; user options (defcustom)
+;; 
+
+;; TODO these two vars are new and experimental, as of August 13, 2017  
+(defcustom perlnow-project-root-override nil
+  "If defined, this will always be used as a project root.
+It's recommended to leave this set to nil if possible, 
+to let perlnow search for an appropriate project-root.")
+
+(defcustom perlnow-project-root-fallback (perlnow-fixdir "$HOME/dev")
+  "If defined, this will be used as a project root when necessary.
+When possible, perlnow will search for a local project root to 
+use instead of this setting \(often easy to find, e.g. in the case of 
+cpan-style development and/or git-controlled projects\).")
+(perlnow-mkpath perlnow-project-root-fallback)
+
+;; TODO should define these in terms of the above "fallback"  (( done, all tests pass ))
+;; TODO are perlnow-script-location and perlnow-pm-location on the way out?  
+;; Used by script creation commands, fed into read-file-name to resolve relative locs
+;; (defcustom perlnow-script-location
+;;   (cond ( (file-directory-p  (perlnow-fixdir "$HOME/bin"))
+;;           (perlnow-fixdir "$HOME/bin")
+;;           )
+;;         (t
+;;          (perlnow-fixdir "$HOME")
+;;          ))
+;;   "This is the default location to stash new perl scripts.")
+
 (defcustom perlnow-script-location
-  (cond ( (file-directory-p  (perlnow-fixdir "$HOME/bin"))
-          (perlnow-fixdir "$HOME/bin")
-          )
-        (t
-         (perlnow-fixdir "$HOME")
-         ))
+  (perlnow-fixdir (concat perlnow-project-root-fallback "bin"))
   "This is the default location to stash new perl scripts.")
+(perlnow-mkpath perlnow-script-location)
+
+;; Used by perlnow-module, perlnow-object-module just as an "initial" setting for the prompt
+;; (also used as default-directory  by the nearly unused perlnow-module-two-questions)
+;; (defcustom perlnow-pm-location
+;;   (cond ( (file-directory-p  (perlnow-fixdir "$HOME/lib"))
+;;           (perlnow-fixdir "$HOME/lib")
+;;           )
+;;         (t
+;;          (perlnow-fixdir "$HOME")
+;;          ))
+;;   "This is the default location to stash new perl modules.")
 
 (defcustom perlnow-pm-location
-  (cond ( (file-directory-p  (perlnow-fixdir "$HOME/lib"))
-          (perlnow-fixdir "$HOME/lib")
-          )
-        (t
-         (perlnow-fixdir "$HOME")
-         ))
+  (perlnow-fixdir (concat perlnow-project-root-fallback "lib"))
   "This is the default location to stash new perl modules.")
+(perlnow-mkpath perlnow-pm-location)
 
-(defcustom perlnow-dev-location (file-name-as-directory perlnow-pm-location)
+;; used as default-directory by perlnow-cpan-module and relatives
+;; TODO change to use project-root-fallback... (( done, all tests pass ))
+;; (defcustom perlnow-dev-location (file-name-as-directory perlnow-pm-location)
+;;   "This is the default location to work on CPAN-style distributions.")
+(defcustom perlnow-dev-location perlnow-project-root-fallback
   "This is the default location to work on CPAN-style distributions.")
 
 (defcustom perlnow-executable-setting ?\110
   "The user-group-all permissions used to make a script executable.")
 
-;; TODO why not another defcustom?  (( let's see ))
-;; (defvar perlnow-template-location (perlnow-fixdir "$HOME/.templates")
 (defcustom perlnow-template-location (perlnow-fixdir "$HOME/.templates")
   "Standard location for template.el templates.")
 (put 'perlnow-template-location 'risky-local-variable t)
@@ -1702,9 +1740,8 @@ to determine how to work."
    (let ((default-directory perlnow-dev-location))
      (call-interactively 'perlnow-prompt-for-cpan-style)))
   (if perlnow-trace (perlnow-message "Calling perlnow-cpan-module"))
-  (let* ((func-str (concat "perlnow-" perlnow-cpan-style))
-         (func-symbol (read (eval func-str)))
-         )
+  (let* ((func-str    (concat "perlnow-" perlnow-cpan-style))
+         (func-symbol (read (eval func-str))))
     ;; Should be one of these (intentionally not checking this here):
     ;;   perlnow-h2xs
     ;;   perlnow-milla
@@ -3021,88 +3058,6 @@ renaming with an '.OLD' suffix."
 ;; end file creation
 
 ;;========
-;;  dynamically set dev/lib/bin
-
-;; Experiment: "DYNODIRS".
-;; This is a wrapper around metadata that tries to use the returned
-;; info to determine values to change the global code location
-;; variables.  The theory was I would experiment with scattering
-;; calls to this everywhere throughout the code, so that the defaults
-;; for new creation would track the last things created.
-;; The more I think about it, the worse this idea sounds:
-;; real programmers switch tasks a lot and don't want the last
-;; project's values to infect the next.
-(defun perlnow-set-code-locs-from-md ( &optional md )
-  "Dynamically set the code locations inferred from metadata.
-If the metadata is not given as an argument, it's determined
-by running \\[perlnow-metadata].  If possible, any of the
-global vars `perlnow-dev-location', `perlnow-pm-location'
-or `perlnow-script-location' may be modified to match current
-use. Returns a list of those three locations in that order, plus
-a fourth, the absolute test location."
-  (if perlnow-trace (perlnow-message "Calling perlnow-set-code-locs-from-md"))
-  (unless md (setq md perlnow-metadata))
-  (let* ((testloc          (nth 0  md))
-         (dotdef           (nth 1  md))
-         (namestyle        (nth 2  md))
-         (testloc-absolute (nth 3  md))
-         (hyphenized       (nth 4  md))
-         (package-name     (nth 5  md))
-         (incspot          (nth 6  md))
-         (buffer           (nth 7  md))
-         (filename         (nth 8  md))
-         (fileloc          (nth 9  md))
-         (basename         (nth 10 md))
-         (file-type        (nth 11 md))
-         (project-type     (nth 12 md))
-         (sub-name         (nth 13 md))
-         (slash perlnow-slash)
-         dev lib bin t-loc
-         )
-    (cond ((string= project-context "cpan")
-           (cond (incspot
-                  (setq dev
-                        (perlnow-fixdir (concat incspot slash "..")))
-                  (setq lib incspot)
-                  (setq bin (concat dev slash "script" slash)) ;; good guess, but should check that name
-                  (setq t-loc (concat dev slash "t" slash)) ;; same as testloc-absolute
-                  )))
-          ((or (string= file-context "module") (string= file-context "object"))
-           (setq dev nil)
-           (setq lib incspot)
-           (setq bin nil)
-           (setq t-loc testloc-absolute)
-           )
-          ((string= context "script")
-           (setq dev nil)
-           (setq lib nil)
-           (setq bin fileloc)
-           (setq t-loc testloc-absolute)
-           )
-          ((string= context "test")
-           (setq dev nil)
-           (setq lib incspot) ;; metadata calls incspot-from-t
-           (setq bin fileloc)
-           (setq t-loc testloc-absolute)
-           )
-          ;;         ((string= context '')
-          ;;          )
-          (t
-           (setq dev nil)
-           (setq lib nil)
-           (setq bin nil)
-           (setq t-loc nil)
-           )
-          )
-    (setq perlnow-dev-location dev)
-    (setq perlnow-pm-location  lib)
-    (setq perlnow-script-location bin)
-    (if perlnow-trace (perlnow-closing-func))
-    (list dev lib bin t-loc)
- ))
-
-
-;;========
 ;; buffer/file probes (determine what kind of code it is, etc)
 
 (defun perlnow-nix-script-p ()
@@ -3427,8 +3382,13 @@ Checks mode and buffer name."
 ;;     ))
 
 ;; TODO METADATA
-;; At present, this is just used by perlnow-test-create and
-;; perlnow-test-create-manually.  Refactor to use more widely?
+;; At present, this is just used by perlnow-test-create and perlnow-test-create-manually.  
+;; The test code creation problem is nastier than you think (always, even for me, even now)
+;; and you will *not* replace this code with something way simpler, so stop thinking about it.
+;; And so, this code *needs* to be maintained:
+;;  o  test and script context should fall back to scraping use lines
+;; 
+;;   
 (defun perlnow-metadata (&optional file-name)
   "Tries to give you \"metadata\" for the relevant perl code.
 Based on your present context (as inferred from the current buffer,
@@ -3439,7 +3399,7 @@ If a module file is open, it tells information about that module,
 if a test file is open, it tells you about the test file, but
 also tries to determine the module being tested by the code, and
 provides some information about that.  The case of a script
-file is similar to that of the test file \(thought at present,
+file is similar to that of the test file \(though at present,
 not as well supported\).
 
 If a \"*select test file*\" buffer, it again tries to tell you
@@ -3447,7 +3407,7 @@ something about the module it figures you're testing, making
 inferences based on the current line.
 
 The metadata is returned as an ordered list, where the first
-three elements are currently unused ((or the given tp echoed back for no purpose))
+three elements are currently unused ((used to be the tp trio))
 
 An example of returned metadata.
 
@@ -3664,18 +3624,22 @@ buffer when metadata was called:
           (setq hyphenized-package-name
                 (mapconcat 'identity (split-string package-name "::") "-"))
           ))
-   (perlnow-stash-put testloc-absolute incspot) ;; very important side-effect.  move elsewhere? TODO
+   ;; originally, this was a very important side-effect... doing it here isn't so logical, though
+   ;; (perlnow-stash-put testloc-absolute incspot) 
+   (perlnow-connect-t-loc-and-lib testloc-absolute incspot)
+
    ;; TODO currently, the first three elements are unused
    (setq md-list
          (list 
 ;;               testloc dotdef namestyle
-
                nil
                nil
                nil
 
-               testloc-absolute
-               hyphenized-package-name package-name incspot
+               testloc-absolute                      ;; TODO USEFUL case 2
+               hyphenized-package-name               ;; TODO USEFUL case 1
+               package-name
+               incspot                               ;; TODO USEFUL case 1 & 2
                buffer file-name file-location basename
                file-type
                project-type
@@ -3687,6 +3651,18 @@ buffer when metadata was called:
     (goto-char initial-point)
     (if perlnow-trace (perlnow-closing-func))
     md-list))
+
+
+(defun perlnow-connect-t-loc-and-lib (&optional testloc-absolute incspot)
+  "Stash the association between TESTLOC-ABSOLUTE and INCSPOT."
+  (let ( md )
+    (cond ((not (and testloc-absolute incspot))
+           (setq md (perlnow-metadata))
+           (setq testloc-absolute (nth 3  md)) ;; TODO subtract 3: 0
+           (setq incspot          (nth 6  md)) ;; TODO subtract 3: 3
+           ))
+    (perlnow-stash-put testloc-absolute incspot) 
+    md))  ;; might be a useful return, e.g. for perlnow-test-file-menu
 
 
 ;;------
@@ -5120,20 +5096,16 @@ but that may be over-ridden by passing in a different TEST-FILE-LIST,
 which should contain file names with full paths."
   (interactive)
   (if perlnow-trace (perlnow-message "Calling perlnow-test-file-menu"))
-  (let* ((md (perlnow-metadata)) ;; mainly for side-effect, but the info is useful, too
-         (original-buffer (current-buffer))   ;; (nth 7 md) ?
-         (original-file (buffer-file-name))   ;; (nth 8 md)
-         ;; (location (file-name-directory     original-file))
+  (let* (
+         (md 
+          (perlnow-connect-t-loc-and-lib)) ;; determines testloc-absolute and incspot by calling metadata
+         (original-buffer (current-buffer))  
+         (original-file   (buffer-file-name)) 
          (filename (file-name-nondirectory  original-file))
-         ;; (extension (file-name-extension filename))
          (menu-buffer-name perlnow-select-test-file-buffer-name) ;; "*select test file*"
          (selection-buffer-label
           (format "Tests from %s. To choose one, cursor to it and hit return."
                   filename))
-         ;; uses policy to look up test location
-         (testloc          (nth 0  md))
-         (dotdef           (nth 1  md))
-         (namestyle        (nth 2  md))
          )
     (unless test-file-list
       (setq test-file-list (perlnow-list-perl-tests)))
@@ -5566,15 +5538,9 @@ If THIS-WINDOW is t, just display in the current window."
          (buffer-label
           (format " @INC locations for perl:"))
          (switch-back   nil)
-
-         ;; (md (perlnow-metadata))
-         (original-buffer (current-buffer))   ;; (nth 7 md)
-         (original-file (buffer-file-name))   ;; (nth 8 md)
-         ;; (location (file-name-directory     original-file))
-         ;; (filename (file-name-nondirectory  original-file))
-         ;; (extension (file-name-extension filename))
+         (original-buffer (current-buffer))  
+         (original-file   (buffer-file-name))  
          )
-
     ;; color for the buffer-label
     (put-text-property 0 (length buffer-label)
                        'face 'perlnow-00-face
@@ -5586,7 +5552,6 @@ If THIS-WINDOW is t, just display in the current window."
           (t ;; default, display in other window
            (perlnow-show-buffer-other-window display-buffer)
            ))
-
     (let ((buffer-read-only nil)) ;; make buffer writeable, temporarily
       (insert buffer-label)
       (insert "\n")
@@ -5597,14 +5562,12 @@ If THIS-WINDOW is t, just display in the current window."
                  ;; color blue, to indicate you can create stuff there
                  (put-text-property 0 (length path-str)
                                     'face 'perlnow-37-face
-                                    path-str)
-                 )
+                                    path-str))
                 (t
                  ;; no write-access, color gray (34 or 38)
                  (put-text-property 0 (length path-str)
                                     'face 'perlnow-34-face
-                                    path-str)
-                 ))
+                                    path-str)))
           ;; hack: makes this a "hotspot"
           (put-text-property 0 (length path)
                              'perlnow-file-path path
@@ -5612,14 +5575,11 @@ If THIS-WINDOW is t, just display in the current window."
           (setq line (format "   %s\n" path-str))
           (insert line)
           ))
-      (deactivate-mark t)
-      )
-    ;; (perlnow-select-mode)
+      (deactivate-mark t))  ;; end let buffer-read-only
     (perlnow-inc-mode)
     (setq perlnow-associated-code original-file) ;; connect menu back to generating context
     (setq perlnow-associated-buffer original-buffer)
-
-    ;; make buffer read-only now
+    ;; make buffer read-only now  
     (setq buffer-read-only t)
     ;; park cursor at start of first entry
     (goto-char (point-min))
@@ -5635,9 +5595,7 @@ If THIS-WINDOW is t, just display in the current window."
   "Get path off current line, open in dired in other window."
   (interactive)
   (if perlnow-trace (perlnow-message "Calling perlnow-inc-dired"))
-  (let ( initiating-buffer
-         selected-dir
-         )
+  (let ( initiating-buffer   selected-dir )
     ;; The code buffer the menu was generated from
     (setq initiating-buffer perlnow-associated-code)
     (setq selected-dir (perlnow-select-file-from-current-line))
@@ -5967,7 +5925,10 @@ TYPE set to \"d\", you can relax that to all directories)."
 
   ;;;; TODO NEXT need features like:
   ;;;;   o  short-circuit if a likely "t" is found in an obvious place
-  ;;;;   o  if "project-root" is $HOME, just give up
+  ;;;;   o  never scan from $HOME:
+  ;;;;      (1) if "project-root" $HOME, just give up?
+  ;;;;      (2) fallback to a defcustom, by default set to a perlnow-standard location...
+  ;;;;                               
 
     (setq project-root (perlnow-project-root))
     (setq target-list (list "t"))  ;; TODO breakout as defvar, make sure used everywhere
@@ -8227,18 +8188,8 @@ It does three things:
             )))
     mess))
 
-;;--------
-;;; trial runs of various functions (edebug entry points)
 
-(defun perlnow-report-t-directories ()
-  "Echoes output of \\[perlnow-find-t-directories] via message."
-  (interactive)
-  (let* (( t-list
-           (perlnow-find-t-directories))
-         )
-    (message "%s" t-list) ;; The %s form does automatic conversion of list (pp?)
-    ))
- 
+;; this routine is needed for some tests and debug messages.
 (defun perlnow-report-metadata ( &optional md )
   "Trial run of \\[perlnow-metadata], now with auto-tron!"
   (interactive)
@@ -8283,6 +8234,19 @@ It does three things:
     )
   ;; (perlnow-troff)
   )
+
+;;--------
+;;; trial runs of various functions (edebug entry points)
+
+(defun perlnow-report-t-directories ()
+  "Echoes output of \\[perlnow-find-t-directories] via message."
+  (interactive)
+  (let* (( t-list
+           (perlnow-find-t-directories))
+         )
+    (message "%s" t-list) ;; The %s form does automatic conversion of list (pp?)
+    ))
+ 
 
 (defun perlnow-report-script-p ()
   "Report whether the current buffer looks like a perl script."
