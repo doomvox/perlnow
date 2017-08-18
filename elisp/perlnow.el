@@ -5826,12 +5826,26 @@ a module's incspot." ;; or a project root, which is more to the point
 ;;--------
 ;;  perlnow-project-root and the "scan-tree" functions 
 ;;
+
+;; TODO NEXT
+;;   o  Modify to use: perlnow-project-root-override, perlnow-project-root-fallback
+;;   o  Avoid returning $HOME as a project root: if you're up that high,
+;;      something's wrong. 
+
 (defun perlnow-project-root ( &optional location )
   "Find the root of the project tree related to the current buffer.
 If given a LOCATION, uses that as a starting point instead."
   (if perlnow-trace (perlnow-message "Calling perlnow-project-root"))
   (let ( file  file-loc  project-root )
-    ;; TODO check for dired buffer: get location from there.
+    ;; if dired buffer use that to get location
+    (cond ((equal (symbol-name major-mode) "dired-mode")
+           (cond ((listp dired-directory)
+                  (setq location (car dired-directory))
+                  )
+                 (t
+                  (setq location dired-directory)
+                  ))
+           ))
     (cond ((not location)
            (setq file
                  (cond ((perlnow-test-select-menu-p)
@@ -5858,10 +5872,23 @@ If given a LOCATION, uses that as a starting point instead."
     project-root))
 
 (defun perlnow-project-root-from-file (file)
-  "Given a FILE, find likely project-root location."
+  "Given a FILE, find likely project-root location.
+A given file name is expected to include the full-path."
   (save-excursion
-    (find-file file)
-    (let ( project-root )
+    (let ( initial-buffer  initial-point  the-buff   ephemeral-p  project-root )
+      (setq initial-buffer (current-buffer))
+      (setq initial-point  (point))
+      (cond ((bufferp file) ;; should I allow a buffer pased in?
+             (setq the-buff file)
+             )
+            ((setq the-buff (perlnow-buffer-for-file file))
+             (set-buffer the-buff)
+             )
+            (t ;; file not open yet: open temporarily
+             (setq ephemeral-p t)
+             (find-file file)
+             (setq the-buff (current-buffer))
+             ))
       (setq project-root
             (cond ((perlnow-find-git-location file))
                   ((perlnow-find-cpan-style-staging-area))
@@ -5885,6 +5912,10 @@ If given a LOCATION, uses that as a starting point instead."
                             (setq project-root (perlnow-one-up incspot))
                             ))
                      ))))
+      ;; only a fool trusts save-excursion
+      (if ephemeral-p (kill-buffer the-buff))
+      (set-buffer initial-buffer)
+      (goto-char  initial-point)
       project-root)))
 
 ;; Used in only two places: perlnow-scan-tree-for-script-loc, perlnow-scan-tree-for-t-loc
@@ -5923,7 +5954,7 @@ TYPE set to \"d\", you can relax that to all directories)."
   (if perlnow-trace (perlnow-message "Calling perlnow-scan-tree-for-t-loc"))
   (let ( project-root   target-list   t-locs   project-t-locs   t-loc  loc-count )
 
-  ;;;; TODO NEXT need features like:
+  ;;;; TODO NEXT need features like: (( current thinking: hack on project-root ))
   ;;;;   o  short-circuit if a likely "t" is found in an obvious place
   ;;;;   o  never scan from $HOME:
   ;;;;      (1) if "project-root" $HOME, just give up?
@@ -6954,6 +6985,37 @@ default-directory in those cases."
            (setq path (concat path slash))))
     path))
 
+
+;; general utility (not perlnow specific)
+(defun perlnow-file-open-p (full-file-name)
+  "Given a FULL-FILE-NAME, return t if there's an open buffer for it.
+Otherwise, return nil.  The given full file name should be an absolute path."
+  (let ((open-p nil))
+    (dolist (bfn (mapcar 'buffer-file-name (buffer-list)))
+      (if (equal full-file-name bfn)
+          (setq open-p t)))
+    open-p))
+;; (perlnow-file-open-p "/home/doom/End/Cave/Perlnow/lib/perlnow/elisp/perlnow.el")
+
+(defun perlnow-buffer-for-file (full-file-name)
+  "If FULL-FILE-NAME is already open, return the buffer for it.
+Otherwise return nil. The given full file name should be an absolute path.
+Note: \\[find-file] also finds already open buffers, but afterwards
+you don't know which state it was in."
+  (if perlnow-trace (perlnow-message "Calling perlnow-buffer-for-file"))
+  ;;   (if perlnow-debug 
+  ;;       (message "perlnow-buffer-for-file full-file-name: %s" (pp-to-string full-file-name)))
+  (let ( buffy )
+    (dolist (bf (mapcar 'identity (buffer-list)))
+      ;; (message "bf: %s" (pp-to-string bf))
+      (if (equal full-file-name (buffer-file-name bf))
+          (setq buffy bf)))
+    (if perlnow-trace (perlnow-closing-func))
+    ;; (message "returning buffy: %s" (pp-to-string buffy))
+    buffy))
+;; (perlnow-buffer-for-file "/home/doom/End/Cave/Perlnow/lib/perlnow/elisp/perlnow.el")
+;; (perlnow-buffer-for-file "/home/doom/End/Cave/Perlnow/lib/perlnow/elisp/yomama.el")
+
 ;; general utility
 (defun perlnow-ensure-directory-exists (dir &optional ask-message)
   "Make sure that given DIR exists, asking if it needs to be created.
@@ -6971,8 +7033,7 @@ This 'ask' behavior will be suppressed when `perlnow-quiet' is set."
                              dir "?"))
                     (perlnow-mkpath dir))
                 ))))
-  (if perlnow-trace (perlnow-closing-func))
-  )
+  (if perlnow-trace (perlnow-closing-func)))
 
 ;; general utility
 (defun perlnow-ensure-file-exists (file template)
@@ -7083,7 +7144,9 @@ Excludes anything named with a leading dot, unless INCLUDE-HIDDENS is t.
 Note: this is a wrapper around \\[directory-files-recursively]."
   (unless regexp (setq regexp ""))
   (let ( file-list  skip-pat )
-    (setq skip-pat "^[.]|^RCS$")  ;; TODO break-out as defvar, consider expanding further
+    ;; match paths with .git or RCS in them 
+    ;; (setq skip-pat "^[.]\\|^RCS$")  ;; TODO break-out as defvar, consider expanding further
+    (setq skip-pat "\\(\\(^\\|/\\)[.]\\)\\|\\(\\(^\\|/\\)RCS\\($\\|/\\)\\)")
     (cond ((not start)  ;; told to look nowhere, so we find nothing
            (setq file-list ()))
           (t
@@ -8237,6 +8300,13 @@ It does three things:
 
 ;;--------
 ;;; trial runs of various functions (edebug entry points)
+
+(defun perlnow-report-project-root ( &optional location )
+  "For adhoc trial runs of \[[perlnow-project-root]]."
+  (interactive)
+  (let (pr)
+    (setq pr (perlnow-project-root))
+    (message "project-root: %s" pr)))
 
 (defun perlnow-report-t-directories ()
   "Echoes output of \\[perlnow-find-t-directories] via message."
