@@ -642,43 +642,41 @@ treated in the same way."
 It's recommended to leave this set to nil if possible, 
 to let perlnow search for an appropriate project-root.")
 
-(defcustom perlnow-project-root-fallback (perlnow-fixdir "$HOME/dev")
+(defcustom perlnow-project-root-fallback "$INCSPOT/.."
   "If defined, this will be used as a project root when necessary.
 When possible, perlnow will search for a local project root to 
 use instead of this setting \(often easy to find, e.g. in the case of 
-cpan-style development and/or git-controlled projects\).")
-(perlnow-mkpath perlnow-project-root-fallback)
+cpan-style development and/or git-controlled projects\).
+The psuedo-envars $INCSPOT and $FILELOC are allowed in this definition
+which needs to be dynamically expanded, and will not be useful otherwise.
+See \\[perlnow-expand-fallback].")
 
-;; TODO should define these in terms of the above "fallback"  (( done, all tests pass ))
-;; TODO are perlnow-script-location and perlnow-pm-location on the way out?  
-;; Used by script creation commands, fed into read-file-name to resolve relative locs
-;; (defcustom perlnow-script-location
-;;   (cond ( (file-directory-p  (perlnow-fixdir "$HOME/bin"))
-;;           (perlnow-fixdir "$HOME/bin")
-;;           )
-;;         (t
-;;          (perlnow-fixdir "$HOME")
-;;          ))
-;;   "This is the default location to stash new perl scripts.")
+(defcustom perlnow-project-root-catchall (perlnow-fixdir "$HOME/dev")
+  "When the \"fallback\" isn't going to work, this is the real last-ditch.
+See `perlnow-project-root-fallback'.  With some luck, you'll
+never need this setting, but if you lose track of where something
+went, you might look for it in here.  Note: at present this is
+likely to be invoked only in cases where \"fallback\" is defined
+in terms of $INCSPOT and perlnow can't get a value for that for
+some reason.  The psuedo-envars $INCSPOT and $FILELOC should not
+be used in this definition (a stable envar like $HOME is fine).")
 
+;; TODO 
+;; Investigate making perlnow-script-location and perlnow-pm-location dynamically
+;; redefined as the last used locations (for example).
+
+;; Note: perlnow-script-location and perlnow-pm-location are used
+;; by creation commands (they're used with read-file-name to
+;; resolve relative locations).
 (defcustom perlnow-script-location
-  (perlnow-fixdir (concat perlnow-project-root-fallback "bin"))
+  (perlnow-fixdir (concat perlnow-project-root-catchall "bin"))
   "This is the default location to stash new perl scripts.")
 (perlnow-mkpath perlnow-script-location)
 
 ;; Used by perlnow-module, perlnow-object-module just as an "initial" setting for the prompt
 ;; (also used as default-directory  by the nearly unused perlnow-module-two-questions)
-;; (defcustom perlnow-pm-location
-;;   (cond ( (file-directory-p  (perlnow-fixdir "$HOME/lib"))
-;;           (perlnow-fixdir "$HOME/lib")
-;;           )
-;;         (t
-;;          (perlnow-fixdir "$HOME")
-;;          ))
-;;   "This is the default location to stash new perl modules.")
-
 (defcustom perlnow-pm-location
-  (perlnow-fixdir (concat perlnow-project-root-fallback "lib"))
+  (perlnow-fixdir (concat perlnow-project-root-catchall "lib"))
   "This is the default location to stash new perl modules.")
 (perlnow-mkpath perlnow-pm-location)
 
@@ -5828,44 +5826,48 @@ a module's incspot." ;; or a project root, which is more to the point
 ;;
 
 ;; TODO NEXT
-;;   o  Modify to use: perlnow-project-root-override, perlnow-project-root-fallback
 ;;   o  Avoid returning $HOME as a project root: if you're up that high,
-;;      something's wrong. 
+;;      something's wrong.   (( Do this change *soon* facillitates debugging ))
 
 (defun perlnow-project-root ( &optional location )
   "Find the root of the project tree related to the current buffer.
 If given a LOCATION, uses that as a starting point instead."
   (if perlnow-trace (perlnow-message "Calling perlnow-project-root"))
   (let ( file  file-loc  project-root )
-    ;; if dired buffer use that to get location
-    (cond ((equal (symbol-name major-mode) "dired-mode")
-           (cond ((listp dired-directory)
-                  (setq location (car dired-directory))
-                  )
-                 (t
-                  (setq location dired-directory)
+    ;; if an override is defined, just use it and skip everything else.
+    (cond (perlnow-project-root-override
+           (setq project-root perlnow-project-root-override))
+          (t
+           ;; if dired buffer use that to get location
+           (cond ((equal (symbol-name major-mode) "dired-mode")
+                  (cond ((listp dired-directory)
+                         (setq location (car dired-directory))
+                         )
+                        (t
+                         (setq location dired-directory)
+                         ))
                   ))
+           (cond ((not location)
+                  (setq file
+                        (cond ((perlnow-test-select-menu-p)
+                               (perlnow-select-full-file-from-current-line))
+                              ;; TODO what if some other case, like man page, or non-perl
+                              (t
+                               (buffer-file-name))
+                              ))
+                  (setq project-root (perlnow-project-root-from-file file))
+                  )
+                 (t ;; location defined
+                  ;; given a directory, get a recursive listing of contents, and
+                  ;; run each through above gauntlet.
+                  (let* (candidates   project-roots)
+                    (setq candidates (perlnow-recursive-file-listing location "" "f"))
+                    (setq project-roots 
+                          (mapcar #'(lambda (candy)
+                                      (perlnow-project-root-from-file candy)) candidates))
+                    (setq project-root (perlnow-vote-on-candidates project-roots))
+                    )))
            ))
-    (cond ((not location)
-           (setq file
-                 (cond ((perlnow-test-select-menu-p)
-                        (perlnow-select-full-file-from-current-line))
-                       ;; TODO what if some other case, like man page, or non-perl
-                       (t
-                        (buffer-file-name))
-                       ))
-           (setq project-root (perlnow-project-root-from-file file))
-           )
-          (t ;; location defined
-           ;; given a directory, get a recursive listing of contents, and
-           ;; run each through above gauntlet.
-           (let* (candidates   project-roots)
-             (setq candidates (perlnow-recursive-file-listing location "" "f"))
-             (setq project-roots 
-                   (mapcar #'(lambda (candy)
-                              (perlnow-project-root-from-file candy)) candidates))
-             (setq project-root (perlnow-vote-on-candidates project-roots))
-             )))
     (if perlnow-debug
         (message "perlnow-project-root returns: %s" project-root))
     (if perlnow-trace (perlnow-closing-func))
@@ -5893,7 +5895,8 @@ A given file name is expected to include the full-path."
             (cond ((perlnow-find-git-location file))
                   ((perlnow-find-cpan-style-staging-area))
                   (t ;; try to identify a related incspot, presume the project level is one-up
-                   (let ( package-name  incspot  file-loc ) 
+                   (let ( package-name  incspot  fileloc ) 
+                     (setq fileloc (file-name-directory file))
                      (setq incspot
                            (cond ((perlnow-script-p)
                                   (perlnow-incspot-from-script-for-noncpan-nongit)
@@ -5902,14 +5905,23 @@ A given file name is expected to include the full-path."
                                   (perlnow-incspot-from-t file))
                                  (t ;; module, or...
                                   (setq package-name (perlnow-get-package-name-from-module))
-                                  (setq file-loc (file-name-directory file))
-                                  (perlnow-get-incspot package-name file-loc))))
+                                  (perlnow-get-incspot package-name fileloc))))
+
+
+                     ;; TODO check if fallback is defined using incspot.
+                     ;;      if it isn't we can still use it, even if we have no incspot...
+                     ;;      otherwise, experiment with using the catchall? 
+                     ;;      which might or might not work with fileloc...
+                     ;;      Q: is fileloc always available?  what about, e.g., test select menu?
+
                      (cond ((not incspot)
                             (message "WARNING: was not able to determine incspot, perlnow-project-root failed")
                             nil)
                            (t ;; have incspot defined
                             ;; guessing that one-up works: gotta do something for non-cpan, non-git case
-                            (setq project-root (perlnow-one-up incspot))
+                            ;;   (setq project-root (perlnow-one-up incspot))
+                            ;; TODO POINT B -- use perlnow-project-root-fallback here, *instead* of that hack.
+                            (setq project-root (perlnow-expand-fallback incspot fileloc))
                             ))
                      ))))
       ;; only a fool trusts save-excursion
@@ -5917,6 +5929,31 @@ A given file name is expected to include the full-path."
       (set-buffer initial-buffer)
       (goto-char  initial-point)
       project-root)))
+
+
+;; TODO if incspot/fileloc not provided, and there's a tag in the fallback... warn and return nil?
+(defun perlnow-expand-fallback (&optional incspot fileloc)
+  "Substitutes values for place-holders in `perlnow-project-root-fallback'.
+In addtion to envars like $HOME, we allow some \"pseudoenvars\"
+in the \"fallback\" string, such as $INCSPOT and $FILELOC.  If
+values for INCSPOT and/or FILELOC are supplied as arguments, this 
+substitutes them for the corresponding pseudoenvars.  This also 
+performs a call to \\[perlnow-fixdir] before returning the modified 
+fallback."
+  (let ((fallback perlnow-project-root-fallback)
+        (incspot-tag-pat "\\$INCSPOT")
+        (fileloc-tag-pat "\\$FILELOC")
+        )
+    (cond (incspot
+           (setq fallback
+                 (replace-regexp-in-string incspot-tag-pat incspot fallback t))
+           ))
+    (cond (fileloc
+           (setq fallback
+                 (replace-regexp-in-string fileloc-tag-pat fileloc fallback t))
+           ))
+    (setq fallback (perlnow-fixdir fallback))
+  ))
 
 ;; Used in only two places: perlnow-scan-tree-for-script-loc, perlnow-scan-tree-for-t-loc
 (defun perlnow-scan-tree-for-directory ( start names-list &optional type)
