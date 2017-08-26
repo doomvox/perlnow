@@ -5837,10 +5837,9 @@ a module's incspot." ;; or a project root, which is more to the point
 ;;  perlnow-project-root and the "scan-tree" functions 
 ;;
 
-;; TODO NEXT
-;;   o  Avoid returning $HOME as a project root: if you're up that high,
-;;      something's wrong.   (( Do this change *soon* facillitates debugging ))
-
+;; TODO 
+;; experimented with this idea, but commented out.  Fix or drop, *REVISE DOCS*:
+;;   o  Avoid returning $HOME as a project root: swap-in catchall
 (defun perlnow-project-root ( &optional location )
   "Find the root of the project tree related to the current buffer.
 If given a LOCATION, uses that as a starting point instead.
@@ -5983,12 +5982,14 @@ fallback."
   ))
 
 ;; Used in only two places: perlnow-scan-tree-for-script-loc, perlnow-scan-tree-for-t-loc
-(defun perlnow-scan-tree-for-directory ( start names-list &optional type)
+(defun perlnow-scan-tree-for-directory ( start names-list &optional type short-circuit-opt )
   "Scans tree at TREE-ROOT for directories with name in TARGET-NAMES.
 NAMES-LIST is a list of file names without paths.
 Returns a list of all matches (though warns if there's more than one).
 Defaults to showing just accessible directories, (with optional
-TYPE set to \"d\", you can relax that to all directories)."
+TYPE set to \"d\", you can relax that to all directories).
+If SHORT-CIRCUIT-OPT is set, tries to return some obvious candidates,
+but makes no attempt to find all. *experimental* "
   (if perlnow-trace (perlnow-message "Calling perlnow-scan-tree-for-directory"))
   (if perlnow-debug
       (message "start: %s" (pp-to-string start)))
@@ -5997,22 +5998,27 @@ TYPE set to \"d\", you can relax that to all directories)."
     ;; generate pattern like: "^(name1|name2|name3)$"
     (setq any-names-pat (mapconcat 'regexp-quote names-list "\\|"))
     (setq capture-name-pat (concat "^\\(" any-names-pat "\\)$"))
-    (setq hits
-          (perlnow-recursive-file-listing start capture-name-pat type))
-    (setq hit-count (length hits))
-    (setq hits (reverse hits))  ;; nreverse
-    (cond ((> hit-count 1)
-           (message "perlnow-scan-tree-for-directory: returned multiple-hits: ")
-           (let ((i 1))
-             (dolist (h hits)
-               (message "%d: %s" i (pp-to-string h))
-               (setq i (1+ i)))
-             )))
+    (cond (short-circuit-opt
+           (setq hits
+                 (perlnow-file-listing start capture-name-pat type))
+           ))
+    (cond ((not hits)
+           (setq hits
+                 (perlnow-recursive-file-listing start capture-name-pat type))
+           (setq hit-count (length hits))
+           (setq hits (reverse hits))  ;; nreverse
+           (cond ((> hit-count 1)
+                  (message "perlnow-scan-tree-for-directory: returned multiple-hits: ")
+                  (let ((i 1))
+                    (dolist (h hits)
+                      (message "%d: %s" i (pp-to-string h))
+                      (setq i (1+ i)))
+                    )))
+           ))
+
     (if perlnow-trace (perlnow-closing-func))
     hits))
 
- ;; TODO possibly, look into features like:
- ;;   o  short-circuit if a likely "t" is found in an obvious place
 (defun perlnow-scan-tree-for-t-loc ()
   "Look for the \"t\" directory in current tree.
 (( TODO add remarks about doing a create if none found ))
@@ -6021,7 +6027,7 @@ TYPE set to \"d\", you can relax that to all directories)."
   (let ( project-root   target-list   t-locs   project-t-locs   t-loc  loc-count )
     (setq project-root (perlnow-project-root))
     (setq target-list (list "t"))  ;; TODO breakout as defvar, make sure used everywhere
-    (setq t-locs (perlnow-scan-tree-for-directory project-root target-list "a"))
+    (setq t-locs (perlnow-scan-tree-for-directory project-root target-list "a" t))
     (setq project-t-locs (perlnow-only-in-here t-locs project-root))
     (setq loc-count (length project-t-locs))
     (cond ((= loc-count 0)
@@ -6087,7 +6093,7 @@ If project-root is not given, runs \\[perlnow-project-root]."
          (project-root (perlnow-project-root))
          (target-list (list "bin" "script" "scripts"))
          (script-locs
-           (perlnow-scan-tree-for-directory project-root target-list "a"))
+           (perlnow-scan-tree-for-directory project-root target-list "a" t))
          (script-loc (pop script-locs))  ;; TODO simplest: choose first in list
        )
     (if perlnow-trace (perlnow-closing-func))
@@ -7226,6 +7232,46 @@ Note: this is a wrapper around \\[directory-files-recursively]."
                 ))
             (directory-files-recursively start regexp t))))
     file-list))
+
+(defun perlnow-file-listing (loc &optional regexp type include-hiddens)
+  "Return a list of a tree of files located in LOC.
+The optional REGEXP can be used to filter the returned names, and
+the option TYPE can be used to restrict the listing:
+   \"f\"  ordinary files
+   \"d\"  directories
+   \"a\"  accessible directories
+Full paths are used in the return, but the REGEXP matches on the
+filename without the path, e.g. \"^t$\" could find \"/home/idjit/dev/t\".
+If LOC is nil, returns nil without signalling an error.
+Excludes anything named with a leading dot, unless INCLUDE-HIDDENS is t.
+Note: this is a wrapper around \\[directory-files]."
+  (unless regexp (setq regexp ""))
+  (let ( file-list  skip-pat )
+    ;; match paths with .git or RCS in them 
+    ;; (setq skip-pat "^[.]\\|^RCS$")  ;; TODO break-out as defvar, consider expanding further
+    (setq skip-pat "\\(\\(^\\|/\\)[.]\\)\\|\\(\\(^\\|/\\)RCS\\($\\|/\\)\\)")
+    (cond ((not loc)  ;; told to look nowhere, so we find nothing
+           (setq file-list ()))
+          (t
+           (mapc
+            (lambda (item)
+              (if (cond
+                   ((not type) t) ;; if no type, match all
+                   ((string= type "f")
+                    (file-regular-p item))
+                   ((string= type "d")
+                    (file-directory-p item))
+                   ((string= type "a")
+                    (file-accessible-directory-p item)
+                    ))
+                  (cond ((and (not include-hiddens)
+                              (not (string-match skip-pat item)))
+                         (setq file-list (cons item file-list))
+                         ))
+                ))
+            (directory-files loc t regexp))))
+    file-list))
+
 
 ;;------
 ;; list manipulation utilities
