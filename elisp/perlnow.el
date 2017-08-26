@@ -681,10 +681,7 @@ be used in this definition (a stable envar like $HOME is fine).")
 (perlnow-mkpath perlnow-pm-location)
 
 ;; used as default-directory by perlnow-cpan-module and relatives
-;; TODO change to use project-root-fallback... (( done, all tests pass ))
-;; (defcustom perlnow-dev-location (file-name-as-directory perlnow-pm-location)
-;;   "This is the default location to work on CPAN-style distributions.")
-(defcustom perlnow-dev-location perlnow-project-root-fallback
+(defcustom perlnow-dev-location perlnow-project-root-catchall
   "This is the default location to work on CPAN-style distributions.")
 
 (defcustom perlnow-executable-setting ?\110
@@ -4450,8 +4447,6 @@ Returns a location where the FILE-RELATIVE path starts."
                     (setq new-dirs
                           (append (perlnow-dirs-from-one-up dir) new-dirs))
                     (setq new-dirs
-;;                           (seq-uniq
-;;                            (append (perlnow-dirs dir) new-dirs))
                           (perlnow-uniq-list
                            (append (perlnow-dirs dir) new-dirs))
                           ))
@@ -4496,59 +4491,76 @@ Returns a location where the FILE-RELATIVE path starts."
 
 (defun perlnow-dirs (location &optional all-opt)
   "A simple directory listing of given LOCATION, limited to sub-directories.
-Restricts listing to accessible directories, and skips the
-special directories \".\" and \"..\" unless the ALL-OPT is t.
-Returns a list of full paths, unsorted."
+Always skips the special directories \".\" and \"..\".
+Skips any other hidden directories \(and some additional ones like RCS\) unless ALL-OPT is t
+Restricts the listing to accessible directories, unless the ALL-OPT is t.
+Returns a list of full paths, unsorted.
+Returns nil if LOCATION is nil or empty-string."
   (if perlnow-trace (perlnow-message "Calling perlnow-dirs"))
   (if perlnow-debug
-      (message "perlnow-dirs: %s" location))
+      (message "perlnow-dirs: %s" (pp-to-string location)))
   (let (items  dirs)
-    (setq items (directory-files location t "" t))
-    (cond (all-opt
-           (dolist (item items)
-             (if (file-directory-p item)
-                 (push item dirs)))
-           )
+    (cond ((or (not location)
+               (string-match "^$" location))
+           (setq dirs nil))
           (t
-           (dolist (item items)
-             (if (and
-                  (file-accessible-directory-p item)
-                  (not (string-match "/\\.$"    item))
-                  (not (string-match "/\\.\\.$" item))
-                  )
-                 (push item dirs)))
+           (setq items (directory-files location t "" t))
+           (cond (all-opt
+                  (dolist (item items)
+                    (if (and
+                         (file-directory-p item)
+                         (not (string-match "/\\.$"    item)) ;; note: every name preceeded by "/" 
+                         (not (string-match "/\\.\\.$" item))
+                         )
+                        (push item dirs))))
+                 (t
+                  (dolist (item items)
+                    (if (and
+                         (file-accessible-directory-p item)
+                         (not (string-match "/\\."    item)) ;; skip *any* hidden dir
+                         (not (string-match "/RCS$"   item))
+                         )
+                        (push item dirs)))
+                  ))
            ))
+
     (if perlnow-debug
         (message "perlnow-dirs returning: %s" (pp-to-string dirs)))
     (if perlnow-trace (perlnow-closing-func))
     dirs))
 
-(defun perlnow-check-for-dir-containing (locations file-relative)
-  "Look in each of LOCATIONS for the FILE-RELATIVE.
+;; (perlnow-dirs "/home/doom/tmp/gorgonsnest/")
+;; (perlnow-dirs "/home/doom/tmp/scratchy/")
+;; (perlnow-dirs "/home/doom/tmp/perlnow_test/t05")
+;; (perlnow-dirs nil)
+;; (perlnow-dirs "")
+
+  (defun perlnow-check-for-dir-containing (locations file-relative)
+    "Look in each of LOCATIONS for the FILE-RELATIVE.
 LOCATIONS is a list of directories (typically with full-paths).
 FILE-RELATIVE should be a relative path fragment.  We append it
 to each of the locations, and return the first location found
 that contains the file."
-  (if perlnow-trace (perlnow-message "Calling perlnow-check-for-dir-containing"))
-;;   (if perlnow-debug
-;;       (perlnow-message
-;;        (format "perlnow-check-for-dir-containing, locations: %s file-relative: %s"
-;;                (pp-to-string locations) file-relative) t))
-  (let ((lib-loc
-         (catch 'FLY
-           (dolist (loc locations)
-             (let ((trial-loc (perlnow-fixdir loc)))
-               (if perlnow-debug
-                   (message "perlnow-check-for-dir-containing: loc: %s" loc))
-               (cond ((file-exists-p (concat trial-loc file-relative))
-                      (throw 'FLY loc)
-                      ))))))
-        )
-    (if perlnow-trace (perlnow-closing-func))
-    lib-loc))
+    (if perlnow-trace (perlnow-message "Calling perlnow-check-for-dir-containing"))
+    ;;   (if perlnow-debug
+    ;;       (perlnow-message
+    ;;        (format "perlnow-check-for-dir-containing, locations: %s file-relative: %s"
+    ;;                (pp-to-string locations) file-relative) t))
+    (let ((lib-loc
+           (catch 'FLY
+             (dolist (loc locations)
+               (let ((trial-loc (perlnow-fixdir loc)))
+                 (if perlnow-debug
+                     (message "perlnow-check-for-dir-containing: loc: %s" loc))
+                 (cond ((file-exists-p (concat trial-loc file-relative))
+                        (throw 'FLY loc)
+                        ))))))
+          )
+      (if perlnow-trace (perlnow-closing-func))
+      lib-loc))
 
-(defun perlnow-package-from-use-line ()
-  "When run on a script file, tries to identify the key use line.
+  (defun perlnow-package-from-use-line ()
+    "When run on a script file, tries to identify the key use line.
 A script, particularly one generated with perlnow, will often
 have an important module dependency, e.g. a module developed
 concurrently with the script.  This tries to identify this
@@ -4556,33 +4568,33 @@ particular use line in the current buffer.  As written,
 this looks for the last use line flagged with an \"added
 by perlnow\" comment, or alternately just looks for the last
 use line."
-;; Also see the test code routine: perlnow-get-package-name-from-useok
-  (if perlnow-trace (perlnow-message "Calling perlnow-package-from-use-line"))
-  (save-excursion
-    (let* (;;save-excursion seems flaky
-           (initial-buffer (current-buffer))
-           (initial-point  (point))
-           (pn-label "# added by perlnow")
-           ;; patterns to find lines
-           (find-use-pat (concat "^\\s*?" "use" "\\b")) ;; skips commented out ones
-           (find-pn-add-pat (concat pn-label "[ \t]*?" "$" ))
-           ;; pattern to extract package from a line
-           (capture-pat (perlnow-package-capture-from-use-pat))
-           use-list  use-line  package-name  pick1 pick2  )
-      (save-restriction
-        (widen)
-        (goto-char (point-max))
-        (cond ((re-search-backward find-pn-add-pat nil t)
-               (setq use-line (perlnow-extract-current-line))
-               (string-match capture-pat use-line)
-               (setq pick1 (match-string 1 use-line)) ))
-        (goto-char (point-max))
-        (cond ((re-search-backward find-use-pat nil t)
-               (setq use-line (perlnow-extract-current-line))
-               (string-match capture-pat use-line)
-               (setq pick2 (match-string 1 use-line)) ))
-        (setq package-name (or pick1 pick2))
-        ;; return from any excursions
+    ;; Also see the test code routine: perlnow-get-package-name-from-useok
+    (if perlnow-trace (perlnow-message "Calling perlnow-package-from-use-line"))
+    (save-excursion
+      (let* (;;save-excursion seems flaky
+             (initial-buffer (current-buffer))
+             (initial-point  (point))
+             (pn-label "# added by perlnow")
+             ;; patterns to find lines
+             (find-use-pat (concat "^\\s*?" "use" "\\b")) ;; skips commented out ones
+             (find-pn-add-pat (concat pn-label "[ \t]*?" "$" ))
+             ;; pattern to extract package from a line
+             (capture-pat (perlnow-package-capture-from-use-pat))
+             use-list  use-line  package-name  pick1 pick2  )
+        (save-restriction
+          (widen)
+          (goto-char (point-max))
+          (cond ((re-search-backward find-pn-add-pat nil t)
+                 (setq use-line (perlnow-extract-current-line))
+                 (string-match capture-pat use-line)
+                 (setq pick1 (match-string 1 use-line)) ))
+          (goto-char (point-max))
+          (cond ((re-search-backward find-use-pat nil t)
+                 (setq use-line (perlnow-extract-current-line))
+                 (string-match capture-pat use-line)
+                 (setq pick2 (match-string 1 use-line)) ))
+          (setq package-name (or pick1 pick2))
+          ;; return from any excursions
         (switch-to-buffer initial-buffer)
         (goto-char initial-point)
         (if perlnow-trace (perlnow-closing-func))
@@ -5831,7 +5843,20 @@ a module's incspot." ;; or a project root, which is more to the point
 
 (defun perlnow-project-root ( &optional location )
   "Find the root of the project tree related to the current buffer.
-If given a LOCATION, uses that as a starting point instead."
+If given a LOCATION, uses that as a starting point instead.
+Normally, this uses the current buffer's file as a starting point, but:
+If started from dired mode, uses it's directory as the default LOCATION;
+In the case of a test select menu, uses the file on the current line.
+Internally this uses \\[perlnow-project-root-from-file], which can
+easily determine a project-root in the cpan and/or git-controlled
+case, and if not attempts to find an associated module package
+name \(easy if this is a pm file itself\), and works with that to
+find the incspot for the module.
+If `perlnow-project-root-override' has been set, this will always use that 
+value.  
+If `perlnow-project-root-catchall' has been set, this will use this value 
+if we somehow got the idea that $HOME is the project-root.  \(Doing recursive 
+scans from the user's home is rarely a good idea\)."
   (if perlnow-trace (perlnow-message "Calling perlnow-project-root"))
   (let ( file  file-loc  project-root )
     ;; if an override is defined, just use it and skip everything else.
@@ -5855,11 +5880,9 @@ If given a LOCATION, uses that as a starting point instead."
                               (t
                                (buffer-file-name))
                               ))
-                  (setq project-root (perlnow-project-root-from-file file))
-                  )
+                  (setq project-root (perlnow-project-root-from-file file)))
                  (t ;; location defined
-                  ;; given a directory, get a recursive listing of contents, and
-                  ;; run each through above gauntlet.
+                  ;; get a recursive listing and run each file through the gauntlet.
                   (let* (candidates   project-roots)
                     (setq candidates (perlnow-recursive-file-listing location "" "f"))
                     (setq project-roots 
@@ -5868,6 +5891,10 @@ If given a LOCATION, uses that as a starting point instead."
                     (setq project-root (perlnow-vote-on-candidates project-roots))
                     )))
            ))
+    ;; Refuse to use $HOME as a project-root (unless it was defined that way in catchall)
+;;     (cond ((string-match (concat "^" (perlnow-fixdir "$HOME") "$") project-root)
+;;            (setq project-root perlnow-project-root-catchall)
+;;            ))
     (if perlnow-debug
         (message "perlnow-project-root returns: %s" project-root))
     (if perlnow-trace (perlnow-closing-func))
@@ -5984,20 +6011,14 @@ TYPE set to \"d\", you can relax that to all directories)."
     (if perlnow-trace (perlnow-closing-func))
     hits))
 
+ ;; TODO possibly, look into features like:
+ ;;   o  short-circuit if a likely "t" is found in an obvious place
 (defun perlnow-scan-tree-for-t-loc ()
   "Look for the \"t\" directory in current tree.
 (( TODO add remarks about doing a create if none found ))
 "
   (if perlnow-trace (perlnow-message "Calling perlnow-scan-tree-for-t-loc"))
   (let ( project-root   target-list   t-locs   project-t-locs   t-loc  loc-count )
-
-  ;;;; TODO NEXT need features like: (( current thinking: hack on project-root ))
-  ;;;;   o  short-circuit if a likely "t" is found in an obvious place
-  ;;;;   o  never scan from $HOME:
-  ;;;;      (1) if "project-root" $HOME, just give up?
-  ;;;;      (2) fallback to a defcustom, by default set to a perlnow-standard location...
-  ;;;;                               
-
     (setq project-root (perlnow-project-root))
     (setq target-list (list "t"))  ;; TODO breakout as defvar, make sure used everywhere
     (setq t-locs (perlnow-scan-tree-for-directory project-root target-list "a"))
