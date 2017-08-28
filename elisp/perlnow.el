@@ -1260,6 +1260,7 @@ If called with NOJACK as a non-nil value, will skip increasing the funclev.
 (defun perlnow-tron ()
   (interactive)
   "Turns on trace and debug and writes a marker in *Messages*."
+  (setq debug-on-error t)
   (message "vvv %d vvv\n" perlnow-counter)
   (setq perlnow-funclev 0)
   (setq perlnow-trace t)
@@ -1533,15 +1534,15 @@ Note: there's an ack.el package, if you'd like something fancier
 than this."
   (interactive
    (let ( (history 'perlnow-ack-history)
-          (keymap nil)  ;; use default keymap for grep command
-          (initial nil) ;; no initial suggestion in minibuffer
+          (keymap         nil)  ;; use default keymap for grep command
+          (initial-prompt nil)  ;; no initial suggestion in minibuffer
           miniread
           inter-list
           )
      (setq miniread
            (read-from-minibuffer
             "Do code search with ack: "
-            initial keymap nil history nil nil))
+            initial-prompt keymap nil history nil nil))
      (setq inter-list (list miniread))))
   (if perlnow-trace (perlnow-message "Calling perlnow-ack"))
   (let* ((ack-probe   (format "ack --version"))
@@ -1571,46 +1572,55 @@ documenting a perl module -- it will give you a \"use\" line to include
 that module.  If the module is not in perl's @INC array, (( TODO still? )) it will also
 insert the appropriate \"FindBin\" & \"use lib\" lines so that the script
 can find the module."
+  ;;   (interactive
+  ;;    (perlnow-prompt-user-for-file-to-create
+  ;;     "Name for the new perl script? " perlnow-script-location))
   (interactive
    (perlnow-prompt-user-for-file-to-create
-    "Name for the new perl script? " perlnow-script-location))
+    "Name for the new perl script? "
+    perlnow-script-location
+    ;;       (or (perlnow-scan-tree-for-script-loc)
+    ;;            perlnow-script-location)
+    ))
   (if perlnow-trace (perlnow-message "Calling perlnow-script"))
   ;; first check the script-name for obvious errors
-  (cond ((string-match "::" script-name)
-         (message
-          "You really don't want to create a script with a '::' do you?"))
-        ((string-match "\.pm$" script-name)
-         (message
-          "You really don't want to create a script ending in '.pm', right?"))
-        (t ;; full speed ahead
-         (require 'template)
-         (let (package-name)
-           ;; Note: perlnow-perl-package-name is used to pass to template
-           (cond
-            (;; starting from module
-             (setq package-name (perlnow-get-package-name-from-module))
-             (let* ((pm-file (buffer-file-name)) ;;
-                    (pm-location (file-name-directory pm-file))
-                    (incspot (perlnow-get-incspot package-name pm-location)))
+  (let ((initial-file (buffer-file-name)))
+    (cond ((string-match "::" script-name)
+           (message
+            "You really don't want to create a script with a '::' do you?"))
+          ((string-match "\.pm$" script-name)
+           (message
+            "You really don't want to create a script ending in '.pm', right?"))
+          (t ;; full speed ahead
+           (require 'template)
+           (let (package-name)
+             ;; Note: perlnow-perl-package-name is used to pass to template
+             (cond
+              (;; starting from module
+               (setq package-name (perlnow-get-package-name-from-module))
+               (let* ((pm-file (buffer-file-name)) ;;
+                      (pm-location (file-name-directory pm-file))
+                      (incspot (perlnow-get-incspot package-name pm-location)))
+                 (setq perlnow-perl-package-name package-name)
+                 (perlnow-do-script-from-module
+                  script-name package-name incspot)
+                 ))
+              ;; ((perlnow-test-p)
+              ;;  ;; TODO assoc new script with test?
+              ;;  ;;      follow asscode to non-t code, include a use line for that?
+              ;;  ;;      but: don't want to change run-string for the module,
+              ;;  ;;      so "perlnow-do-script-from-module" would be no good.
+              ;;  )
+              (;; starting from man page
+               (setq package-name (perlnow-get-package-name-from-man))
                (setq perlnow-perl-package-name package-name)
-               (perlnow-do-script-from-module
-                script-name package-name incspot)
-               ))
-            ;; ((perlnow-test-p)
-            ;;  ;; TODO assoc new script with test?
-            ;;  ;;      follow asscode to non-t code, include a use line for that?
-            ;;  ;;      but: don't want to change run-string for the module,
-            ;;  ;;      so "perlnow-do-script-from-module" would be no good.
-            ;;  )
-            (;; starting from man page
-             (setq package-name (perlnow-get-package-name-from-man))
-             (setq perlnow-perl-package-name package-name)
-             (perlnow-do-script-from-module script-name package-name))
-            (t ;; no special starting place
-             (perlnow-do-script script-name))))
-         ))
-  (if perlnow-trace (perlnow-closing-func))
-  )
+               (perlnow-do-script-from-module script-name package-name))
+              (t ;; no special starting place
+               (perlnow-do-script script-name))))
+           ))
+    (perlnow-set-associated-code-pointers initial-file)
+    (if perlnow-trace (perlnow-closing-func))
+    ))
 
 ;;;   TODO
 ;;;    When creating a module from man page, should check if it's in INC
@@ -1641,16 +1651,18 @@ contents of the minibuffer, so that it may be edited at time of module
 creation."
 ;;; Formerly named: perlnow-prompt-for-new-module-in-one-step
   (interactive
-   (let ((initial perlnow-pm-location)
-         ;; The keymap is key: transforms read-from-minibuffer.
-         (keymap perlnow-read-minibuffer-map)
-         (history 'perlnow-package-name-history)
-         input filename retval
-         )
+   (let ( initial-prompt  keymap    history
+          input    filename  retval  )
+     (setq initial-prompt perlnow-pm-location)
+;;      (setq initial (or (perlnow-scan-tree-for-lib-loc)
+;;                        perlnow-pm-location))
+     ;; The keymap is key: transforms read-from-minibuffer.
+     (setq keymap perlnow-read-minibuffer-map)
+     (setq history 'perlnow-package-name-history)
      (setq input
            (read-from-minibuffer
             "New module to create \(e.g. /tmp/dev/New::Mod\): "
-            initial keymap nil history nil nil))
+            initial-prompt keymap nil history nil nil))
      ;; remove accidentally typed ".pm"
      (setq input (replace-regexp-in-string "\.pm$" "" input))
      (setq filename
@@ -1665,14 +1677,21 @@ creation."
      (setq retval
            (perlnow-divide-hybrid-path-and-package-name
             input))
-     retval))
+     retval)) ;; end interactive
   (if perlnow-trace (perlnow-message "Calling perlnow-module"))
   (require 'template)
   ;; global used to pass value into template
   (setq perlnow-perl-package-name package-name)
-  (let ((filename (perlnow-full-path-to-module incspot package-name)))
-    (perlnow-create-with-template filename perlnow-perl-module-template))
-  (if perlnow-trace (perlnow-closing-func)))
+  (let (
+        (original-file (buffer-file-name))
+        (filename (perlnow-full-path-to-module incspot package-name))
+        )
+    (perlnow-create-with-template filename perlnow-perl-module-template)
+    (perlnow-set-associated-code-pointers original-file filename)
+    (if perlnow-trace (perlnow-closing-func))
+    ))
+
+;;    (perlnow-set-associated-code-pointers h2xs-module-file h2xs-test-file)
 
 (defun perlnow-object-module (incspot package-name)
   "Quickly jump into development of a new perl OOP module.
@@ -1686,7 +1705,10 @@ The location for the new module defaults to the global
 `perlnow-pm-location'."
 ;;; Mutated from perlnow-module
   (interactive
-   (let ((initial perlnow-pm-location)
+   (let (
+         (initial-prompt perlnow-pm-location)
+;;          (initial (or (perlnow-scan-tree-for-lib-loc)
+;;                       perlnow-pm-location))
          ;; keymap is key: transforms read-from-minibuffer.
          (keymap perlnow-read-minibuffer-map)
          (history 'perlnow-package-name-history)
@@ -1695,7 +1717,7 @@ The location for the new module defaults to the global
      (setq result
            (read-from-minibuffer
             "New OOP module to create \(e.g. /tmp/dev/New::Mod\): "
-            initial keymap nil history nil nil))
+            initial-prompt keymap nil history nil nil))
      ;; remove accidentally typed ".pm"
      (setq result (replace-regexp-in-string "\.pm$" "" result))
      (setq filename
@@ -1717,10 +1739,12 @@ The location for the new module defaults to the global
   (if perlnow-trace (perlnow-message "Calling perlnow-object-module"))
   (require 'template)
   (setq perlnow-perl-package-name package-name) ; global used to pass value into template
-  (let* ((filename (perlnow-full-path-to-module incspot package-name))
+  (let* ((original-file (buffer-file-name))
+         (filename (perlnow-full-path-to-module incspot package-name))
          (ret
           (perlnow-create-with-template filename perlnow-perl-object-module-template))
          )
+    (perlnow-set-associated-code-pointers original-file filename)
     (if perlnow-trace (perlnow-closing-func))
     ret))
 
@@ -1732,10 +1756,17 @@ The location for the new module defaults to the global
 This is a wrapper function that uses the `perlnow-cpan-style' setting
 to determine how to work."
   (interactive
-   (let ((default-directory perlnow-dev-location))
+   (let (
+         (default-directory perlnow-dev-location)
+   ;; TODO maybe instead:
+;;          (default-directory
+;;            (or (perlnow-one-up (perlnow-project-rooot))
+;;                perlnow-dev-location))
+         )
      (call-interactively 'perlnow-prompt-for-cpan-style)))
   (if perlnow-trace (perlnow-message "Calling perlnow-cpan-module"))
-  (let* ((func-str    (concat "perlnow-" perlnow-cpan-style))
+  (let* ((original-file (buffer-file-name))
+         (func-str    (concat "perlnow-" perlnow-cpan-style))
          (func-symbol (read (eval func-str))))
     ;; Should be one of these (intentionally not checking this here):
     ;;   perlnow-h2xs
@@ -1744,6 +1775,7 @@ to determine how to work."
     (if perlnow-debug
         (message "perlnow-cpan-module cmd: %s %s %s " func-str dev-location package-name))
     (funcall func-symbol dev-location package-name)
+    (perlnow-set-associated-code-pointers original-file)
     (if perlnow-trace (perlnow-closing-func))
     ))
 
@@ -1757,7 +1789,12 @@ double-colon separated package name form\)."
   ;; default-directory momentarily, then restore it. Uses the dynamic scoping
   ;; of elisp's "let" (which is more like perl's "local" than perl's "my").
   (interactive
-   (let ((default-directory perlnow-dev-location))
+   (let (
+         (default-directory perlnow-dev-location))
+   ;; TODO maybe instead:
+;;          (default-directory
+;;            (or (perlnow-one-up (perlnow-project-rooot))
+;;                perlnow-dev-location))
      (call-interactively 'perlnow-prompt-for-cpan-style)))
   (if perlnow-trace (perlnow-message "Calling perlnow-h2xs"))
   (setq dev-location (perlnow-fixdir dev-location))
@@ -1813,7 +1850,12 @@ module-starter will create the \"staging area\"\) and the PACKAGE-NAME
   ;; default-directory momentarily, then restore it.
   ;; Uses the dynamic scoping of elisp's "let"
   (interactive
-   (let ((default-directory perlnow-dev-location))
+   (let (
+         (default-directory perlnow-dev-location))
+   ;; TODO maybe instead:
+;;          (default-directory
+;;            (or (perlnow-one-up (perlnow-project-rooot))
+;;                perlnow-dev-location))
      (call-interactively 'perlnow-prompt-for-cpan-style)))
   (if perlnow-trace (perlnow-message "Calling perlnow-module-starter"))
   (setq cpan-location (perlnow-fixdir cpan-location))
@@ -1949,7 +1991,12 @@ module-starter will create the \"staging area\"\) and the PACKAGE-NAME
   ;; default-directory momentarily, then restore it.
   ;; Uses the dynamic scoping of elisp's "let"
   (interactive
-   (let ((default-directory perlnow-dev-location))
+   (let (
+         (default-directory perlnow-dev-location))
+   ;; TODO maybe instead:
+;;          (default-directory
+;;            (or (perlnow-one-up (perlnow-project-rooot))
+;;                perlnow-dev-location))
      (call-interactively 'perlnow-prompt-for-cpan-style)))
   (if perlnow-trace (perlnow-message "Calling perlnow-milla"))
   (setq cpan-location (perlnow-fixdir cpan-location))
@@ -3925,7 +3972,7 @@ simple to avoid returning false positives."
 
 ;; simple variant of package-name scraping, to get the incspot (done frequently)
 (defun perlnow-incspot-if-module ()
-sa  "If the current buffer is a perl module, return the incspot.
+  "If the current buffer is a perl module, return the incspot.
 Otherwise, return nil."
   (let (package-name file-name file-location lib-loc incspot)
     (setq incspot
@@ -4559,7 +4606,7 @@ that contains the file."
       (if perlnow-trace (perlnow-closing-func))
       lib-loc))
 
-  (defun perlnow-package-from-use-line ()
+(defun perlnow-package-from-use-line ()
     "When run on a script file, tries to identify the key use line.
 A script, particularly one generated with perlnow, will often
 have an important module dependency, e.g. a module developed
@@ -5838,8 +5885,10 @@ a module's incspot." ;; or a project root, which is more to the point
 ;;
 
 ;; TODO 
-;; experimented with this idea, but commented out.  Fix or drop, *REVISE DOCS*:
 ;;   o  Avoid returning $HOME as a project root: swap-in catchall
+;;   (( experimented with this idea, but commented out.  Fix or drop, *REVISE DOCS* ))
+;;   (( brought it back -- when? -- and fixed it up.  all tests pass. ))
+
 (defun perlnow-project-root ( &optional location )
   "Find the root of the project tree related to the current buffer.
 If given a LOCATION, uses that as a starting point instead.
@@ -5856,6 +5905,9 @@ value.
 If `perlnow-project-root-catchall' has been set, this will use this value 
 if we somehow got the idea that $HOME is the project-root.  \(Doing recursive 
 scans from the user's home is rarely a good idea\)."
+;; TODO isn't that fixing the problem in the wrong places, though?
+;;      if you can find the trio in $HOME without recursive scans, why not?
+;;      or better: if you can *stop doing recursive scans*?
   (if perlnow-trace (perlnow-message "Calling perlnow-project-root"))
   (let ( file  file-loc  project-root )
     ;; if an override is defined, just use it and skip everything else.
@@ -5891,9 +5943,15 @@ scans from the user's home is rarely a good idea\)."
                     )))
            ))
     ;; Refuse to use $HOME as a project-root (unless it was defined that way in catchall)
-;;     (cond ((string-match (concat "^" (perlnow-fixdir "$HOME") "$") project-root)
-;;            (setq project-root perlnow-project-root-catchall)
-;;            ))
+    (cond (project-root
+           (cond ((string-match (concat "^" (perlnow-fixdir "$HOME") "$") project-root)
+                  (message "WARNING: perlnow-project-root found home directory, using perlnow-project-root-catchall")
+                  (setq project-root perlnow-project-root-catchall)
+                  )))
+          (t
+           (message "WARNING: perlnow-project-root has not found anything, using perlnow-project-root-catchall")
+           (setq project-root perlnow-project-root-catchall)
+           ))
     (if perlnow-debug
         (message "perlnow-project-root returns: %s" project-root))
     (if perlnow-trace (perlnow-closing-func))
@@ -5932,21 +5990,14 @@ A given file name is expected to include the full-path."
                                  (t ;; module, or...
                                   (setq package-name (perlnow-get-package-name-from-module))
                                   (perlnow-get-incspot package-name fileloc))))
-
-
-                     ;; TODO check if fallback is defined using incspot.
-                     ;;      if it isn't we can still use it, even if we have no incspot...
-                     ;;      otherwise, experiment with using the catchall? 
-                     ;;      which might or might not work with fileloc...
-                     ;;      Q: is fileloc always available?  what about, e.g., test select menu?
-
                      (cond ((not incspot)
-                            (message "WARNING: was not able to determine incspot, perlnow-project-root failed")
+                            (message
+                             "perlnow-project-root-from-file could not find pr for file: %s" file)
                             nil)
                            (t ;; have incspot defined
                             ;; guessing that one-up works: gotta do something for non-cpan, non-git case
                             ;;   (setq project-root (perlnow-one-up incspot))
-                            ;; TODO POINT B -- use perlnow-project-root-fallback here, *instead* of that hack.
+                            ;; EXPERIMENTAL using perlnow-project-root-fallback here (instead of hardcoded one-up)
                             (setq project-root (perlnow-expand-fallback incspot fileloc))
                             ))
                      ))))
@@ -5956,30 +6007,41 @@ A given file name is expected to include the full-path."
       (goto-char  initial-point)
       project-root)))
 
-
-;; TODO if incspot/fileloc not provided, and there's a tag in the fallback... warn and return nil?
 (defun perlnow-expand-fallback (&optional incspot fileloc)
   "Substitutes values for place-holders in `perlnow-project-root-fallback'.
 In addtion to envars like $HOME, we allow some \"pseudoenvars\"
 in the \"fallback\" string, such as $INCSPOT and $FILELOC.  If
-values for INCSPOT and/or FILELOC are supplied as arguments, this 
-substitutes them for the corresponding pseudoenvars.  This also 
-performs a call to \\[perlnow-fixdir] before returning the modified 
-fallback."
+values for INCSPOT and/or FILELOC are supplied as arguments, this
+substitutes them for the corresponding pseudoenvars, then runs
+\\[perlnow-fixdir] on the result.  If a psueudoenvar is used
+without a value to substitute, this will warn, and return nil."
   (let ((fallback perlnow-project-root-fallback)
         (incspot-tag-pat "\\$INCSPOT")
         (fileloc-tag-pat "\\$FILELOC")
         )
-    (cond (incspot
-           (setq fallback
-                 (replace-regexp-in-string incspot-tag-pat incspot fallback t))
-           ))
-    (cond (fileloc
-           (setq fallback
-                 (replace-regexp-in-string fileloc-tag-pat fileloc fallback t))
-           ))
-    (setq fallback (perlnow-fixdir fallback))
-  ))
+    (cond ((string-match incspot-tag-pat fallback)
+           (cond (incspot
+                  (setq fallback
+                        (replace-regexp-in-string incspot-tag-pat incspot fallback t))
+                  (setq fallback (perlnow-fixdir fallback)) ;; swaps in default-directory if nil...
+                  )
+                 (t ;; no incspot value supplied
+                  (message "WARNING: perlnow-expand-fallback not given incspot value for %s" fallback)
+                  (setq fallback nil)
+                  )))
+          ((string-match fileloc-tag-pat fallback)
+           (cond (fileloc
+                  (setq fallback
+                        (replace-regexp-in-string fileloc-tag-pat fileloc fallback t))
+                  (setq fallback (perlnow-fixdir fallback)) ;; swaps in default-directory if nil...
+                  )
+                 (t
+                  (message "WARNING: perlnow-expand-fallback not given fileloc value for %s" fallback)
+                  (setq fallback nil)
+                  ))))
+    ))
+
+
 
 ;; Used in only two places: perlnow-scan-tree-for-script-loc, perlnow-scan-tree-for-t-loc
 (defun perlnow-scan-tree-for-directory ( start names-list &optional type short-circuit-opt )
@@ -6073,7 +6135,7 @@ If project-root is not given, runs \\[perlnow-project-root]."
   (let (project-root  lib-loc  package-name  candidate)
     (cond
      ;; if we're inside a module, just use it's incspot
-     ((lib-loc perlnow-incspot-if-module))
+     ((setq lib-loc (perlnow-incspot-if-module)))
      ;; not in a module, but we can find a project-root
      ((setq project-root (perlnow-project-root))
       ;; (setq pm-list (directory-files-recursively project-root "\\.pm$" t))
