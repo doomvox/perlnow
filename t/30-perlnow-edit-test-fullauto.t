@@ -52,7 +52,7 @@ sub terranean {
  (lambda ()
    (if (file-exists-p "test-init.el")
        (load-file "test-init.el"))
-   ;; (perlnow-tron)
+   (perlnow-tron)
    (let* (
           (test-loc (test-init))
           )
