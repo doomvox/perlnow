@@ -636,53 +636,76 @@ treated in the same way."
 ;; user options (defcustom)
 ;; 
 
-;; TODO these two vars are new and experimental, as of August 13, 2017  
+;; TODO new and experimental, as of August 13, 2017  
 (defcustom perlnow-project-root-override nil
   "If defined, this will always be used as a project root.
-It's recommended to leave this set to nil if possible, 
-to let perlnow search for an appropriate project-root.")
-
-(defcustom perlnow-project-root-fallback "$INCSPOT/.."
-  "If defined, this will be used as a project root when necessary.
-When possible, perlnow will search for a local project root to 
-use instead of this setting \(often easy to find, e.g. in the case of 
-cpan-style development and/or git-controlled projects\).
-The psuedo-envars $INCSPOT and $FILELOC are allowed in this definition
-which needs to be dynamically expanded, and will not be useful otherwise.
-See \\[perlnow-expand-fallback].")
+If you leave this set to nil, perlnow will search for an
+appropriate project-root.  If that search process isn't working
+for you, you can just tell us instead.")
 
 (defcustom perlnow-project-root-catchall (perlnow-fixdir "$HOME/dev")
-  "When the \"fallback\" isn't going to work, this is the real last-ditch.
-See `perlnow-project-root-fallback'.  With some luck, you'll
-never need this setting, but if you lose track of where something
-went, you might look for it in here.  Note: at present this is
-likely to be invoked only in cases where \"fallback\" is defined
-in terms of $INCSPOT and perlnow can't get a value for that for
-some reason.  The psuedo-envars $INCSPOT and $FILELOC should not
-be used in this definition (a stable envar like $HOME is fine).")
+  "When we can't figure out where to put something, it may get put here.
+E.g. see `perlnow-project-root-from-lib'.")
 
-;; TODO 
-;; Investigate making perlnow-script-location and perlnow-pm-location dynamically
-;; redefined as the last used locations (for example).
+;; Standard project structure:
+;; 
+;;                   |--- lib 
+;;                   |
+;;   project_root ---|
+;;                   |--- t 
+;;                   |
+;;                   |
+;;                   |--- bin
+;;
+;; (The "my 3 sons" variant presumes this layout, but allows some variation in names.)
+
+(defcustom perlnow-project-root-from-lib "$PN_INCSPOT/.."
+  "Relationship between lib location and project root.
+Psuedo-envars such as $PN_INCSPOT are allowed in this definition
+though they need to be dynamically expanded by \\[perlnow-expand-path].")
+;; TODO maybe, maybe not:
+;; When possible, perlnow will search for a local project root to 
+;; use instead of this setting \(often easy to find, e.g. in the case of 
+;; cpan-style development and/or git-controlled projects\).
+
+(defcustom perlnow-project-root-from-bin "$PN_BIN/.."
+  "Relationship between lib location and project root.
+Psuedo-envars such as $PN_BIN are allowed in this definition
+though they need to be dynamically expanded by \\[perlnow-expand-path].")
+
+(defcustom perlnow-project-root-from-t "$PN_TLOC/.."
+  "Relationship between lib location and project root.
+Psuedo-envars such as $PN_TLOC are allowed in this definition
+though they need to be dynamically expanded by \\[perlnow-expand-path].")
+
+;; Used in perlnow-stepup-to-project-root with perlnow-stepup-path-to-matching-name
+(defcustom perlnow-script-location-names (list "script" "bin" "scripts")
+  "List of likely names for script directories, in order of priority.")
+
+;; Used in perlnow-stepup-to-project-root with perlnow-stepup-path-to-matching-name
+(defcustom perlnow-t-location-names      (list "t")
+  "List of likely names for test file directories, in order of priority.")
+
+;; not as heavily used as the above two
+(defcustom perlnow-lib-location-names    (list "lib")
+  "List of likely names for module lib directories, in order of priority.")
+
+;; used as default-directory by perlnow-cpan-module and relatives
+(defcustom perlnow-dev-location (perlnow-fixdir "$HOME/dev")
+  "This is the default location to work on CPAN-style distributions.")
 
 ;; Note: perlnow-script-location and perlnow-pm-location are used
-;; by creation commands (they're used with read-file-name to
-;; resolve relative locations).
+;; by creation commands, to resolve relative locations with read-file-name.
 (defcustom perlnow-script-location
-  (perlnow-fixdir (concat perlnow-project-root-catchall "bin"))
+  (perlnow-fixdir (concat perlnow-dev-location "bin"))
   "This is the default location to stash new perl scripts.")
 (perlnow-mkpath perlnow-script-location)
 
 ;; Used by perlnow-module, perlnow-object-module just as an "initial" setting for the prompt
-;; (also used as default-directory  by the nearly unused perlnow-module-two-questions)
 (defcustom perlnow-pm-location
-  (perlnow-fixdir (concat perlnow-project-root-catchall "lib"))
+  (perlnow-fixdir (concat perlnow-dev-location "lib"))
   "This is the default location to stash new perl modules.")
 (perlnow-mkpath perlnow-pm-location)
-
-;; used as default-directory by perlnow-cpan-module and relatives
-(defcustom perlnow-dev-location perlnow-project-root-catchall
-  "This is the default location to work on CPAN-style distributions.")
 
 (defcustom perlnow-executable-setting ?\110
   "The user-group-all permissions used to make a script executable.")
@@ -3392,6 +3415,37 @@ Checks mode and buffer name."
     (if perlnow-trace (perlnow-closing-func))
     retval))
 
+(defun perlnow-dired-buffer-p ()
+  "Return nil if not a dired buffer, and non-nil if it is.
+Actually, this just passes through the return from \\[perlnow-dired-buffer-dir],
+which is probably what you're always going to want to use."
+  (if perlnow-trace (perlnow-message "Calling perlnow-dired-buffer-p"))
+  (let ((dir (perlnow-dired-buffer-dir)))
+    (if perlnow-trace (perlnow-closing-func))
+    dir))
+
+(defun perlnow-dired-buffer-dir ()
+  "If this is a dired buffer, return the dir it eds.
+Returns nil if not a dired buffer. If there's more than one
+associated location, just returns the first of them."
+  (if perlnow-trace (perlnow-message "Calling perlnow-dired-buffer-dir"))
+  (let ( location ) 
+    ;; if dired buffer use that to get location
+    (cond ((equal (symbol-name major-mode) "dired-mode")
+         (cond ((listp dired-directory)
+                (setq location (car dired-directory))
+                )
+               (t
+                (setq location dired-directory)
+                         )))
+          (t
+           (setq location nil)
+           ))
+    (if perlnow-trace (perlnow-closing-func))
+    location))
+
+
+
 ;; end buffer probes
 
 ;;========
@@ -3556,7 +3610,7 @@ buffer when metadata was called:
              (testfile (concat path selected-file-compact)))
         (setq package-name (perlnow-module-from-t-file testfile t))
         (setq testloc-absolute (perlnow-t-dir-from-t testfile))
-        (perlnow-incspot-from-t testfile)
+        (perlnow-incspot-from-t testfile) ;; TODO is this result thrown away?
 
         (setq file-name (perlnow-full-path-to-module incspot package-name))
         (setq file-location file-name)
@@ -4536,6 +4590,7 @@ Returns a location where the FILE-RELATIVE path starts."
   (if perlnow-trace (perlnow-closing-func))
   dirs))
 
+;; Note: using this for my3sons experiment as well
 (defun perlnow-dirs (location &optional all-opt)
   "A simple directory listing of given LOCATION, limited to sub-directories.
 Always skips the special directories \".\" and \"..\".
@@ -4877,7 +4932,7 @@ and the NAMESTYLE \(see `perlnow-test-policy-naming-style'\)."
     (setq testloc-absolute
           (perlnow-testloc-from-policy testloc dotdef namestyle));;
 
-    (if perlnow-debug (message "testloc-absolute: %s" testloc-absolute))
+    (if perlnow-debug (message "SLOPPED testloc-absolute: %s" testloc-absolute))
 
     ;; TODO break the following out as a test-file-from-policy? (or test-name?)
     (cond ((string= namestyle "hyphenized")  ;; only with modules
@@ -5889,7 +5944,8 @@ a module's incspot." ;; or a project root, which is more to the point
 ;;   (( experimented with this idea, but commented out.  Fix or drop, *REVISE DOCS* ))
 ;;   (( brought it back -- when? -- and fixed it up.  all tests pass. ))
 
-(defun perlnow-project-root ( &optional location )
+(defun perlnow-project-root-firsttry ( &optional location )
+;; (defun perlnow-project-root ( &optional location )
   "Find the root of the project tree related to the current buffer.
 If given a LOCATION, uses that as a starting point instead.
 Normally, this uses the current buffer's file as a starting point, but:
@@ -5902,7 +5958,7 @@ name \(easy if this is a pm file itself\), and works with that to
 find the incspot for the module.
 If `perlnow-project-root-override' has been set, this will always use that 
 value.  
-If `perlnow-project-root-catchall' has been set, this will use this value 
+If `perlnow-project-root-override' has been set, this will use this value 
 if we somehow got the idea that $HOME is the project-root.  \(Doing recursive 
 scans from the user's home is rarely a good idea\)."
 ;; TODO isn't that fixing the problem in the wrong places, though?
@@ -5942,14 +5998,16 @@ scans from the user's home is rarely a good idea\)."
                     (setq project-root (perlnow-vote-on-candidates project-roots))
                     )))
            ))
-    ;; Refuse to use $HOME as a project-root (unless it was defined that way in catchall)
     (cond (project-root
+           ;; Refuse to use $HOME as a project-root (unless it was defined that way in catchall)
            (cond ((string-match (concat "^" (perlnow-fixdir "$HOME") "$") project-root)
-                  (message "WARNING: perlnow-project-root found home directory, using perlnow-project-root-catchall")
+                  (message
+                   "WARNING: using perlnow-project-root-catchall as project-root rather than $HOME")
                   (setq project-root perlnow-project-root-catchall)
-                  )))
+                  ))
+           )
           (t
-           (message "WARNING: perlnow-project-root has not found anything, using perlnow-project-root-catchall")
+           (message "WARNING: no project-root found, using perlnow-project-root-catchall")
            (setq project-root perlnow-project-root-catchall)
            ))
     (if perlnow-debug
@@ -5979,26 +6037,36 @@ A given file name is expected to include the full-path."
             (cond ((perlnow-find-git-location file))
                   ((perlnow-find-cpan-style-staging-area))
                   (t ;; try to identify a related incspot, presume the project level is one-up
+
+                   ;; TODO breakout as new function ?  perlnow-incspot-from-anything
+
                    (let ( package-name  incspot  fileloc ) 
                      (setq fileloc (file-name-directory file))
                      (setq incspot
-                           (cond ((perlnow-script-p)
-                                  (perlnow-incspot-from-script-for-noncpan-nongit)
-                                  )
+                           (cond (;; module
+                                  (setq package-name (perlnow-get-package-name-from-module))
+                                  (perlnow-get-incspot package-name fileloc))
+                                 ((perlnow-script-p)
+                                  (perlnow-incspot-from-script-for-noncpan-nongit))
                                  ((perlnow-test-p)
                                   (perlnow-incspot-from-t file))
-                                 (t ;; module, or...
-                                  (setq package-name (perlnow-get-package-name-from-module))
-                                  (perlnow-get-incspot package-name fileloc))))
+                                 ((perlnow-test-select-menu-p)
+                                  ;; get the module name from the test file name
+                                  (let* ((selected-file-compact (perlnow-select-file-from-current-line))
+                                         (path (perlnow-get-path-from-markedup-name selected-file-compact))
+                                         (testfile (concat path selected-file-compact)))
+                                    (setq package-name (perlnow-module-from-t-file testfile t))
+                                    (perlnow-incspot-from-t testfile)))
+                                 (t ;; if something else...  
+                                  default-directory) ;; TODO okay guess? 
+                                 ))
                      (cond ((not incspot)
                             (message
                              "perlnow-project-root-from-file could not find pr for file: %s" file)
                             nil)
                            (t ;; have incspot defined
-                            ;; guessing that one-up works: gotta do something for non-cpan, non-git case
-                            ;;   (setq project-root (perlnow-one-up incspot))
-                            ;; EXPERIMENTAL using perlnow-project-root-fallback here (instead of hardcoded one-up)
-                            (setq project-root (perlnow-expand-fallback incspot fileloc))
+                            (setq project-root
+                                  (perlnow-expand-path perlnow-project-root-from-lib incspot nil nil fileloc))
                             ))
                      ))))
       ;; only a fool trusts save-excursion
@@ -6007,41 +6075,63 @@ A given file name is expected to include the full-path."
       (goto-char  initial-point)
       project-root)))
 
-(defun perlnow-expand-fallback (&optional incspot fileloc)
-  "Substitutes values for place-holders in `perlnow-project-root-fallback'.
+(defun perlnow-expand-path (&optional path incspot tloc bin fileloc)
+  "Substitutes values for place-holders in PATH.
+If not given, PATH defaults to `perlnow-project-root-from-lib'.
 In addtion to envars like $HOME, we allow some \"pseudoenvars\"
-in the \"fallback\" string, such as $INCSPOT and $FILELOC.  If
-values for INCSPOT and/or FILELOC are supplied as arguments, this
+in the path, such as $PN_INCSPOT and $PN_FILELOC.  
+If values for PN_INCSPOT and/or PN_FILELOC are supplied as arguments, this
 substitutes them for the corresponding pseudoenvars, then runs
 \\[perlnow-fixdir] on the result.  If a psueudoenvar is used
 without a value to substitute, this will warn, and return nil."
-  (let ((fallback perlnow-project-root-fallback)
-        (incspot-tag-pat "\\$INCSPOT")
-        (fileloc-tag-pat "\\$FILELOC")
+  (unless path
+    (setq path perlnow-project-root-from-lib))
+  (let ((incspot-tag-pat "\\$PN_INCSPOT")
+        (fileloc-tag-pat "\\$PN_FILELOC")
+        (tloc-tag-pat    "\\$PN_TLOC")
+        (bin-tag-pat     "\\$PN_BIN")  
         )
-    (cond ((string-match incspot-tag-pat fallback)
+    (cond ((string-match incspot-tag-pat path)
            (cond (incspot
-                  (setq fallback
-                        (replace-regexp-in-string incspot-tag-pat incspot fallback t))
-                  (setq fallback (perlnow-fixdir fallback)) ;; swaps in default-directory if nil...
+                  (setq path
+                        (replace-regexp-in-string incspot-tag-pat incspot path t))
+                  (setq path (perlnow-fixdir path)) ;; swaps in default-directory if nil...
                   )
                  (t ;; no incspot value supplied
-                  (message "WARNING: perlnow-expand-fallback not given incspot value for %s" fallback)
-                  (setq fallback nil)
+                  (message "WARNING: perlnow-expand-path not given incspot value for %s" path)
+                  (setq path nil)
                   )))
-          ((string-match fileloc-tag-pat fallback)
+          ((string-match tloc-tag-pat path)
+           (cond (tloc
+                  (setq path
+                        (replace-regexp-in-string tloc-tag-pat tloc path t))
+                  (setq path (perlnow-fixdir path)) ;; swaps in default-directory if nil...
+                  )
+                 (t ;; no tloc value supplied
+                  (message "WARNING: perlnow-expand-path not given tloc value for %s" path)
+                  (setq path nil)
+                  )))
+          ((string-match bin-tag-pat path)
+           (cond (bin
+                  (setq path
+                        (replace-regexp-in-string bin-tag-pat bin path t))
+                  (setq path (perlnow-fixdir path)) ;; swaps in default-directory if nil...
+                  )
+                 (t ;; no bin value supplied
+                  (message "WARNING: perlnow-expand-path not given bin value for %s" path)
+                  (setq path nil)
+                  )))
+          ((string-match fileloc-tag-pat path)
            (cond (fileloc
-                  (setq fallback
-                        (replace-regexp-in-string fileloc-tag-pat fileloc fallback t))
-                  (setq fallback (perlnow-fixdir fallback)) ;; swaps in default-directory if nil...
+                  (setq path
+                        (replace-regexp-in-string fileloc-tag-pat fileloc path t))
+                  (setq path (perlnow-fixdir path)) ;; swaps in default-directory if nil...
                   )
                  (t
-                  (message "WARNING: perlnow-expand-fallback not given fileloc value for %s" fallback)
-                  (setq fallback nil)
+                  (message "WARNING: perlnow-expand-path not given fileloc value for %s" path)
+                  (setq path nil)
                   ))))
     ))
-
-
 
 ;; Used in only two places: perlnow-scan-tree-for-script-loc, perlnow-scan-tree-for-t-loc
 (defun perlnow-scan-tree-for-directory ( start names-list &optional type short-circuit-opt )
@@ -6083,12 +6173,14 @@ but makes no attempt to find all. *experimental* "
 
 (defun perlnow-scan-tree-for-t-loc ()
   "Look for the \"t\" directory in current tree.
-(( TODO add remarks about doing a create if none found ))
+\(\( TODO add remarks about doing a create if none found \)\)
 "
   (if perlnow-trace (perlnow-message "Calling perlnow-scan-tree-for-t-loc"))
   (let ( project-root   target-list   t-locs   project-t-locs   t-loc  loc-count )
     (setq project-root (perlnow-project-root))
-    (setq target-list (list "t"))  ;; TODO breakout as defvar, make sure used everywhere
+;;    (setq target-list (list "t"))            
+    (setq target-list perlnow-t-location-names) 
+
     (setq t-locs (perlnow-scan-tree-for-directory project-root target-list "a" t))
     (setq project-t-locs (perlnow-only-in-here t-locs project-root))
     (setq loc-count (length project-t-locs))
@@ -6117,7 +6209,7 @@ I.e. we exclude one's that appear to belong to another project root.
 If project-root is not given, runs \\[perlnow-project-root]."
   (if perlnow-trace (perlnow-message "Calling perlnow-only-in-here"))
   (unless project-root
-    (project-root (perlnow-project-root)))
+    (perlnow-project-root (perlnow-project-root)))
   (let (intra-project-locs)
   (dolist (candidate locations)
     (let (candidate-project-root)
@@ -6132,7 +6224,7 @@ If project-root is not given, runs \\[perlnow-project-root]."
 (defun perlnow-scan-tree-for-lib-loc ()
   "Look for the \"lib\" directory in current tree."
   (if perlnow-trace (perlnow-message "Calling perlnow-scan-tree-for-lib-loc"))
-  (let (project-root  lib-loc  package-name  candidate)
+  (let (  project-root  lib-loc  package-name  candidate  )
     (cond
      ;; if we're inside a module, just use it's incspot
      ((setq lib-loc (perlnow-incspot-if-module)))
@@ -6230,6 +6322,235 @@ Checks the default-directory, if loc is nil."
       (cd save-dir)
       t-files)))
 
+
+;;;---------
+;;  ____
+;;; code name: "MY_3_SONS"
+;;; (replacements for "scan tree" and "fan out" concepts)
+
+;; my3sons
+;;  simpler substitution for perlnow-scan-tree-for-directory
+(defun perlnow-stepup-path-to-matching-name (path search-list)
+  "Find a name from the SEARCH-LIST in the PATH.
+The SEARCH-LIST is a listing of names we're interested in in order of 
+priority.  The PATH is a full file-system path which is expected to 
+contain a match at some level for one of the names in SEARCH-LIST.
+Returns the path up to and including the level that matched.
+If there was no match, returns nil."
+  (if perlnow-trace (perlnow-message "Calling perlnow-stepup-path-to-matching-name"))
+  (let* ((slash perlnow-slash)
+         (home-dir-pat (concat "^" (perlnow-fixdir "$HOME")))) 
+    (let ( home-dir-p  trimmed-path  levels  level  new-levels  new-path )
+      (if (string-match home-dir-pat path)
+          (setq home-dir-p t))
+      (setq trimmed-path
+            (replace-regexp-in-string home-dir-pat "" path t))
+      (catch 'OUT
+        (dolist (name search-list)
+          (setq levels (reverse (split-string trimmed-path slash)))
+          (while (setq level (pop levels))
+            (message "level: %s" (pp-to-string level)) ;; DEBUG 
+            (cond ((string= name level)
+                   (push name levels)
+                   (throw 'OUT levels)
+                   )))))
+      (setq new-path
+             (mapconcat 'identity (reverse levels) perlnow-slash))
+      ;; prepend $HOME only if it was removed earlier
+      (if home-dir-p
+          (setq new-path (concat (perlnow-fixdir "$HOME") new-path)))
+      (if perlnow-trace (perlnow-closing-func))
+      new-path)))
+;;
+;; (perlnow-stepup-path-to-matching-name "/home/doom/dev/t/newones/blah/" (list "t"))
+;;   => "/home/doom/dev/t"
+;; (perlnow-stepup-path-to-matching-name "/home/doom/dev/proj_a/script/blah/"
+;;                                       (list "bin" "script" "scripts"))
+;;  => "/home/doom/dev/proj_a/script"
+
+
+;; (defun perlnow-project-root-experimental ( &optional location )
+(defun perlnow-project-root ( &optional location )
+  "Find the root of the project tree related to the current buffer.
+EXPERIMENTAL.  This is a wrapper around \\[perlnow-setup-to-project-root],
+too swap it in so that older code will try to use it."
+  (if perlnow-trace (perlnow-message "Calling perlnow-project-root"))
+  (let ( file  file-loc  project-root )
+    ;; if an override is defined, just use it and skip everything else.
+    (cond (perlnow-project-root-override
+           (setq project-root perlnow-project-root-override))
+          (t
+           (setq project-root (perlnow-stepup-to-project-root location)) ;; was "start-file"?
+           ))
+    (if perlnow-debug
+        (message "EXP perlnow-project-root returns: %s" project-root))
+    (if perlnow-trace (perlnow-closing-func))
+    project-root))
+
+
+;; This version uses the assumption of the my3son structure, looking for
+;; a directory level named correctly for the type of the current file,
+;; or if there's no perl file to work from (e.g. we're in a dired buffer),
+;; it will look for symptoms of a cpan-style and/or git-controlled project,
+;; and otherwise will start looking at the names of directories in all the
+;; levels above the current one... (it does not ever try to do anything
+;; like a recursive fan-out, though: the presumption is there's a project-root
+;; that to contain the trio of directories-- though not all of them may exist yet).
+(defun perlnow-stepup-to-project-root (&optional start-file)
+  "Climbs the tree looking for a likely-looking project-root.
+Begins looking at optional START-FILE or at current buffer's file or location."
+  (if perlnow-trace (perlnow-message "Calling perlnow-stepup-to-project-root"))
+  (unless start-file (setq start-file (buffer-file-name)))
+  (let ((pr-from-lib perlnow-project-root-from-lib) ;; "$PN_INCSPOT/.."
+        (pr-from-bin perlnow-project-root-from-bin) ;; "$PN_BIN/.."
+        (pr-from-t   perlnow-project-root-from-t)   ;; "$PN_TLOC/.."
+        (script-name-list  perlnow-script-location-names)
+        (t-loc-name-list   perlnow-t-location-names)
+        ;; (lib-name-list     perlnow-lib-location-names)
+        )
+    (let ( package-name  incspot  fileloc loc t-loc bin-loc  project-root) 
+      (setq fileloc (file-name-directory start-file))
+      (setq project-root 
+            (cond
+             ;; this is very reliable, do this first (if not a file buffer, might be flakey?)
+             ((setq project-root (perlnow-find-cpan-style-staging-area     fileloc)))
+             ;; this *might* be less reliable... consider moving it down the stack
+             ((setq project-root (perlnow-find-git-location                fileloc))) 
+             ((setq package-name (perlnow-get-package-name-from-module start-file))
+              (setq incspot
+                    (perlnow-get-incspot package-name fileloc))
+              (perlnow-expand-path pr-from-lib incspot nil nil fileloc)) 
+             ((perlnow-script-p)
+              (setq bin-loc
+                    (perlnow-stepup-path-to-matching-name start-file
+                                                          perlnow-script-location-names))
+              (perlnow-expand-path pr-from-bin nil nil bin-loc fileloc)) 
+             ((perlnow-test-p)
+              (setq t-loc
+                    (perlnow-stepup-path-to-matching-name start-file
+                                                          perlnow-t-location-names))
+              (perlnow-expand-path pr-from-t nil t-loc nil fileloc))
+             ((perlnow-test-select-menu-p)
+              (let* ((selected-file-compact (perlnow-select-file-from-current-line))
+                     (path (perlnow-get-path-from-markedup-name selected-file-compact))
+                     (test-file (concat path selected-file-compact)))
+                (setq t-loc
+                      (perlnow-stepup-path-to-matching-name test-file
+                                                            perlnow-t-location-names))
+                (perlnow-expand-path pr-from-t nil t-loc nil fileloc)))
+             ( ;; working from a directory (e.g. dired case && noncpan/nongit)
+               ;; so we don't know which list of dir names to use--
+               ;; the "crazy-scoring" routine tries to use all of them.
+              (setq loc (or (perlnow-dired-buffer-dir) default-directory))
+              ;;TODO NEXT below:
+              (perlnow-stepup-pr-from-crazy-scoring-strategies loc)
+              )
+             (t 
+              (message "WARNING: perlnow-stepup-to-project-root did not get project-root.")
+              nil) ;; TODO use fallback/catchall? 
+             ))
+      (if perlnow-trace (perlnow-closing-func))
+      project-root)))
+
+;; TODO also: look for dirs that contain *.pm files
+;; TODO also: look for dirs mentioned in the stash of lib->t stuff.
+;; 
+;;   Real reason this is a separate routine is not that it's 
+;;   crazy huge, and I might need to throw it away.
+
+(defun perlnow-stepup-pr-from-crazy-scoring-strategies ( &optional loc )
+  "Looks at all levels above the current one, to the project-root.
+Uses a scoring algorithm based on various hints: primarly the
+names of the directories found in each location.
+-- Eventually this may also look at the contents of the
+directories, e.g. looking for *.pm files to identify a lib,
+and so on."
+  ;; okay, so maybe I'm back-sliding a bit, and getting too fancy again.
+  ;; but I wanna do a scoring algorithm, and no one can stop me.
+  (unless loc (setq loc default-directory)) ;; a simple CYA maneuver
+  (let* ((slash perlnow-slash)
+         (home-dir-pat (concat "^" (perlnow-fixdir "$HOME")))
+         (script-names  perlnow-script-location-names)
+         (t-loc-names   perlnow-t-location-names)
+         (lib-names     perlnow-lib-location-names)
+         (names (append script-names t-loc-names lib-names))
+         (add 10)
+         ) 
+    (let ( home-dir-p  trimmed-path  levels  level  scores  score
+           l  i  level-path  local-dirs  )
+      (if (string-match home-dir-pat loc)
+          (setq home-dir-p t))
+      (setq trimmed-path
+            (replace-regexp-in-string home-dir-pat "" loc t))
+
+      (setq levels (reverse (split-string trimmed-path slash)))
+      (setq l (length levels)) ;; alternately, get count of slashes, don't bother to split
+      (setq scores (make-vector l 0)) ;; parallel vector of scores
+      (setq i 0)
+      (while (< i l) ;; TODO check limit
+        (setq level (pop levels)) ;; as written, need to remove levels as you go
+        (setq score (aref scores i))
+
+        ;; get path to this level
+        (setq level-path
+              (mapconcat 'identity (reverse levels) perlnow-slash))
+        (if home-dir-p
+            (setq level-path (concat (perlnow-fixdir "$HOME") level-path)))
+
+        ;; Examine the level, determine value to add
+
+        (setq local-dirs (perlnow-dirs level-path))
+        (message "COAL")
+        (message "local-dirs: %s" (pp-to-string local-dirs))
+
+        ;; loop over the local-dirs, add points for each match of a likely name
+        (dolist (loc (mapcar 'perlnow-last-path-level local-dirs))
+          (dolist (nameo names)
+            (message "000: loc: %s nameo: %s" loc nameo)
+            (cond ((string= loc nameo)
+                   (message "aaa")
+                   (setq score (+ score add))
+                   (message "bbb")
+                   (aset scores i score)
+                   (message "ccc")
+                   ))))
+        (setq i (1+ i))
+        (message "ZZZ")
+        ) ;; end while
+
+      (message "TRAIN")
+
+      ;; find i for maximum score
+      (setq i 0)
+      (let ( (max 0) max-i )
+        (while (< i l)
+          (setq score (aref scores i))
+          (cond ((> score max)
+                 (message "nnn")
+                 (setq max score)
+                 (message "mmm")
+                 (setq max-i i)
+                 (message "lll")
+                 ))
+          (setq i (1+ i)))  ;; end while
+
+        ;; convert max-i into a path to that level
+        (setq levels (reverse (split-string trimmed-path slash)))
+        (setq l (length levels))
+        (while (< i max-i)
+          (pop levels)
+          (setq i (+1 i)))
+        ) ;; end let max max-i
+      (setq level-path
+            (mapconcat 'identity (reverse levels) perlnow-slash))
+      (if home-dir-p
+          (setq level-path (concat (perlnow-fixdir "$HOME") level-path)))
+      (if perlnow-trace (perlnow-closing-func))
+      level-path)))
+
+;; (perlnow-stepup-pr-from-crazy-scoring-strategies "/home/doom/tmp/perlnow_test/t30/et_fa/lib/Bongos/")
+
+
 ;;;==========================================================
 ;;;  code-system probes (etc.)
 
@@ -6256,16 +6577,16 @@ falls back to just \"perl\"."
     (if perlnow-trace (perlnow-closing-func))
     how-to-perl))
 
-(defun perlnow-find-git-location ( &optional file-name )
+(defun perlnow-find-git-location ( &optional file-or-dir )
   "Returns the ancestral location where git control begins.
-Looks upward from the current file buffer (or the given FILE-NAME)
+Looks upward from the current file buffer (or the given FILE-OR-DIR)
 looking for the location containing a \".git\"."
   (if perlnow-trace (perlnow-message "Calling perlnow-find-git-location"))
   (let* ( git-loc ;; the return
          (buffname (buffer-file-name))
          (pnts-file (perlnow-select-read-full-file-name)) ;; nil if not select test buffer
          (input-file
-          (or file-name buffname pnts-file perlnow-associated-code perlnow-recent-pick-global))
+          (or file-or-dir buffname pnts-file perlnow-associated-code perlnow-recent-pick-global))
          (target-list (list ".git"))
          (pre-screen-pattern "^[.][^.][^.]+") ;; Just look at dot files
          )
@@ -6279,7 +6600,7 @@ looking for the location containing a \".git\"."
     (if perlnow-trace (perlnow-closing-func))
     git-loc))
 
-(defun perlnow-find-cpan-style-staging-area ( &optional file-name )
+(defun perlnow-find-cpan-style-staging-area ( &optional file-or-dir )
   "Determines if the current file buffer is located in an cpan-style tree.
 Should return the path to the current cpan-style staging area, or
 nil if it's not found.  The staging area is located by searching
@@ -6287,7 +6608,8 @@ upwards from the location of a file to a location with files that
 look like a cpan-style project (as currently implemented, it
 looks for at least one of \"Makefile.PL\", \"Build.PL\"\ or \"cpanfile\").
 This defaults to working on the current buffer's file \(if available\),
-but can use the optional FILE-NAME instead.  For the special case of a
+but can use the optional FILE-OR-DIR instead (and a directory
+should also work as a FILE-OR-DIR). For the special case of a
 \"*perlnow select test*\" buffer, it works with a file name extracted
 from the buffer."
   ;; Two important cases to cover are:
@@ -6298,7 +6620,7 @@ from the buffer."
          (buffname (buffer-file-name))
          (pnts-file (perlnow-select-read-full-file-name)) ;; nil if not select test buffer
          (input-file
-          (or file-name buffname pnts-file perlnow-associated-code perlnow-recent-pick-global))
+          (or file-or-dir buffname pnts-file perlnow-associated-code perlnow-recent-pick-global))
          (target-list (list "Makefile.PL" "Build.PL" "cpanfile"))
          (pre-screen-pattern "^[ltMBc]") ;; to constrain listing, but still include:
                                  ;;    lib, t, Makefile.PL, Build.PL, cpanfile
@@ -6318,9 +6640,11 @@ from the buffer."
     staging-area))
 
 (defun perlnow-find-location-with-target ( start-file target-files prescreen-pat )
-  "Looks for an ancestor of given FILE-NAME with one of TARGET-FILES.
+  "Looks for an ancestor of given START-FILE with one of TARGET-FILES.
 Uses PRESCREEN-PAT to limit the files that will be checked.
-Note: PRESCREEN-PAT should usually match all of TARGET-FILES."
+Note: PRESCREEN-PAT should usually match all of TARGET-FILES.
+Note: a directory should also work as a START-FILE."
+
 ;; TODO if it doesn't match any, should warn, and return nil
   (if perlnow-trace (perlnow-message "Calling perlnow-find-location-with-target"))
   (let* (
@@ -7268,6 +7592,7 @@ filename without the path, e.g. \"^t$\" could find \"/home/idjit/dev/t\".
 If START is nil, returns nil without signalling an error.
 Excludes anything named with a leading dot, unless INCLUDE-HIDDENS is t.
 Note: this is a wrapper around \\[directory-files-recursively]."
+  (if perlnow-trace (perlnow-message "Calling perlnow-recursive-file-listing"))
   (unless regexp (setq regexp ""))
   (let ( file-list  skip-pat )
     ;; match paths with .git or RCS in them 
@@ -7293,6 +7618,7 @@ Note: this is a wrapper around \\[directory-files-recursively]."
                          ))
                 ))
             (directory-files-recursively start regexp t))))
+    (if perlnow-trace (perlnow-closing-func))
     file-list))
 
 (defun perlnow-file-listing (loc &optional regexp type include-hiddens)
@@ -7307,6 +7633,7 @@ filename without the path, e.g. \"^t$\" could find \"/home/idjit/dev/t\".
 If LOC is nil, returns nil without signalling an error.
 Excludes anything named with a leading dot, unless INCLUDE-HIDDENS is t.
 Note: this is a wrapper around \\[directory-files]."
+  (if perlnow-trace (perlnow-message "Calling perlnow-file-listing"))
   (unless regexp (setq regexp ""))
   (let ( file-list  skip-pat )
     ;; match paths with .git or RCS in them 
@@ -7332,8 +7659,31 @@ Note: this is a wrapper around \\[directory-files]."
                          ))
                 ))
             (directory-files loc t regexp))))
+    (if perlnow-trace (perlnow-closing-func))
     file-list))
 
+(defun perlnow-last-path-level (path)
+  "Given full PATH, returns the last level of the PATH.
+I normally store PATHs with trailing slashes, but that interacts 
+badly with `file-name-nondirectory', when run on one of my full 
+paths it always just returns the whole path.  This routine 
+returns the location without the path to it, and when called on a file, 
+returns the file name sans path."
+  (if perlnow-trace (perlnow-message "Calling perlnow-last-path-level"))
+  (let* (
+         ;; remove trailing slash so file-name-directory & nondirectory can work
+         (tail-slash-pat (concat perlnow-slash "$"))
+         (path
+          (replace-regexp-in-string tail-slash-pat "" path))
+         ;; (path-to-path (file-name-directory    path))
+         (last-level (file-name-nondirectory path))
+         )
+    (if perlnow-trace (perlnow-closing-func))
+    last-level))
+;;(perlnow-last-path-level "/home/doom/End/Dust/Carnage/Rivaling/Cable/");; 
+;; Cable
+;; (perlnow-last-path-level "/home/doom/End/Dust/Carnage/Rivaling/Cable/gotit.pl")
+;; gotit.pl
 
 ;;------
 ;; list manipulation utilities
@@ -7577,7 +7927,6 @@ silently converts it to an empty string."
                 (unless stash-file   (setq stash-file perlnow-incspot-from-t-stash-file))
                 (unless (stringp keystr)
                   (message "perlnow-stash-put: KEYSTR should be a string: %s" (pp-to-string keystr)))
-
                 (cond (perlnow-stash-string-key-flag
                        (set plist-symbol
                             (plist-put (symbol-value plist-symbol) keystr value))
