@@ -32,7 +32,7 @@
 (require 'json)
 ;; (require 'seq)  ;; seq-util (using perlnow-uniq-list for now)
 
-(defconst perlnow-version "0.8"
+(defconst perlnow-version "0.9"
   "The version number of the installed perlnow.el package.
 Check <http://obsidianrook.com/perlnow/> for the latest.")
 
@@ -45,6 +45,7 @@ Check <http://obsidianrook.com/perlnow/> for the latest.")
 (defvar perlnow-counter 0
   "Counter that's incremented for every perlnow-tron invocation.")
 
+;; ### TODO !!! revise linkage
 (defvar perlnow-documentation t
   "The introductory documentation to the perlnow.el package.
 Also see the documentation for:
@@ -102,7 +103,15 @@ change the run-string used by perlnow-run.
 
 \\[perlnow-perldb] - runs the perl debugger using the above run string.
 
-TODO edit-test and create-test.
+\\[perlnow-edit-test-file] - tries to find a test related to the
+current buffer, and open it for editing.  If one is not found,
+opens a new test file.
+
+\\[perlnow-test-create] - like \\[perlnow-edit-test-file], but
+doesn't search for an existing test file first.
+
+\\[perlnow-test-create-manually] - let's you choose a test file
+name.
 
 A list of some important functions that require template.el:
 \\[perlnow-script]
@@ -124,9 +133,8 @@ Briefly these are:
 
 The perlnow.el file must be placed somewhere that's in your `load-path'.
 
-Also install template.el if at all possible, because many
-features of this package depend on template.el.  The latest
-version can be found at:
+Also install template.el: many features of this package depend on
+template.el.  The latest version can be found at:
 
    http://sourceforge.net/project/showfiles.php?group_id=47369
 
@@ -141,9 +149,9 @@ Add something like the following to your ~/.emacs file:
    \(require 'perlnow\)
 
   \(setq `perlnow-script-location'
-      \(substitute-in-file-name \"$HOME/bin\"\)\)
+      \(substitute-in-file-name \"$HOME/dev/gen/bin\"\)\)
   \(setq `perlnow-pm-location'
-      \(substitute-in-file-name \"$HOME/lib\"\)\)\n
+      \(substitute-in-file-name \"$HOME/dev/gen/lib\"\)\)\n
   \(setq `perlnow-dev-location'
       \(substitute-in-file-name \"$HOME/dev\"\)\)\n
 
@@ -223,25 +231,29 @@ more precise:
 PM FILE \(or MODULE FILENAME\): the file system's name for
 the module file, e.g. /usr/lib/perl/Modular/Stuff.pm
 
-MODULE FILE BASENAME: name of the module file itself, sans
-extension: in the above example, \"Stuff\"
+BASENAME: name of a file, sans extension: in the above example,
+\"Stuff\"
 
-PM LOCATION \(or MODULE FILE LOCATION\): directory
-portion of module file name, e.g. /usr/lib/perl/Modular/
+FILE LOCATION \(or FILELOC\): directory where file is located, 
+\(here, usually a full path\), e.g. /usr/lib/perl/Modular/
 
 MODULE NAME or PACKAGE NAME: perl's double colon separated name,
-e.g. \"Modular::Stuff\".  Note: I suggest you avoid calling the
-module a package to avoid confusion with a \"cpan package\"
-\(i.e. a \"tarball\"\).
+e.g. \"Modular::Stuff\".  Note: there's some potential confusion
+with the word \"package\", it could refer to perl's \"package\"
+keyword, or it could mean a \"cpan package\" \(i.e. a
+\"tarball\"\), which may contain multiple modules.
 
 INC SPOT or MODULE ROOT or PACKAGE ROOT: a place where perl's
 package space begins \(e.g. /usr/lib/perl\). Perl's @INC is a list
 of different such \"inc spots\".  These are often named \"lib\".
 
-STAGING AREA: the directory created by cpan builder tools
-\(milla, module-starter, h2xs, etc \) for module development, a
-hyphenized-form of the module name e.g. Modular-Stuff. Staging
-areas contain a module root \(or \"inc spot\") called \"lib\".
+PROJECT ROOT or STAGING AREA: the location of directories for
+modules, tests and scripts for a given project.
+
+A staging area directory is created by cpan builder tools
+\(milla, module-starter, h2xs, etc \) typically named in a
+hyphenized-form of the module name under development
+e.g. Modular-Stuff for Modular::Stuff. 
 
 DEV LOCATION: the place where you put your staging areas.
 
@@ -257,25 +269,49 @@ FULL: usually means that the full path is included,
 e.g. \"full file name\".
 
 TEST SCRIPT: A file with extension *.t associated with the
-current module/script\(?\), often something like ModuleName.t
-or possibly Staging-Area.t.
+current module \(or script\), often something like 
+01-Modular-Stuff-do_something-basic_case.t.
 
 TEST LOCATION: place where the test script\(s\) are for
 a given module \(almost always named \"t\"\).
 
-TEST POLICY: the information necessary to know where to
-put a newly created test file and what to call it:
-1 - the test path dot form, e.g. \"./t\";
-2 - the definition of dot e.g. module-file-location vs. incspot;
-3 - the naming style, e.g. hyphenized vs. base.")
+")
 
 (defvar perlnow-documentation-coding-standard t
   "If you use the \"perlnow standard\" for perl development, then
 perlnow should work better for you \(though even if you don't
 perlnow always does it's best\).
 
- o  The only existing standard for perl projects is cpan-style, so you
-    should get as close to it as possible, e.g.
+ o  perlnow, as of version 0.9 and later, presumes that you 
+    structure your projects with a trio of directories for 
+    modules, tests and scripts all directly under a project root.
+
+                     |--- lib 
+     project_root ---|
+                     |--- t 
+                     |
+                     |--- script
+
+    Modules should be placed in one directory \(typically named \"lib\"), and
+    tests should be gathered in a parallel \"t\" directory \(sub-directories
+    of \"t\" can be used to organize them\). Command-line scripts \(if any\) 
+    should be kept in a \"script\" or \"bin\" directory.
+
+    perlnow is likely to be confused at times if you don't have 
+    that flat structure of a trio of directories, though some 
+    varaition in what they're called is allowed.  If you use an 
+    unusual name, you should add it to the appropriate list:
+
+       `perlnow-lib-location-names'    
+       `perlnow-t-location-names'      
+       `perlnow-script-location-names' 
+
+    ((TODO code example, consing an alternate to lib ))
+
+ o  That is similar (a sub-set, really) of cpan-style development,
+    which is in general, the only widely-accepted standard for perl
+    projects. You may want to use cpan-style development even when not
+    working on projects for cpan e.g.
 
        dev/Modular-Stuff/
                          lib/
@@ -284,13 +320,6 @@ perlnow always does it's best\).
                                01-Modular_Stuff-do_stuff-basic_test.t
                          script/
                                stuff_it
-
-    Modules should be placed in one directory \(typically named \"lib\"), and
-    tests should be gathered in a parallel \"t\" directory \(sub-directories
-    of \"t\" can be used to organize them\).
-
-    Command-line scripts \(if any\) should be kept in a \"script\"
-    or \"bin\" directory.
 
     Each project should probably have it's own git repository.
 
@@ -318,7 +347,7 @@ perlnow always does it's best\).
     modules: the main job of a script is to unpack and interpret arguments
     before passing them on to modules. Most testing should be implemented
     at the module level \(though perlnow has features to generate tests
-    that shell out to run a script and check it's output\).
+    for scripts\).
 
     You should not turn on taint \(-T\) in your hash-bang line unless you
     know you need it: perl complains if you try to invoke such a script in
@@ -327,7 +356,7 @@ perlnow always does it's best\).
     Avoid getting involved in researching Getopt::* modules: just
     stick to Getopt::Long and (possibly) Getopt::Std.  And
     Pod::Usage and it's descendents should just be ignored: yes,
-    DRY is better, but your sanity matters too.
+    better DRY than not, but sanity matters too.
 
  o  Most projects should begin with modules based on \"Moo\" with
     \"MooX::Types::MooseLike::Base\". 
@@ -346,7 +375,7 @@ perlnow always does it's best\).
 
  o  Editorial: don't use \"this is an internal routine\" as an
     excuse to skip documentation. In fact don't think of routines as 
-    \"internal\" \(Internal to what? And how do you know how someone 
+    \"internal\" \(Internal to what? How do you know how someone 
     else is going to want to use the code?\)
        
  o  You should be using cperl-mode, not the old default perl-mode.
@@ -528,33 +557,7 @@ Here \"modstar\" corresponds to \"module_starter\",
 \"module_build\" means it's for a Module::Build cpan-style
 distribution, and \"object\" means it's for OOP development.
 
-Next, everyone's favorite subject, \"Misc\":
- `perlnow-documentation-tutorial-5-misc'")
-
-
-(defvar perlnow-documentation-tutorial-5-misc t
-  "Misc topic 1 - perlify:
-
-In addition to the old-style non-template.el fallback:
-\\[perlnow-script-simple], there's another command that's
-somewhat similar called: \\[perlnow-perlify-this-buffer-simple].
-The \"perlify\" concept is to open an empty buffer for your code
-in the usual way, and then afterwards insert a simple code
-template and make the file executable.
-
-Note that template.el plus a good perl template, plus that
-post-emacs 21 trick for making scripts executable automatically
-all gets you very close to having this functionality without any
-help from perlnow.el... except for one little gotcha: many of us
-do not use a file extension on our perl scripts, and without a
-standard extension like '.pl', that makes it hard for template.el
-to spot that you're creating one.  You would need to always do a
-\\[template-new-file] instead of \\[find-file], and carefully
-select the correct template as well as the file name.
-
-Next:
- `perlnow-documentation-test-file-strategies'")
-
+Next, `perlnow-documentation-test-file-strategies'")
 
 (defvar perlnow-documentation-test-file-strategies t
   "The \\[perlnow-run] and \\[set-perlnow-run-string] commands
@@ -590,9 +593,6 @@ for \"creAte\", because \"c\" already means \"check\").
 
 The \\[perlnow-edit-test-file] command will also create this new
 test file if it does not already exist.
-
-The user defineable \"test policy\" dictates where these new test
-files will go.  See \"test policy\" in `perlnow-documentation-terminology'.
 
 Next:
  `perlnow-documentation-7-template-expansions'")
@@ -661,8 +661,13 @@ E.g. see `perlnow-project-root-from-lib'.")
 
 (defcustom perlnow-project-root-from-lib "$PN_INCSPOT/.."
   "Relationship between lib location and project root.
-Psuedo-envars such as $PN_INCSPOT are allowed in this definition
-though they need to be dynamically expanded by \\[perlnow-expand-path].")
+
+The perlnow \"psuedo-envars\" such as $PN_INCSPOT are allowed in this definition
+\(unlike actual envars, there's no way for a user to set this,
+internally this is dynamically expanded by
+\\[perlnow-expand-path]\).
+")
+
 ;; TODO maybe, maybe not:
 ;; When possible, perlnow will search for a local project root to 
 ;; use instead of this setting \(often easy to find, e.g. in the case of 
@@ -971,7 +976,6 @@ This is used to define the template expansion for
 \(>>>MINIMUM_PERL_VERSION<<<\).  For versions of perl later than
 5.006, version numbers looking like 5.7.0 or 5.8.2 are often
 used.")
-;; (setq perlnow-minimum-perl-version "5.10.0")
 
 ;; Defining feature MINIMUM_PERL_VERSION to insert the above as an
 ;; an "expansion" in a template.el template: (>>>MINIMUM_PERL_VERSION<<<);
@@ -4637,7 +4641,7 @@ Returns nil if LOCATION is nil or empty-string."
 ;; (perlnow-dirs nil)
 ;; (perlnow-dirs "")
 
-  (defun perlnow-check-for-dir-containing (locations file-relative)
+(defun perlnow-check-for-dir-containing (locations file-relative)
     "Look in each of LOCATIONS for the FILE-RELATIVE.
 LOCATIONS is a list of directories (typically with full-paths).
 FILE-RELATIVE should be a relative path fragment.  We append it
@@ -5841,6 +5845,7 @@ numeric sort-order prefix."
 ;;--------
 ;;
 
+;; Used by: perlnow-open-test-file
 (defun perlnow-lookup-preferred-perl-mode ()
   "Look-up which perl mode the user prefers.
 Examines the alists `interpreter-mode-alist' and
@@ -5863,7 +5868,7 @@ has been chosen as the default to work on perl code."
     (if perlnow-trace (perlnow-closing-func))
     mode))
 
-
+;; Used by: perlnow-lookup-preferred-perl-mode
 (defun perlnow-assoc-regexp (pattern alist &optional default)
   "Return first value from ALIST with key that matches PATTERN."
   (if perlnow-trace (perlnow-message "Calling perlnow-assoc-regexp"))
@@ -5944,6 +5949,7 @@ a module's incspot." ;; or a project root, which is more to the point
 ;;   (( experimented with this idea, but commented out.  Fix or drop, *REVISE DOCS* ))
 ;;   (( brought it back -- when? -- and fixed it up.  all tests pass. ))
 
+;; currently unused-- Thu  August 31, 2017  17:29  tango
 (defun perlnow-project-root-firsttry ( &optional location )
 ;; (defun perlnow-project-root ( &optional location )
   "Find the root of the project tree related to the current buffer.
@@ -6015,6 +6021,8 @@ scans from the user's home is rarely a good idea\)."
     (if perlnow-trace (perlnow-closing-func))
     project-root))
 
+;; currently unused-- Thu  August 31, 2017  17:30  tango
+;; used only by perlnow-project-root-firsttry
 (defun perlnow-project-root-from-file (file)
   "Given a FILE, find likely project-root location.
 A given file name is expected to include the full-path."
@@ -6075,6 +6083,8 @@ A given file name is expected to include the full-path."
       (goto-char  initial-point)
       project-root)))
 
+;; Used by perlnow-stepup-to-project-root
+;; Critically important for the new project-root code ("my3sons")
 (defun perlnow-expand-path (&optional path incspot tloc bin fileloc)
   "Substitutes values for place-holders in PATH.
 If not given, PATH defaults to `perlnow-project-root-from-lib'.
@@ -6141,7 +6151,7 @@ Returns a list of all matches (though warns if there's more than one).
 Defaults to showing just accessible directories, (with optional
 TYPE set to \"d\", you can relax that to all directories).
 If SHORT-CIRCUIT-OPT is set, tries to return some obvious candidates,
-but makes no attempt to find all. *experimental* "
+but makes no attempt to find all."
   (if perlnow-trace (perlnow-message "Calling perlnow-scan-tree-for-directory"))
   (if perlnow-debug
       (message "start: %s" (pp-to-string start)))
@@ -6167,14 +6177,18 @@ but makes no attempt to find all. *experimental* "
                       (setq i (1+ i)))
                     )))
            ))
-
     (if perlnow-trace (perlnow-closing-func))
     hits))
 
+;; Used by perlnow-list-perl-tests
+;; (and by the currently unused perlnow-list-perl-files-in-project)
+;; and so this is indirectly used by:
+;;   perlnow-test-file-menu
+;;   perlnow-guess-run-string 
+;;   perlnow-edit-test-file-harder 
 (defun perlnow-scan-tree-for-t-loc ()
   "Look for the \"t\" directory in current tree.
-\(\( TODO add remarks about doing a create if none found \)\)
-"
+If none is found, will create one immediately under the project-root."
   (if perlnow-trace (perlnow-message "Calling perlnow-scan-tree-for-t-loc"))
   (let ( project-root   target-list   t-locs   project-t-locs   t-loc  loc-count )
     (setq project-root (perlnow-project-root))
@@ -6185,7 +6199,6 @@ but makes no attempt to find all. *experimental* "
     (setq project-t-locs (perlnow-only-in-here t-locs project-root))
     (setq loc-count (length project-t-locs))
     (cond ((= loc-count 0)
-           ;; TODO Q: do a conditional ask about this, right?  TODO document
            (setq t-loc (perlnow-require-trailing-slash (concat project-root "t"))) ;; hardcoding what was once policy...
            (perlnow-ensure-directory-exists t-loc)  
            )
@@ -6203,6 +6216,8 @@ but makes no attempt to find all. *experimental* "
     (if perlnow-trace (perlnow-closing-func))
     t-loc))
 
+;; Used only by perlnow-scan-tree-for-t-loc 
+;; (and hence indirectly by: perlnow-guess-run-string, perlnow-test-file-menu)
 (defun perlnow-only-in-here (locations &optional project-root)
   "Filter given list of LOCATIONS for one's in the given PROJECT-ROOT.
 I.e. we exclude one's that appear to belong to another project root.
@@ -6221,6 +6236,7 @@ If project-root is not given, runs \\[perlnow-project-root]."
   (if perlnow-trace (perlnow-closing-func))
   intra-project-locs))
 
+;; Used only by perlnow-list-perl-files-in-project (which is currently unused)
 (defun perlnow-scan-tree-for-lib-loc ()
   "Look for the \"lib\" directory in current tree."
   (if perlnow-trace (perlnow-message "Calling perlnow-scan-tree-for-lib-loc"))
@@ -6240,6 +6256,7 @@ If project-root is not given, runs \\[perlnow-project-root]."
     (if perlnow-trace (perlnow-closing-func))
     lib-loc))
 
+;; Used only by perlnow-list-perl-files-in-project (which is currently unused)
 (defun perlnow-scan-tree-for-script-loc ()
   "Look for the script/bin directory in current tree."
   (if perlnow-trace (perlnow-message "Calling perlnow-scan-tree-for-script-loc"))
@@ -6254,6 +6271,7 @@ If project-root is not given, runs \\[perlnow-project-root]."
     script-loc))
 
 ;; TODO suitable for feeding into tools such as etags?
+;; Currently unused (essentially)-- Thu  August 31, 2017  17:54  tango
 (defun perlnow-list-perl-files-in-project ()
   "List all perl files in current project tree."
   (if perlnow-trace (perlnow-message "Calling perlnow-list-perl-files-in-project"))
@@ -6267,6 +6285,7 @@ If project-root is not given, runs \\[perlnow-project-root]."
     (if perlnow-trace (perlnow-closing-func))
     perl-files))
 
+;; Used only by perlnow-list-perl-files-in-project (which is currently unused)
 (defun perlnow-list-perl-files (loc)
   "List all perl files located under the given location, LOC."
   (if perlnow-trace (perlnow-message "Calling perlnow-list-perl-files"))
@@ -6283,6 +6302,7 @@ If project-root is not given, runs \\[perlnow-project-root]."
     (if perlnow-trace (perlnow-closing-func))
     perl-files))
 
+;; Used only by perlnow-list-perl-files
 (defun perlnow-list-perl-scripts (loc)
   "Recursively search for perl scripts in the given tree, LOC.
 A perl script may end in extension *.pl or be identified by it's
@@ -6303,6 +6323,11 @@ files \(ending in ~\)."
     (if perlnow-trace (perlnow-closing-func))
     ret-list))
 
+
+;; Used in key places:
+;;   perlnow-test-file-menu
+;;   perlnow-guess-run-string 
+;;   perlnow-edit-test-file-harder 
 (defun perlnow-list-perl-tests (&optional loc)
   "List perl test files found in tree LOC.
 Checks the default-directory, if loc is nil."
@@ -6452,12 +6477,11 @@ Begins looking at optional START-FILE or at current buffer's file or location."
       (if perlnow-trace (perlnow-closing-func))
       project-root)))
 
-;; TODO also: look for dirs that contain *.pm files
-;; TODO also: look for dirs mentioned in the stash of lib->t stuff.
-;; 
-;;   Real reason this is a separate routine is not that it's 
+;; TODO add penalty for $HOME, add progressive advantage for lower levels
+;; TODO maybe also: look for dirs that contain *.pm files
+;; TODO maybe also: look for dirs mentioned in the stash of lib->t stuff.
+;;   Real reason this is a separate routine is that it's 
 ;;   crazy huge, and I might need to throw it away.
-
 (defun perlnow-stepup-pr-from-crazy-scoring-strategies ( &optional loc )
   "Looks at all levels above the current one, to the project-root.
 Uses a scoring algorithm based on various hints: primarly the
@@ -6498,27 +6522,16 @@ and so on."
             (setq level-path (concat (perlnow-fixdir "$HOME") level-path)))
 
         ;; Examine the level, determine value to add
-
-        (setq local-dirs (perlnow-dirs level-path))
-        (message "COAL")
-        (message "local-dirs: %s" (pp-to-string local-dirs))
-
         ;; loop over the local-dirs, add points for each match of a likely name
+        (setq local-dirs (perlnow-dirs level-path))
         (dolist (loc (mapcar 'perlnow-last-path-level local-dirs))
           (dolist (nameo names)
-            (message "000: loc: %s nameo: %s" loc nameo)
             (cond ((string= loc nameo)
-                   (message "aaa")
                    (setq score (+ score add))
-                   (message "bbb")
                    (aset scores i score)
-                   (message "ccc")
                    ))))
         (setq i (1+ i))
-        (message "ZZZ")
         ) ;; end while
-
-      (message "TRAIN")
 
       ;; find i for maximum score
       (setq i 0)
@@ -6526,11 +6539,8 @@ and so on."
         (while (< i l)
           (setq score (aref scores i))
           (cond ((> score max)
-                 (message "nnn")
                  (setq max score)
-                 (message "mmm")
                  (setq max-i i)
-                 (message "lll")
                  ))
           (setq i (1+ i)))  ;; end while
 
@@ -8921,7 +8931,7 @@ It does three things:
 (defvar perlnow-documentation-undocumented-features t
   "Undocumented features:
 
-  o  \\[perlnow-insert-sub] also inserts a block of pod with an =item tag.
+  o  \\[perlnow-insert-sub] inserts a block of pod with an =item tag.
      that can be changed with `perlnow-sub-doc-pod'.
 
   o  \\[perlnow-insert-sub] always adds the sub name to @EXPORT_OK
@@ -8930,6 +8940,25 @@ It does three things:
 
   o  \\[perlnow-display-inc-array] shows the locations in perl's @INC.
      By default this is bound to \"C-c \ *\".
+
+  o  The perlnow standard structure expects a trio of directories under 
+     a project root (see `perlnow-documentation-coding-standard'), 
+     it is possible some variations of this structure could be handled 
+     by modifying `perlnow-project-root-from-lib', `perlnow-project-root-from-bin',
+     and/or `perlnow-project-root-from-bin', but this is untested.
+
+     A structure like this might be supported with the following customizations:
+
+                               |--- lib 
+                    |-- code --|    
+                    |          |--- bin
+     project_root --|
+                    |
+                    |-- t 
+
+      \(setq perlnow-project-root-from-lib \"$PN_INCSPOT/../..\"\)
+      \(setq perlnow-project-root-from-bind \"$PN_BIN/../..\"\)
+
 "
 )
 
