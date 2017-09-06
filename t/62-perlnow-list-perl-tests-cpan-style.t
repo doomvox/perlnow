@@ -44,16 +44,6 @@
 ;; TODO start from pl
 ;;      cpan-style, but non-git
 
-;; TODO For extra-credit: create some pathological mixed cases and see
-;; how it deals with choosing a canonical "t" (it won't use more
-;; than one at a time).
-
-;; TODO
-;;  o  create a script from a module, get a listing of tests from the script
-;;  o  don't use a default "t" location:
-;;       o  put "t" one level down rather than parallel with "lib"
-;;       o  put "lib" one level down
-
 (funcall
  (lambda ()
    (if (file-exists-p "test-init.el")

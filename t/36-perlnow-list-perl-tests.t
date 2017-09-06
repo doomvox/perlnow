@@ -150,11 +150,14 @@
                     "Verifying that t location doesn't exist yet: %s" expected-t-location))  ;; ok 7
 
        (setq expected-test-files '())
+(message "PLEISTOCENE_PEOPLE_WITH_LACTOSOMINE_SIGHS about to call perlnow-list-perl-tests...")
        (setq test-files (perlnow-list-perl-tests))
        (setq test-files-sorted
              (sort test-files 'string<))
        (assert-equal expected-test-files test-files-sorted
           (concat test-name ": " test-context-name ", no test yet"))  ;; ok 8
+
+(message "09: checking for newly created expected-t-location: %s" expected-t-location) ;; DEBUG
 
        (assert-t (file-directory-p expected-t-location)
                    (format 

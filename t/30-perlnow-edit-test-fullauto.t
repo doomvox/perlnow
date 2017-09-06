@@ -116,7 +116,7 @@ sub terranean {
        ;;   (message "XYZ first-t-file: %s" first-t-file)
        ;;   (message "XYZ expected-first-t-file: %s" expected-first-t-file)
 
-       (assert-equal first-t-file expected-first-t-file
+       (assert-equal expected-first-t-file first-t-file 
         (concat test-name ": generated expected t-file in empty t dir") )
 
        ;; clean up test file buffer
@@ -152,7 +152,7 @@ sub terranean {
          ;;   (message "123 first-t-file: %s" first-t-file)
          ;;   (message "123 expected-first-t-file: %s" expected-first-t-file)
 
-         (assert-equal t-file expected-t-file
+         (assert-equal expected-t-file t-file 
                        (concat test-name ": generated t-file numbered in sequence after others") )
          )))
    (end-tests)

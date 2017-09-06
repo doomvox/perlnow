@@ -2,9 +2,17 @@
 ;; #! /usr/bin/emacs --script
 ;;                                                   May 30, 2017
 ;; ~/End/Cave/Perlnow/lib/perlnow/elisp/t/63-perlnow-list-perl-tests-lone-module.t
-;; Mutated from: 36-perlnow-perlnow-list-test-files.t
 
 ;; See discussion at top of: 62-perlnow-list-perl-tests-cpan-style.t
+;; (this used to be called PART2)
+
+;; The test story:
+;;   o  create a module (non-cpan, non-git)
+;;   o  list tests (starting from module buffer): verify there are none
+;;   o  create a test
+;;   o  list tests (again from pm buffer): verify there's one, and it's named as expected.
+;;   o  create a test 
+;;   o  list tests (again, from pm buffer): verify there's two, and both are named as expected.
 
 (funcall
  (lambda ()
@@ -13,40 +21,35 @@
    (perlnow-tron)
    (let* ((test-name "Testing perlnow-list-perl-tests")
           (test-loc (test-init))
-          (dev-location (concat test-loc "dev"))
+          ;; (dev-location (concat test-loc "dev"))
+          (slash test-init-slash)
           )
-     ;; PART2: using pieces from 38-*.t
      (let* ((test-context-name "lone module")
             (package-name "Embobbler::ToolKit")
-            (script-name "gomjabbar.pl")
-            (script-base "long_walks_on_beach")
-            (expected-pm-base "ToolKit")
+            ;; (script-name "gomjabbar.pl")
+            ;; (script-base "long_walks_on_beach")
+            (lib-location        (test-init-fixdir (concat test-loc "lib")))
+               ;; note: that's the same as the perlnow-lib-location...
+            (expected-t-location (test-init-fixdir (concat test-loc "t")))
+            (expected-pm (concat lib-location
+                               "Embobbler" slash "ToolKit.pm") )
+            (t-loc expected-t-location) ;; convenience
 
-            (staging-area
-             (perlnow-staging-area dev-location package-name))
-            (expected-pm (concat staging-area "lib" perlnow-slash
-                                 "Embobbler" perlnow-slash "ToolKit.pm") )
-
-            (expected-t-loc (test-init-fixdir (concat perlnow-pm-location "../t")))
-            (t-loc expected-t-loc) ;; TODO temporary
-
-            pm-buffer script-buffer t-buffer argument-text
+            pm-buffer    
             test-files   test-files-sorted  expected-test-files  expected-test-files-full
             )
+       (assert-equal lib-location perlnow-pm-location "Testing that I am not a retard.")
+
        (perlnow-module perlnow-pm-location package-name)
        (assert-t (perlnow-module-code-p)
         "Testing that perlnow-module created a module")
-
-       (setq pm-buffer (current-buffer))
        (setq expected-test-files '())
 
-       ;; (message "Reading the tea leaves and the t-loc: %s" (pp-to-string t-loc)) ;; DEBUG
-       ;; (setq test-files (perlnow-list-perl-tests t-loc))
-       (setq test-files (perlnow-list-perl-tests staging-area))
+       (setq pm-buffer (current-buffer))
+       (setq test-files (perlnow-list-perl-tests)) ;; sans arg, checks default-directory
        (setq test-files-sorted
              (sort test-files 'string<))
 
-       ;; (message "^v^A^v^")
        (assert-equal expected-test-files test-files-sorted
           (concat test-name ": " test-context-name ", none created yet"))
 
@@ -58,20 +61,20 @@
              '("01-Embobbler-ToolKit-sharp_pop.t"))
        (setq expected-test-files-full
              (mapcar (lambda (file) (concat t-loc file)) expected-test-files))
-       ;; (message "expected-test-files-full: %s" (pp-to-string expected-test-files-full));; DEBUG
 
-       ;; (setq test-files (perlnow-list-perl-tests t-loc))
-       (setq test-files (perlnow-list-perl-tests staging-area))
+       (set-buffer pm-buffer)
+       (setq test-files (perlnow-list-perl-tests)) ;; sans arg, checks default-directory
        (setq test-files-sorted
              (sort test-files 'string<))
-       ;; (message "^v^B^v^")
+
        (assert-equal expected-test-files-full test-files-sorted
           (concat test-name ": " test-context-name ",  add via perlnow-test-create"))
 
        (set-buffer pm-buffer) ;; back to the pm
        (perlnow-test-create)
-       ;; (setq test-files (perlnow-list-perl-tests t-loc))
-       (setq test-files (perlnow-list-perl-tests staging-area))
+
+       (set-buffer pm-buffer) ;; and back to the pm again
+       (setq test-files (perlnow-list-perl-tests)) ;; sans arg, checks default-directory
        (setq test-files-sorted
              (sort test-files 'string<))
 
@@ -97,7 +100,7 @@
                       (perlnow-stash-lookup (file-name-directory testfile)))
                 (assert-equal expected-inc-spot inc-spot test-name-alt)
                 )))
-       ) ;; end let* for PART2
+       ) ;; end let* 
      ) ;; end outer let*
    (end-tests)
    ))

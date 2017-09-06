@@ -90,6 +90,11 @@
 ;;               (assert-equal expected-t-list t-list
 ;;                             (concat test-name ": case: " case-name ": start-file " start-file)))
 
+            ;; TODO
+            ;; I thought I might need to do this:
+            ;;   (push "dev" perlnow-lib-location-names)
+            ;; But the test is passing even without that hint... 
+
             ;; the real test
             (let* ((harder-setting 4))
               (perlnow-edit-test-file-harder harder-setting))

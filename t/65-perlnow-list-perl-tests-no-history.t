@@ -46,6 +46,7 @@
      (test-init-load-setup-code "s65" test-set)
      (setq test-case-data (test-init-load-data test-case-file))
      (setq cases (test-init-subdirs test-set)) ;; cpan1 git1 non1
+     ;; TODO can set cases to a list of one for debugging...
      (setq cases (reverse cases))
       (dolist (case-name cases)
         (if perlnow-debug
@@ -55,11 +56,16 @@
               (case-loc
                 (concat test-set case-name slash)) ;; e.g. /home/doom/tmp/perlnow_test/tXX/test_set/non1/
                start-file-list  expected-t-list  t-list-raw   t-list  t-loc-list t-loc
+               full-start-file
               )
           (if perlnow-debug
               (message "for case: %s, case-data: %s" case-name (pp-to-string case-data))) 
           ;; file paths relative to the case-loc
           (setq start-file-list (test-init-plist-lookup "start-file-list" 'case-data))
+          ;; adding start-from-directory cases
+          (push (perlnow-one-up (car start-file-list))  start-file-list)
+          (push (perlnow-one-up (nth 3 start-file-list)) start-file-list)
+
           ;; file names sans path
           (setq expected-t-list (test-init-plist-lookup "t-list" 'case-data))
           ;; start-files: list of places to try to list test files from
@@ -68,12 +74,20 @@
                        (pp-to-string start-file-list)))
 
           (dolist (start-file start-file-list)
-            (find-file (concat case-loc start-file))
-            ;; the code under test
-            ;; TODO instead of this, want to test perlnow-test-harder (or ?)
+            (message "case: %s start-file: %s" case-name start-file) ;; DEBUG
+            (setq full-start-file (concat case-loc start-file))
+            ;; (find-file full-start-file)  ;; if this isn't open makes things harder on the non1 case
+
+            ;; and at last we're down to calling the code under test...
+
+            ;; TODO instead of this,  (( old comment, barely get what it's getting at-- September 05, 2017  ))
+
+            ;;      want to test perlnow-test-harder (or ?)
             ;;      then capture the generated buffer, and compare it to
             ;;      an expected version (or ?)
-            (setq t-list-raw (perlnow-list-perl-tests case-loc))
+
+            (setq t-list-raw (perlnow-list-perl-tests full-start-file))
+
             (setq t-list
                   (mapcar (lambda (file) (file-name-nondirectory file))
                           (sort t-list-raw 'string<)))
