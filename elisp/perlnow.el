@@ -2284,9 +2284,11 @@ to be associated with the given TESTFILE." ;; TODO expand docstring
   (perlnow-sub-name-to-var)
   (let ((harder-setting (car current-prefix-arg)))
     (unless testfile ;; guess a default value for testfile
-      (let* ( (md (perlnow-metadata))
-              (testloc-absolute  (nth 3  md)) 
-              (hyphenized        (nth 4  md))
+      (let* ((md (perlnow-metadata))
+;;               (testloc-absolute  (nth 3  md)) 
+;;               (hyphenized        (nth 4  md))
+              (testloc-absolute (nth 0  md)) 
+              (hyphenized       (nth 1  md)) 
               )
         (setq testfile
               (perlnow-new-test-file-name testloc-absolute hyphenized))
@@ -2309,13 +2311,15 @@ to be associated with the given TESTFILE." ;; TODO expand docstring
   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-test-create-manually"))
   (unless testfile
     ;; guess a default value for testfile
-    (let* ( (md (perlnow-metadata))
-            (testloc-absolute  (nth 3  md))
-            (hyphenized        (nth 4  md))
-            )
-      (setq testfile
-            (perlnow-new-test-file-name testloc-absolute hyphenized))
-      ))
+      (let* ((md (perlnow-metadata))
+;;               (testloc-absolute  (nth 3  md)) 
+;;               (hyphenized        (nth 4  md))
+              (testloc-absolute (nth 0  md)) 
+              (hyphenized       (nth 1  md)) 
+              )
+        (setq testfile
+              (perlnow-new-test-file-name testloc-absolute hyphenized))
+        ))
   (let* ((tf-input
           (read-from-minibuffer
            "Test file: "
@@ -3511,10 +3515,12 @@ associated location, just returns the first of them."
 ;;     ;; ...
 ;;     ))
 
-;; TODO METADATA
-;; At present, this is just used by perlnow-test-create and perlnow-test-create-manually.  
+
+;; Just used by: perlnow-test-create and perlnow-test-create-manually.  
+;; TODONT
 ;; The test code creation problem is nastier than you think (always, even for me, even now)
 ;; and you will *not* replace this code with something way simpler, so stop thinking about it.
+;; TODO 
 ;; And so, this code *needs* to be maintained.
 (defun perlnow-metadata (&optional file-name)
   "Tries to give you \"metadata\" for the relevant perl code.
@@ -3625,6 +3631,7 @@ buffer when metadata was called:
    (setq dotdef    perlnow-test-policy-dot-definition )
    (setq namestyle perlnow-test-policy-naming-style   )
 
+   ;; going after package-name (mostly)
    (cond
      ((string= file-type "test-select-menu")
       ;; get the module name from the test file name
@@ -3717,14 +3724,10 @@ buffer when metadata was called:
           ;; TODO move/copy this sort of thing to a context='cpan' block?
           (cond ((setq staging-area (perlnow-find-cpan-style-staging-area))
                  (setq incspot staging-area)
-                 (let* (
-                        ;; remove trailing slash so file-name-directory & nondirectory can work
-                        (tail-slash-pat (concat perlnow-slash "$"))
-                        (incspot-trimmed
-                         (replace-regexp-in-string tail-slash-pat "" incspot))
+                 (let* ((incspot-trimmed
+                         (perlnow-remove-trailing-slash incspot))
                         (incspot-path      (file-name-directory    incspot-trimmed))
-                        (incspot-sans-path (file-name-nondirectory incspot-trimmed))
-                        )
+                        (incspot-sans-path (file-name-nondirectory incspot-trimmed)))
                    (setq hyphenized-package-name incspot-sans-path)
                    (setq package-name (mapconcat 'identity (split-string hyphenized-package-name "-") "::"))
                    )) ;; end cpan-style
@@ -3733,7 +3736,7 @@ buffer when metadata was called:
                  )
                 ))
         ))) ;; ;; end file-type script and end basic-file buffer
-     )
+     ) ;; end going after package-name
    (cond ((and package-name (not hyphenized-package-name))
           (setq hyphenized-package-name
                 (mapconcat 'identity (split-string package-name "::") "-"))
@@ -3746,9 +3749,9 @@ buffer when metadata was called:
    (setq md-list
          (list 
 ;;               testloc dotdef namestyle
-               nil
-               nil
-               nil
+;;                nil
+;;                nil
+;;                nil
 
                testloc-absolute                      ;; TODO USEFUL case 2
                hyphenized-package-name               ;; TODO USEFUL case 1
@@ -3773,10 +3776,11 @@ buffer when metadata was called:
   (let ( md )
     (cond ((not (and testloc-absolute incspot))
            (setq md (perlnow-metadata))
-           (setq testloc-absolute (nth 3  md)) ;; TODO subtract 3: 0
-           (setq incspot          (nth 6  md)) ;; TODO subtract 3: 3
+;;            (setq testloc-absolute (nth 3  md)) ;; TODO subtract 3: 0
+;;            (setq incspot          (nth 6  md)) ;; TODO subtract 3: 3
+           (setq testloc-absolute (nth 0  md)) 
+           (setq incspot          (nth 3  md)) 
            ))
-
     (if (and testloc-absolute incspot)
         (perlnow-stash-put testloc-absolute incspot))
     (if perlnow-trace (perlnow-close-func))
