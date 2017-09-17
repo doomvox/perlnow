@@ -1,0 +1,8 @@
+Wed  September 06, 2017  13:44  tango
+
+The 01-perlnow-misc.t tests are primary for a bunch of little 
+utilities that need know trees of file on disk to operate on.
+The existing informal trial-run code works on some of the
+files used for other tests, so I've just arbitrarily copied all
+of them into the tree for these tests, to see if things will work
+with minimal modification. 

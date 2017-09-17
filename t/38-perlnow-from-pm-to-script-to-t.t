@@ -107,6 +107,7 @@
      (assert-nil
       (perlnow-module-file-p (buffer-file-name))
       "Testing perlnow-module-file-p to confirm script is not like module.")
+     (if perlnow-debug (message "Now working on test: 07"))
 
      (setq test-name "Testing perlnow-run")
 
@@ -118,7 +119,7 @@
          (message "perlnow-run-string: %s\n" perlnow-run-string))
          ;; /usr/bin/perl /home/doom/tmp/perlnow_test/t38/bin/timber.pl  'Sunnyvale, ho!!'
      (perlnow-run perlnow-run-string)
-     (sleep-for 2) ;; wait for compile (only thing in emacs that's async)
+     (sleep-for 4) ;; wait for compile (only thing in emacs that's async)
 
      ;; The compilation window should show the string "Sunnyvale, ho!!" (in first column):
      ;;
@@ -135,25 +136,25 @@
              ( trash-out-pat (concat "^" argument-text))  ;; "^Sunnyvale, ho!!")
              check-ok-p
              )
-       (if perlnow-debug (message "07"))
        (setq check-ok-p
              (assert-t
               (string-match trash-out-pat compilation-results)
               (concat "Testing perlnow-run of script worked, and generated output")))
        )
+     (if perlnow-debug (message "Now working on test: 08"))
 
      ;; Create a test for the script, using "edit-test":
-     (set-buffer script-buffer)   ;; TODO right around here, bombs when stepping through with edebug
-                                  ;;      Q: would switch-buffer be better?
+     (set-buffer script-buffer)   
      ;; Faking a simple "edit-test" call, without arguments
               (perlnow-open-test-file
                (perlnow-get-test-file-name))
 
      (setq t-buffer (current-buffer))
      (setq t-file-name (buffer-file-name))
-     (if perlnow-debug (message "08"))
+     (if perlnow-debug (message "t-file-name: %s" t-file-name))
      (assert-equal expected-t-file t-file-name
                    (concat test-name ": expected test name created by edit-test"))
+     (if perlnow-debug (message "Now working on test: 09"))
 
      ;; Fill in the same string in EXPECTED and as script argument in the new test file:
      (setq argument-text "Smell *that*, Mountain View!")
@@ -191,7 +192,7 @@
          (message "perlnow-run-string: %s\n" perlnow-run-string))
 
      (perlnow-run perlnow-run-string)
-     (sleep-for 2) ;; wait for compile (only thing in emacs that's async)
+     (sleep-for 4) ;; wait for compile (only thing in emacs that's async)
 
      ;; Scrape *compilation* window for this:
          ;; ok 2 - Testing script timber.pl
@@ -204,7 +205,6 @@
              )
        (if perlnow-debug
            (message "compilation-results:\n %s" compilation-results))
-       (if perlnow-debug (message "09"))
        (setq check-ok-p
              (assert-t
               (string-match trash-out-pat compilation-results)
