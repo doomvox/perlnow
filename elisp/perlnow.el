@@ -1796,14 +1796,10 @@ The location for the new module defaults to the global
 This is a wrapper function that uses the `perlnow-cpan-style' setting
 to determine how to work."
   (interactive
-   (let (
-         (default-directory perlnow-dev-location)
-   ;; TODO maybe instead:
-;;          (default-directory
-;;            (or (perlnow-one-up (perlnow-project-root))
-;;                perlnow-dev-location))
-
-         )
+   (let* ((projroot (perlnow-project-root)) ;; this uses perlnow-current-context
+          (default-directory
+            (perlnow-expand-path-from-plist perlnow-dev-location
+                                            (list "$PN_PROJECT_ROOT" projroot))))
      (call-interactively 'perlnow-prompt-for-cpan-style)))
   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-cpan-module"))
   (let* ((original-file (buffer-file-name))
@@ -1814,7 +1810,7 @@ to determine how to work."
     ;;   perlnow-milla
     ;;   perlnow-module-starter
     (if perlnow-debug
-        (message "perlnow-cpan-module cmd: %s %s %s " func-str dev-location package-name))
+        (message "perlnow-cpan-module cmd: %s %s %s " func-str perlnow-dev-location package-name))
     (funcall func-symbol dev-location package-name)
     (perlnow-set-associated-code-pointers original-file)
     (if perlnow-trace (perlnow-close-func))
@@ -1830,12 +1826,10 @@ double-colon separated package name form\)."
   ;; default-directory momentarily, then restore it. Uses the dynamic scoping
   ;; of elisp's "let" (which is more like perl's "local" than perl's "my").
   (interactive
-   (let (
-         (default-directory perlnow-dev-location))
-   ;; TODO maybe instead:
-;;          (default-directory
-;;            (or (perlnow-one-up (perlnow-project-root))
-;;                perlnow-dev-location))
+   (let* ((projroot (perlnow-project-root)) ;; this uses perlnow-current-context
+          (default-directory
+            (perlnow-expand-path-from-plist perlnow-dev-location
+                                            (list "$PN_PROJECT_ROOT" projroot))))
      (call-interactively 'perlnow-prompt-for-cpan-style)))
   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-h2xs"))
   (setq dev-location (perlnow-fixdir dev-location))
@@ -1891,12 +1885,10 @@ module-starter will create the \"staging area\"\) and the PACKAGE-NAME
   ;; default-directory momentarily, then restore it.
   ;; Uses the dynamic scoping of elisp's "let"
   (interactive
-   (let (
-         (default-directory perlnow-dev-location))
-   ;; TODO maybe instead:
-;;          (default-directory
-;;            (or (perlnow-one-up (perlnow-project-root))
-;;                perlnow-dev-location))
+   (let* ((projroot (perlnow-project-root)) ;; this uses perlnow-current-context
+          (default-directory
+            (perlnow-expand-path-from-plist perlnow-dev-location
+                                            (list "$PN_PROJECT_ROOT" projroot))))
      (call-interactively 'perlnow-prompt-for-cpan-style)))
   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-module-starter"))
   (setq cpan-location (perlnow-fixdir cpan-location))
@@ -2032,12 +2024,10 @@ module-starter will create the \"staging area\"\) and the PACKAGE-NAME
   ;; default-directory momentarily, then restore it.
   ;; Uses the dynamic scoping of elisp's "let"
   (interactive
-   (let (
-         (default-directory perlnow-dev-location))
-   ;; TODO maybe instead:
-;;          (default-directory
-;;            (or (perlnow-one-up (perlnow-project-root))
-;;                perlnow-dev-location))
+   (let* ((projroot (perlnow-project-root)) ;; this uses perlnow-current-context
+          (default-directory
+            (perlnow-expand-path-from-plist perlnow-dev-location
+                                            (list "$PN_PROJECT_ROOT" projroot))))
      (call-interactively 'perlnow-prompt-for-cpan-style)))
   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-milla"))
   (setq cpan-location (perlnow-fixdir cpan-location))
@@ -2285,8 +2275,6 @@ to be associated with the given TESTFILE." ;; TODO expand docstring
   (let ((harder-setting (car current-prefix-arg)))
     (unless testfile ;; guess a default value for testfile
       (let* ((md (perlnow-metadata))
-;;               (testloc-absolute  (nth 3  md)) 
-;;               (hyphenized        (nth 4  md))
               (testloc-absolute (nth 0  md)) 
               (hyphenized       (nth 1  md)) 
               )
@@ -2312,8 +2300,6 @@ to be associated with the given TESTFILE." ;; TODO expand docstring
   (unless testfile
     ;; guess a default value for testfile
       (let* ((md (perlnow-metadata))
-;;               (testloc-absolute  (nth 3  md)) 
-;;               (hyphenized        (nth 4  md))
               (testloc-absolute (nth 0  md)) 
               (hyphenized       (nth 1  md)) 
               )
@@ -2417,17 +2403,11 @@ e.g. run all tests rather than just one."
 
              ;; the cpan-style case
              (cond (staging-area
-;;                     (setq run-string
-;;                           (perlnow-generate-run-string-and-associate
-;;                            (perlnow-latest-test-file
-;;                             (perlnow-list-perl-tests) ;; TODO PASSLOCJACK why not default-directory explicitly?
-;;                             )))
                     (setq run-string
                           (perlnow-generate-run-string-and-associate
                            (perlnow-latest-test-file
                             (perlnow-list-perl-tests default-directory)
                             )))
-
                     )
                    (t ; non-cpan-style
                     (setq testfile (perlnow-get-test-file-name))
@@ -2971,9 +2951,6 @@ If PROGRAM-FILE is nil or empty-string, this returns an empty-string."
     (if perlnow-trace (perlnow-close-func))
     runstring))
 
-
-
-
 ;; This actually WORKED.  (I've lost track of The number of hacks
 ;; I tried that really should've worked... yeah, ok, this is the Right Way,
 ;; but seriously there is something fundamentally squirrelly about the
@@ -3000,10 +2977,9 @@ Intended to be used via hooks such as `next-error-hook'."
    (if perlnow-trace (perlnow-close-func))
    retval-if-any))
 
+;; DEBUG
 ;; (remove-hook 'next-error-hook 'perlnow-associate-last-with-this)
 (add-hook 'next-error-hook 'perlnow-associate-last-with-this)
-
-
 
 ;;=======
 ;; prompt functions
@@ -3494,34 +3470,24 @@ associated location, just returns the first of them."
 
 ;; (defun bloorg ()
 ;;   ""
-;;   (let* (
-;;          (md (perlnow-metadata))
-
-;; Note: 0 .. 2 are currently unused
-
-;;          (testloc-absolute (nth 3  md))
-;;          (hyphenized       (nth 4  md))
-;;          (package-name     (nth 5  md))
-;;          (incspot          (nth 6  md))
-;;          (buffer           (nth 7  md))
-;;          (filename         (nth 8  md))
-;;          (fileloc          (nth 9  md))
-;;          (basename         (nth 10 md))
-;;          (file-type        (nth 11 md))
-;;          (project-type     (nth 12 md))
-;;          (sub-name         (nth 13 md))
-
-;;          )
-;;     ;; ...
-;;     ))
-
+;;   (let* ((md (perlnow-metadata))
+;;          (testloc-absolute (nth 0  md))
+;;          (hyphenized       (nth 1  md))
+;;          (package-name     (nth 2  md))
+;;          (incspot          (nth 3  md))
+;;          (buffer           (nth 4  md))
+;;          (filename         (nth 5  md))
+;;          (fileloc          (nth 6  md))
+;;          (basename         (nth 7  md))
+;;          (file-type        (nth 8  md))
+;;          (project-type     (nth 9  md))
+;;          (sub-name         (nth 10 md))
 
 ;; Just used by: perlnow-test-create and perlnow-test-create-manually.  
-;; TODONT
-;; The test code creation problem is nastier than you think (always, even for me, even now)
-;; and you will *not* replace this code with something way simpler, so stop thinking about it.
-;; TODO 
-;; And so, this code *needs* to be maintained.
+
+;; TODONT The test code creation problem is nastier than you
+;; think (always, even for me, even now) and you will *not* replace
+;; this code with something way simpler, so stop thinking about it.
 (defun perlnow-metadata (&optional file-name)
   "Tries to give you \"metadata\" for the relevant perl code.
 Based on your present context (as inferred from the current buffer,
@@ -3745,14 +3711,8 @@ buffer when metadata was called:
    (if (and testloc-absolute incspot)
        (perlnow-stash-put testloc-absolute incspot))
 
-   ;; TODO currently, the first three elements are unused
    (setq md-list
          (list 
-;;               testloc dotdef namestyle
-;;                nil
-;;                nil
-;;                nil
-
                testloc-absolute                      ;; TODO USEFUL case 2
                hyphenized-package-name               ;; TODO USEFUL case 1
                package-name
@@ -3776,8 +3736,6 @@ buffer when metadata was called:
   (let ( md )
     (cond ((not (and testloc-absolute incspot))
            (setq md (perlnow-metadata))
-;;            (setq testloc-absolute (nth 3  md)) ;; TODO subtract 3: 0
-;;            (setq incspot          (nth 6  md)) ;; TODO subtract 3: 3
            (setq testloc-absolute (nth 0  md)) 
            (setq incspot          (nth 3  md)) 
            ))
@@ -5843,7 +5801,8 @@ Begins looking at optional START-POINT or at current buffer's file or location.
 The START-POINT may be a file or a directory: where possible it's 
 better to give it a file."
   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-stepup-to-project-root"))
-  (unless start-point (setq start-point (or (buffer-file-name) default-directory)))
+  ;; (unless start-point (setq start-point (or (buffer-file-name) default-directory)))
+  (unless start-point (setq start-point (perlnow-current-context)))
   (let ((pr-from-lib perlnow-project-root-from-lib)    ;; "$PN_LIB_DIR/.."
         (pr-from-bin perlnow-project-root-from-script) ;; "$PN_SCRIPT_DIR/.."
         (pr-from-t   perlnow-project-root-from-t)      ;; "$PN_T_DIR/.."
