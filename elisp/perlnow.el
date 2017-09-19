@@ -6393,6 +6393,7 @@ for the old-fashioned \"1.t\".  E.g. if the staging-area were
     test-file))
 
 ;; Essentially an efficiency hack
+;; Used by: perlnow-milla, perlnow-module-starter
 (defun perlnow-full-path-new-module-starter-test-file (modstar-location package-name)
   "Get the full path to a the new test file to be added to a
 structure created by module_starter (using Module::Build).
@@ -6450,7 +6451,6 @@ if the module is installed, that can be omitted."
          )
     (if perlnow-trace (perlnow-close-func))
     export-list))
-;;(perlnow-export-list-for "Cranky::Devil" "/home/doom/lib")
 
 (defun perlnow-inc ()
   "Returns contents of perl's @INC as a list."
@@ -6577,12 +6577,9 @@ This makes no attempt at a more aggressive completion past
 a file-system name separator boundary."
 ;;; codename: new tabby
   (interactive)
-;;   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-read-minibuffer-complete")) ;; NYET
   (let* ((restrict-to-word-completion nil)
          (ret
-          (perlnow-read-minibuffer-workhorse restrict-to-word-completion))
-        )
-;;     (if perlnow-trace (perlnow-close-func)) ;; NYET
+          (perlnow-read-minibuffer-workhorse restrict-to-word-completion)))
     ret))
 
 
@@ -6594,12 +6591,9 @@ Used in reading in the name of a perl module name \(which need not
 exist already\), where valid name separators are \(\"/\" or \"::\"\)."
   ;; codename: new spacey
   (interactive)
-;;   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-read-minibuffer-complete-word")) ;; NYET
   (let* ((restrict-to-word-completion t)
          (ret
-          (perlnow-read-minibuffer-workhorse restrict-to-word-completion))
-         )
-;;    (if perlnow-trace (perlnow-close-func))  ;; NYET
+          (perlnow-read-minibuffer-workhorse restrict-to-word-completion)))
     ret))
 
 
@@ -6614,7 +6608,6 @@ Takes a single logical argument RESTRICT-TO-WORD-COMPLETION
 that controls whether whole name or single word completion will be used.
 This switch is the sole difference between \\[perlnow-read-minibuffer-complete\]
 and \\[perlnow-read-minibuffer-complete-word\]."
-;;   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-read-minibuffer-workhorse")) ;; NYET
   (let ( ;; empty declarations:
         raw_string candidate-alist suggested-completion field-start
         word-separator two-pieces-list perlish-path fragment fragment-pat
@@ -6687,7 +6680,6 @@ and \\[perlnow-read-minibuffer-complete-word\]."
         )) ; end if/else, close of "usual processing"
     (delete-region (+ 1 field-start) (point-max))
     (insert new-mini)
-;;     (if perlnow-trace (perlnow-close-func)) ;; NYET
     ))
 
 (defun perlnow-read-minibuffer-completion-help ()
@@ -6698,7 +6690,6 @@ and \\\[perlnow-read-minibuffer-complete] \(at least indirectly, through
 be bound to the \"?\" key during the minibuffer read."
 ;;; codename: huh
   (interactive)
-  ;; (if perlnow-trace (perlnow-open-func "Calling " "perlnow-read-minibuffer-completion-help")) ;; NYET
   (let* ((raw-string (buffer-substring-no-properties (point-min) (point-max)))
          (pat ": ")
          (field-start (+ (string-match pat raw-string) (length pat)))
@@ -6724,7 +6715,6 @@ be bound to the \"?\" key during the minibuffer read."
       (display-completion-list
        (all-completions fragment match-alist)
        ))
-    ;; (if perlnow-trace (perlnow-close-func))  ;; NYET
     ))
 
 
@@ -6732,7 +6722,6 @@ be bound to the \"?\" key during the minibuffer read."
   "Remove the pm extension from the names in the ALIST of file names and values.
 Currently this throws away the numeric value and re-numbers the names in the
 alist in order."
-;;  (if perlnow-trace (perlnow-open-func "Calling " "perlnow-remove-pm-extensions-from-alist"))
   ;; Does the numbering of items in the alist matter one way or another?
   (let ((i (length alist))
          name  new-alist
@@ -6744,7 +6733,6 @@ alist in order."
       (setq i (- i 1))
       )
     (setq new-alist (reverse new-alist)) ;; nreverse
-;;    (if perlnow-trace (perlnow-close-func))
     new-alist))
 
 
@@ -6760,7 +6748,6 @@ which also pass the \\[perlnow-interesting-file-name-p] test
 These are simple file names that do not include the path,
 and the values associated with them in the returned alist
 are sequential integers."
-;;   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-modules-and-dirs-alist"))
 ;;; For extra credit how about stripping the .pm on the file names?
 ;;; Nope: I can't do that, it messes up "workhorse" as written.
   (let* (;; some directory-files arguments:
@@ -6785,7 +6772,6 @@ are sequential integers."
                  (setq i (+ i 1))))))
     ;; Reverse the order to get values counting up starting from 1
     (setq match-alist (reverse match-alist))  ;; nreverse
-;;    (if perlnow-trace (perlnow-close-func))
     match-alist))
 
 ;;; TODO
@@ -6800,7 +6786,6 @@ path using slashes for the module root name space, and
 double colons for the package name space inside of that.
 This routine divides it into it's two components, the module root
 and module name, which are returned as a two-element list."
-;;  (if perlnow-trace (perlnow-open-func "Calling " "perlnow-divide-hybrid-path-and-package-name"))
   (let* ( (pattern
            (concat
             "^\\(.*\\)"       ; ^(.*)    - the module root (incspot)
@@ -6816,7 +6801,6 @@ and module name, which are returned as a two-element list."
            (setq package-name (match-string 2 string)))
           (t
            (message "Could not separate into module root and name: %s" string)))
-;;    (if perlnow-trace (perlnow-close-func))
     (list incspot package-name)))
 
 (defun perlnow-interesting-file-name-p (string)
@@ -6824,11 +6808,8 @@ and module name, which are returned as a two-element list."
 Takes a bare filename (sans path) as the STRING
 argument and returns t if it doesn't match the list of
 uninteresting filenames patterns, otherwise nil."
-;;   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-interesting-file-name-p")) ;; NYET
 ;;; TODO
-;;; Shouldn't silently use completion-ignored-extensions.
-;;; Break it out as a defvar
-
+;;; Shouldn't silently use completion-ignored-extensions. Break it out as a defvar
 ;;; Let the user define what's interesting.
   (let (
         (ignore-pat
@@ -6845,7 +6826,6 @@ uninteresting filenames patterns, otherwise nil."
       (error "Expected string in input"))
     (setq ret
           (not (string-match ignore-pat string)))
-;;     (if perlnow-trace (perlnow-close-func))  :: NYET
     ret))
 
 ;;-------
@@ -6912,8 +6892,7 @@ root directory \"/\" is never going to be what you want.
 And unlike perlnow-fixdir, this will not stick you with the
 default-directory in those cases."
   (let* ((slash perlnow-slash)
-         (trailing-slash-pat (concat slash "$"))
-         )
+         (trailing-slash-pat (concat slash "$")))
     (cond ((not path)
            (setq path ""))
           ((string= path "")
@@ -6926,8 +6905,7 @@ default-directory in those cases."
   "Takes the given STRING, removes a trailing slash, if any found.
 \(If not in unix-land, goes after the local file-system separator, whatever it is.\)"
   (let* ((slash perlnow-slash)
-         (trailing-slash-pat (concat slash "$"))
-         )
+         (trailing-slash-pat (concat slash "$")))
     (cond ((not string)
            (setq string ""))
           ((string= string "")
@@ -6947,7 +6925,6 @@ Otherwise, return nil.  The given full file name should be an absolute path."
       (if (equal full-file-name bfn)
           (setq open-p t)))
     open-p))
-;; (perlnow-file-open-p "/home/doom/End/Cave/Perlnow/lib/perlnow/elisp/perlnow.el")
 
 (defun perlnow-buffer-for-file (full-file-name)
   "If FULL-FILE-NAME is already open, return the buffer for it.
@@ -6955,18 +6932,13 @@ Otherwise return nil. The given full file name should be an absolute path.
 Note: \\[find-file] also finds already open buffers, but afterwards
 you don't know which state it was in."
   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-buffer-for-file"))
-  ;;   (if perlnow-debug 
-  ;;       (message "perlnow-buffer-for-file full-file-name: %s" (pp-to-string full-file-name)))
   (let ( buffy )
     (dolist (bf (mapcar 'identity (buffer-list)))
       ;; (message "bf: %s" (pp-to-string bf))
       (if (equal full-file-name (buffer-file-name bf))
           (setq buffy bf)))
     (if perlnow-trace (perlnow-close-func))
-    ;; (message "returning buffy: %s" (pp-to-string buffy))
     buffy))
-;; (perlnow-buffer-for-file "/home/doom/End/Cave/Perlnow/lib/perlnow/elisp/perlnow.el")
-;; (perlnow-buffer-for-file "/home/doom/End/Cave/Perlnow/lib/perlnow/elisp/yomama.el")
 
 ;; general utility
 (defun perlnow-ensure-directory-exists (dir &optional ask-message)
@@ -7146,12 +7118,12 @@ Note: this is a wrapper around \\[directory-files]."
 ;;------
 ;; list manipulation utilities
 
+;; Used by: perlnow-add-incspot-to-perl5lib
 (defun perlnow-split-list-at (list before)
   "Split the given LIST at point matching BEFORE.
 LIST is expected to be a list of strings.
 Returns two lists, with BEFORE at the start of the second list.
 If BEFORE not found in list, second list is nil."
-  (if perlnow-trace (perlnow-open-func "Calling " "perlnow-split-list-at"))
   (let ( lead  tail  item  new )
     (catch 'IT
       (while (setq item (pop list))
@@ -7164,15 +7136,12 @@ If BEFORE not found in list, second list is nil."
     (if list ;; if there's anything left-over, call it the tail
         (setq tail list))
     (setq lead (reverse new))  ;; nreverse
-    (if perlnow-trace (perlnow-close-func))
     (list lead tail)))
 
+;; Used by: perlnow-remove-incspot-from-perl5lib
 (defun perlnow-filter-list (string-list filter-regexp)
   "Filter the given list of strings (STRING-LIST) using the FILTER-REGEXP."
   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-filter-list"))
-;;   (if perlnow-debug
-;;       (message "  perlnow-filter-list: string-list: %s filter-regexp: %s"
-;;                (pp-to-string string-list) filter-regexp))
   (let (new-list)
     (cond (filter-regexp
            (dolist (string string-list)
@@ -7183,7 +7152,6 @@ If BEFORE not found in list, second list is nil."
           (t
            (setq new-list nil)
            ))
-    (if perlnow-trace (perlnow-close-func))
     new-list))
 
 (defun perlnow-grep-list (string-list match-regexp)
@@ -8174,7 +8142,6 @@ It does three things:
 (defun perlnow-report-metadata ( &optional md )
   "Trial run of \\[perlnow-metadata], now with auto-tron!"
   (interactive)
-  ;; (perlnow-tron)
   (unless md (setq md (perlnow-metadata)))
   (let* (
          (testloc          (nth 0  md))
@@ -8212,28 +8179,6 @@ It does three things:
           (format "%30s %-40s\n" "sub-name: "         sub-name)
           "<({\n"
           ))
-    )
-  ;; (perlnow-troff)
-  )
-
-(defun perlnow-run-perlnow-add-incspot-to-perl5lib ()
-  ""
-  (interactive)
-  (perlnow-add-incspot-to-perl5lib))
-
-(defun perlnow-wtf ()
-  ""
-  (interactive)
-
-  (let* (( testloc-absolute "/home/doom/tmp/t" )
-         ( incspot "/home/doom/tmp/lib")
-         )
-
-    ;; EXPERIMENTAL
-    (perlnow-stash-put testloc-absolute incspot)
-
-    (message "perlnow-incspot-from-t-plist: %s\n"
-             (pp-to-string perlnow-incspot-from-t-plist))
     ))
 
 ;;========
@@ -8253,10 +8198,10 @@ It does three things:
      By default this is bound to \"C-c \ *\".
 
   o  The perlnow standard structure expects a trio of directories under 
-     a project root (see `perlnow-documentation-coding-standard'), 
+     a project root (see `perlnow-documentation-coding-standard'), but
      it is possible some variations of this structure could be handled 
      by modifying `perlnow-project-root-from-lib', `perlnow-project-root-from-script',
-     and/or `perlnow-project-root-from-script', but this is untested.
+     and/or `perlnow-project-root-from-script', however, this is all untested.
 
      A structure like this might be supported with the following customizations:
 
@@ -8269,6 +8214,15 @@ It does three things:
 
       \(setq perlnow-project-root-from-lib        \"$PN_LIB_DIR/../..\"\)
       \(setq perlnow-project-root-from-script  \"$PN_SCRIPT_DIR/../..\"\)
+
+
+  o  If something seems very confused with a code buffer, running this command might 
+     clean things up: `perlnow-reset-buffer-locals'
+
+
+  o  For an exporter-based module, running `perlnow-revise-export-list' might be 
+     useful to add all routines to the EXPORT_OK list.
+
 
 "
 )
