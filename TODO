@@ -11,10 +11,6 @@ Using this as the working location (April 2017):
 Import anything left-over there to here.
 
 ===
-FEATURE
-Doing a perlnow code creation command while inside a dired buffer
-should use that location by default, rather than the fixed default.
-===
 BUG
   module man pages don't regard '::' as part of a word.
   Something like this improves things:
@@ -25,14 +21,6 @@ BUG
   Doesn't play nice with tramp.el or ange-ftp, not even a perl check.
   if a remote buffer, make/find a local copy of it and run perl -cw on it?
   (Verify this is still a problem.  --  Apr 15, 2010 )
-
-===
-BUG
-Doesn't work with
-  xemacs
-  windows
-
-Should begin at least minimal testing with xemacs.
 
 ===
 BUG
@@ -52,6 +40,7 @@ remember that, and avoid over-writing a manual setting.   An "attribute"
 to the string, to tell it hands-off?
 
 ===
+
 BUG
 
 If the *compilation* buffer is already displayed in some other frame,
@@ -59,6 +48,17 @@ that can cause problems.  Possible fix: always kill *compilation*
 before a perlnow-run.  (verify still a problem -- Thu Apr 15 12:46:59 2010)
 
 (( Can you move *compilation* associated it with another frame? )) 
+
+===
+===
+
+BUG
+Doesn't work with
+  xemacs
+  windows
+
+Should do some minimal testing on other platforms?
+(Or request it from others.)
 
 ===
 FEATURE

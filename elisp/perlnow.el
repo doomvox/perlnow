@@ -965,8 +965,8 @@ may be set differently for different files.")
 (defvar perlnow-select-test-file-buffer-name "*select test file*"
   "Name of buffer to display lists of test files.")
 
-(defvar perlnow-cpan-display-name "*perlnow-cpan-style*"
-  "Name of buffer to display cpan builder command output.")
+(defvar perlnow-message-buffer-name "*perlnow*"
+  "Name of buffer to display all perlnow messages.")
 
 (defvar perlnow-bashrc-include-file
   (substitute-in-file-name "$HOME/.bashrc_perl5lib_add")
@@ -1531,7 +1531,7 @@ the current buffer to get some hints about what lines you might
 like to have in the new script to start coding with.
 If you've been looking at some perl module code -- or a man page
 documenting a perl module -- it will give you a \"use\" line to include
-that module.  If the module is not in perl's @INC array, (( TODO still? )) it will also
+that module.  If the module is not in perl's @INC array, it will also
 insert the appropriate \"FindBin\" & \"use lib\" lines so that the script
 can find the module."
 ;;     (interactive
@@ -1580,6 +1580,8 @@ can find the module."
               (t ;; no special starting place
                (perlnow-do-script script-name))))
            ))
+    (perlnow-git-add-commit-safe script-name)
+    (perlnow-force-revert-and-redisplay   script-name)
     (perlnow-set-associated-code-pointers initial-file)
     (if perlnow-trace (perlnow-close-func))
     ))
@@ -1641,13 +1643,15 @@ creation."
          (default-directory incspot) ;; for benefit of perlnow-milla-p
          )
     (cond ((perlnow-milla-p)
-           (perlnow-milla-add pr package-name "exporter") ;; Q: one-up from incspot better?
+           (perlnow-milla-add pr package-name "exporter") 
            )
           (t
            (perlnow-create-with-template filename perlnow-perl-module-template)
-           ))
+           (perlnow-git-add-commit-safe filename)
+           )
+          )
     (perlnow-set-associated-code-pointers original-file filename) 
-    (perlnow-re-display filename)
+    (perlnow-force-revert-and-redisplay filename)
     (if perlnow-trace (perlnow-close-func))
     ))
 
@@ -1702,14 +1706,15 @@ The location for the new module defaults to the global
          (pr (perlnow-project-root incspot))
          (default-directory incspot) ;; for benefit of perlnow-milla-p
          )
-    (cond ((perlnow-milla-p)
+    (cond ((perlnow-milla-p) ;; works
            (perlnow-milla-add pr package-name "object") ;; Q: one-up from incpsot better?
            )
           (t
            (perlnow-create-with-template filename perlnow-perl-object-module-template)
+           (perlnow-git-add-commit-safe filename)
            ))
     (perlnow-set-associated-code-pointers original-file filename) 
-    (perlnow-re-display filename)
+    (perlnow-force-revert-and-redisplay filename)
     (if perlnow-trace (perlnow-close-func))
     ))
 
@@ -1768,7 +1773,7 @@ double-colon separated package name form\)."
           (h2xs-staging-area "")
           (window-size perlnow-secondary-window-size)  
           )
-    (setq display-buffer (get-buffer-create perlnow-cpan-display-name))
+    (setq display-buffer (get-buffer-create perlnow-message-buffer-name))
     ;; Bring the *perlnow-h2xs* display window to the fore
     ;;   (bottom window of the frame)
     (perlnow-show-buffer-other-window display-buffer window-size t)
@@ -1832,7 +1837,7 @@ module-starter will create the \"staging area\"\) and the PACKAGE-NAME
           (window-size perlnow-secondary-window-size)     ;; number of lines for the *.t file buffer 
           (module-style perlnow-module-style)
           )
-    (setq display-buffer (get-buffer-create perlnow-cpan-display-name))
+    (setq display-buffer (get-buffer-create perlnow-message-buffer-name))
 
     ;;Bring the *perlnow-module-starter* display window to the fore (bottom window of the frame)
     (perlnow-show-buffer-other-window display-buffer window-size t)
@@ -1887,11 +1892,18 @@ module-starter will create the \"staging area\"\) and the PACKAGE-NAME
         (perlnow-create-with-template module-file pm-template)
 
         ;; clear the "t" directory, shuffling tests out of the way to "xt"
+
+        ;; I struggle for a clean git status
+        (shell-command
+           (format "git rm %s" (concat cpan-t-loc "basic.t"))
+           perlnow-message-buffer-name)
         (let ((dumping-grounds
                (concat cpan-t-loc (file-name-as-directory "..") "xt")) )
           (dolist (file (directory-files cpan-t-loc t "\\\.t$" t))
             (rename-file file dumping-grounds t)))
+        ;; (perlnow-git-add (concat cpan-t-loc "basic.t")) ;; hacky, ja
 
+        (perlnow-git-commit "Move tests created by milla to xt directory.")
         ;; create and open the *.t file
         (setq cpan-test-file
               (perlnow-full-path-new-module-starter-test-file
@@ -1980,7 +1992,7 @@ milla will create the \"staging area\"\) and the PACKAGE-NAME
     (setq module-style perlnow-module-style)
     (setq window-size perlnow-secondary-window-size)     ;; number of lines for the *.t file buffer 
 
-    (setq display-buffer (get-buffer-create perlnow-cpan-display-name)) ;; buffer object
+    (setq display-buffer (get-buffer-create perlnow-message-buffer-name)) ;; buffer object
     ;; Bring the display window to the fore (bottom window of the frame)
     (perlnow-show-buffer-other-window display-buffer window-size t)
     (perlnow-blank-out-display-buffer display-buffer t)
@@ -2030,16 +2042,15 @@ milla will create the \"staging area\"\) and the PACKAGE-NAME
       (perlnow-open-file-other-window
         cpan-test-file window-size t-template t)
 
-      (perlnow-set-associated-code-pointers cpan-test-file module-file) ;; TODO why no workies
+      (perlnow-set-associated-code-pointers cpan-test-file module-file) 
 
       (perlnow-git-add module-file)
       (perlnow-git-add cpan-test-file)
+      (perlnow-git-add cpan-xt-loc) ;; just being neat
       (perlnow-git-commit (format "cpan-style project for %s" package-name))
-      ;; TODO also accepts buffers.  hypothetically faster?
-      (perlnow-dual-window-display module-file cpan-test-file)
+      (perlnow-dual-window-display module-file cpan-test-file)  ;; TODO also accepts buffers.  
       (if perlnow-trace (perlnow-close-func))
       )))
-
 
 (defun perlnow-milla-add ( staging-area package-name module-style )
   "Adds a module to a milla/dzil cpan-style project.
@@ -2070,7 +2081,7 @@ Three required arguments:
     (setq module-style perlnow-module-style)
     (setq window-size perlnow-secondary-window-size)     ;; number of lines for the *.t file buffer
 
-    (setq display-buffer (get-buffer-create perlnow-cpan-display-name)) ;; buffer object
+    (setq display-buffer (get-buffer-create perlnow-message-buffer-name)) ;; buffer object
     ;; Bring the display window to the fore (bottom window of the frame)
     (perlnow-show-buffer-other-window display-buffer window-size t)
     (perlnow-blank-out-display-buffer display-buffer t)
@@ -2096,11 +2107,10 @@ Three required arguments:
 
       (delete-file module-file)
       (perlnow-create-with-template module-file pm-template)
-      (let ((show-buffer (current-buffer)))
-        (perlnow-git-add module-file)
-        (perlnow-git-commit (format "Adding %s to milla cpan-style project" package-name))
-        ;; message? 
-        (set-buffer show-buffer))
+
+      (perlnow-git-add module-file)
+      (perlnow-git-commit (format "Adding %s to milla cpan-style project" package-name))
+
       (if perlnow-trace (perlnow-close-func))
       )))
 
@@ -2108,30 +2118,40 @@ Three required arguments:
   "Perfoms a git add of given FILE in current directory.
 If optional DISPLAY-BUFFER is supplied, shell-command output will 
 be directed there.  If `perlnow-git-auto' is nil, this does nothing."
-  (unless display-buffer (setq display-buffer perlnow-cpan-display-name))
-  (let* ((git-cmd (format "git add %s" (shell-quote-argument file))))
+  (unless display-buffer (setq display-buffer perlnow-message-buffer-name))
+  (let* ((git-cmd (format "git add %s" (shell-quote-argument file)))
+         (loc (file-name-directory file))
+         (default-directory loc)
+         )
     (if perlnow-debug (message "git-cmd: %s" git-cmd))
+    (if perlnow-debug (message "gitloc: %s" (perlnow-find-git-location file)))
     (cond (perlnow-git-auto
            (shell-command git-cmd display-buffer)
            ))
     ))
 
-(defun perlnow-git-commit ( &optional mess display-buffer)
+(defun perlnow-git-commit ( &optional mess all )
   " Does a a git commit in the the current directory. 
-If optional DISPLAY-BUFFER is supplied, shell-command output will 
-be directed there.  A basic perlnow commit message is used by 
-default, but MESS will be appended to it if supplied. 
-If `perlnow-git-auto' is nil, this does nothing."
-  (unless display-buffer (setq display-buffer perlnow-cpan-display-name))
-  (let ( git-cmd  git-mess-prefix full-mess )
+ A basic perlnow commit message is used by default, but MESS will
+be appended to it if supplied.  If all option is supplied, 
+does a \"git commit -a\".
+If `perlnow-git-auto' is nil, this does nothing.
+The Shell command output is redirected to the buffer `perlnow-message-buffer-name'.
+"
+  (let ( git-cmd  git-mess-prefix  full-mess  display-buffer all-opt-str)
+    (setq display-buffer perlnow-message-buffer-name)
     (setq git-mess-prefix "Automatic git commit by perlnow")
     (cond (mess
            (setq full-mess (concat git-mess-prefix ": " mess)))
           (t
            (setq full-mess (concat git-mess-prefix))
            ))
+    (cond (all
+           (setq all-opt-str "-a"))
+          (t
+           (setq all-opt-str "")))
     (cond (perlnow-git-auto
-           (setq git-cmd (format "git commit -m %s" (shell-quote-argument full-mess)))
+           (setq git-cmd (format "git commit %s -m %s" all-opt-str (shell-quote-argument full-mess)))
            (if perlnow-debug (message "git-cmd: %s" git-cmd))
            (shell-command git-cmd display-buffer)
            ))
@@ -2145,6 +2165,30 @@ If `perlnow-git-auto' is nil, this does nothing."
          (returned-str (shell-command-to-string  probe-cmd))
          (detected (string-match check-pat returned-str)) )
     detected))
+
+;; TODO 
+;; Forgot to respect this
+;;       (cond (perlnow-git-auto
+
+(defun perlnow-git-add-commit-safe (file)
+  "Tries to do a git add and commit on the given FILE.
+If the file is not located in a git-controlled project, this
+is skipped quietly.  Also, first checks if git is installed."
+  (let (project-root)
+  (cond ((setq project-root (perlnow-find-git-location file))
+         (if perlnow-debug (message "perlnow-git-add-commit-safe found pr: %s" project-root))
+         (cond ((command-installed-p "git")
+                (if perlnow-debug (message "perlnow-git-add-commit-safe sees git installed"))
+                (perlnow-git-add file)
+                (let ((basename (file-name-nondirectory file)))
+                  (perlnow-git-commit (format "Adding %s to project" basename))
+                  ))
+               (t
+                (message
+                 "WARNING: can not find git, but this is a git contolled project: %s"
+                 project-root)
+                ) ))
+        )))
 
 
 ;;---------
@@ -2226,7 +2270,8 @@ to be associated with the given TESTFILE." ;; TODO expand docstring
       ;; global to pass value to template
       (setq perlnow-perl-package-name package-name)
       (perlnow-open-file-other-window
-       testfile 30 perlnow-perl-test-module-template)
+         testfile 30 perlnow-perl-test-module-template)
+      (perlnow-git-add-commit-safe testfile)
       (funcall (perlnow-lookup-preferred-perl-mode))
       (if new-file-p
           (save-excursion
@@ -2243,7 +2288,8 @@ to be associated with the given TESTFILE." ;; TODO expand docstring
       (setq perlnow-perl-script-name (buffer-file-name))
       (setq original-code   perlnow-perl-script-name)
       (perlnow-open-file-other-window
-       testfile 30 perlnow-perl-test-script-template)
+         testfile 30 perlnow-perl-test-script-template)
+      (perlnow-git-add-commit-safe testfile)
       (funcall (perlnow-lookup-preferred-perl-mode))
       (save-buffer))
      ;; if test select menu buffer (with associated pm)
@@ -2258,7 +2304,8 @@ to be associated with the given TESTFILE." ;; TODO expand docstring
       ;; global to pass value to template
       (setq perlnow-perl-package-name package-name)
       (perlnow-open-file-other-window
-       testfile 30 perlnow-perl-test-module-template)
+         testfile 30 perlnow-perl-test-module-template)
+      (perlnow-git-add-commit-safe testfile)
       (funcall (perlnow-lookup-preferred-perl-mode))
       (if new-file-p
           (save-excursion
@@ -2281,7 +2328,7 @@ to be associated with the given TESTFILE." ;; TODO expand docstring
                 original-code)
            (perlnow-set-associated-code-pointers testfile original-code)))
     (perlnow-sync-save-run-string
-     (perlnow-generate-run-string testfile) harder-setting)
+      (perlnow-generate-run-string testfile) harder-setting)
     (if perlnow-trace (perlnow-close-func))
     ))
 
@@ -2622,7 +2669,8 @@ The number of screen lines may be specified with TOP-HEIGHT
 or BOT-HEIGHT... if both are specified, TOP-HEIGHT will be used. 
 Something very, very sensible is done if the number of lines 
 requested is impossible or impractical.  
-See: \\[perlnow-new-window-below],  because I don't remember what it does."
+See: \\[perlnow-new-window-below],  because I don't remember what it does.
+Leaves the cursos in the top window."
   (cond (top-height
          (setq bot-height (- (perlnow-window-total-height) top-height)))
         ((not bot-height)
@@ -2638,16 +2686,42 @@ See: \\[perlnow-new-window-below],  because I don't remember what it does."
   (cond((bufferp bot-fob)
         (switch-to-buffer bot-fob) )
        (t
-        (find-file bot-fob))) )
+        (find-file bot-fob)))
+  (other-window 1) )
 
-;; opposite of bury-buffer (unbury takes no args...)
-(defun perlnow-re-display (fob)
-  "Given file-or-buffer FOB, display in the alone in foreground."
-  (delete-other-windows)
+;; Doing a revert-buffer is the only way I can find to update the
+;; git status in the mode line.... but it DOES NOT WORK 
+;; when called programmatically... I keep *seeing* phenomena like this,
+;; what emacs sees is not what's really there, it misses recent changes.
+(defun perlnow-force-revert-and-redisplay (fob &optional alone)
+  "Given file-or-buffer FOB, force a revert and re-display in the foreground.
+This is a very, very DANGEROUS command which can only be safely called on 
+a newly created file, otherwise you risk blowing away recent changes. "
+  ;; (delete-other-windows) ;; eh, too heavy-handed...
+  (perlnow-hide-perlnow-message-buffer)
   (cond((bufferp fob)
-        (switch-to-buffer fob) )
+        (switch-to-buffer fob)
+        )
        (t
-        (find-file fob))) )
+        (find-file fob))
+       )
+  ;; (force-mode-line-update) ;; not good enough for git status, unfortunately
+  (revert-buffer t t))
+
+(defun perlnow-hide-perlnow-message-buffer ()
+  "Get rid of the *perlnow* display window."
+  (switch-to-buffer perlnow-message-buffer-name) 
+  (old-delete-window (selected-window)) ;; plain delete-window can delete frame
+  (bury-buffer perlnow-message-buffer-name))
+
+
+;; DEBUG EXPERIMENTAL
+;; This is not enough to update the git status in the mode-line (!).
+;; A revert buffer does it.
+(defun perlnow-refresh-modeline ()
+  ""
+  (interactive)  
+  (force-mode-line-update))
 
 
 ;;=======
@@ -8120,7 +8194,7 @@ It does three things:
 (defun perlnow-report-status-vars ()
   "Dump status report of key buffer-local variables."
   (interactive)
-  (let* (( display-buffer (get-buffer-create "*perlnow*"))
+  (let* (( display-buffer (get-buffer-create perlnow-message-buffer-name))
          ( window-size -13 )   ;; number of lines for display-buffer
          ( mess (perlnow-vars-report-string))
          )

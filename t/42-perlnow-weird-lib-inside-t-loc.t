@@ -40,17 +40,18 @@
           (staging-area
            (perlnow-staging-area perlnow-dev-location package-name))
 
-          (cpan-lib (concat staging-area test-init-slash "lib" test-init-slash))
-          (cpan-t   (concat staging-area test-init-slash "t" test-init-slash))
+          (cpan-lib (concat staging-area "lib" test-init-slash))
+          (cpan-t   (concat staging-area  "t" test-init-slash))
 
-          (weird-lib (concat cpan-t test-init-slash "lib" test-init-slash))
+          (weird-lib (concat cpan-t "lib" test-init-slash))
           (nouveau-package-name "Testoidal::Ute")
 
 ;;          (exp-rs-from-pm "") ;; TODO
 
           ;; Because this is a 'weird' case with detailed UI still up for grabs
           ;; there's no one expected, we allow two:
-          (allowed-rs-from-pm (list ""  "perl /home/doom/tmp/perlnow_test/t42/dev/Dank-Rank/t/01-Dank-Rank.t"))
+          (allowed-rs-from-pm
+            (list ""  "perl /home/doom/tmp/perlnow_test/t42/dev/Dank-Rank/t/01-Dank-Rank.t"))
 
           ;; (perl "/usr/bin/perl") ;; same has hash-bang in script template
           (perl "perl") ;; but much better to let the PATH sort it out
