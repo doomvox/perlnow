@@ -968,6 +968,16 @@ may be set differently for different files.")
 (defvar perlnow-message-buffer-name "*perlnow*"
   "Name of buffer to display all perlnow messages.")
 
+(defvar perlnow-message-buffer  nil
+"Buffer used for general display of perlnow messaging.
+ Used by \\[perlnow-shell-command] to store buffer object with
+name `perlnow-message-buffer-name'")
+
+;; TODO The need for this as a global var is less clear 
+(defvar perlnow-temp-buffer  nil
+"Buffer for display of output of individual external processes.
+See `perlnow-message-buffer'")
+
 (defvar perlnow-bashrc-include-file
   (substitute-in-file-name "$HOME/.bashrc_perl5lib_add")
   "Full name of a .bashrc include file to make additions to PERL5LIB permanent.")
@@ -1581,7 +1591,6 @@ can find the module."
                (perlnow-do-script script-name))))
            ))
     (perlnow-git-add-commit-safe script-name)
-    (perlnow-force-revert-and-redisplay   script-name)
     (perlnow-set-associated-code-pointers initial-file)
     (if perlnow-trace (perlnow-close-func))
     ))
@@ -1651,7 +1660,6 @@ creation."
            )
           )
     (perlnow-set-associated-code-pointers original-file filename) 
-    (perlnow-force-revert-and-redisplay filename)
     (if perlnow-trace (perlnow-close-func))
     ))
 
@@ -1678,8 +1686,8 @@ The location for the new module defaults to the global
            (read-from-minibuffer
             "New OOP module to create \(e.g. /tmp/dev/New::Mod\): "
             initial-prompt keymap nil history nil nil))
-     ;; TODO handle blank input: clearly should bail, maybe warn
-
+     (if (not (perlnow-perlish-true-p result))
+         (error "perlnow-object-module: can't work without a package name"))
      ;; remove accidentally typed ".pm"
      (setq result (replace-regexp-in-string "\.pm$" "" result))
      (setq filename
@@ -1707,14 +1715,13 @@ The location for the new module defaults to the global
          (default-directory incspot) ;; for benefit of perlnow-milla-p
          )
     (cond ((perlnow-milla-p) ;; works
-           (perlnow-milla-add pr package-name "object") ;; Q: one-up from incpsot better?
+           (perlnow-milla-add pr package-name "object") 
            )
           (t
            (perlnow-create-with-template filename perlnow-perl-object-module-template)
            (perlnow-git-add-commit-safe filename)
            ))
-    (perlnow-set-associated-code-pointers original-file filename) 
-    (perlnow-force-revert-and-redisplay filename)
+    (perlnow-set-associated-code-pointers filename original-file) 
     (if perlnow-trace (perlnow-close-func))
     ))
 
@@ -1743,6 +1750,7 @@ to determine how to work."
     (if perlnow-debug
         (message "perlnow-cpan-module cmd: %s %s %s " func-str perlnow-dev-location package-name))
     (funcall func-symbol dev-location package-name)
+;; Better to do this down low, because they can be called individually:
 ;;     (perlnow-set-associated-code-pointers original-file)
     (if perlnow-trace (perlnow-close-func))
     ))
@@ -1846,7 +1854,8 @@ module-starter will create the \"staging area\"\) and the PACKAGE-NAME
     (let* ((default-directory cpan-location)
            (modstar-cmd (perlnow-generate-module-starter-cmd  package-name cpan-location ))
            )
-      (shell-command modstar-cmd display-buffer nil)
+;;      (shell-command modstar-cmd display-buffer nil)
+      (perlnow-shell-command modstar-cmd)
 
       (setq cpan-staging-area
             (file-name-as-directory
@@ -1939,12 +1948,15 @@ and the email address from the variable user-mail-address."
              "--builder=\"%s\" "
              "--license=\"%s\" "
              "--dir=\"%s\"")
-            module-name
-            author-name
-            user-mail-address
-            perlnow-module-starter-builder
-            perlnow-perl-program
-            subdir
+;;             (mapcar 'shell-quote-argument
+;;                     (list
+                     module-name
+                     author-name
+                     user-mail-address
+                     perlnow-module-starter-builder
+                     perlnow-perl-program
+                     subdir
+;;            ))
             )))
     (if perlnow-quiet
         (setq cmd (concat cmd " --force")))
@@ -1998,7 +2010,7 @@ milla will create the \"staging area\"\) and the PACKAGE-NAME
     (perlnow-blank-out-display-buffer display-buffer t)
 
     (let* ((default-directory cpan-location))
-      (shell-command milla-cmd display-buffer nil)
+      (perlnow-shell-command milla-cmd)
 
       (setq cpan-staging-area
             (file-name-as-directory
@@ -2071,23 +2083,17 @@ Three required arguments:
              "WARNING: milla typically works with git repositories, but git not found."))
         (setq perlnow-git-auto nil)))
 
-  (let* ( cpan-template-tag  display-buffer  module-file  cpan-pm-loc
-;;          cpan-test-file   cpan-t-loc   t-template  hyphenated  t-prefix
-          window-size  module-style  pm-template  
+  (let* ( cpan-template-tag    module-file  cpan-pm-loc
+            module-style  pm-template  
           milla-cmd  git-cmd
           )
     (setq cpan-template-tag "milla")
     (setq milla-cmd (concat "milla add " package-name ))
     (setq module-style perlnow-module-style)
-    (setq window-size perlnow-secondary-window-size)     ;; number of lines for the *.t file buffer
-
-    (setq display-buffer (get-buffer-create perlnow-message-buffer-name)) ;; buffer object
-    ;; Bring the display window to the fore (bottom window of the frame)
-    (perlnow-show-buffer-other-window display-buffer window-size t)
-    (perlnow-blank-out-display-buffer display-buffer t)
 
     (let* ((default-directory staging-area))  ;; milla looks for dist.ini here
-      (shell-command milla-cmd display-buffer nil)
+      (perlnow-shell-command milla-cmd)
+
       ;; (perlnow-cpan-style-build staging-area) ;; TODO needed?
       (setq cpan-pm-loc (file-name-as-directory (concat staging-area "lib" perlnow-slash)))  
       (setq module-file (concat cpan-pm-loc
@@ -2114,11 +2120,9 @@ Three required arguments:
       (if perlnow-trace (perlnow-close-func))
       )))
 
-(defun perlnow-git-add (file &optional display-buffer)
+(defun perlnow-git-add (file)
   "Perfoms a git add of given FILE in current directory.
-If optional DISPLAY-BUFFER is supplied, shell-command output will 
-be directed there.  If `perlnow-git-auto' is nil, this does nothing."
-  (unless display-buffer (setq display-buffer perlnow-message-buffer-name))
+If `perlnow-git-auto' is nil, this does nothing."
   (let* ((git-cmd (format "git add %s" (shell-quote-argument file)))
          (loc (file-name-directory file))
          (default-directory loc)
@@ -2126,20 +2130,17 @@ be directed there.  If `perlnow-git-auto' is nil, this does nothing."
     (if perlnow-debug (message "git-cmd: %s" git-cmd))
     (if perlnow-debug (message "gitloc: %s" (perlnow-find-git-location file)))
     (cond (perlnow-git-auto
-           (shell-command git-cmd display-buffer)
+           (perlnow-shell-command git-cmd)
            ))
     ))
 
 (defun perlnow-git-commit ( &optional mess all )
   " Does a a git commit in the the current directory. 
- A basic perlnow commit message is used by default, but MESS will
-be appended to it if supplied.  If all option is supplied, 
-does a \"git commit -a\".
-If `perlnow-git-auto' is nil, this does nothing.
-The Shell command output is redirected to the buffer `perlnow-message-buffer-name'.
-"
-  (let ( git-cmd  git-mess-prefix  full-mess  display-buffer all-opt-str)
-    (setq display-buffer perlnow-message-buffer-name)
+ A basic perlnow commit message is used by default, 
+but MESS will be appended to it it is given.
+If the ALL option is supplied, does a \"git commit -a\".
+If `perlnow-git-auto' is nil, this does nothing."
+  (let ( git-cmd  git-mess-prefix  full-mess  all-opt-str)
     (setq git-mess-prefix "Automatic git commit by perlnow")
     (cond (mess
            (setq full-mess (concat git-mess-prefix ": " mess)))
@@ -2153,7 +2154,7 @@ The Shell command output is redirected to the buffer `perlnow-message-buffer-nam
     (cond (perlnow-git-auto
            (setq git-cmd (format "git commit %s -m %s" all-opt-str (shell-quote-argument full-mess)))
            (if perlnow-debug (message "git-cmd: %s" git-cmd))
-           (shell-command git-cmd display-buffer)
+           (perlnow-shell-command git-cmd)
            ))
     ))
 
@@ -2519,6 +2520,86 @@ Uses the HARDER-SETTING \(4 or 16\) to choose whether to do a
     (if perlnow-trace (perlnow-close-func))
     run-string))
 
+
+;;;========
+;;; calling external processes
+
+(defun perlnow-shell-command (program &rest args)
+  "Call PROGRAM using \\[call-process], passing along the list of arguments.
+Appends output to buffer named `perlnow-message-buffer-name'.
+Internally uses \\[shell-command], but runs \\[shell-quote-argument] on all ARGS."
+  (let ( initial-buffer log-buffer  temp-buffer-name  temp-buffer cmd
+           program-messages  label )
+    (setq initial-buffer (current-buffer))
+    (setq log-buffer
+          (cond ((buffer-live-p perlnow-message-buffer)
+                 perlnow-message-buffer)
+                (perlnow-message-buffer-name
+                 (setq perlnow-message-buffer 
+                       (get-buffer-create perlnow-message-buffer-name)))
+                (t 
+                 (message
+                  (concat 
+                  "WARNING: perlnow-shell-command is running without a log buffer, "
+                    "because perlnow-message-buffer-name is nil")))
+                ))
+
+  (setq temp-buffer-name
+           (cond (perlnow-message-buffer-name
+                 (let ((name (replace-regexp-in-string "\\*$" "" perlnow-message-buffer-name)))
+                   (setq name (concat name "-temp*"))
+                   name)
+                 )))
+  (setq temp-buffer
+          (cond ((buffer-live-p perlnow-temp-buffer)
+                  perlnow-temp-buffer)
+                (temp-buffer-name
+                      (setq perlnow-temp-buffer
+                            (get-buffer-create temp-buffer-name)))
+                ))
+  (setq label
+          (concat
+           (format 
+            "===\nOutput from %s run with args:\n  %s" program (pp-to-string args))))
+  (perlnow-blank-out-display-buffer temp-buffer)
+  ;; 
+  ;; passing on the args to the call-process function requires this awesomely fugly elispism
+  ;;   (apply #'call-process program nil temp-buffer nil args)
+  ;; And call-process leaves you without your envar settings: e.g. it can't find "milla"
+  ;; So instead we fall back on:
+  (setq cmd (concat program " " (mapcar 'shell-quote-argument args)))
+  (shell-command cmd temp-buffer temp-buffer)
+  ;; extract messaging from temp-buffer, and append to the real log-buffer
+  (set-buffer temp-buffer)
+  (setq program-messages (buffer-string))
+  (set-buffer log-buffer)
+  (goto-char (point-max))
+  (insert label)
+  (insert program-messages)
+  ;; This has to be after the above insert block otherwise the
+  ;; inserts try to go elsewhere (??)
+  (perlnow-delete-buffer-window-safeish temp-buffer)
+  (switch-to-buffer initial-buffer)
+  ))
+
+;; The actual goal of these gyrations is to be able to display 
+;; output from shell commands without ending up with a display 
+;; buffer in the user's face.
+(defun perlnow-delete-buffer-window-safeish (buffer-or-name)
+  "Goal: remove BUFFER-OR-NAME from current display safeishly.
+As written the safeishness needs improvement: 
+I suspect that if the buffer was the only thing displayed in a
+frame, it would remove tshe frame, and I'm not sure I want that
+behavior."
+  ;; TODO do I need to handle the "but that was the only thing here case"
+  ;; Maybe: an optional backing-buffer to display if there's nothing
+  ;; else that makes sense?  
+  (let* ((initial-buffer (current-buffer)))
+    (switch-to-buffer buffer-or-name)
+    (kill-buffer)
+    (switch-to-buffer initial-buffer)
+    ))
+
 ;;;========
 ;;; window management
 
@@ -2561,6 +2642,7 @@ emacs with --script\), returns 30 \(I was seeing window-total-height return
     (if perlnow-trace (perlnow-close-func))
     height))
 
+;; TODO the "switchback" concept should be called "stay-here"
 (defun perlnow-open-file-other-window (file &optional numblines template switchback)
   "Open FILE in another window, leaving the current buffer visible.
 Options: NUMBLINES, the number of lines in the new
@@ -2656,8 +2738,7 @@ a buffer object.  This can work on a read-only buffer."
           )
       (get-buffer-create buffer))
     (if switchback
-;;        (set-buffer buffer))
-        (switch-to-buffer buffer))  ;; duh
+        (switch-to-buffer buffer))  
     (if perlnow-trace (perlnow-close-func))
     (setq default-directory original-default-directory)
     ))
@@ -2689,40 +2770,17 @@ Leaves the cursos in the top window."
         (find-file bot-fob)))
   (other-window 1) )
 
-;; Doing a revert-buffer is the only way I can find to update the
-;; git status in the mode line.... but it DOES NOT WORK 
-;; when called programmatically... I keep *seeing* phenomena like this,
-;; what emacs sees is not what's really there, it misses recent changes.
-(defun perlnow-force-revert-and-redisplay (fob &optional alone)
-  "Given file-or-buffer FOB, force a revert and re-display in the foreground.
-This is a very, very DANGEROUS command which can only be safely called on 
-a newly created file, otherwise you risk blowing away recent changes. "
-  ;; (delete-other-windows) ;; eh, too heavy-handed...
-  (perlnow-hide-perlnow-message-buffer)
-  (cond((bufferp fob)
-        (switch-to-buffer fob)
-        )
-       (t
-        (find-file fob))
-       )
-  ;; (force-mode-line-update) ;; not good enough for git status, unfortunately
-  (revert-buffer t t))
 
 (defun perlnow-hide-perlnow-message-buffer ()
   "Get rid of the *perlnow* display window."
-  (switch-to-buffer perlnow-message-buffer-name) 
-  (old-delete-window (selected-window)) ;; plain delete-window can delete frame
-  (bury-buffer perlnow-message-buffer-name))
-
-
-;; DEBUG EXPERIMENTAL
-;; This is not enough to update the git status in the mode-line (!).
-;; A revert buffer does it.
-(defun perlnow-refresh-modeline ()
-  ""
-  (interactive)  
-  (force-mode-line-update))
-
+  (let ((initial-buffer (current-buffer)))
+    (switch-to-buffer perlnow-message-buffer-name) 
+    ;;   (require 'frame-cmds)
+    ;;   (old-delete-window (selected-window)) ;; plain delete-window can delete frame
+    (if (not (one-window-p t))
+        (delete-window (selected-window)))
+    (bury-buffer perlnow-message-buffer-name)
+    (switch-to-buffer initial-buffer)))
 
 ;;=======
 ;; internal, lower-level routines used by the external "entry point" functions
@@ -2981,8 +3039,8 @@ the file FILENAME, if specified."
 (defun perlnow-set-associated-code-pointers (there &optional here)
   "Make THERE the associated code for HERE (default: current buffer's file).
 Revises the buffer-local variable \\[perlnow-associated-code] in
-both locations. Note: expects that THERE will be an existing file.
-Opens the file, if not open already. Both arguments should be full paths."
+both locations. Note: expects both HERE and THERE to be existing files.
+Opens the files, if not open already. Both arguments should be full paths."
   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-set-associated-code-pointers"))
   (let* ((initial (current-buffer))
          (here    (or here (buffer-file-name)))
@@ -3026,13 +3084,13 @@ Opens the file, if not open already. Both arguments should be full paths."
             nil)
            (t ;; valid arguments, so do it
             (find-file here)
-            (setq perlnow-associated-code
+            (setq perlnow-associated-code  
                   (convert-standard-filename there) )
             (find-file there)
-            (setq perlnow-associated-code
+            (setq perlnow-associated-code  
                   (convert-standard-filename here))
             )))
-    (switch-to-buffer initial) ;; TODO not set-buffer?
+    (switch-to-buffer initial) 
     (if perlnow-trace (perlnow-close-func))
     retval))
 
@@ -3205,7 +3263,7 @@ This is to make sure that the file actually exists."
     ))
 
 (defun perlnow-create-with-template (filename template &optional force)
-  "Create a new file with a template.el template.
+  "Create and open a new file with a template.el template.
 Given FILENAME and TEMPLATE this does the actual creation of the
 file and associated buffer using the template.  As a side-effect,
 it sets the global `template-file' here.  Returns t on
@@ -3405,7 +3463,7 @@ with a Makefile.PL or a Build.PL."
 ;; a point in an odd location in a milla project rather than
 ;;   <project_root>/lib, then we should maybe pretend it's not
 ;; a milla project, so the module creation commands will still work.  
-
+;; in the unusual place.
 (defun perlnow-milla-p ( &optional loc )
   "Determine if given location is in a milla \(or dzil\) cpan-style project.
 Checks LOC option or `default-directory', if not given.
@@ -6541,7 +6599,7 @@ if the module is installed, that can be omitted."
           (concat
            "perl"
            " -I'"
-           incspot
+            incspot
            "' -M"
            package-name
            " -e 'print join \"\t\", @"
@@ -7953,6 +8011,8 @@ Deletes blank entries at beginning and end of PERL5LIB
     (setenv "PERL5LIB" new-lib-str t)
     (if perlnow-trace (perlnow-close-func))
     new-lib-str))
+
+
 
 ;;;=======
 ;;; cheat commands ("cheat" == automatically fix things so checks pass)
