@@ -16,6 +16,7 @@
    ;; project-specific include file (with standard name)
    (if (file-exists-p "test-init.el")
        (load-file "test-init.el"))
+   (perlnow-tron)
    (let* (
           (test-loc (test-init))
           (funcname "perlnow-module-starter")

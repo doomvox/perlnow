@@ -2589,7 +2589,7 @@ Internally uses \\[shell-command], but runs \\[shell-quote-argument] on all ARGS
   "Goal: remove BUFFER-OR-NAME from current display safeishly.
 As written the safeishness needs improvement: 
 I suspect that if the buffer was the only thing displayed in a
-frame, it would remove tshe frame, and I'm not sure I want that
+frame, it would remove the frame, and I'm not sure I want that
 behavior."
   ;; TODO do I need to handle the "but that was the only thing here case"
   ;; Maybe: an optional backing-buffer to display if there's nothing
@@ -6941,18 +6941,19 @@ are sequential integers."
     (setq match-alist (reverse match-alist))  ;; nreverse
     match-alist))
 
-;;; TODO
-;;; Fix any portability problem here.  Can pattern [^/] work on windows?
-;;; Why not build it up using perlnow-slash?
-;;; Possibly better: don't use regexps here
-;;;  o  string search for last perlnow-slash, use subdir to get b4 and after
 (defun perlnow-divide-hybrid-path-and-package-name (string)
   "Divide the hybrid form of a module path into the two components.
+
+    Input:   /home/devster/lib/Project::Vomit
+    Output:  /home/devster/lib/  Project::Vomit
+
 Input STRING is expected to be a hybrid file system
 path using slashes for the module root name space, and
 double colons for the package name space inside of that.
 This routine divides it into it's two components, the module root
-and module name, which are returned as a two-element list."
+and module name, which are returned as a two-element list.
+This is like \\[perlnow-divide-module-path-dir-and-tail]
+except that this treats colons as part package name, not the path."
   (let* ( (pattern
            (concat
             "^\\(.*\\)"       ; ^(.*)    - the module root (incspot)
@@ -6964,7 +6965,8 @@ and module name, which are returned as a two-element list."
           package-name
           )
     (cond ((string-match pattern string)
-           (setq incspot     (match-string 1 string))
+           (setq incspot
+                 (file-name-as-directory (match-string 1 string)))
            (setq package-name (match-string 2 string)))
           (t
            (message "Could not separate into module root and name: %s" string)))
@@ -7000,24 +7002,23 @@ uninteresting filenames patterns, otherwise nil."
 ;; Used by: perlnow-read-minibuffer-workhorse, perlnow-read-minibuffer-completion-help
 (defun perlnow-divide-module-path-dir-and-tail (string)
   "Split a file system path into directory and trailing name fragment.
-Allows for the use of perl's double-colon package
-name separators in addition to the usual unix-like slash
-character.\n
-Simple example: given the STRING \"/home/doom/lib/Stri\" should return
- \"/home/doom/lib/\" and \"Stri\"\n
-Perl package example: given \"/home/doom/lib/Taxed::Reb\" should return
- \"/home/doom/lib/Taxed::\" and \"Reb\"\n"
-;;; TODO - fix unix file separator dependency here
-;;;        (build up with perlnow-slash?)
-  (let* ( (pattern "^\\(.*\\(/\\|::\\)\\)\\([^/:]*$\\)" )
-          directory fragment
+Treats double-colons and slashes as equivalent separators 
+\(and forbids colons from the name fragment\).
+  Given:   \"/home/doom/lib/Taxed::Reb\"
+  Return:  \"/home/doom/lib/Taxed::\"    and  \"Reb\"
+This is like \\[perlnow-divide-hybrid-path-and-package-name]
+except that this treats any colons as part of the path."
+  (let* ((slash           perlnow-slash)
+         (break-point-pat (concat "[" slash ":][^" slash ":]*$"))  ;; "[/:][^/:]*$"
           )
-    (cond ((string-match pattern string)
-           (setq directory (match-string 1 string))
-           (setq fragment (match-string 3 string)) )
+    (let ( idx   directory   fragment )
+      (cond ((setq idx (string-match break-point-pat string))
+             (setq directory (substring string 0 (1+ idx)))
+             (setq fragment  (substring string (1+ idx) )) )
           (t
-           (message "match failed") ))
-    (list directory fragment)))
+           (setq directory nil)
+           (setq fragment  string) ))
+    (list directory fragment))))
 
 
 ;; An alternate approach:

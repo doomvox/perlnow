@@ -26,6 +26,7 @@
           (expected-file (concat inc-spot "One/Over.pm"))
           new-package-name
           )
+     (if perlnow-debug (message "CENTRAL: About to run object-module..."))
      (perlnow-object-module inc-spot package-name)
 
      (assert-t
