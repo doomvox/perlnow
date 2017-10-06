@@ -1274,12 +1274,17 @@ outside of perlnow:
   (unless prefix (setq prefix "\C-c/"))
   ;; These need to be defined widely in all (or most) modes
   ;; because they're for jumping into writing perl code.
+  ;; I also do them in the "local" section, just to make sure
+  ;; they get done... "global-set" is more like default-set.
+  ;; who knows what you'll really get.
   (global-set-key (format "%ss" prefix) 'perlnow-script)
   (global-set-key (format "%sm" prefix) 'perlnow-module)
   (global-set-key (format "%so" prefix) 'perlnow-object-module)
-  ;; (global-set-key (format "%sh" prefix) 'perlnow-h2xs)
-  ;; (global-set-key (format "%sO" prefix) 'perlnow-module-starter)
   (global-set-key (format "%sP" prefix) 'perlnow-cpan-module)
+
+  (global-set-key (format "%st" prefix) 'perlnow-edit-test-file)
+  (global-set-key (format "%sa" prefix) 'perlnow-test-create)
+  (global-set-key (format "%sA" prefix) 'perlnow-test-create-manually)
 
   ;; These bindings can be specific to the user's favorite perl mode.
   (let ( (define-perl-bindings-string
@@ -1291,10 +1296,6 @@ outside of perlnow:
                (local-set-key \"%sr\" 'perlnow-run)
                (local-set-key \"%sR\" 'perlnow-set-run-string)
 
-               (local-set-key \"%st\" 'perlnow-edit-test-file)
-               (local-set-key \"%sa\" 'perlnow-test-create)
-               (local-set-key \"%sA\" 'perlnow-test-create-manually)
-
                (local-set-key \"%sb\" 'perlnow-back-to-code)
                (local-set-key \"%s1\" 'cperl-perldoc-at-point)
                (local-set-key \"%s#\" 'comment-region)
@@ -1303,8 +1304,14 @@ outside of perlnow:
 
                (local-set-key \"%s*\" 'perlnow-display-inc-array)
 
-;;                ;; in a perl buffer, use this wrapper around next-error
-;;                (local-set-key \"C-x`\" 'perlnow-next-error)
+               (local-set-key \"%ss\" 'perlnow-script)
+               (local-set-key \"%sm\" 'perlnow-module)
+               (local-set-key \"%so\" 'perlnow-object-module)
+               (local-set-key \"%sP\" 'perlnow-cpan-module)
+
+               (local-set-key \"%st\" 'perlnow-edit-test-file)
+               (local-set-key \"%sa\" 'perlnow-test-create)
+               (local-set-key \"%sA\" 'perlnow-test-create-manually)
                )"
             ))
          )
@@ -2085,7 +2092,11 @@ Three required arguments:
   o  the MODULE-STYLE -- typically 'exporter' or 'object' 
 "
   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-milla-add"))
+  ;; TODO error out if staging-area or package-name is nil?
   (setq staging-area (perlnow-fixdir staging-area))
+  (unless module-style
+    (setq module-style perlnow-module-style))
+
   ;; check that milla is installed
   (cond ((not (command-installed-p "milla"))
         (error "perlnow-milla-add can't run: cannot find milla command.  Install Dist::Milla from CPAN.")))
@@ -2096,13 +2107,9 @@ Three required arguments:
              "WARNING: milla typically works with git repositories, but git not found."))
         (setq perlnow-git-auto nil)))
 
-  (let* ( cpan-template-tag    module-file  cpan-pm-loc
-            module-style  pm-template  
-          milla-cmd  git-cmd
-          )
+  (let* ( cpan-template-tag   module-file  cpan-pm-loc  pm-template  milla-cmd  git-cmd  )
     (setq cpan-template-tag "milla")
     (setq milla-cmd (concat "milla add " package-name ))
-    (setq module-style perlnow-module-style)
 
     (let* ((default-directory staging-area))  ;; milla looks for dist.ini here
       (perlnow-shell-command milla-cmd)
