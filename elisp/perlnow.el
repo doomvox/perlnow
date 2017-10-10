@@ -676,29 +676,29 @@ a test-file in a secondary window.")
   "Standard location for template.el templates.")
 (put 'perlnow-template-location 'risky-local-variable t)
 
-(defcustom perlnow-perl-script-template
-  (concat perlnow-template-location "/" "TEMPLATE.perlnow-pl.tpl")
-  "The template that new perl scripts will be created with.")
+(defcustom perlnow-perl-script-template nil
+  "The template that new perl scripts will be created with.
+Setting this overrides the usual search behavior. \\[perlnow-choose-template].")
 (put 'perlnow-perl-script-template 'risky-local-variable t)
 
-(defcustom perlnow-perl-module-template
-  (concat perlnow-template-location "/" "TEMPLATE.perlnow-pm.tpl")
-  "The template that new perl modules will be created with.")
+(defcustom perlnow-perl-module-template nil
+  "The template that new perl modules will be created with.
+Setting this overrides the usual search behavior. \\[perlnow-choose-template].")
 (put 'perlnow-perl-module-template  'risky-local-variable t)
 
-(defcustom perlnow-perl-object-module-template
-  (concat perlnow-template-location "/" "TEMPLATE.perlnow-object-pm.tpl")
-  "The template that new perl object modules will be created with.")
+(defcustom perlnow-perl-object-module-template nil
+  "The template that new perl object modules will be created with.
+Setting this overrides the usual search behavior. \\[perlnow-choose-template].")
 (put 'perlnow-perl-object-module-template  'risky-local-variable t)
 
-(defcustom perlnow-perl-test-script-template
-  (concat perlnow-template-location "/" "TEMPLATE.perlnow-pl-t.tpl")
-  "The template that tests for perl scripts will be created with.")
+(defcustom perlnow-perl-test-script-template nil
+  "The template that ordinary module perl test scripts will be created with.
+Setting this overrides the usual search behavior. \\[perlnow-choose-template].")
 (put 'perlnow-perl-test-template  'risky-local-variable t)
 
-(defcustom perlnow-perl-test-module-template
-  (concat perlnow-template-location "/" "TEMPLATE.perlnow-pm-t.tpl")
-  "The template that ordinary module perl test scripts will be created with.")
+(defcustom perlnow-perl-test-module-template nil
+  "The template that ordinary module perl test scripts will be created with.
+Setting this overrides the usual search behavior. \\[perlnow-choose-template].")
 (put 'perlnow-perl-test-template  'risky-local-variable t)
 
 (defcustom perlnow-license-message
@@ -1015,8 +1015,6 @@ it make more sense to use no prefix for the most common case?")
 
 (defvar perlnow-setter-prefix "set_"
   "Defines the naming convention for setters for object-oriented code.")
-
-
 
 
 ;;;========
@@ -1668,7 +1666,7 @@ creation."
              (perlnow-milla-add pr package-name "exporter") 
              )
             (t
-             (perlnow-create-with-template filename perlnow-perl-module-template)
+             (perlnow-create-with-template filename (perlnow-choose-module-template))
              (perlnow-git-add-commit-safe filename)
              )
             )
@@ -1728,12 +1726,18 @@ The location for the new module defaults to the global
            (filename (perlnow-full-path-to-module incspot package-name))
            (pr (perlnow-project-root incspot))
            (default-directory incspot) ;; for benefit of perlnow-milla-p
+           (module-style "object")
            )
       (cond ((perlnow-milla-p) ;; works
-             (perlnow-milla-add pr package-name "object") 
+             (perlnow-milla-add pr package-name module-style)
              )
             (t
-             (perlnow-create-with-template filename perlnow-perl-object-module-template)
+             (perlnow-create-with-template filename
+                                           (perlnow-choose-module-template
+                                            nil ;; cpan-style
+                                            module-style
+                                            perlnow-template-location))
+
              (perlnow-git-add-commit-safe filename)
              ))
       (perlnow-set-associated-code-pointers filename original-file) 
@@ -1854,7 +1858,7 @@ module-starter will create the \"staging area\"\) and the PACKAGE-NAME
     (setq cpan-location (perlnow-fixdir cpan-location))
     (unless (file-exists-p cpan-location)
       (make-directory cpan-location t))
-    (let* ( (cpan-template-tag "modstar")
+    (let* ( (cpan-style "modstar")
             (display-buffer) ;; buffer object
             (module-file  "")
             (cpan-test-file    "")
@@ -1872,7 +1876,6 @@ module-starter will create the \"staging area\"\) and the PACKAGE-NAME
       (let* ((default-directory cpan-location)
              (modstar-cmd (perlnow-generate-module-starter-cmd  package-name cpan-location ))
              )
-        ;;      (shell-command modstar-cmd display-buffer nil)
         (perlnow-shell-command modstar-cmd)
 
         (setq cpan-staging-area
@@ -1882,36 +1885,21 @@ module-starter will create the \"staging area\"\) and the PACKAGE-NAME
         (setq module-file
               (perlnow-full-path-to-cpan-style-module cpan-location package-name))
 
-        (cond (perlnow-debug
-               (message "perlnow-template-location: %s" perlnow-template-location)
-               (message "cpan-template-tag: %s" cpan-template-tag)  ;; modstar
-               (message "module-style: %s" module-style)  ))
-
         (setq cpan-t-loc (file-name-as-directory (concat cpan-staging-area "t")))
         (if perlnow-debug
             (message "cpan-t-loc: %s" cpan-t-loc))
 
         ;; create a module and test file using appropriate templates,
         ;; and swap the module file in place of the one module-starter creates
-        (let* ( (pm-template
-                 (format
-                  "%sTEMPLATE.perlnow-%s-%s-pm.tpl"
-                  perlnow-template-location
-                  cpan-template-tag
-                  module-style
-                  ))
-                (t-template
-                 (format
-                  "%sTEMPLATE.perlnow-%s-%s-pm-t.tpl"
-                  perlnow-template-location
-                  cpan-template-tag
-                  module-style
-                  ))
-                )
-          (cond ( perlnow-debug
-                  (message "pm-template: %s" pm-template)
-                  (message "t-template: %s" t-template) ))
-
+        (let* ( t-template pm-template )
+          (setq pm-template (perlnow-choose-module-template
+                             cpan-style
+                             module-style
+                             perlnow-template-location))
+          (setq t-template (perlnow-choose-module-t-template
+                            cpan-style
+                            module-style
+                            perlnow-template-location))
           (require 'template)
           (setq perlnow-perl-package-name package-name) ;; global used to pass value into template
 
@@ -1919,8 +1907,7 @@ module-starter will create the \"staging area\"\) and the PACKAGE-NAME
           (perlnow-create-with-template module-file pm-template)
 
           ;; clear the "t" directory, shuffling tests out of the way to "xt"
-
-          ;; I struggle for a clean git status
+          ;; (and here I struggle for a clean git status)
           (shell-command
            (format "git rm %s" (concat cpan-t-loc "basic.t"))
            perlnow-message-buffer-name)
@@ -1935,12 +1922,7 @@ module-starter will create the \"staging area\"\) and the PACKAGE-NAME
           (setq cpan-test-file
                 (perlnow-full-path-new-module-starter-test-file
                  cpan-staging-area package-name))
-          (perlnow-open-file-other-window
-           cpan-test-file window-size t-template t )
-          (cond (perlnow-debug
-                 (message (format "module-file: %s"    module-file    ))
-                 (message (format "cpan-test-file: %s" cpan-test-file ))
-                 ))
+          (perlnow-open-file-other-window cpan-test-file window-size t-template t )
           (perlnow-set-associated-code-pointers cpan-test-file module-file)
           ;;        (funcall (perlnow-lookup-preferred-perl-mode))
           (if perlnow-trace (perlnow-close-func))
@@ -2013,13 +1995,13 @@ milla will create the \"staging area\"\) and the PACKAGE-NAME
 
     (unless (file-exists-p cpan-location)
       (make-directory cpan-location t))
-    (let* ( cpan-template-tag  display-buffer  module-file
+    (let* ( cpan-style  display-buffer  module-file
                                cpan-test-file  cpan-staging-area  cpan-t-loc  cpan-xt-loc
                                window-size  module-style  pm-template  t-template
                                milla-cmd  git-cmd
                                pm-template  t-template
                                )
-      (setq cpan-template-tag "milla")
+      (setq cpan-style "milla")
       (setq milla-cmd (concat "milla new " package-name ))
       (setq module-style perlnow-module-style)
       (setq window-size perlnow-secondary-window-size)     ;; number of lines for the *.t file buffer 
@@ -2048,20 +2030,16 @@ milla will create the \"staging area\"\) and the PACKAGE-NAME
 
         ;; create a module and test file using appropriate templates, and swap
         ;; in the perlnow files in place of the ones generated by the builder
-        (setq pm-template
-              (format
-               "%sTEMPLATE.perlnow-%s-%s-pm.tpl"
-               perlnow-template-location
-               cpan-template-tag
-               module-style
-               ))
-        (setq t-template
-              (format
-               "%sTEMPLATE.perlnow-%s-%s-pm-t.tpl"
-               perlnow-template-location
-               cpan-template-tag
-               module-style
-               ))
+        (setq pm-template (perlnow-choose-module-template
+                           cpan-style
+                           module-style
+                           perlnow-template-location))
+
+        (setq t-template (perlnow-choose-module-t-template
+                          cpan-style
+                          module-style
+                          perlnow-template-location))
+
         (require 'template)
         (setq perlnow-perl-package-name package-name) ;; global used to pass value into template
 
@@ -2107,8 +2085,8 @@ Three required arguments:
              "WARNING: milla typically works with git repositories, but git not found."))
         (setq perlnow-git-auto nil)))
 
-  (let* ( cpan-template-tag   module-file  cpan-pm-loc  pm-template  milla-cmd  git-cmd  )
-    (setq cpan-template-tag "milla")
+  (let* ( cpan-style   module-file  cpan-pm-loc  pm-template  milla-cmd  git-cmd  )
+    (setq cpan-style "milla")
     (setq milla-cmd (concat "milla add " package-name ))
 
     (let* ((default-directory staging-area))  ;; milla looks for dist.ini here
@@ -2121,13 +2099,11 @@ Three required arguments:
                                 ".pm"))
       ;; create a module and test file using appropriate templates, and swap
       ;; in the perlnow files in place of the ones generated by the builder
-      (setq pm-template
-               (format
-                "%sTEMPLATE.perlnow-%s-%s-pm.tpl"
-                perlnow-template-location
-                cpan-template-tag
-                module-style
-                ))
+      (setq pm-template (perlnow-choose-module-template
+                         cpan-style
+                         module-style
+                         perlnow-template-location))
+
       (require 'template)
       (setq perlnow-perl-package-name package-name) ;; global used to pass value into template
 
@@ -2271,7 +2247,7 @@ to be associated with the given TESTFILE." ;; TODO expand docstring
           (not (file-exists-p testfile)))
     (perlnow-sub-name-to-var)
     (cond
-     ;; TODO maybe should add a cpan-style handler here?
+     ;; TODO maybe should add a cpan-style handler here?  TODO CHOOSETEMPLATE ditto: determine cpan-style
      (;; if module
       (setq package-name (perlnow-get-package-name-from-module))
       (if perlnow-debug
@@ -2283,8 +2259,7 @@ to be associated with the given TESTFILE." ;; TODO expand docstring
       (setq original-code   pm-file)
       ;; global to pass value to template
       (setq perlnow-perl-package-name package-name)
-      (perlnow-open-file-other-window
-         testfile 30 perlnow-perl-test-module-template)
+      (perlnow-open-file-other-window testfile 30 (perlnow-choose-module-t-template))
       (perlnow-git-add-commit-safe testfile)
       (funcall (perlnow-lookup-preferred-perl-mode))
       (if new-file-p
@@ -2301,8 +2276,7 @@ to be associated with the given TESTFILE." ;; TODO expand docstring
       ;; global to pass value to template
       (setq perlnow-perl-script-name (buffer-file-name))
       (setq original-code   perlnow-perl-script-name)
-      (perlnow-open-file-other-window
-         testfile 30 perlnow-perl-test-script-template)
+      (perlnow-open-file-other-window testfile 30 (perlnow-choose-script-t-template))
       (perlnow-git-add-commit-safe testfile)
       (funcall (perlnow-lookup-preferred-perl-mode))
       (save-buffer))
@@ -2317,8 +2291,7 @@ to be associated with the given TESTFILE." ;; TODO expand docstring
       ;; Note: the following is nearly identical to end of module-p  TODO refactor?
       ;; global to pass value to template
       (setq perlnow-perl-package-name package-name)
-      (perlnow-open-file-other-window
-         testfile 30 perlnow-perl-test-module-template)
+      (perlnow-open-file-other-window testfile 30 (perlnow-choose-module-t-template))
       (perlnow-git-add-commit-safe testfile)
       (funcall (perlnow-lookup-preferred-perl-mode))
       (if new-file-p
@@ -2685,13 +2658,10 @@ Note: as written the given FILE is expect to have the full path."
 (defun perlnow-show-buffer-other-window (buffer &optional numblines stay-here)
   "Utility to open BUFFER in another window, leaving current
 visible.  Options: NUMBLINES, the number number of lines in
-the new window, defaults to half window height; TEMPLATE a
-template.el template to be used in creating a new file
-buffer.  If STAY-HERE is true, the cursor is left in the
-original window, not the new one. BUFFER can be a string or
-a buffer object."
+the new window, defaults to half window height; 
+If STAY-HERE is true, the cursor is left in the original window,
+not the new one. BUFFER can be a string or a buffer object."
   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-show-buffer-other-window"))
-
   (unless numblines
     (setq numblines (/ (frame-height) 2) )) ; new window defaults to half of frame height
   (delete-other-windows)
@@ -2815,7 +2785,7 @@ See the wrapper function: \\[perlnow-script]."
     "Name for the new perl script? " perlnow-script-location))
   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-do-script"))
   (require 'template)
-  (perlnow-create-with-template filename perlnow-perl-script-template)
+  (perlnow-create-with-template filename (perlnow-choose-script-template))
   (perlnow-change-mode-to-executable)
   (if perlnow-trace (perlnow-close-func))
   )
@@ -2839,10 +2809,7 @@ See the wrapper function: \\[perlnow-script] (or possibly the older
       (perlnow-sub-name-to-var))
 
     ;; module is displayed, now want to open script, show in paralel
-    (perlnow-open-file-other-window
-       script
-       nil
-       perlnow-perl-script-template)
+    (perlnow-open-file-other-window script nil (perlnow-choose-script-template))
     (setq created (current-buffer))
 
     ;; Make the script we've created the default run-string for this module.
@@ -3317,6 +3284,176 @@ renaming with an '.OLD' suffix."
           (file-exists-p filename)) ;; return t on success
     (if perlnow-trace (perlnow-close-func))
     ret))
+
+;;--------
+;; choose template
+
+(defun perlnow-choose-module-template ( &optional cpan-style module-style template-location )
+  "Return an appropriate template to use to create a module.
+Uses CPAN-STYLE and MODULE-STYLE if they're provided, but if no 
+template exists to match them, silently falls back to the closest 
+match.  Looks for templates in TEMPLATE-LOCATION,  but defaults 
+to the value of `perlnow-template-location'."
+  (if perlnow-trace (perlnow-open-func "Calling " "perlnow-choose-module-template"))
+  (let* ((file-suffix "pm")
+         (template
+          (perlnow-choose-template file-suffix cpan-style module-style template-location )))
+    (if perlnow-trace (perlnow-close-func))
+    template))
+
+;; "pm-t"
+;; last "t"
+(defun perlnow-choose-module-t-template ( &optional cpan-style module-style template-location )
+  "Return an appropriate template to use to create a test for a module.
+Uses TEMPLATE-TAG and MODULE-STYLE if they're provided, but if no 
+template exists to match them, silently falls back to the closest 
+match.  Looks for templates in TEMPLATE-LOCATION,  but defaults 
+to the value of `perlnow-template-location'."
+  (if perlnow-trace (perlnow-open-func "Calling " "perlnow-choose-module-template"))
+  (let* ((file-suffix "pm-t")
+         (template
+          (perlnow-choose-template file-suffix cpan-style module-style template-location )))
+    (if perlnow-trace (perlnow-close-func))
+    template))
+
+;; TEMPLATE.perlnow-milla-<huh?>-pl.tpl
+;; TEMPLATE.perlnow-milla-pl.tpl
+;; TEMPLATE.perlnow-pl.tpl
+;; TEMPLATE.pl.tpl
+;; "pl"
+(defun perlnow-choose-script-template ( &optional cpan-style module-style template-location )
+  "Return an appropriate template to use to a perl script.
+Uses TEMPLATE-TAG if provide \(and if you're so inclined, MODULE-STYLE,
+though that makes little sense for a script\), but if no template
+exists to match them, silently falls back to the closest match.
+Looks for templates in TEMPLATE-LOCATION, but defaults to the
+value of `perlnow-template-location'."
+  (if perlnow-trace (perlnow-open-func "Calling " "perlnow-choose-module-template"))
+  (let* ((file-suffix "pl")
+         (template
+          (perlnow-choose-template file-suffix cpan-style module-style template-location )))
+    (if perlnow-trace (perlnow-close-func))
+    template))
+
+(defun perlnow-choose-script-t-template ( &optional cpan-style module-style template-location )
+  "Return an appropriate template to use create a test for a perl script.
+Uses TEMPLATE-TAG if provide \(and if you're so inclined, MODULE-STYLE,
+though that makes little sense for a script\), but if no template
+exists to match them, silently falls back to the closest match.
+Looks for templates in TEMPLATE-LOCATION, but defaults to the
+value of `perlnow-template-location'."
+  (if perlnow-trace (perlnow-open-func "Calling " "perlnow-choose-module-template"))
+  (let* ((file-suffix "pl-t")
+         (template
+          (perlnow-choose-template file-suffix cpan-style module-style template-location )))
+    (if perlnow-trace (perlnow-close-func))
+    template))
+
+;; core functionality for above choose template routines
+(defun perlnow-choose-template ( file-suffix &optional cpan-style module-style template-location )
+  "Return an appropriate template to use to create a perl file.
+This is a routine internally used by \\[perlnow-choose-module-template], 
+\\[perlnow-choose-module-t-template], \\[perlnow-choose-script-template] 
+and so on.
+The FILE-SUFFIX is typically a string like \"pm\", \"pl\", or \"pm-t\".
+Uses TEMPLATE-TAG and MODULE-STYLE if they're provided, but if no 
+template exists to match them, silently falls back to the closest 
+match.  Looks for templates in TEMPLATE-LOCATION,  but defaults 
+to the value of `perlnow-template-location'."
+  ;; We do a two-stage "last ditch" attempt at a match where if there's
+  ;; a hyphen in file-suffix, in tries one last time with a trimmed
+  ;; down suffix, just the part after the hyphen. this covers a snag
+  ;; where the final thing tried sometimes deviates from the pattern,
+  ;; e.g. pm-t last-ditches to just t
+  (if perlnow-trace (perlnow-open-func "Calling " "perlnow-choose-template"))
+  (unless template-location (setq template-location perlnow-template-location))
+  (let* ( candidate template )
+    (setq template
+          (catch 'FIT
+            (cond ((setq candidate (perlnow-template-override file-suffix cpan-style module-style))
+;;                   (if (file-exists-p candidate) (throw 'FIT candidate))))
+                   (if candidate (throw 'FIT candidate))))
+            (cond ((and cpan-style module-style)
+                   (setq candidate
+                         (format
+                          "%sTEMPLATE.perlnow-%s-%s-%s.tpl"
+                          template-location
+                          cpan-style
+                          module-style
+                          file-suffix
+                          ))
+                   (if (file-exists-p candidate) (throw 'FIT candidate))))
+            (cond (module-style
+                   (setq candidate
+                         (format
+                          "%sTEMPLATE.perlnow-%s-%s.tpl"
+                          template-location
+                          module-style
+                          file-suffix
+                          ))
+                   (if (file-exists-p candidate) (throw 'FIT candidate))
+                   ))
+            (setq candidate
+                  (format
+                   "%sTEMPLATE.perlnow-%s.tpl"
+                   template-location
+                   file-suffix
+                   ))
+            (if (file-exists-p candidate) (throw 'FIT candidate))
+            (setq candidate
+                  (format
+                   "%sTEMPLATE.%s.tpl"
+                   template-location
+                   file-suffix
+                   ))
+            (if (file-exists-p candidate) (throw 'FIT candidate))
+            ;; if there's a hyphen try just the portion after it
+            (cond ((string-match "-\\(.*\\)$" file-suffix)
+                   (setq file-suffix (match-string 1 file-suffix))
+                   (setq candidate
+                         (format
+                          "%sTEMPLATE.%s.tpl"
+                          template-location
+                          file-suffix
+                          ))
+                   (if (file-exists-p candidate) (throw 'FIT candidate))
+                   ))
+            ))
+    (unless template
+      (message "perlnow-choose-module-template could not find a template in:\n %s" template-location)
+      template-location)
+    (if perlnow-trace (perlnow-close-func))
+    template))
+
+(defun perlnow-template-override (file-suffix cpan-style module-style)
+  "Uses the FILE-SUFFIX and MODULE-STYLE to lookup a template override var.
+The older template vars are now used as overrides, to keep perlnow from 
+searching for an appropriate template on it's own:
+ `perlnow-perl-module-template'
+ `perlnow-perl-object-module-template'
+ `perlnow-perl-test-module-template'
+ `perlnow-perl-script-template'
+ `perlnow-perl-test-script-template'.
+Note: CPAN-STYLE is actually unused here, it's a place-holder to maintain 
+a consistent in-family interface."
+  (if perlnow-trace (perlnow-open-func "Calling " "perlnow-template-override"))
+  (let (template)
+    (setq template
+          (cond ((and (equal module-style "object") (equal file-suffix "pm"))
+                  perlnow-perl-object-module-template)
+                 ((equal file-suffix "pm")
+                  perlnow-perl-module-template)
+                 ((equal file-suffix "pm-t")
+                  perlnow-perl-test-module-template)
+                 ((equal file-suffix "pl")
+                  perlnow-perl-script-template)
+                 ((equal file-suffix "pl-t")
+                  perlnow-perl-test-script-template)
+                  ))
+    (if perlnow-trace (perlnow-close-func))
+    template))
+
+
 ;; end file creation
 
 ;;========
@@ -7140,6 +7277,7 @@ This 'ask' behavior will be suppressed when `perlnow-quiet' is set."
   (if perlnow-trace (perlnow-close-func)))
 
 ;; general utility
+;; unused
 (defun perlnow-ensure-file-exists (file template)
   "If the given FILE doesn't exist, creates it using the TEMPLATE."
   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-ensure-file-exists"))
@@ -8102,7 +8240,7 @@ package name."
   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-script-using-this-module"))
   (save-restriction
     (widen)
-    (require 'template)
+    (require 'template) 
     (let* ( (pm-file (buffer-file-name))
             (pm-location  (file-name-directory pm-file))
             (package-name (perlnow-get-package-name-from-module))
