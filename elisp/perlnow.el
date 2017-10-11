@@ -2245,8 +2245,7 @@ to be associated with the given TESTFILE." ;; TODO expand docstring
   (if perlnow-debug
       (message "DEVO: perlnow-open-test-file: testfile: %s" (pp-to-string testfile)))
   (let ( harder-setting  new-file-p
-         original-code  package-name  pm-file  pm-location  incspot
-         )
+         original-code  package-name  pm-file  pm-location  incspot )
     (setq harder-setting  (car current-prefix-arg))
     (unless (perlnow-perlish-true-p testfile)
       (error "perlnow-open-test-file called with undefined testfile: %s" (pp-to-string testfile)))
@@ -2264,19 +2263,7 @@ to be associated with the given TESTFILE." ;; TODO expand docstring
       (setq pm-location     (file-name-directory pm-file))
       (setq incspot         (perlnow-get-incspot package-name pm-location))
       (setq original-code   pm-file)
-      ;; global to pass value to template
-      (setq perlnow-perl-package-name package-name)
-      (perlnow-open-file-other-window testfile 30 (perlnow-choose-module-t-template))
-      (perlnow-git-add-commit-safe testfile)
-      (funcall (perlnow-lookup-preferred-perl-mode))
-      (if new-file-p
-          (save-excursion
-            (let* ((import-string
-                    (perlnow-import-string-from package-name incspot))
-                   (whitespace
-                    (perlnow-jump-to-use package-name import-string) ))
-              (perlnow-endow-script-with-access-to incspot whitespace))))
-      (save-buffer)
+      (perlnow-open-test-file-for-module testfile package-name incspot)
       )
      ;; if script
      ((perlnow-script-p)
@@ -2294,8 +2281,45 @@ to be associated with the given TESTFILE." ;; TODO expand docstring
       ;; (setq incspot (perlnow-stash-lookup (file-name-directory testfile)))
       (perlnow-incspot-from-t testfile)
       (setq original-code (perlnow-full-path-to-module incspot package-name))
+      (perlnow-open-test-file-for-module testfile package-name incspot)
+      )
+     (t
+      (let ((extension (file-name-extension (buffer-file-name))))
+        (cond ((string= extension "t")
+               (if perlnow-debug 
+                   (message "perlnow-open-test-file: You're already inside of a test file."))
+               ;; TODO here I try to get package-name from t-file name: what if it's not there?
+               (let ( hyphenized  package-name )
+                 (setq hyphenized   (nth 1 (perlnow-parse-standard-t-name testfile)))
+                 (setq package-name (replace-regexp-in-string "-" "::" hyphenized))
+                 (setq incspot (perlnow-scan-tree-for-lib-loc))
+                 (setq original-code
+                       (or 
+                        (perlnow-follow-associations-to-non-test-code (buffer-file-name))
+                        (perlnow-full-path-to-module incspot package-name)))
+                 (perlnow-open-test-file-for-module testfile package-name incspot))
+               )
+              (t ;; context is not a perl buffer
+               ;; TODO but why do I care?  I have a fullpath for a new *.t, right?
+               ;;      (Oh: but not module name to insert into my standard template...)
+               (message "Perlnow: Not a perl buffer.")  
+               )
+              ))))
+    (cond ((and (file-exists-p testfile)
+                original-code)
+           (perlnow-set-associated-code-pointers testfile original-code)))
+    (perlnow-sync-save-run-string
+      (perlnow-generate-run-string testfile) harder-setting)
+    (if perlnow-trace (perlnow-close-func))
+    ))
 
-      ;; Note: the following is nearly identical to end of module-p  TODO refactor?
+;; Redundant block of code moved to a function (not too much logical org here).
+(defun perlnow-open-test-file-for-module (testfile package-name incspot)
+  "Internal routine to open a test file for a module.
+Uses the \"module-t\" template to open the given testfile, does a
+git check-in if appropriate, goes into cperl-mode, munges the new
+test code to find the module easily."
+  (let* ((new-file-p (not (file-exists-p testfile))) )
       ;; global to pass value to template
       (setq perlnow-perl-package-name package-name)
       (perlnow-open-file-other-window testfile 30 (perlnow-choose-module-t-template))
@@ -2310,22 +2334,7 @@ to be associated with the given TESTFILE." ;; TODO expand docstring
               (perlnow-endow-script-with-access-to incspot whitespace)
               )))
       (save-buffer)
-      )
-     (t
-      (let ((extension (file-name-extension (buffer-file-name))))
-        (cond ((string= extension "t")
-               (message "Perlnow: You're already inside of a test file."))
-              (t
-               (message "Perlnow: Not a perl buffer.")
-               )))))
-    (cond ((and (file-exists-p testfile)
-                original-code)
-           (perlnow-set-associated-code-pointers testfile original-code)))
-    (perlnow-sync-save-run-string
-      (perlnow-generate-run-string testfile) harder-setting)
-    (if perlnow-trace (perlnow-close-func))
-    ))
-
+      ))
 
 (defun perlnow-test-create (&optional testfile)
   "Create test file using automated guess."
@@ -2348,7 +2357,10 @@ to be associated with the given TESTFILE." ;; TODO expand docstring
             (t
              (setq perlnow-recent-pick testfile)
              (setq perlnow-recent-pick-global testfile)
-             (perlnow-open-test-file testfile)))
+
+             (perlnow-open-test-file testfile)
+
+             ))
       (if perlnow-trace (perlnow-close-func))
       )))
 
@@ -4018,17 +4030,13 @@ buffer when metadata was called:
           (setq incspot (perlnow-get-incspot package-name file-location))
           )
          ((string= file-type "test")
-          (let* (
-                 (path (file-name-directory file-name))
+          (let* ((path (file-name-directory file-name))
                  (testfile file-name)
-                 ;; (hyphenized (perlnow-extract-hyphenized-from-standard-t-name testfile))
-
                  (fields (perlnow-parse-standard-t-name testfile))
                  (prefix      (nth 0 fields))
                  (hyphenized  (nth 1 fields))
                  (subname     (nth 2 fields))
                  (description (nth 3 fields))
-
                  (colonized (replace-regexp-in-string "-" "::" hyphenized))
                  )
             (setq package-name colonized)
@@ -5078,7 +5086,6 @@ returns the given string unchanged."
 ;;;--------
 ;;; internal routines for perlnow-edit-test-file (and relatives)
 
-;; TODO why named "get"?
 (defun perlnow-get-test-file-name ()
   "Find test file to edit relevent for the current context.
 
@@ -5192,8 +5199,6 @@ the script basename with the HYPHENIZED-PACKAGE-NAME, if defined."
          new-name
          )
     (cond ((perlnow-module-code-p) ;; once again have a current-buffer dependency...
-           (if perlnow-debug
-               (message "REED: perlnow-new-test-file-name: current buffer a module: %s" (buffer-file-name)))
            (setq new-name
                  (cond (;; if we got a sub-name, use it
                         (and perlnow-perl-sub-name (not (string= perlnow-perl-sub-name "")))
@@ -5203,26 +5208,22 @@ the script basename with the HYPHENIZED-PACKAGE-NAME, if defined."
                         (if perlnow-debug (message "perlnow-new-test-name: no sub-name"))
                         (concat testloc-absolute
                                 prefix "-" hyphenized-package-name ".t")
-                        )))
-           (if perlnow-debug
-               (message "TORN: perlnow-new-test-file-name: new-name: %s" new-name))
-           )
+                        ))) )
           ((perlnow-script-p)
-           (let* ((basename
-                   (file-name-sans-extension
-                    (file-name-nondirectory (buffer-file-name))))
-                  )
+           (let* ((basename (file-name-sans-extension
+                             (file-name-nondirectory (buffer-file-name)))) )
              (setq new-name
                    (cond ((and hyphenized-package-name (not (string= hyphenized-package-name "")))
                           ;; 02-Borgia-BananaPeel-deathskate-script.t"
-                          (concat
-                                testloc-absolute
-                                prefix "-" hyphenized-package-name "-" basename "-script.t"))
+                          (concat testloc-absolute
+                                  prefix "-" hyphenized-package-name "-" basename "-script.t"))
                          (t
-                          (concat
-                                  testloc-absolute
+                          (concat testloc-absolute
                                   prefix "-" basename "-script.t")))
-                   ))))
+                   )))
+          (t  ;; starting context is non-module, non-script 
+           (setq new-name
+                 (concat testloc-absolute prefix "-" hyphenized-package-name ".t") )) )
     (if perlnow-trace (perlnow-close-func))
     new-name))
 
@@ -5304,7 +5305,7 @@ contain file names with full paths."
                       filename)) )
         (unless test-file-list
           (setq test-file-list (perlnow-list-perl-tests default-directory)))
-        ;; clear display buffer
+        ;; clear select menu buffer
         (perlnow-show-buffer-other-window menu-buffer-name)
         (setq buffer-read-only nil)
         (delete-region (point-min) (point-max))
@@ -5353,7 +5354,7 @@ contain file names with full paths."
         ;; move to beginning of line, then beginning of next file name
         (move-beginning-of-line 1)
         (goto-char (next-single-property-change (point) 'perlnow-file-path))
-        ;; restore display in the other window, but leave the select menu active
+        ;; restore the other window, but leave the select menu active
         (other-window 1)
         (switch-to-buffer initial-buffer)
         (other-window 1)
@@ -5500,47 +5501,28 @@ This only checks the first character in NAME."
   "Choose the item on the current line."
   (interactive)
   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-select-file"))
-  (let (initiating-code-file
-        selected-file-compact
-        selected-file
-        path
-        original-context
-        newly-selected-buffer
-        newly-selected-file-name
-         )
+  (let ( initiating-code-file  selected-file  original-context
+         newly-selected-buffer  newly-selected-file-name )
     ;; The code buffer the menu was generated from
     (setq initiating-code-file perlnow-associated-code)
     (setq selected-file (perlnow-select-read-full-file-name))
-
     ;; trace associated pointers back to code being tested
     (if initiating-code-file
         (setq original-context
               (perlnow-follow-associations-to-non-test-code initiating-code-file)))
-    (if perlnow-debug
-        (message
-         (concat
-          (format "%30s %-40s\n" "selected-file: "        selected-file)
-          (format "%30s %-40s\n" "initiating-code-file: " initiating-code-file)
-          (format "%30s %-40s\n" "original-context: "     original-context)
-          )))
-
     ;; open the selection, then set-up pointer back to original code
     (find-file selected-file)
     (setq newly-selected-buffer    (current-buffer))
     (setq newly-selected-file-name (buffer-file-name))
     (if original-context
         (setq perlnow-associated-code  original-context))
-
     ;; switch to the original, point at the newly opened test file
     (cond (original-context
            (set-buffer (find-buffer-visiting original-context))
            (setq perlnow-associated-code newly-selected-file-name)
            (setq perlnow-recent-pick     newly-selected-file-name)
            (setq perlnow-recent-pick-global  newly-selected-file-name)  ;; TODO experimental
-           (if perlnow-debug
-               (message "SELECT: perlnow-recent-pick-global: %s" perlnow-recent-pick-global))
            ))
-
     ;; make the newly opened buffer active, display original code in parallel
     (switch-to-buffer newly-selected-buffer)
     (if original-context
@@ -5623,20 +5605,15 @@ add one later\).
 The default TESTFILE can also be supplied as a function argument."
   (interactive)
   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-select-create-test"))
-  (let (file path hyphenized next-prefix)
+  (let ( file  path  hyphenized  next-prefix )
     (cond ((not testfile)
            (setq file (perlnow-current-line-stripped))
            (setq path (perlnow-get-path-from-markedup-name file))
-
            ;; module name from current line, hyphenized
-           ;; Literally what I want, using abstract wrapper instead:
-           ;;   perlnow-extract-hyphenized-from-standard-t-name
-           (setq hyphenized (perlnow-module-from-t-file file))
+           (setq hyphenized  (perlnow-module-from-t-file file))
            (setq next-prefix (perlnow-next-test-prefix path))
-
            (setq testfile (concat path next-prefix "-" hyphenized ".t"))
            )))
-
   (let* ((tf-input
           (read-from-minibuffer
            "Test file: "
@@ -5644,8 +5621,7 @@ The default TESTFILE can also be supplied as a function argument."
            nil
            nil
            (cons 'perlnow-test-file-history 2) ;; TODO double-check the 2
-           ))
-         )
+           )) )
     (setq perlnow-recent-pick        tf-input)
     (setq perlnow-recent-pick-global tf-input)
     (perlnow-open-test-file          tf-input)
