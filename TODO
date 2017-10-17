@@ -11,27 +11,10 @@ Master list of known bugs and feature requests
 Moving to the top of the list entries planned for 1.1
 
                            Sat Oct  9 22:42:17 2010
-PERLNOW FEATURE
-
-Convenience features to search through the code for standard comment
-flags:  TODO|FIXME|WTF|... 
-
-  o   perlnow-next-todo, perlnow-previous-todo
-
-  o   perlnow-greps-list-todo:
-      An alternate command that uses complile-command/next-error system.
-
-Put those in this section:
-  ;;-------
-  ;; user-level navigation commands
-
-  o other code navigation commands:
-     o "perlnow-jump-to-first-real-code".
-       (i.e. the first sub not named new: easy!)
+FEATURE
      o Jump to right after the last sub,
        the natural place to add a new one.
 
-                                        
   o  A new perlnow command, bound to "o". to run prove
       - "o":        "prove *.t"   (default)
       - "o harder": "prove -r"          
@@ -53,29 +36,13 @@ Put those in this section:
        perlnow-script-run-string
        perlnow-module-run-string
 
-
-
 ===
-
-
-I was Using this as the working location as of April 2017:
-
-  /home/doom/End/Cave/Perlnow/Notes/summary-TODO-consolidated
-
-Now in October 2017, moving left over pieces to right here:
 
   o  Is there a way to support tramp.el?
 
----
-
-Variant of narrow-to-defun that includes the docstring
-before the sub. 
-
-Also, a single step variation of:
-       C-x 4 c
-       C-x n d
-
-Default to simple version w/out clone, harder does the clone.
+  Doesn't play nice with tramp.el or ange-ftp, not even a perl check.
+  if a remote buffer, make/find a local copy of it and run perl -cw on it?
+  (Verify this is still a problem.  --  Apr 15, 2010 )
 
 ---
 
@@ -95,19 +62,12 @@ April 9th additons:
      Research: milla add & distzilla
      Review: perlbrew
 
-
-
 ===
 BUG
   module man pages don't regard '::' as part of a word.
   Something like this improves things:
   (modify-syntax-entry ?: "w" man-mode-syntax-table)
   Further: might like to exclude "-" (so that '->' doesn't get sucked in).
-===
-BUG
-  Doesn't play nice with tramp.el or ange-ftp, not even a perl check.
-  if a remote buffer, make/find a local copy of it and run perl -cw on it?
-  (Verify this is still a problem.  --  Apr 15, 2010 )
 
 ===
 BUG

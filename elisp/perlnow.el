@@ -1273,7 +1273,7 @@ Also see \\[perlnow-define-standard-keymappings] \(most likely, more important\)
   (perlnow-mkpath perlnow-pm-location) 
   (perlnow-mkpath perlnow-etc-location))
 
-;; This version is DRYer, via some hackery with eval-read in mode hooks.
+;; Getting DRYer, via some hackery with eval & read in mode hooks.
 (defun perlnow-define-standard-keymappings ( &optional prefix )
   "Quickly define some recommended keymappings for perlnow
 functions.  By default, perlnow.el makes no changes to the user's
@@ -1312,7 +1312,6 @@ outside of perlnow:
                (local-set-key \"%sb\" 'perlnow-back-to-code)
                (local-set-key \"%s1\" 'cperl-perldoc-at-point)
                (local-set-key \"%s#\" 'comment-region)
-               (local-set-key \"%sN\" 'narrow-to-defun)
                (local-set-key \"%si\" 'perlnow-insert-sub)
 
                (local-set-key \"%s*\" 'perlnow-display-inc-array)
@@ -1320,18 +1319,25 @@ outside of perlnow:
                (local-set-key \"%ss\" 'perlnow-script)
                (local-set-key \"%sm\" 'perlnow-module)
                (local-set-key \"%so\" 'perlnow-object-module)
-               (local-set-key \"%sP\" 'perlnow-cpan-module)
+               (local-set-key \"%sM\" 'perlnow-cpan-module)  ;; TODO change to harder?
+
+               (local-set-key \"%sn\" 'perlnow-move-next-sub)
+               (local-set-key \"%sp\" 'perlnow-move-prev-sub)
+
+               (local-set-key \"%sN\" 'perlnow-next-todo)
+               (local-set-key \"%sP\" 'perlnow-prev-todo)
 
                (local-set-key \"%st\" 'perlnow-edit-test-file)
                (local-set-key \"%sa\" 'perlnow-test-create)
                (local-set-key \"%sA\" 'perlnow-test-create-manually)
+
+               (local-set-key \"\C-cxn\" 'perlnow-narrow-to-defun)
                )"
             ))
          )
     (add-hook 'cperl-mode-hook (eval (read define-perl-bindings-string)))
     (add-hook 'perl-mode-hook  (eval (read define-perl-bindings-string)))
-    )
-  )
+    ))
 
 ;;;========
 ;;; functions to run perl scripts        TODO BOOKMARK REAL CODE STARTS
@@ -2393,9 +2399,9 @@ test code to find the module easily."
       )))
 
 ;; end: perlnow-edit-test-file related functions
-;;
+
 ;;-------
-;; user-level navigation commands
+;; user-level commands for navigation, etc
 
 (defun perlnow-back-to-code ()
   "Return to the buffer that the current buffer is presently
@@ -2423,6 +2429,84 @@ will switch to that window."
           )
     (if perlnow-trace (perlnow-close-func))
     ))
+
+(defun perlnow-move-next-sub ()
+  "Moves point to first line of code for next sub."
+  (interactive)
+  (let* ((sub-meta-list (perlnow-sub-after-point))
+         (subname   (nth 0 sub-meta-list))
+         (sub-pt    (nth 3 sub-meta-list))
+         )
+    (cond (sub-pt
+           (goto-char sub-pt)
+           (forward-line 1)
+           (message "%s" subname)
+           )
+          (t
+           (message "Already at the last sub.")))
+    ))
+
+(defun perlnow-move-prev-sub ()
+  "Moves point to first line of code for next sub."
+  (interactive)
+  (let* ((initial-point (point))
+         (sub-begin-pat "^[ \t]*sub ")     ;; perl "sub" keyword at bol
+         (sub-meta-list (perlnow-range-current-sub))
+         (beg           (nth 1 sub-meta-list)))
+    (cond (beg
+           (goto-char beg)  ;; before the pod block, if any, at the sub otherwise
+           (backward-char 1))
+          (t ;; not inside a sub now
+           ))
+    (cond ((re-search-backward sub-begin-pat nil t 1)  ;; puts you at start of "sub "
+           (let* ((sub-meta-list (perlnow-sub-after-point))
+                  (subname   (nth 0 sub-meta-list))
+                  (sub-pt    (nth 3 sub-meta-list)) )
+             (goto-char sub-pt)
+             (forward-line 1)
+             (message "%s" subname)
+             ))
+          (t
+           (goto-char initial-point)
+           (message "Already at the first sub.")))
+    ))
+
+;; TODO these two guys have problems with reversing directions:
+;; next has you land after a TODO, okay, that's good for the next next,
+;; but if you hit prev afterwards, that just flips you to the beginning of
+;; that very TODO, it feels like you haven't moved anywhere.  Would be
+;; better to notice this condition... if immediately prev word is a TODO,
+;; then go back a word first before searching, and vice-versa
+(defun perlnow-next-todo ()
+  "Move to next TODO or FIXME."
+  (interactive)
+  (let* ((case-fold-search nil)
+         (todo-pat "TODO\\|FIXME\\|WTF")
+         )
+    (re-search-forward todo-pat nil t 1)  ;; puts you right after TODO
+    ))
+
+(defun perlnow-prev-todo ()
+  "Move to previous TODO or FIXME."
+  (interactive)
+  (let* ((case-fold-search nil)
+         (todo-pat "TODO\\|FIXME\\|WTF")
+         )
+    (re-search-backward todo-pat nil t 1)  ;; puts you right after TODO
+    ))
+
+(defun perlnow-narrow-to-defun ()
+  "Narrow to the current perl sub.
+Includes any blocks of pod preceding the sub definition."
+  (interactive)
+  (let* ((initial-point (point))
+         (sub-info (perlnow-range-current-sub))
+         (subname (nth 0 sub-info))
+         (beg (nth 1 sub-info))
+         (end (nth 2 sub-info)) )
+    (narrow-to-region beg end)
+    (message "Narrowed view: try \"C-x n w\" to widen.")
+  ))
 
 ;;========
 ;; guess run-string routines
@@ -2817,11 +2901,8 @@ Leaves the cursos in the top window."
         (find-file bot-fob)))
   (other-window 1) )
 
-
-
-
 ;;=======
-;; internal, lower-level routines used by the external "entry point" functions
+;; the "do" routines: internal, lower-level routines used by the external "entry point" functions
 
 (defun perlnow-do-script (filename)
   "Quickly jump into development of a new perl script.
@@ -4158,76 +4239,13 @@ When run inside an open buffer of perl code.  It tries to find
 the name of the current perl sub \(the one that the cursor is
 either inside of, or just in front of\).  Returns nil on failure,
 sub name on success."
+  (interactive) ;; DEBUG
   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-sub-at-point"))
-;; Algorithm:  save initial location
-;;             skip back to previous ^sub.  scrape name
-;;               if that's nil, then skip forward, scrape name: done
-;;             skip to close of sub: check that location.
-;;               if this is *after* the initial location, we've got our sub
-;;               if this is *before* the inital location, we were between subs
-;;                  skip forward to next ^sub.  scrape name.
- (let* ((initial-point (point))
-        (open-brace-pat "[\\{]")          ;; open curly brace (TODO optimize?)
-        subname return)
-   (save-excursion
-     (setq return
-         (catch 'IT
-           ;; (setq subname (perlnow-previous-sub))
-           (setq subname (perlnow-find-sub -1)) ;; previous
-           (cond ((not subname)
-                  ;; (setq subname (perlnow-forward-sub))
-                  (setq subname (perlnow-find-sub 1))
-                  (throw 'IT subname)
-                  ))
-
-           (re-search-forward open-brace-pat nil t)
-           (backward-char 1)
-           (forward-sexp 1)
-           (if (> (point) initial-point)
-               (throw 'IT subname))
-           ;; (setq subname (perlnow-forward-sub))))
-           (setq subname (perlnow-find-sub 1))))
-     (if perlnow-trace (perlnow-close-func))
-     return)))
-
-(defun perlnow-find-sub ( &optional direction )
- "Looks for nearest sub definition, and returns the name of sub.
-If DIRECTION is -1 it will search backward. The default is to
-search forward (DIRECTION is nil or +1)."
-  (if perlnow-trace (perlnow-open-func "Calling " "perlnow-find-sub"))
- (let* ((sub-begin-pat "^[ \t]*sub ")     ;; perl "sub" keyword at bol
-        (after-subname-pat "[ \\\\(\\{]") ;; either paren or curly, after space
-        (open-brace-pat "[\\{]")          ;; open curly brace (TODO optimize?)
-        current-word return)
-   (unless direction
-     (setq direction 1))
-      ;;;; first we will skip forward to start of sub
-      ;; if we're *on top* of the keyword "sub", move backward so regexp works
-      (forward-word 1) (backward-word 1) ;; twiddle to position at start of word
-      (setq current-word (thing-at-point 'word))
-      (cond ((string= current-word "sub")
-             (backward-word 1)
-             ))
-      (setq return
-            (catch 'OUT
-              (unless (re-search-forward sub-begin-pat nil t direction)
-                (throw 'OUT nil))
-              ;; skip past whitespace to start of name
-              (cond ((= direction -1)
-                     (forward-word 1)))
-              (forward-word 1)
-              (backward-word 1)
-
-              (let ((beg (point)))
-                (unless (re-search-forward after-subname-pat nil t)
-                  (throw 'OUT nil))
-                (backward-word 1)
-                (forward-word 1)
-                (setq return
-                      (buffer-substring-no-properties beg (point)))
-                )))
-      (if perlnow-trace (perlnow-close-func))
-      return))
+  (let* ((sub-meta (perlnow-range-current-sub))
+         (sub-name (nth 0 sub-meta))
+         )
+  (if perlnow-trace (perlnow-close-func))
+  sub-name))
 
 ;; Used by perlnow-script (via perlnow-do-script-from-module)
 ;; perlnow-edit-test-file (via perlnow-open-test-file)
@@ -4244,6 +4262,140 @@ Returns nil on failure, sub name on success."
     (if perlnow-trace (perlnow-close-func))
     perlnow-perl-sub-name))
 
+;; TODO BUG
+;; if there's the term "sub " inside pod located at the start of line.
+;; the sub detection routines are likely to be confused. 
+;; Reduce exposure by including open paren/brace in pattern?
+;; (Would requires some re-write to perlnow-sub-after-point.)
+;; With janky janky regexp-style parsing it's hard to fix completely:
+;; Q: could you piggy back on perl-mode?  text-properties for pod can't be same as a sub...
+(defun perlnow-range-current-sub ()
+  "Gets perl sub metadata.
+Returns a list of subname, begin point and end point."
+  (interactive) ;; DEBUG
+  (if perlnow-trace (perlnow-open-func "Calling " "perlnow-range-current-sub"))
+  (let* ((initial-point (point)) ;; 0
+         (open-brace-pat "[\\{]")          ;; open curly brace (TODO optimize?)
+         (sub-begin-pat "^[ \t]*sub ")     ;; perl "sub" keyword at bol
+         sub-meta-list-prev sub-meta-next
+         subname  return  ret-subname beg  ret-beg  end ret-end  ret-list)
+     (save-excursion
+      (setq ret-list
+            (catch 'IT
+              ;; get info for the previous sub
+;;              (cond ((re-search-backward sub-begin-pat nil t 1)  ;; puts you before "sub "
+              (cond ((perlnow-move-to-sub-keyword)
+                     (setq sub-meta-list-prev (perlnow-sub-after-point))
+                     (cond (sub-meta-list-prev
+                            (let* ((subname  (nth 0 sub-meta-list-prev))
+                                   (beg      (nth 1 sub-meta-list-prev))
+                                   (end      (nth 2 sub-meta-list-prev)))
+                              ;; TODO if the initial-point is in the range beg, end, then throw, no?
+                              (cond ((and (>= initial-point beg)
+                                          (<= initial-point end))
+                                     (throw 'IT sub-meta-list-prev)))
+                              ;; start from end of prev sub, get ready to search forward for the next
+                              (goto-char end)))
+                           (t ;; maybe fooled by quoted "sub" in documentation?
+                            (message "weirdzo case baby: watch it")
+                            )))
+                    (t ;; there is no prev sub, so back to where we started
+                     (goto-char initial-point)))
+              (setq sub-meta-list-next (perlnow-sub-after-point))
+              (cond (sub-meta-list-next
+                     (throw 'IT sub-meta-list-next)
+                     ))
+              ))
+      (message "perlnow-range-current-sub: %s" (pp-to-string ret-list))
+      (if perlnow-trace (perlnow-close-func))
+      ret-list)))
+
+;; Need this maneuver to prepare for searching back to the previous sub:
+;; want to make sure we're out of the current one.
+(defun perlnow-move-to-sub-keyword ()
+  "Move point to just before the sub keyword of the current sub.
+If there is no preceeding sub keyword, this performs no
+operation, and returns nil.  However this does move up even when
+down below the closing brace of a sub.  Return a non-nil value--
+the point-- to indicate success."
+  (interactive) ;; DEBUG
+  (let* ((no-properties t)
+         (sub-begin-pat "^[ \t]*sub ")     ;; perl "sub" keyword at bol
+         )
+    (let ( ret )
+      (cond ((string= "sub" (thing-at-point 'word no-properties))
+             (unless (string= "sub" (buffer-substring (point) (+ (point) 4)))
+               (backward-word 1))
+             (setq ret (point)))
+            ((re-search-backward sub-begin-pat nil t 1)  ;; puts you before "sub "
+             (setq ret (point)))
+            (t
+             (setq ret nil)))
+      )))
+
+;; TODO if started in the middle of a "sub" keyword, this skips to next
+(defun perlnow-sub-after-point ()
+  "Looks for the next sub definition and determines the name and the extent.
+Returns a list of: name, begining, ending, and start of sub keyword.
+Here the beginning should include any block of pod preceeding the sub,
+the ending is the location of the closing curly brace."
+  ;; Do all the comments here disturb you?  Such are the wages of parsing via regexps
+  (interactive) ;; DEBUG
+  (let* ((initial-pt (point))
+         (sub-begin-pat "^[ \t]*sub ")     ;; perl "sub" keyword at bol
+         (after-subname-pat "[ \\\\(\\{]") ;; either paren or curly, after space
+         (open-brace-pat "[\\{]")          ;; open curly brace 
+         (pod-pat "^=")                    ;; any pod-tag
+         (pod-cut-pat "^=cut")             ;; =cut, the one exit from pod
+         )
+    (let ( ret-list  beg-name  end-name  subname  beg-sub-keyword
+                     beg-sub  end-sub  gap-str  gap-not-empty )
+      (cond ((re-search-forward sub-begin-pat nil t 1)  ;; puts you after "sub "
+             (backward-word 1)         ;; at start of "sub"
+             (setq beg-sub-keyword (point)) ;; provisional start-of-range
+             (re-search-forward sub-begin-pat nil t 1)  ;; puts you after "sub "
+             (forward-word 1)
+             (backward-word 1)  ;; puts you at start of subname
+             (setq beg-name (point))
+             (re-search-forward after-subname-pat nil t)  ;; drops you off on curly *or* paren
+             (backward-word 1)  
+             (forward-word 1)  ;; puts you at end of subname
+             (setq end-name (point))
+             (setq subname
+                   (buffer-substring-no-properties beg-name end-name))
+             (re-search-forward after-subname-pat nil t)  ;; drops you off on curly *or* paren
+             ;; if there's no brace brace at point, search for one
+             (unless (string= (buffer-substring-no-properties (point) (1+ (point))) "{")
+               (re-search-forward open-brace-pat nil t)  
+               )  ;; now we're on the curly
+             (forward-sexp 1) ;; on to the closing brace
+             (setq end-sub (point))
+             (goto-char beg-sub-keyword) ;; return to the start of sub keyword
+             (re-search-backward pod-cut-pat nil t) ;; at start of "=cut"
+             (forward-word 1)  ;; at end of "=cut"
+             (setq gap-str 
+                   (buffer-substring-no-properties (point) beg-sub-keyword))
+             ;; (message "gap-str: >>>%s<<<" gap-str) ;;; DEBUG
+             (setq gap-not-empty nil)
+             (dolist (line (split-string gap-str "[\n]"))
+               (unless (string-match "^\s*$" line)
+                 (setq gap-not-empty t)))
+             (cond ((not gap-not-empty) ;; gap is blank: pod preceeds the sub
+                    ;; search back to the pod tag that preceeds the end-of-pod
+                    (beginning-of-line 1)   ;; now at start of "=cut"
+                    (re-search-backward pod-pat nil t)  ;; drops off at start of "=item"
+                    (beginning-of-line 1)               ;; redundancy is goooood
+                    (setq beg-sub (point)) ;; now the range should include the pod
+                    )
+                   (t
+                    (setq beg-sub beg-sub-keyword) ;; presume no pod preceeding sub
+                    ))
+             (setq ret-list
+                   (list subname beg-sub end-sub beg-sub-keyword))
+             ;; (message "ret: %s" (pp-to-string ret-list))
+             ))
+      (goto-char initial-pt) ;; as written, preserves initial cursor location.  TODO 
+      ret-list)))
 
 ;;;--------
 ;;; more sub info: all subs in buffer
@@ -4255,7 +4407,6 @@ Returns nil on failure, sub name on success."
 Presumes the current buffer is a perl module.  If the INTERNALS
 option is set to t, (TODO) subs with leading underscores are included,
 otherwise they're skipped."
-  ;; TODO implement internals
   (interactive) ;; DEBUG only
   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-list-all-subs"))
   (unless (perlnow-module-code-p)
@@ -4270,8 +4421,7 @@ otherwise they're skipped."
                          "\\(.*?\\)"  ;; capture the sub-name
                          "[ \t]+"
                          ))
-           (sub-list)
-           )
+           sub-list  )
       (while
           (re-search-forward sub-pattern nil t) ;; uses current buffer
         (progn
@@ -4294,6 +4444,14 @@ otherwise they're skipped."
         (message "%s" sub-list))
     (if perlnow-trace (perlnow-close-func))
     ))
+
+(defun perlnow-report-list-all-subs ()
+  "Reports a list of all subs to *Messages*/stderr."
+  (interactive)
+  (message "all-subs: %s"
+           (pp-to-string
+            (perlnow-list-all-subs))))
+
 
 ;-----
 ;; code navigation
@@ -8482,6 +8640,19 @@ It does three things:
           "<({\n"
           ))
     ))
+
+
+;; DEBUG
+(defun perlnow-report-sub-at-point ()
+  ""
+  (interactive)
+  (message "sub: %s" (perlnow-sub-at-point)))
+
+(defun perlnow-run-find-sub ()
+  ""
+  (interactive)
+  (message "sub: %s" (perlnow-find-sub)))
+
 
 ;;========
 ;;
