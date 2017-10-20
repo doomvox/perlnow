@@ -570,8 +570,9 @@ treated in the same way."
 
 (defun perlnow-mkpath (dir)
   "Create directory DIR (and intervening levels) if it doesn't exist."
-  (unless (file-directory-p dir)
+  (unless (and dir (file-directory-p dir))
      (make-directory dir t)))
+
 
 ;;---------
 ;; user options (defcustom)
@@ -1066,13 +1067,11 @@ the project's code.")
 
 (defvar perlnow-incspot-from-t-stash-file (concat perlnow-etc-location "incspot_from_t.json")
   "A file used to preserve the associations of t and incspot.")
-;; TODO change json?
 
 ;;;========
 ;;; test policy (obsolete test file search and creation settings)
 
 ;; As of the 1.0 release, these setting should have no effect.
-
 ;; The variables are still defined (and always will be) to prevent
 ;; breakage on upgrade if someone is still trying to set them.
 (defcustom perlnow-test-policy-test-location   nil
@@ -1269,9 +1268,15 @@ says something.
 (defun perlnow-basic-setup ()
   "Do some basic setup \(e.g. create directories\) to make perlnow run smoothly.
 Also see \\[perlnow-define-standard-keymappings] \(most likely, more important\)."
-  (perlnow-mkpath perlnow-script-location)
-  (perlnow-mkpath perlnow-pm-location) 
-  (perlnow-mkpath perlnow-etc-location))
+  (perlnow-mkpath  perlnow-script-location)
+  (perlnow-mkpath  perlnow-pm-location) 
+  (perlnow-mkpath  perlnow-etc-location)
+  (perlnow-mkpath  perlnow-dev-location)
+  (perlnow-mkpath  perlnow-pm-location-override)
+  (perlnow-mkpath  perlnow-script-location-override)
+  (perlnow-mkpath  perlnow-dev-location-override)
+  (perlnow-mkpath  perlnow-template-location)
+  )
 
 ;; Getting DRYer, via some hackery with eval & read in mode hooks.
 (defun perlnow-define-standard-keymappings ( &optional prefix )

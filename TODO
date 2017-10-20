@@ -87,141 +87,28 @@ remember that, and avoid over-writing a manual setting.   An "attribute"
 to the string, to tell it hands-off?
 
 ===
-
-BUG
-
-If the *compilation* buffer is already displayed in some other frame,
-that can cause problems.  Possible fix: always kill *compilation*
-before a perlnow-run.  (verify still a problem -- Thu Apr 15 12:46:59 2010)
-
-(( Can you move *compilation* associated it with another frame? )) 
-
-===
-===
-
-BUG
-Doesn't work with
-  xemacs
-  windows
-
-Should do some minimal testing on other platforms?
-(Or request it from others.)
-
-===
 FEATURE
-sub awareness
-  o select sub (Q: include adjacent pod?)  (( HELL YEAH ))
-  o move sub (both code and pod, if any, adjacent or not).
-       i.e. "refactoring" tools.
-  o display current sub in status bar.
-     (( There's a new elisp package that does that, no? April 09, 2017  ))
-
-
-                                     Thu Apr 15 12:49:52 2010
-  Maybe: come up with a style of two-window display for subs.
-  When working on a sub, you see the code in one, and the
-  documentation in the other, irrespective of whether it's
-  actually adjacent to the code, or buried down at the bottom.
-
-===
-Want to run ispell on pod only.
-Alternately: run ispell on pod and comments only.
-(How?)
-
-   perlnow-ispell-next-chunk-of-pod
-
-Then interate over all of them with:
-
-   perlnow-ispell-pod
-
-Also useful:
-
-   perlnow-ispell-this-chunk-of-pod
-
-Further thinking: don't ignore the code, but use it to add words
-to your dictionary, so that, e.g.  sub variable names aren't
-regarded as mispellings in your pod.
-
-===
-
-Beyond etags: better indexing of perl code.  Swish-E?  A distro feature?
-Maybe use B:* modules to report on all subs: definitions *and* where called
-   B::Xref - Generates cross reference reports for Perl programs
-Note: look into glimpse and "glimpse-mode" (Tom Lane likes glimpse).
-
-===
-
-Support for other templating systems (template-i.el, "template independant")
-   tempo.el
-   Template::Toolkit
-   Mason
-
-Possibly: a translator to create tempo.el files from template.el templates.
-
-Another "policy" feature: default types of template for
-(1) file creation
-(2) insertion of method framework (skeleton?)
-
-===
-C-M-f and C-M-b, when used in the middle of an expression, should skip
-you to the beginning or end of that expression (currently, it just
-errors).
-===
-run-string
+RUN-STRING
   o  need additional ones, e.g. a 'debug' as well as a 'run' and 'test'?
-  o  manipulation commands, e.g. perlnow-save-run-string-to-alt-run-string
-===
-Select an active set of templates based on various settings.
-For example, need to support various OOP styles:
-  o Inside-Out,  (Class::Std, Class::InsideOut, Object::InsideOut)
-  o Moose
-  o Simple href-based (with seperation of new and _init) ala Class::Base
-===
-Support different podstyles
-  o  additional templates for interspersed pod style
-  o  defcustom to define a preference?
-  o  skeleton.el: for subs/methods/constructors/accessors...
-===
 
-Better help command:
-
-Currently the "C-c / 1" command just looks up built-ins in "perlfunc".
-
-Could be extended to look up the perldoc for a sub, so that
-it works on built-ins *and* extensions.
-===
-
-Investigate supporting use of "use diagnostics;", e.g. use a C-u
-prefix to "C-c / c" to add a -Mdiagnostics to the run line.
-
-===
-
-Settable option:
-  (defcustom perlnow-maximum-sleaziness t)
-
-  (The fourth virtue: sleaziness.)
-
-  Identify all variables used, and create "my" declarations
-  for them if needed.
-  If usage is inside a sub, put the my also inside that sub.
-  Note: if globals are in use, this can break.
-
-===
                                     Sat May 29, 2004  7:43 PM
-shift-R (and A) let's you change the run-string:
-implement shift-C and shift-D (change check command
-and debug command).
+shift-R:  let's you change the run-string:
 
-===
-How about Mason code?   Any special template.el templates
-for that?  Any peculiarities with "multimode"?
+implement shift-D to change debug command
 
-===
+maybe: shift-C to change check command
+
+---
 
 I often create run-strings that can't be handed to the
 debugger, e.g.
 
    'cd ~/dev/h2xs-stuff/Hack-To-Excess-Module/; make test'
+
+((Q: is this feature at all needed now?    --  October 19, 2017  
+  Automatic setting of default-directory would obviate it.
+  Behavior of all that stuff is different now.
+))
 
 It would be better if you could *always* switch to running
 with "C-c'd" without worrying about changing the run-string
@@ -254,6 +141,108 @@ debugger use.  (least painful, no? -- Thu Apr 15 13:00:02 2010)
   you have to, and once again: reset and edit commands...
 
 
+FEATURE
+
+If you rename a file, there should be a way to make
+sure that the "associated buffer" is also renamed, in sync.  
+
+Overide the dired rename command with one that special cases my cases...
+
+
+BUGLET
+
+Create a file in a wrong place (say a *.t)
+This sets the run-string.
+You move the file (using dired) to where you want it,
+emacs realizes that the buffer should point at the
+new location... but the run-string stays un-revised.
+
+If it stalled on guessing a run-string until it was actually
+run, this little problem would be covered.
+
+  ((Or, if the runstring fails, then the code could then re-guess... ))
+
+
+
+
+
+===
+BUG
+
+If the *compilation* buffer is already displayed in some other frame,
+that can cause problems.  Possible fix: always kill *compilation*
+before a perlnow-run.  (verify still a problem -- Thu Apr 15 12:46:59 2010)
+
+(( Can you move *compilation* associated it with another frame? )) 
+
+===
+===
+
+BUG
+Doesn't work with
+  xemacs
+  windows
+
+Should do some minimal testing on other platforms?
+(Or request it from others.)
+
+===
+FEATURE
+Want to run ispell on pod only.
+Alternately: run ispell on pod and comments only.
+(How?)
+
+   perlnow-ispell-next-chunk-of-pod
+
+Then interate over all of them with:
+
+   perlnow-ispell-pod
+
+Also useful:
+
+   perlnow-ispell-this-chunk-of-pod
+
+Further thinking: don't ignore the code, but use it to add words
+to your dictionary, so that, e.g.  sub variable names aren't
+regarded as mispellings in your pod.
+
+===
+
+Beyond etags: better indexing of perl code.  Swish-E?  A distro feature?
+Maybe use B:* modules to report on all subs: definitions *and* where called
+   B::Xref - Generates cross reference reports for Perl programs
+Note: look into glimpse and "glimpse-mode" (Tom Lane likes glimpse).
+
+  (( There are multiple solutions to this kind of thing now.
+     Could spend your live investigating them. -- Thu  October 19, 2017  ))
+
+===
+FEATURE
+C-M-f and C-M-b, when used in the middle of an expression, should skip
+you to the beginning or end of that expression (currently, it just
+errors).
+===
+FEATURE
+tempo.el, 
+allow user edits of standard
+subs/methods/constructors/accessors...
+===
+FEATURE
+Better help command:
+
+Currently the "C-c / 1" command just looks up built-ins in "perlfunc".
+
+Could be extended to look up the perldoc for a sub, so that
+it works on built-ins *and* extensions.
+===
+FEATURE (Hm.)
+Investigate supporting use of "use diagnostics;", e.g. use a C-u
+prefix to "C-c / c" to add a -Mdiagnostics to the run line.
+
+===
+How about Mason code?   Any special template.el templates
+for that?  Any peculiarities with "multimode"?
+
 ===
 
 Write code that goes backwards from
@@ -277,30 +266,12 @@ maybe "tail" it?).
 Diagramming of perl classes?  Of dependencies?
 
 ===
-                                            Thu Feb 26 11:59:24 2004
-Need to think carefully about what buffers should be
-displayed when... avoid messing with the buffer layout if
-possible (closing all competing windows just to make sure
-you've got room to open another is excessively fascist).
-
-                                           Fri Apr 23 20:27:03 2004
-Created centralized file open and buffer display
-routines, to simplify fixing this later
-
-    perlnow-open-file-other-window
-    perlnow-show-buffer-other-window
-
-====
 
                                       Mon Apr 19 11:29:51 2004
 Break out behavior of run-string(s) history into configurable settings:
   o  joint history vs separate history.
   o  buffer-local vs global history.
   o  number of concurrently defined runstring commands.
-
-===
-
-Integration with bug database(s)... somehow?
 
 ===
 
@@ -351,22 +322,6 @@ it in.
 
 ===
 
-Maybe:
-  perlnow-use-this-module-to-other-window
-
-Theory is you've got a module window open, and are browsing
-code or docs for some other module in the other window.
-You decide, yeah, I want to use this too.  Command should
-check if the additional module is in INC, if not do the
-appropriate use lib, and so on.
-
-===
-
-Add mouse menu stuff?
-Hard for me to get right, since I don't use any of it.
-
-===
-
 Create hooks.  (*after* and *before*, right?)
 perlnow-new-script-hook,
 perlnow-new-module-hook,
@@ -384,108 +339,6 @@ should re-use the window.)
 
 ===
 
-                           Fri Mar  3, 2006  1:43 PM
-
-Just thinking... if the pod for a sub is somewhere some distance
-away from the sub, it would be useful to have commands to jump
-from one to the other...
-Maybe to display the other in another window.
-
-E.g., while editing a sub, you say
-perlnow-sub-perldoc-other-window,
-and it shows you the corresponding =item
-(or... if one doesn't exist, it guesses where
-to put it based on proximity to other subs).
-
-And vice-versa, starting with perldoc, and then writing a sub.
-
-===
-
-The listing of subs in the current file would be a useful
-feature.   Make it a hot list, so you can "click" on one
-and jump to it.  (Or jump to it's pod?)  Would also
-like to able to do an insert, start writing a new sub
-given the list of subs...
-
-(( starting to sound like some other ide-ish packages ))
-
-
-===
-
-TODO
-Think through oddities in C-c / b navigation:
-
-(From: /home/doom/End/Cave/Perlnow/Notes/notes-perlnow-version-0.4)
-
-Thu May 11, 2006 12:21 PM
-
-Problem:
-
-An oddity of the current setup:
-Start with a module.
-Develop a *.t for it
-  => now "C-c / b" connects these two buffers
-     to each other.
-From the module, create a scirpt.
-Create a *.t for the script.
-  => now "C-c / b" in the module takes you to the new script.
-     and from the new script you go to the *.t file for it.
-     From the *.t file, you just go back to the script.
-
-The issue is that the "associated buffer" feature can create
-an odd chain through the buffers:
-
-(1)
-
-   module  <-->   module.t
-
-(2)
-
-   module  <--- module.t
-      ^
-      |
-      v
-   script
-
-(3)
-
-   module  <--- module.t
-      |
-      |
-      v
-   script  <--> script.t
-
-
-A fix might be to re-envision it as an "associated test" feature.
-
-
- (3prime)
-
-   module  <--> module.t
-
-   script  <--> script.t
-
-
-  (( Could you spy on such association networks to find
-     clusters of files associated with a project?
-
-     Might add new types of associations... ))
-
-
-===
-
-Lexical search: automatically narrows to current lexical scope.
-Or failing that, just the current sub (easier).
-
-(( narrow-to-defun gets this pretty easily: punt ))
-
-===
-
-Need a template for a *.conf file.
-Maybe: a *.sql file.
-
-===
-
 Need to cover all the perl file extensions:
   (add-to-list 'auto-mode-alist '("\\.\\([pP][Llm]\\|al\\|t\\|pod\\)\\'" . cperl-mode)) ; .pm .pl .t .pod .al?
 Q: what's *.al?
@@ -493,56 +346,17 @@ Q: what about *.mas?  Check mmm-mode set-up.
 
 ===
 
-TODONT  
-
-I'd like a feature like this... but it's dependant on certain
-assumptions about how you like to do OOP.
-
-perlnow-document-accessors-from-attributes-array
-
-presuming you have an @attributes = qw( ); list in a sub init
-(or sub _init or sub new), skip down to just after the closing
-
-1;
-
-and insert some simple pod boilerplate listing the accessors.
-
-Note: needs to know what naming convention you're using (embedded inside
-AUTOLOAD?).
-
-First cut: just hard code that.
-
-approach: find sub name, do a narrow-to-defun, search for '@attributes',
-if fails, try another sub candidate.
-
-List can be written in a few ways... presume qw and whitespace sep as
-a first cut.
-
-Try searching for m{ 1; .*? \A\z\A=  }msx  (translated into elisp).
-
-===
-
-                         Fri Mar  7 02:38:46 2008
-perlnow-perlversion-old-to-new:
-Get a definitive list of cases of perl versions that it
-should handle, write a unit test, and refactor this.
-The regexps here probably need improvement.
-
-(And the state of policy surrounding perl versions
-are continually in flux.)
-
-===
-
 FEATURE
 
-*Really* need to replace blank lines with empty lines on
+Ideally should replace blank lines with empty lines on
 either side of a pod tag (^=).
+
+ (( perlpod implies that only old parsers care about this ))
 
 For that matter, opening up empty lines on either side of
 pod tags would probably be a good idea.
 
 ===
-
 FEATURE
 
 If you create a module from another module, should you get the
@@ -550,120 +364,32 @@ same automatic use features that scripts get?  ((Yes))
 
 ===
 
-BUG
-
-Creating a script in a cpan-style tree, the script should
-default to being inside the tree, in the right place, maybe:
-  <staging area>/bin
-
-===
-
-                                   Thu Dec 10 17:21:43 2009
-  What if you want to create a test file first?
-  If you start from a text file, and do a: C-c / t
-  You get:
-
-    perlnow-search-through-test-path called.
-    setq: Args out of range: "notes-nxhtml", 13, 12
+                                         Dec 10, 2009
+                                   Rev:  Oct 19, 2017  
 
 
-As of 2017:
+Starting from a notes-* file, try to create or edit a test file.
 
-From this file, sees:
-
-               file-location:  /home/doom/End/Cave/Perlnow/lib/perlnow/
-
-perlnow-test-create:
-
-  Calling perlnow-new-test-file-name
-  Calling perlnow-next-test-prefix
-  let*: Wrong type argument: stringp, nil
-
-perlnow-edit-test-file:
-
-* Calling perlnow-edit-test-file
-* Calling perlnow-get-test-file-name
-Calling perlnow-cpan-style-code-p
-Calling perlnow-find-cpan-style-staging-area
-perlnow-find-cpan-style-staging-area return: nil
-Calling perlnow-module-code-p
-Calling perlnow-get-package-name-from-module-buffer
-Calling perlnow-script-p
-Calling perlnow-perl-mode-p
-Calling perlnow-get-test-file-name-script
-Calling perlnow-test-from-policy
-* perlnow-test-from-policy w/ ../t fileloc fullauto
-Calling perlnow-get-package-name-from-module-buffer
-Calling perlnow-find-cpan-style-staging-area
-perlnow-find-cpan-style-staging-area return: nil
-package-name: nil
-Calling perlnow-testloc-from-policy testloc: "../t" dotdef: "fileloc" namestyle: "fullauto"
-Calling perlnow-find-cpan-style-staging-area
-perlnow-find-cpan-style-staging-area return: nil
-Calling perlnow-get-package-name-from-module-buffer
-Calling perlnow-script-p
-Calling perlnow-perl-mode-p
-Calling perlnow-ensure-directory-exists
-not: Wrong type argument: stringp, nil
+Current behavior (2017, perlnow 1.0): nothing happens,
+but you get a warning:  Perlnow: Not a perl buffer.
 
 
-This gets into the general issues I struggle with:
-Having text files about your code project under development is an obvious thing
-to want.  (These might be thought of as documentation, but they
-aren't necessarily.)  There's no standard place to put such
-things.... if you're in a text file, related to a code project,
-can perlnow *possibly* figure out where the related code is?
 
-Concievably, you could fall back to looking at a "recent-pick"...
-Or just doing something that works for cpan projects given a
-newly invented "labnotes" directory.  Or works for me in the Cave....
+                                         Thu  October 19, 2017  16:07  
 
-  I actually kind of like the labnotes idea.
-  Might be better not to ship your notes, though:
-  chilling effect.
+buffer-local
+perlnow-associated-project-root
 
-  So, "labnotes" is up above the staging areas,
-  and has a parallel set of those names there.
+  A way you can connect to a project from outside,
+  rather than by looking up from below.
 
+Maybe: when you save a file, if it's a notes-* file, the fact is noted,
+and if it's a perl code file, it grabs the last used notes-* file and
+associates it with the project-root.
+
+Then you could try to handle the "not a perl buffer" case.
 
 ===
-
-FEATURE
-
-If you rename a file, there should be a way to make
-sure that the "associated buffer" is also renamed, in
-sync.  How?
-
-Modify dired, to watch out for the case?
-
-Overide the rename command with one that special cases my cases...
-
-===
-                       Wed Apr  7 15:24:51 2010
-
-BUGLET
-
-Creating a script from a "*WoMan" buffer for a module,
-doesn't give you the "use" line for the module.
-
-===
-
-BUGLET
-
-Create a file in a wrong place (say a *.t)
-This sets the run-string.
-You move the file (using dired) to where you want it,
-emacs realizes that the buffer should point at the
-new location... but the run-string stays un-revised.
-
-If it stalled on guessing a run-string until it was actually
-run, this little problem would be covered.
-
-  ((Or, if the runstring fails, then the code could then re-guess... ))
-
-
-===
-
 FEATURE (for cheat section?)
 
                                 Thu Apr 15 14:17:15 2010
@@ -694,58 +420,6 @@ hashes).  (?)
 
 ===
 
-                              Fri Apr 30 17:30:25 2010
-
-
-feature  (( forget this: want "project" switching, that's all ))
-
-Perlnow has creation commands that distinguish between proceedural
-(exported-based) modules, and object-based modules: that works well,
-for me.  Depending on what I'm doing, I might want to do either...
-
-Obviously though, there are *many* ways of doing object-based perl
-modules.  Does it make sense to have only one set of templates for that?
-
-My theory has been that the way to do it is to swap in different sets
-of templates on a project-by-project basis, which hopefully can be
-done without perlnow knowing anything about it.
-
-But I *personally* would probably like to have multiple styles available
-*without* switching projects (facilitate experimentation).  (For me,
-a "project" might be evaluating styles).
-
-But multiplying the number of creation commands is obviously the
-wrong way to deal with this.
-
-Possibly: one could have a default style, and alternate styles
-accessed via the prefix command C-u.  Like, if string, use it as
-an object style-name, if numeric, bring up a menu of such
-styles... something like that.  Maybe, if prefix, ask for a style
-name, using the usual auto-completion features.
-
-   Maybe just: "style" setting separate from "project" setting.
-
-Similar idea, no?: "plug-ins" choosen by "style" (or "world"?).
-Note: many projects may belong to one world.
-
-   Come to grips with the Too Many Ways To Do It problem.
-   You just *can't* support all of them.
-
-    In addition to the general perlnow.el package, add variants
-    that deal with different perl sub-worlds: perlnow-moose.el
-    perlnow-class-base.el, etc.
-
-    In effect "plug-ins".
-
-===
-
-PERLNOW FEATURE:
-  standardized way of overriding other templates...
-  run mod star, then replace any of the generated files
-  with your own, if you've defined/created a replacement
-
-===
-
 FEATURE
 
 Sat Jun  5 00:27:09 2010
@@ -760,28 +434,7 @@ Might like a command (a function fired by save-hook?) like so:
 This would look at the Build.PL to find out which version is king.
 
 ===
-
-FEATURE/ EMACS BUG
-
-Under some circumstances, saving *all* files can be undesireable,
-even dangerous.  If you want to live without that "feature" of
-compile, it's difficult to shut it off.  (You can get rid of the
-question, but then it just saves everything silently).
-
- o  work around, c&p&mutate the "compile" code, create a "perlnow-compile"
-    (did this at FFN).
-    Commenting out this line:
-      (save-some-buffers (not compilation-ask-about-save) nil)
-
- o  better, submit a patch to emacs project, adding a feature to turn this off.
-
- o  ideally, compile should do some intelligent guessing about *what* needs
-    to be saved, maybe even tracing dependencies, or just using tree locations
-    and naming conventions as hints.
-
-===
 FEATURE
-
                                                Mar 14, 2011
 
 Too hard to customize:
@@ -792,12 +445,6 @@ The copyright holder might be $CORP rather than the user name.
 
 Need another token: COPYRIGHT_HOLDER.
 Default to USER_NAME?
-
-===
-
-                                       Apr  3, 2011
-Time to push-out new "templates".  Run tests on my "dev"
-versions, then make them the live "standard" ones.
 
 ===
 
@@ -829,12 +476,10 @@ use y/n questions rather than yes/no.
 ===
 
 Sat  July 16, 2016  15:16
-My request: get everything working smoothly.
 
+Maybe: buffer that shows a menu of options?
 
-Maybe: more menu of options buffers...
-
-   Discoverability, without annoying experts... wordstar?
+   Discoverability, without annoying experts... (ala wordstar).
 
 ===
 
@@ -843,6 +488,14 @@ FEATURE
 If a C-c / r fails because of a file-not-found,
 why not try to re-initialize the run-string and try again before
 giving up?
+                       
+                  Thu  October 19, 2017  15:21  tango
+
+   Maybe: generated runstrings should have the file to be run
+   stashed in a hidden place, so that perlnow-run can easily
+   do existance checks without scrapping the run-string.
+
+===
 
 FEATURE
 
@@ -887,8 +540,3 @@ Add a feature to manually edit the associated file.
 
 ===
 
-Sun  March 26, 2017  14:47
-
-Using this as my development TODO list for now:
-
-/home/doom/End/Cave/Perlnow/Notes/summary-TODO-consolidated
