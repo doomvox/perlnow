@@ -1625,7 +1625,7 @@ can find the module."
       (if perlnow-trace (perlnow-close-func))
       )))
 
-(defun perlnow-module (incspot package-name)
+(defun perlnow-module (incspot package-name  &optional harder-setting)
   "Quickly jump into development of a new perl module.
 In interactive use, gets the path INC-SPOT and PACKAGE-NAME
 with a single question, asking for an answer in a hybrid form
@@ -1647,16 +1647,21 @@ creation."
   (interactive
    (let ( initial-prompt  keymap    history
                           input   filename   return-list  )
-     ;; (setq initial-prompt perlnow-pm-location)
+     (setq harder-setting (car current-prefix-arg))
      (setq initial-prompt (or perlnow-pm-location-override
                               (perlnow-scan-tree-for-lib-loc)
-                              perlnow-pm-location)) ;; TODO also an alt form that favors pn-pm-loc
+                              perlnow-pm-location)) 
      ;; The keymap is key: transforms read-from-minibuffer.
      (setq keymap perlnow-read-minibuffer-map)
      (setq history 'perlnow-package-name-history)
+     (setq prompt-mess-1
+           (cond (harder-setting 
+                  "New cpan project for module \(e.g. /tmp/dev/New::Mod\): ")
+                 (t 
+                  "New module to create \(e.g. /tmp/dev/New::Mod\): ")))
      (setq input
            (read-from-minibuffer
-            "New module to create \(e.g. /tmp/dev/New::Mod\): "
+            prompt-mess-1 
             initial-prompt keymap nil history nil nil))
      ;; remove accidentally typed ".pm"
      (setq input (replace-regexp-in-string "\.pm$" "" input))
@@ -1670,30 +1675,42 @@ creation."
        (setq filename
              (concat (replace-regexp-in-string "::" perlnow-slash input) ".pm")))
      (setq return-list
-           (perlnow-divide-hybrid-path-and-package-name
-            input))
+           (append
+            (perlnow-divide-hybrid-path-and-package-name input)
+            (list harder-setting)))
      return-list)) ;; end interactive
   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-module"))
-  (require 'template)
-  (setq perlnow-perl-package-name package-name) ;; global used to pass value into template
   (save-restriction
     (widen)
-    (let* ((original-file (buffer-file-name))
-           (filename (perlnow-full-path-to-module incspot package-name))
-           (pr (perlnow-project-root incspot))
-           (default-directory incspot) ;; for benefit of perlnow-milla-p
-           )
-      (cond ((perlnow-milla-p)
-             (perlnow-milla-add pr package-name "exporter") 
+    (require 'template)
+    (setq perlnow-perl-package-name package-name) ;; global to pass into template
+    (save-restriction
+      (widen)
+      (let* ((original-file (buffer-file-name))
+             (filename (perlnow-full-path-to-module incspot package-name))
+             (pr (perlnow-project-root incspot))
+             (default-directory incspot) ;; for benefit of perlnow-milla-p
+             (module-style "exporter")
              )
-            (t
-             (perlnow-create-with-template filename (perlnow-choose-module-template))
-             (perlnow-git-add-commit-safe filename)
+      (cond (harder-setting
+;;             (perlnow-cpan-module dev-location package-name)
+             (perlnow-cpan-module incspot package-name) ;; EXPERIMENTAL: incspot?
              )
-            )
-      (perlnow-set-associated-code-pointers original-file filename) 
-      (if perlnow-trace (perlnow-close-func))
-      )))
+            ((perlnow-milla-p)
+               (perlnow-milla-add pr package-name module-style)
+               )
+              (t
+               (perlnow-create-with-template filename
+                                             (perlnow-choose-module-template
+                                              nil ;; cpan-style
+                                              module-style
+                                              perlnow-template-location
+                                              ))
+               (perlnow-git-add-commit-safe filename)
+               ))
+        (perlnow-set-associated-code-pointers original-file filename) 
+        (if perlnow-trace (perlnow-close-func))
+        ))))
 
 (defun perlnow-object-module (incspot package-name &optional harder-setting)
   "Quickly jump into development of a new perl OOP module.
@@ -1707,11 +1724,11 @@ The location for the new module defaults to the global
 `perlnow-pm-location'."
   (interactive
    (let ( initial-prompt  keymap  history
-          result  filename return-list  prompt-mess-1 )
+          input  filename return-list  prompt-mess-1 )
      (setq harder-setting (car current-prefix-arg))
      (setq initial-prompt (or perlnow-pm-location-override
                               (perlnow-scan-tree-for-lib-loc)
-                              perlnow-pm-location)) ;; TODO also an alt form that favors pn-pm-loc
+                              perlnow-pm-location)) 
      ;; keymap is key: transforms read-from-minibuffer.
      (setq keymap perlnow-read-minibuffer-map)
      (setq history 'perlnow-package-name-history)
@@ -1720,39 +1737,37 @@ The location for the new module defaults to the global
                   "New cpan project for OOP module \(e.g. /tmp/dev/New::Mod\): ")
                  (t 
                   "New OOP module to create \(e.g. /tmp/dev/New::Mod\): ")))
-     (setq result
+     (setq input
            (read-from-minibuffer
-            ;; "New OOP module to create \(e.g. /tmp/dev/New::Mod\): "
             prompt-mess-1 
             initial-prompt keymap nil history nil nil))
-     (if (not (perlnow-perlish-true-p result))
+     (if (not (perlnow-perlish-true-p input))
          (error "perlnow-object-module: can't work without a package name"))
      ;; remove accidentally typed ".pm"
-     (setq result (replace-regexp-in-string "\.pm$" "" result))
+     (setq input (replace-regexp-in-string "\.pm$" "" input))
      (setq filename
-           (concat (replace-regexp-in-string "::" perlnow-slash result) ".pm"))
+           (concat (replace-regexp-in-string "::" perlnow-slash input) ".pm"))
      (while (file-exists-p filename)
-       (setq result
+       (setq input
              (read-from-minibuffer
               "This name is in use, choose another \(e.g. /tmp/dev/New::Mod\): "
-              result keymap nil history nil nil))
+              input keymap nil history nil nil))
        ;; silently ignore accidentally typed ".pm"
-       (setq result (replace-regexp-in-string "\.pm$" "" result))
+       (setq input (replace-regexp-in-string "\.pm$" "" input))
        (setq filename
              (concat
-              (replace-regexp-in-string "::" perlnow-slash result)
+              (replace-regexp-in-string "::" perlnow-slash input)
               ".pm")))
      (setq return-list
-           (append  ;; EXPERIMENTAL
-            (perlnow-divide-hybrid-path-and-package-name result)
-            (list harder-setting)) 
-           )
+           (append  
+            (perlnow-divide-hybrid-path-and-package-name input)
+            (list harder-setting)))
      return-list)) ;; end interactive
   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-object-module"))
   (save-restriction
     (widen)
     (require 'template)
-    (setq perlnow-perl-package-name package-name) ; global used to pass value into template
+    (setq perlnow-perl-package-name package-name) ; global to pass into template
     (let* (
            (original-file (buffer-file-name))  ;; TODO what if there isn't one?
            (filename (perlnow-full-path-to-module incspot package-name))
@@ -1760,13 +1775,11 @@ The location for the new module defaults to the global
            (default-directory incspot) ;; for benefit of perlnow-milla-p
            (module-style "object")
            )
-      (if perlnow-debug
-          (message "perlnow-object-module harder-setting: %s" (pp-to-string harder-setting)))
       (cond (harder-setting
 ;;             (perlnow-cpan-module dev-location package-name)
-             (perlnow-cpan-module incspot package-name) ;; ? EXPERIMENTAL
+             (perlnow-cpan-module incspot package-name) ;; EXPERIMENTAL: incspot?
              )
-           ((perlnow-milla-p) ;; works
+           ((perlnow-milla-p) 
              (perlnow-milla-add pr package-name module-style)
              )
             (t
