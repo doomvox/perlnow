@@ -633,7 +633,7 @@ Psuedo-envars such as $PN_T_DIR are allowed in this definition
 internally these are dynamically expanded by \\[perlnow-expand-path]\).
 EXPERIMENTAL.")
 
-(defcustom perlnow-dev-location "$PN_PROJECT_ROOT/.."
+(defcustom perlnow-project-root-to-dev-location "$PN_PROJECT_ROOT/.."
   "Relationship between the overall \"dev location\" and a project root.
 Note: \"the dev location\" is where cpan-style projects are created.
 Psuedo-envars such as $PN_PROJECT_ROOT are allowed in this definition
@@ -654,21 +654,18 @@ EXPERIMENTAL.")
 
 ;; used as default-directory by perlnow-cpan-module and relatives
 (defcustom perlnow-dev-location (perlnow-fixdir "$HOME/dev")
-  "This is the default location to work on CPAN-style distributions.
-Not so important with perlnow 1.0 and later.")
+  "This is the fall-back default location to work on CPAN-style distributions.")
 
 ;; Note: perlnow-script-location and perlnow-pm-location are used
 ;; by creation commands, to resolve relative locations with read-file-name.
 (defcustom perlnow-script-location
   (perlnow-fixdir (concat perlnow-dev-location "bin"))
-  "This is the default location to stash new perl scripts.
-Not so important with perlnow 1.0 and later.")
+  "This is the default location to stash new perl scripts.")
 
-;; Used by perlnow-module, perlnow-object-module just as an "initial" setting for the prompt
+;; Used by perlnow-module, perlnow-object-module in "initial" value at prompt
 (defcustom perlnow-pm-location
   (perlnow-fixdir (concat perlnow-dev-location "lib"))
-  "This is the default location to stash new perl modules.
-Not so important with perlnow 1.0 and later.")
+  "This is the default location to stash new perl modules.")
 
 (defcustom perlnow-executable-setting ?\110
   "The user-group-all permissions used to make a script executable.")
@@ -769,7 +766,6 @@ Defines the PERL_SUB_NAME expansion.")
 (defvar perlnow-run-string-history nil
   "The minibuffer history for perl run string settings.")
 
-;; TODO should test file "guesses" make entries into this history?
 (defvar perlnow-test-file-history nil
   "The minibuffer history for perl test files.")
 
@@ -782,7 +778,6 @@ Defines the PERL_SUB_NAME expansion.")
 ;; Defining additional "expansions" for use in template.el templates.
 ;;
 (defvar perlnow-documentation-7-template-expansions t
-
   "The perlnow template.el templates use some custom expansions
 defined in perlnow.el.  A template.el \"expansion\" is a place
 holder in the template that gets replaced by something else when
@@ -1700,7 +1695,7 @@ creation."
       (if perlnow-trace (perlnow-close-func))
       )))
 
-(defun perlnow-object-module (incspot package-name)
+(defun perlnow-object-module (incspot package-name &optional harder-setting)
   "Quickly jump into development of a new perl OOP module.
 In interactive use, gets the path INC-SPOT and PACKAGE-NAME
  with a single question, asking for an answer in a hybrid form
@@ -1712,16 +1707,23 @@ The location for the new module defaults to the global
 `perlnow-pm-location'."
   (interactive
    (let ( initial-prompt  keymap  history
-                          result  filename return-list  )
+          result  filename return-list  prompt-mess-1 )
+     (setq harder-setting (car current-prefix-arg))
      (setq initial-prompt (or perlnow-pm-location-override
                               (perlnow-scan-tree-for-lib-loc)
                               perlnow-pm-location)) ;; TODO also an alt form that favors pn-pm-loc
      ;; keymap is key: transforms read-from-minibuffer.
      (setq keymap perlnow-read-minibuffer-map)
      (setq history 'perlnow-package-name-history)
+     (setq prompt-mess-1
+           (cond (harder-setting 
+                  "New cpan project for OOP module \(e.g. /tmp/dev/New::Mod\): ")
+                 (t 
+                  "New OOP module to create \(e.g. /tmp/dev/New::Mod\): ")))
      (setq result
            (read-from-minibuffer
-            "New OOP module to create \(e.g. /tmp/dev/New::Mod\): "
+            ;; "New OOP module to create \(e.g. /tmp/dev/New::Mod\): "
+            prompt-mess-1 
             initial-prompt keymap nil history nil nil))
      (if (not (perlnow-perlish-true-p result))
          (error "perlnow-object-module: can't work without a package name"))
@@ -1741,20 +1743,30 @@ The location for the new module defaults to the global
               (replace-regexp-in-string "::" perlnow-slash result)
               ".pm")))
      (setq return-list
-           (perlnow-divide-hybrid-path-and-package-name result))
+           (append  ;; EXPERIMENTAL
+            (perlnow-divide-hybrid-path-and-package-name result)
+            (list harder-setting)) 
+           )
      return-list)) ;; end interactive
   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-object-module"))
   (save-restriction
     (widen)
     (require 'template)
     (setq perlnow-perl-package-name package-name) ; global used to pass value into template
-    (let* ((original-file (buffer-file-name))  ;; TODO what if there isn't one?
+    (let* (
+           (original-file (buffer-file-name))  ;; TODO what if there isn't one?
            (filename (perlnow-full-path-to-module incspot package-name))
            (pr (perlnow-project-root incspot))
            (default-directory incspot) ;; for benefit of perlnow-milla-p
            (module-style "object")
            )
-      (cond ((perlnow-milla-p) ;; works
+      (if perlnow-debug
+          (message "perlnow-object-module harder-setting: %s" (pp-to-string harder-setting)))
+      (cond (harder-setting
+;;             (perlnow-cpan-module dev-location package-name)
+             (perlnow-cpan-module incspot package-name) ;; ? EXPERIMENTAL
+             )
+           ((perlnow-milla-p) ;; works
              (perlnow-milla-add pr package-name module-style)
              )
             (t
@@ -1781,8 +1793,9 @@ to determine how to work."
    (let* ((projroot (perlnow-project-root)) ;; uses perlnow-current-context and perlnow-project-root-override
           (default-directory
             (or perlnow-dev-location-override
-                (perlnow-expand-path-from-plist perlnow-dev-location
-                                            (list "$PN_PROJECT_ROOT" projroot)))))
+                (perlnow-expand-path-from-plist perlnow-project-root-to-dev-location
+                                                (list "$PN_PROJECT_ROOT" projroot)))
+                perlnow-dev-location))
      (call-interactively 'perlnow-prompt-for-cpan-style)))
   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-cpan-module"))
   (let* ((original-file (buffer-file-name))
@@ -1813,8 +1826,9 @@ double-colon separated package name form\)."
    (let* ((projroot (perlnow-project-root))  ;; uses perlnow-current-context and perlnow-project-root-override
           (default-directory
             (or perlnow-dev-location-override
-                (perlnow-expand-path-from-plist perlnow-dev-location
-                                                (list "$PN_PROJECT_ROOT" projroot)))))
+                (perlnow-expand-path-from-plist perlnow-project-root-to-dev-location
+                                                (list "$PN_PROJECT_ROOT" projroot)))
+                perlnow-dev-location))
      (call-interactively 'perlnow-prompt-for-cpan-style)))
   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-h2xs"))
   (save-restriction
@@ -1875,8 +1889,9 @@ module-starter will create the \"staging area\"\) and the PACKAGE-NAME
    (let* ((projroot (perlnow-project-root))  ;; uses perlnow-current-context and perlnow-project-root-override
           (default-directory
             (or perlnow-dev-location-override
-                (perlnow-expand-path-from-plist perlnow-dev-location
-                                                (list "$PN_PROJECT_ROOT" projroot)))))
+                (perlnow-expand-path-from-plist perlnow-project-root-to-dev-location
+                                                (list "$PN_PROJECT_ROOT" projroot)))
+                perlnow-dev-location))
      (call-interactively 'perlnow-prompt-for-cpan-style)))
   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-module-starter"))
   (save-restriction
@@ -1999,8 +2014,9 @@ milla will create the \"staging area\"\) and the PACKAGE-NAME
    (let* ((projroot (perlnow-project-root))  ;; uses perlnow-current-context and perlnow-project-root-override
           (default-directory
             (or perlnow-dev-location-override
-                (perlnow-expand-path-from-plist perlnow-dev-location
-                                                (list "$PN_PROJECT_ROOT" projroot)))))
+                (perlnow-expand-path-from-plist perlnow-project-root-to-dev-location
+                                                (list "$PN_PROJECT_ROOT" projroot)))
+                perlnow-dev-location))
      (call-interactively 'perlnow-prompt-for-cpan-style)))
   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-milla"))
   (save-restriction
@@ -2476,18 +2492,15 @@ will switch to that window."
            (message "Already at the first sub.")))
     ))
 
-;; TODO these two guys have problems with reversing directions:
-;; next has you land after a TODO, okay, that's good for the next next,
-;; but if you hit prev afterwards, that just flips you to the beginning of
-;; that very TODO, it feels like you haven't moved anywhere.  Would be
-;; better to notice this condition... if immediately prev word is a TODO,
-;; then go back a word first before searching, and vice-versa
 (defun perlnow-next-todo ()
   "Move to next TODO or FIXME."
   (interactive)
   (let* ((case-fold-search nil)
          (todo-pat "TODO\\|FIXME\\|WTF")
+         (next-word-todo-pat (concat "\\=\\(" todo-pat "\\)"))
          )
+    ;; If immediately next word is a TODO, skip past it before doing another search
+    (re-search-forward next-word-todo-pat nil t)
     (re-search-forward todo-pat nil t 1)  ;; puts you right after TODO
     ))
 
@@ -2496,7 +2509,10 @@ will switch to that window."
   (interactive)
   (let* ((case-fold-search nil)
          (todo-pat "TODO\\|FIXME\\|WTF")
+         (prev-word-todo-pat (concat "\\(" todo-pat "\\)\\="))
          )
+    ;; If immediately prev word is a TODO, skip past it before doing another search
+    (re-search-backward prev-word-todo-pat nil t)
     (re-search-backward todo-pat nil t 1)  ;; puts you right after TODO
     ))
 
@@ -8662,7 +8678,14 @@ It does three things:
 
             (format "perlnow-script-location: %s\n" perlnow-script-location)
             (format "perlnow-pm-location: %s\n" perlnow-pm-location)
-            (format "perlnow-dev-location: %s\n" perlnow-dev-location)
+            (format "---\n")
+            (format "perlnow-dev-location: %s\n"
+                    perlnow-dev-location)
+            (format "perlnow-dev-location-override: %s\n"
+                    perlnow-dev-location-override)
+            (format "perlnow-project-root-to-dev-location: %s\n"
+                    perlnow-project-root-to-dev-location)
+
             )))
     mess))
 
