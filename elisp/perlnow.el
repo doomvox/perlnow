@@ -1330,8 +1330,9 @@ outside of perlnow:
                (local-set-key \"%st\" 'perlnow-edit-test-file)
                (local-set-key \"%sa\" 'perlnow-test-create)
                (local-set-key \"%sA\" 'perlnow-test-create-manually)
-
-               (local-set-key \"\C-cxn\" 'perlnow-narrow-to-defun)
+               ;; pick one
+               ;; (local-set-key \"\C-xnd\" 'perlnow-narrow-to-defun)
+               (local-set-key \"\C-xnd\" 'perlnow-narrow-to-defun-other-buffer)
                )"
             ))
          )
@@ -2540,6 +2541,25 @@ Includes any blocks of pod preceding the sub definition."
          (end (nth 2 sub-info)) )
     (narrow-to-region beg end)
     (message "Narrowed view: try \"C-x n w\" to widen.")
+  ))
+
+
+(defun perlnow-narrow-to-defun-other-buffer ()
+  "Narrow to the current perl sub.
+Includes any blocks of pod preceding the sub definition.
+First does a buffer clone to view independantly in other window."
+  (interactive)
+  (let* ((subname      (perlnow-sub-at-point))
+         (newname      (concat (buffer-name) "-" subname))
+         (display-flag t)
+         (norecord     nil))
+    (clone-indirect-buffer-other-window newname display-flag norecord))
+  (let* ((initial-point (point))
+         (sub-info (perlnow-range-current-sub))
+         (subname (nth 0 sub-info))
+         (beg (nth 1 sub-info))
+         (end (nth 2 sub-info)) )
+    (narrow-to-region beg end)
   ))
 
 ;;========

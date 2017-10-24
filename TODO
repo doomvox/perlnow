@@ -6,6 +6,7 @@
 Master list of known bugs and feature requests
 
 ===
+
                            Tue  October 03, 2017  18:10  
 
 Moving to the top of the list entries planned for 1.1
@@ -22,19 +23,46 @@ FEATURE
 
   o  Any need for new features to do perlbrew integration?
 
-
   o  Maybe: work on external perl metadata project: probe given context.
      Look at PPI integration.
-
-
 
   o  if you do a "back" on a buffer without asscode link,
      perlnow should try to establish a reasonable one and use it.
 
-
-  o  Write tests of old override variables:
+  o  Write tests of override variables:
        perlnow-script-run-string
        perlnow-module-run-string
+
+  o  If a UI change is contemplated again,
+     implement a perlnow-setup that takes a UI version number.
+     Giving it "1.0" should give you the UI that was shipped with
+     perlnow 1.0, no exceptions.  
+
+  o  reconsider the idea that a user's manual input should 
+     lock a setting so that automatic features will never 
+     overwrite: user-input is sacrosanct, don't blow it away.
+     Q: what releases the lock?  A manual reset command?
+     The harder prefix?
+
+  o  be rigorous about have "default" and "override" settings.
+     there should be one each for everything, for some definition
+     of everything.
+
+  o  Is there a need to override PERL5LIB, e.g. to temporarily
+     blank it out for some invocations of perlnow-run?
+
+  o  re-read
+     /home/doom/End/Cave/Perlnow/Notes/notes-perlnow-2017jan 
+     BOOKMARK_2017_OCT
+
+  o  reconsider idea that there should be a perlnow-debug-string that's
+     different from perlnow-run-string.  then capital "D" would mean to
+     manually set the debug string (and then go into debug?  does R do a
+     run or just set?)
+
+     For parallelism, might implement a perlnow-test-string, 
+     but that would imply a new perlnow-run-test
+     command: this seems redundant.  But what *should* capital T do?
 
 ===
 
@@ -148,7 +176,6 @@ sure that the "associated buffer" is also renamed, in sync.
 
 Overide the dired rename command with one that special cases my cases...
 
-
 BUGLET
 
 Create a file in a wrong place (say a *.t)
@@ -161,9 +188,6 @@ If it stalled on guessing a run-string until it was actually
 run, this little problem would be covered.
 
   ((Or, if the runstring fails, then the code could then re-guess... ))
-
-
-
 
 
 ===
@@ -522,11 +546,6 @@ There are other circumstances when perlnow tries to run make test,
 correct?  (To do that, would first need to run the Build.PL or Makefile.PL.
 Does it work?)  Why would you do a make test rather than a prove?
 
-FEATURE 2016DEC
-
-Add a feature to manually edit the associated file.
-
-
 ===
                                       March 22, 2017
 
@@ -540,3 +559,14 @@ Add a feature to manually edit the associated file.
 
 ===
 
+BUG
+                                       October 10, 2017  
+
+  After creating a perl test, you get a little bit of code inserted in
+  commented out form: it doesn't *really* make sense, the "use" is never
+  needed (done already) the sub call isn't in oop form, even if it's for
+  an oop module.
+
+  some hints about Test::More-isms wouldn't be out of line...
+
+===
