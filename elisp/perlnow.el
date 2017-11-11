@@ -1450,28 +1450,29 @@ When run with a \"C-u\" prefix \(or non-interactively, with
 HARDER-SETTING passed in\) tries to guess a more thorough way to
 run the code \(e.g. a test suite instead of a single test file\),
 and works with the `perlnow-run-string-harder' variable."
-  (interactive)
+  (interactive
+   (let ((harder-setting (car current-prefix-arg)))
+     (list harder-setting)))
   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-set-run-string"))
-  (let* ((harder-setting (or harder-setting (car current-prefix-arg)))
-         (module-p (perlnow-module-code-p))
-          run-string   ret    )
-    ;; set-up default value for run-string
-    (cond
-     (module-p
-      (setq run-string
-            ;; funky "or"
-            (cond (perlnow-module-run-string)
-                  (t
-                   (perlnow-guess-run-string harder-setting)))))
-      (t  ;;  assume it's a script since it's not a module.
-       (setq run-string
-             ;; funky "or"
-             (cond (perlnow-script-run-string)
-                   (t
-                    (perlnow-guess-run-string harder-setting)
-                    )))))
-    ;; ask user how to run this code (perlnow-run handles making this the default next time)
-    (let ((prompt-for (cond (module-p "module") (t "script"))) )
+  (let* ((module-p (perlnow-module-code-p)))
+    (let ( run-string   ret )
+      ;; set-up default value for run-string
+      (cond
+       (module-p
+        (setq run-string
+              ;; funky "or"
+              (cond (perlnow-module-run-string)
+                    (t
+                     (perlnow-guess-run-string harder-setting)))))
+       (t  ;;  assume it's a script since it's not a module.
+        (setq run-string
+              ;; funky "or"
+              (cond (perlnow-script-run-string)
+                    (t
+                     (perlnow-guess-run-string harder-setting)
+                     )))))
+      ;; ask user how to run this code (perlnow-run handles making this the default next time)
+      (let ((prompt-for (cond (module-p "module") (t "script"))) )
         (setq run-string
               (read-from-minibuffer
                (format "Set the run string for this %s: " prompt-for)
@@ -1480,16 +1481,16 @@ and works with the `perlnow-run-string-harder' variable."
                nil
                (cons 'perlnow-run-string-history 2)
                )))
-    (cond
-     (module-p
-      (setq perlnow-module-run-string run-string))
-     (t  ;;  assume it's a script since it's not a module.
-      (setq perlnow-script-run-string run-string)))
-    ;; tell perlnow-run how to do it
-    (setq ret
-          (perlnow-sync-save-run-string run-string harder-setting))
-    (if perlnow-trace (perlnow-close-func))
-    ret))
+      (cond
+       (module-p
+        (setq perlnow-module-run-string run-string))
+       (t  ;;  assume it's a script since it's not a module.
+        (setq perlnow-script-run-string run-string)))
+      ;; tell perlnow-run how to do it
+      (setq ret
+            (perlnow-sync-save-run-string run-string harder-setting))
+      (if perlnow-trace (perlnow-close-func))
+      ret)))
 
 (defun perlnow-perldb (run-string)
   "Run the perl debugger on the code in this file buffer.
@@ -2233,41 +2234,41 @@ is skipped quietly.  Also, first checks if git is installed."
 ;; (aka the feature from hell, the Hard Part, the Serious Mess)
 ;;
 
-(defun perlnow-edit-test-file ()
+(defun perlnow-edit-test-file (&optional harder-setting)
   "Find \(or create\) an appropriate testfile for the current perl code.
 In interactive use, tries to identify a 't' directory related to
 the current buffer, and if run without an argument, tries to
 guess which test file is likely to be of interest.  If run with a
-prefix argument (C-u) this opens a test select menu, allowing the
+prefix argument \(C-u\) this opens a test select menu, allowing the
 user to select a test file manually.
 
 This function doesn't work reliably when called non-interactively,
 instead you should most likely do this:
 
-    (perlnow-open-test-file (perlnow-get-test-file-name))
+    \(perlnow-open-test-file \(perlnow-get-test-file-name\)\)
 
 Or if testfile is known already:
 
-    (perlnow-open-test-file testfile)
+    \(perlnow-open-test-file testfile\)
 
 Or to simulate a calling prefix and open a test select menu:
 
-    (perlnow-edit-test-file-harder 4)
+    \(perlnow-edit-test-file-harder 4\)
 "
-  (interactive)
-  (if perlnow-trace (perlnow-open-func "Calling perlnow-edit-test-file"))
+  (interactive
+   (let ((harder-setting (car current-prefix-arg)))
+     (list harder-setting)))
+  (if perlnow-trace (perlnow-open-func "Calling " "perlnow-edit-test-file"))
   (save-restriction
     (widen)
-    (let* ((harder-setting (car current-prefix-arg)))
-      (let ( testfile )
-        (cond ((and harder-setting (> harder-setting 1))
-                (perlnow-edit-test-file-harder harder-setting))
-              (t
-               (cond ((not testfile) ;; obsolete check: testfile never defined
-                      (setq testfile (perlnow-get-test-file-name))))
-               (perlnow-open-test-file testfile)))
-        (if perlnow-trace (perlnow-close-func))
-        ))))
+    (cond ((and harder-setting (> harder-setting 1))
+           (perlnow-edit-test-file-harder harder-setting))
+          (t
+           (let ((testfile (perlnow-get-test-file-name)))
+             (perlnow-open-test-file testfile)
+             )))
+    (if perlnow-trace (perlnow-close-func))
+    ))
 
 ;; Used by: perlnow-edit-test-file, perlnow-test-create-manually, perlnow-select-create-test
 (defun perlnow-open-test-file (testfile)
@@ -3772,6 +3773,7 @@ If given FILE, opens that first.  This looks for the package line
 near the top, and checks for a file extension of \"pm\".
 Note: it's often more useful to just try to get the package
 name directly: \\[perlnow-get-package-name-from-module]."
+  (interactive);; DEBUG
   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-module-code-p"))
   (let* ((initial-buffer (current-buffer))
          ext  package-name )
@@ -3784,6 +3786,7 @@ name directly: \\[perlnow-get-package-name-from-module]."
       (if (string= ext "pm")
           (setq package-name (perlnow-get-package-name-from-module)))
       (switch-to-buffer initial-buffer)
+      ;; (message "%s" package-name);; DEBUG
       (if perlnow-trace (perlnow-close-func))
       package-name))
 
@@ -8822,7 +8825,7 @@ It does three things:
      a project root (see `perlnow-documentation-coding-standard'), but
      it is possible some variations of this structure could be handled
      by modifying `perlnow-project-root-from-lib', `perlnow-project-root-from-script',
-     and/or `perlnow-project-root-from-script', however, this is all untested.
+     and/or `perlnow-project-root-from-script': however, this is all UNTESTED.
 
      A structure like this might be supported with the following customizations:
 
