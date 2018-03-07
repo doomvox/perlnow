@@ -1504,22 +1504,29 @@ An advantage this command has over running \\[perldb] directly:
 you can have different `perlnow-run-string' settings for different code buffers."
   (interactive
    (let (rs)
-     (cond((eq perlnow-run-string nil)  ;; TODO use perlnow-perlish-true-p
+;;     (cond((eq perlnow-run-string nil)  ;; TODO use perlnow-perlish-true-p
+     (cond((perlnow-perlish-true-p perlnow-run-string) 
            (setq rs (perlnow-set-run-string)))
           (t
            (setq rs perlnow-run-string)))
-     ;; TODO make sure perldb can use rs-- e.g. a leading "cd blah;" is ng
-     ;;      strip trailing redirects?
      (list rs)
      ))
   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-perldb"))
+  ;; TODO make sure perldb can use rs-- e.g. a leading "cd blah;" is ng
+  ;;      strip trailing redirects?
   (widen)
-  (let* ((modified-run-string
-          (replace-regexp-in-string "\\bperl " "perl -d " run-string))
-         ;;;; TODO old dequote operation. Better: split-string-and-unquote
-         (hacked-run-string
+  (let ( modified-run-string  hacked-run-string )
+
+    (cond ((string-match "\\bperl " run-string)
+           (setq modified-run-string
+                 (replace-regexp-in-string "\\bperl " "perl -d " run-string)))
+          (t
+           (setq modified-run-string
+                 (concat "perl -d " run-string))))
+
+    ;; TODO old dequote operation. Better: split-string-and-unquote
+    (setq hacked-run-string
           (replace-regexp-in-string "'" "" modified-run-string))
-         )
     (if perlnow-trace (perlnow-close-func))
     (perldb hacked-run-string)))
 
@@ -2595,26 +2602,17 @@ e.g. run all tests rather than just one."
                     ))
              (setq run-string (perlnow-generate-run-string associated)))
 
-            (t ;; scrounge around for a *.t file to use
-    ;; TODO if perlnow-list-perl-tests works as advertised, this isn't supposed to be
-    ;;      a cpan-style only thing. What if you eliminate/integrate the other branch?
-
-             ;; the cpan-style case
-             (cond (staging-area
-                    (setq run-string
-                          (perlnow-generate-run-string-and-associate
-                           (perlnow-latest-test-file
-                            (perlnow-list-perl-tests default-directory)
-                            )))
-                    )
-                   (t ; non-cpan-style
-                    (setq testfile (perlnow-get-test-file-name))
-                    (cond ( (not (file-exists-p testfile))
-                            (perlnow-edit-test-file testfile) ;; creates a new test
-                            ))
-                    (setq run-string
-                          (perlnow-generate-run-string-and-associate testfile))
-                    ))
+            (t ;; we are a module: scrounge around for a test or script file to use
+             (setq run-string
+                   (perlnow-generate-run-string-and-associate
+                    (perlnow-latest 
+                     (list
+                      (perlnow-latest
+                       (perlnow-list-perl-tests default-directory))
+                      (perlnow-latest 
+                        (perlnow-list-perl-scripts   ;; TODO a stub, needs improvement
+                           (perlnow-scan-tree-for-script-loc default-directory)))
+                      ))))
              ))) ;; end "standard run" cases
           )
     (if perlnow-trace
@@ -4181,9 +4179,8 @@ buffer when metadata was called:
           (perlnow-ensure-directory-exists testloc-absolute)
 
           (if perlnow-debug
-              (message "COSMIC perlnow-metadata: package-name: %s file-location: %s"   package-name file-location))
-          (if perlnow-debug
-              (message "CUBE perlnow-metadata: testloc-absolute: %s "   testloc-absolute))
+              (message "perlnow-metadata: package-name: %s file-location: %s" package-name file-location))
+          (if perlnow-debug (message "perlnow-metadata: testloc-absolute: %s "   testloc-absolute))
           (setq incspot (perlnow-get-incspot package-name file-location))
           )
          ((string= file-type "test")
@@ -5444,13 +5441,13 @@ If called on a acript, looks for names with suffix \"-script.t\".
                   )
              (cond (test-files-both ;; matches found on module *and* sub: pick latest
                     (setq test-file
-                          (perlnow-most-recently-modified-file test-files-both))
+                          (perlnow-latest test-files-both))
                     )
                    (t  ;; we're without match on module/sub, so...
                     (cond ((not perlnow-perl-sub-name) ;; no sub name defined
                            (cond (test-files-module   ;; have matches on module: will pick latest
                                   (setq test-file
-                                        (perlnow-most-recently-modified-file test-files-module))
+                                        (perlnow-latest test-files-module))
                                   )
                                  ((perlnow-script-p)
                                   (cond ((setq basename
@@ -5461,7 +5458,7 @@ If called on a acript, looks for names with suffix \"-script.t\".
                                                (perlnow-grep-list test-files basename ))
 
                                          (setq test-file
-                                               (perlnow-most-recently-modified-file test-files-basename))
+                                               (perlnow-latest test-files-basename))
                                          )))
                                  ))
                           (t ;; subname defined
@@ -5530,7 +5527,6 @@ the script basename with the HYPHENIZED-PACKAGE-NAME, if defined."
 If no files are found in TESTLOC-ABSOLUTE, returns 01."
   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-next-test-prefix"))
   (if perlnow-debug (message "   testloc-absolute: %s" (pp-to-string testloc-absolute)))
-
   (let* (test-files
          prefix-list
          numeric-list
@@ -5565,7 +5561,7 @@ If no files are found in TESTLOC-ABSOLUTE, returns 01."
     next-prefix))
 
 ;; The harder-setting *here* is not used for anything.
-(defun perlnow-edit-test-file-harder (harder-setting)
+(defun perlnow-edit-test-file-harder (&optional harder-setting)
   "Open a menu of all likely test files for user to choose from."
   (interactive
    (setq harder-setting (car current-prefix-arg)))
@@ -6106,7 +6102,7 @@ on the theory that that's the one you're likely to want to
 work on again."
   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-latest-test-file"))
   (let ((latest
-         (perlnow-most-recently-modified-file test-file-list)) )
+         (perlnow-latest test-file-list)) )
     (if perlnow-trace
         (message "   Returning from 'latest-test-file'"))
     (if perlnow-trace (perlnow-close-func))
@@ -6116,16 +6112,21 @@ work on again."
 ;; getting the most recently modified file
 
 (defun perlnow-file-mtime (filename)
-  "Return the mtime for the given FILENAME."
+  "Return the mtime for the given FILENAME.  
+If FILENAME is nil, returns 0."
   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-file-mtime"))
-  (let* (( attribs    (file-attributes filename) )
-         ( mtime-pair (nth 5 attribs) )
-         ( mtime-high (nth 0 mtime-pair))
-         ( mtime-low  (nth 1 mtime-pair))
-         ( mtime      (+ (* 65536 mtime-high) mtime-low))
-         )
-    (if perlnow-trace (perlnow-close-func))
-    mtime))
+  (let ((mtime 0))
+    (if (perlnow-file-exists-p filename)
+        (let* ((attribs    (file-attributes filename) )
+               (mtime-pair (nth 5 attribs) )
+               (mtime-high (nth 0 mtime-pair))
+               (mtime-low  (nth 1 mtime-pair)) )
+          (cond ((and (numberp mtime-high) (numberp mtime-low))
+                 (setq mtime (+ (* 65536 mtime-high) mtime-low)) )
+                (t
+                 (setq mtime 0)) ) )
+      (if perlnow-trace (perlnow-close-func))
+      mtime)))
 
 (defun perlnow-file-mtime-p (a b)
   "A \"predicate\" to sort files in order of decreasing age."
@@ -6143,9 +6144,9 @@ work on again."
     (if perlnow-trace (perlnow-close-func))
     sorted-list))
 
-(defun perlnow-most-recently-modified-file (list)
+(defun perlnow-latest (list)
   "Get the most recently modified file, given a LIST of files."
-  (if perlnow-trace (perlnow-open-func "Calling " "perlnow-most-recently-modified-file"))
+  (if perlnow-trace (perlnow-open-func "Calling " "perlnow-latest"))
   (let ((most-recent
          (car (perlnow-sort-file-list-by-mtime list))))
     (if perlnow-trace (perlnow-close-func))
@@ -6363,9 +6364,8 @@ we resort to this."
       (if perlnow-trace (perlnow-close-func))
       found-path)))
 
-;; simpler substitution for perlnow-scan-tree-for-directory
-
-;; Used by above perlnow-project-root
+;; This is a simpler alternative to perlnow-scan-tree-for-directory
+;; used by above perlnow-project-root
 (defun perlnow-stepup-path-to-matching-name (path search-list)
   "Find a name from the SEARCH-LIST in the PATH.
 The SEARCH-LIST is a listing of names we're interested in in order of
@@ -6507,7 +6507,7 @@ START-LOC may be a file or a directory."
     incspot))
 
 ;; All current code (as of Sept 2017) instead uses: perlnow-stepup-path-to-matching-name
-;; (was used in perlnow-scan-tree-for-script-loc, perlnow-scan-tree-for-t-loc)
+;; (this was used in perlnow-scan-tree-for-script-loc, perlnow-scan-tree-for-t-loc)
 (defun perlnow-scan-tree-for-directory ( start names-list &optional type short-circuit-opt )
   "Scans tree at START for directories with name in TARGET-NAMES.
 NAMES-LIST is a list of file names without paths.
@@ -6569,6 +6569,30 @@ If FILE-OR-DIR is given, but doesn't exist, returns nil."
            ))
     (if perlnow-trace (perlnow-close-func))
     t-files))
+
+;; TODO NEXT under development not in use anywhere yet.
+;; this is presently a stub that presumes all perl scripts have a *.pl extension. 
+(defun perlnow-list-perl-scripts ( &optional file-or-dir )
+  "List perl script files found in tree of FILE-OR-DIR.
+Uses \\[perlnow-current-context] if FILE-OR-DIR is not specified.
+If FILE-OR-DIR is given, but doesn't exist, returns nil."
+  (if perlnow-trace (perlnow-open-func "Calling " "perlnow-list-perl-scripts"))
+  (let ( script-loc script-file-pat script-files )
+    (unless file-or-dir (setq file-or-dir (perlnow-current-context)))
+    (cond ((or (file-directory-p file-or-dir) (file-regular-p file-or-dir))
+           (setq script-loc   (perlnow-scan-tree-for-script-loc file-or-dir))
+           (setq script-file-pat "\\\.pl$") ;; TODO NOW LIKE NOW: no file extension case
+           (setq script-files
+                 (perlnow-recursive-file-listing script-loc script-file-pat "f"))
+           (if perlnow-debug
+               (message "scan-tree found script-loc: %s" script-loc))
+           )
+          (t ;; given a loc, but it doesn't exist, ergo, there is nothing there
+           (setq script-files nil)
+           ))
+    (if perlnow-trace (perlnow-close-func))
+    script-files))
+
 
 ;;-------
 ;; The following three functions are still named "scan-tree",
@@ -7616,11 +7640,8 @@ matches given REGEXP.  Defaults to appending at end of file."
     (if perlnow-trace (perlnow-close-func))
     ))
 
-
-
 ;; directory listing
-;; Used by perlnow-scan-tree-for-directory
-;;         perlnow-list-perl-tests
+;; Used by perlnow-list-perl-tests (and was used by perlnow-scan-tree-for-directory)
 (defun perlnow-recursive-file-listing (start &optional regexp type include-hiddens)
   "Return a list of a tree of files beginning in location START.
 The optional REGEXP can be used to filter the returned names, and
@@ -7662,7 +7683,7 @@ Note: this is a wrapper around \\[directory-files-recursively]."
     (if perlnow-trace (perlnow-close-func))
     file-list))
 
-;; Used in just perlnow-scan-tree-for-directory
+;; Used in just perlnow-scan-tree-for-directory (which is currently unused)
 (defun perlnow-file-listing (loc &optional regexp type include-hiddens)
   "Return a list of a tree of files located in LOC.
 The optional REGEXP can be used to filter the returned names, and
@@ -8012,6 +8033,28 @@ Checks for non-nil and non-empty string and non-zero."
          ))
     (if perlnow-trace (perlnow-close-func))
     ret))
+
+
+(defun perlnow-file-exists-p (filename)
+  "Return t if file FILENAME exists.
+Returns nil if FILENAME is an empty string.
+If FILENAME is numeric, runs `number-to-string' first."
+  (if perlnow-trace (perlnow-open-func "Calling " "perlnow-file-exists-p"))
+  (let (exists)
+    (cond (filename ;; filename is non-nil
+           (cond ((and (stringp filename) (not (string= filename "")))
+                  (setq exists (file-exists-p filename)) )
+                 ((numberp filename)
+                  (setq exists (file-exists-p (number-to-string filename))) )
+                 ))
+          (t   ;; filename is nil
+           nil))
+    (if perlnow-trace (perlnow-close-func))
+    exists))
+
+
+
+
 
 
 ;;========
