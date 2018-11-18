@@ -2,6 +2,7 @@
 #   `perl (>>>FILE<<<)'
 #        (>>>AUTHOR<<<)     (>>>VC_DATE<<<)
 
+use (>>>MINIMUM_PERL_VERSION<<<);
 use warnings;
 use strict;
 $|=1;
@@ -16,7 +17,6 @@ use Env             qw( HOME );
 use List::MoreUtils qw( any );
 
 use Test::More;
-BEGIN { plan tests => 1 };  # TODO # change to 'tests => last_test_to_print';
 
 ok(1, "Traditional: If we made it this far, we're ok.");
 
@@ -36,3 +36,4 @@ EXPECTED
   is( $result, $expected, "$test_name" )
 }
 
+done_testing();
