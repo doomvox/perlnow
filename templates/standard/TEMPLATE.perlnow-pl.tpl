@@ -21,6 +21,7 @@ B<(>>>FILE<<<)> is a script which
 
 =cut
 
+use (>>>MINIMUM_PERL_VERSION<<<);
 use warnings;
 use strict;
 $|=1;
@@ -30,14 +31,14 @@ use Data::Dumper;
 use File::Path      qw( mkpath );
 use File::Basename  qw( fileparse basename dirname );
 use File::Copy      qw( copy move );
-use Fatal           qw( open close mkpath copy move );
+use autodie         qw( :all mkpath copy move ); # system/exec along with open, close, etc
 use Cwd             qw( cwd abs_path );
 use Env             qw( HOME );
-use List::MoreUtils qw( any );
 use String::ShellQuote qw( shell_quote_best_effort );
 use Config::Std;
 use Getopt::Long    qw( :config no_ignore_case bundling );
 use List::Util      qw( first max maxstr min minstr reduce shuffle sum );
+use List::MoreUtils qw( any zip uniq );
 
 our $VERSION = 0.01;
 my  $prog    = basename($0);
@@ -49,6 +50,8 @@ GetOptions ("d|debug"    => \$DEBUG,
            ) or say_usage();
 #           "length=i" => \$length,        # numeric
 #           "file=s"   => \$file,          # string
+
+# $DB::single = 1;
 
 (>>>POINT<<<)
 
@@ -92,9 +95,5 @@ __END__
 Copyright (C) (>>>YEAR<<<) by (>>>USER_NAME<<<)
 
 (>>>LICENSE<<<)
-
-=head1 BUGS
-
-None reported... yet.
 
 =cut
