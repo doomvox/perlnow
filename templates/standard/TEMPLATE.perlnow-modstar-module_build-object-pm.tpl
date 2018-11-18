@@ -1,4 +1,4 @@
-# An OOP template for module-starter with Module::Build
+# An OOP template for module-starter with Module::Build (( TODO: obsolete? ))
 package (>>>PERL_MODULE_NAME<<<);
 use base qw( Class::Base );
 
@@ -173,55 +173,6 @@ Copyright (C) (>>>YEAR<<<) by (>>>USER_NAME<<<)
 
 (>>>LICENSE<<<)
 
-=head1 BUGS
-
-Please report any bugs or feature requests to C<bug-emacs-run at rt.cpan.org>, or through
-the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Emacs-Run>.  I will be notified, and then you'll
-automatically be notified of progress on your bug as I make changes.
-
-=head1 SUPPORT
-
-You can find documentation for this module with the perldoc command.
-
-    perldoc Emacs::Run
-
-You can also look for information at:
-
-=over 4
-
-=item * RT: CPAN's request tracker
-
-L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=Emacs-Run>
-
-=item * AnnoCPAN: Annotated CPAN documentation
-
-L<http://annocpan.org/dist/Emacs-Run>
-
-=item * CPAN Ratings
-
-L<http://cpanratings.perl.org/d/Emacs-Run>
-
-=item * Search CPAN
-
-L<http://search.cpan.org/dist/Emacs-Run/>
-
-=back
-
-=head1 ACKNOWLEDGEMENTS
-
-
-=head1 COPYRIGHT AND LICENSE
-
-Copyright (C) (>>>YEAR<<<) by (>>>USER_NAME<<<)
-
-(>>>LICENSE<<<)
-
-This program is free software; you can redistribute it and/or modify it
-under the terms of either: the GNU General Public License as published
-by the Free Software Foundation; or the Artistic License.
-
-See http://dev.perl.org/licenses/ for more information.
-
 =cut
 
-1; # End of Emacs::Run
+1; 
