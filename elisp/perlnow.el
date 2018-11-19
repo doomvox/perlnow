@@ -1355,9 +1355,9 @@ This skips using perlcritic or podchecker if it can't find them."
           (default-directory location)
           (perl (perlnow-how-to-perl))
 
-          ;; podchecker --help 2>1 | grep 'Usage:'
+          ;; podchecker --help 2>&1 | grep 'Usage:'
           (podchecker-probe
-           (concat perlnow-podchecker-program " --help 2>1 | grep 'Usage:'"))
+           (concat perlnow-podchecker-program " --help 2>&1 | grep 'Usage:'"))
           (podchecker-p (shell-command-to-string podchecker-probe))
           (podchecker (cond (podchecker-p perlnow-podchecker-program)
                             (t nil)))
