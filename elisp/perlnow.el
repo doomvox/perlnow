@@ -920,7 +920,6 @@ defined expansions.")
        '("BUGS" (insert perlnow-bugs-message))
        template-expansion-alist))
 
-
 (defvar perlnow-minimum-perl-version "5.10.0"
   "The minimum perl version you are interested in supporting.
 This is used to define the template expansion for
@@ -1005,11 +1004,12 @@ string can be used, provided you have code templates named accordingly.")
   "If non-nil, does git check-ins automatically.
 This is mainly for perlnow-milla.")
 
+;; TODO does setting these to an empty string work if you like mutators?
 (defvar perlnow-getter-prefix "get_"
   "Defines the naming convention for getters for object-oriented code.
-Editorial: the default setting in perlnow.el is \"get_\", because that's
-very common, but if you never use the (now deprecated) mutators, doesn't
-it make more sense to use no prefix for the most common case?")
+Editorial: the default setting in perlnow.el is \"get_\", because
+that's very common, but doesn't it make more sense to use no
+prefix for the most common case?")
 
 (defvar perlnow-setter-prefix "set_"
   "Defines the naming convention for setters for object-oriented code.")
@@ -1808,8 +1808,8 @@ to determine how to work."
           (default-directory
             (or perlnow-dev-location-override
                 (perlnow-expand-path-from-plist perlnow-project-root-to-dev-location
-                                                (list "$PN_PROJECT_ROOT" projroot)))
-                perlnow-dev-location))
+                                                (list "$PN_PROJECT_ROOT" projroot))
+                perlnow-dev-location)))
      (call-interactively 'perlnow-prompt-for-cpan-style)))
   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-cpan-module"))
   (let* ((original-file (buffer-file-name))
@@ -1841,8 +1841,8 @@ double-colon separated package name form\)."
           (default-directory
             (or perlnow-dev-location-override
                 (perlnow-expand-path-from-plist perlnow-project-root-to-dev-location
-                                                (list "$PN_PROJECT_ROOT" projroot)))
-                perlnow-dev-location))
+                                                (list "$PN_PROJECT_ROOT" projroot))
+                perlnow-dev-location)))
      (call-interactively 'perlnow-prompt-for-cpan-style)))
   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-h2xs"))
   (save-restriction
@@ -1904,8 +1904,8 @@ module-starter will create the \"staging area\"\) and the PACKAGE-NAME
           (default-directory
             (or perlnow-dev-location-override
                 (perlnow-expand-path-from-plist perlnow-project-root-to-dev-location
-                                                (list "$PN_PROJECT_ROOT" projroot)))
-                perlnow-dev-location))
+                                                (list "$PN_PROJECT_ROOT" projroot))
+                perlnow-dev-location)))
      (call-interactively 'perlnow-prompt-for-cpan-style)))
   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-module-starter"))
   (save-restriction
@@ -2029,8 +2029,8 @@ milla will create the \"staging area\"\) and the PACKAGE-NAME
           (default-directory
             (or perlnow-dev-location-override
                 (perlnow-expand-path-from-plist perlnow-project-root-to-dev-location
-                                                (list "$PN_PROJECT_ROOT" projroot)))
-                perlnow-dev-location))
+                                                (list "$PN_PROJECT_ROOT" projroot))
+                perlnow-dev-location)))
      (call-interactively 'perlnow-prompt-for-cpan-style)))
   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-milla"))
   (save-restriction
@@ -3656,6 +3656,55 @@ a consistent in-family interface."
 
 
 ;; end file creation
+
+;;========
+;; recently used perl buffers from buffer-list
+
+;; TODO NEXT 
+;; new project: BUFFLISTFILT    Thu  March 08, 2018  18:44  tango
+
+;; Example code 
+;; (defun perlnow-file-open-p (full-file-name)
+;;   "Given a FULL-FILE-NAME, return t if there's an open buffer for it.
+;; Otherwise, return nil.  The given full file name should be an absolute path."
+;;   (let ((open-p nil))
+;;     (dolist (bfn (mapcar 'buffer-file-name (buffer-list)))
+;;       (if (equal full-file-name bfn)
+;;           (setq open-p t)))
+;;     open-p))
+
+
+;; Various ideas: go through buffer-list, extract the perlish buffers. (( Done ))
+
+
+;; find the next module; find the next test; find the next script or test.
+
+;; find the next *whatever* associated with the current project (same tree as a given file).
+
+;; TODO make sure this includes a test select buffer?  Or exclude it on purpose?
+(defun perlnow-perl-buffers ()
+  "Return a list of open perl buffers in most recently used order.
+Here a perl buffer is one with a mode name that looks perlish."
+  (let (pat  perl-buffer-list)
+    (setq pat "\\b[Cc]*[Pp]erl\\b")  
+     (dolist (bf (buffer-list))
+       (set-buffer bf)
+       (let* (;; (fn (buffer-file-name bf))
+              (mn mode-name) )
+         (if (string-match pat mn)
+             (push bf perl-buffer-list))  
+         ))
+     (reverse perl-buffer-list)))
+
+;; (message (pp (perlnow-perl-buffers)))
+
+;;; TODO getting there, but this is in inverse order:
+;;; (#<buffer mapgame> #<buffer read_new> #<buffer last_kdvs> #<buffer BoxFind.pm> #<buffer thumbnailer> #<buffer webwrap> #<buffer image_rescale> #<buffer junkgen_all_daily.pl> #<buffer show_images_three_lists> #<buffer restamp> #<buffer list_vidarc> #<buffer testes-file_existance_empty_string.pl> #<buffer Rank.pm> #<buffer 06-Draw-WaveStack-hm.t> #<buffer WaveStack.pm> #<buffer hdmi> #<buffer wave_stack.pl>)
+
+;; Bleh "consing on the end" doesn't do what I expect (or course), but a reverse works, so live with that:
+;; "(#<buffer wave_stack.pl> #<buffer hdmi> #<buffer WaveStack.pm> #<buffer 06-Draw-WaveStack-hm.t> #<buffer Rank.pm> #<buffer testes-file_existance_empty_string.pl> #<buffer list_vidarc> #<buffer restamp> #<buffer show_images_three_lists> #<buffer junkgen_all_daily.pl> #<buffer image_rescale> #<buffer webwrap> #<buffer thumbnailer> #<buffer BoxFind.pm> #<buffer last_kdvs> #<buffer read_new> #<buffer mapgame>)
+
+
 
 ;;========
 ;; buffer/file probes (determine what kind of code it is, etc)
@@ -7420,7 +7469,7 @@ except that this treats colons as part package name, not the path."
 
 (defun perlnow-interesting-file-name-p (string)
   "Is the given file \(or directory name\) be interesting?
-Takes a bare filename (sans path) as the STRING
+Takes a bare filename sans path as the STRING
 argument and returns t if it doesn't match the list of
 uninteresting filenames patterns, otherwise nil."
 ;;; TODO
