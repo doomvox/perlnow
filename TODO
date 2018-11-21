@@ -2,23 +2,35 @@
                                                  Rev:   April   16, 2010
                                                  Rev:   January 29, 2017
                                                  Rev:   October 03, 2017
-                                                 
+
 Master list of known bugs and feature requests
 
 ===
 
-                           Tue  October 03, 2017  18:10  
+                           Tue  October 03, 2017  18:10
 
 Moving to the top of the list entries planned for 1.1
 
                            Sat Oct  9 22:42:17 2010
-FEATURE
-     o Jump to right after the last sub,
-       the natural place to add a new one.
+
+
+
+  o  tramp.el
+     verify still a problem
+     have seen failures in even perl check.
+
+     maybe: need to determine the path to the local copy,
+     and act on that?
+
+     or remotely run commands on the server side, via ssh?
+
+
+  o  Jump to right after the last sub,          FEATURE
+     the natural place to add a new one.
 
   o  A new perlnow command, bound to "o". to run prove
       - "o":        "prove *.t"   (default)
-      - "o harder": "prove -r"          
+      - "o harder": "prove -r"
       - "O":        setter for "o" run-string
 
   o  Any need for new features to do perlbrew integration?
@@ -36,10 +48,10 @@ FEATURE
   o  If a UI change is contemplated again,
      implement a perlnow-setup that takes a UI version number.
      Giving it "1.0" should give you the UI that was shipped with
-     perlnow 1.0, no exceptions.  
+     perlnow 1.0, no exceptions.
 
-  o  reconsider the idea that a user's manual input should 
-     lock a setting so that automatic features will never 
+  o  reconsider the idea that a user's manual input should
+     lock a setting so that automatic features will never
      overwrite: user-input is sacrosanct, don't blow it away.
      Q: what releases the lock?  A manual reset command?
      The harder prefix?
@@ -52,7 +64,7 @@ FEATURE
      blank it out for some invocations of perlnow-run?
 
   o  re-read
-     /home/doom/End/Cave/Perlnow/Notes/notes-perlnow-2017jan 
+     /home/doom/End/Cave/Perlnow/Notes/notes-perlnow-2017jan
      BOOKMARK_2017_OCT
 
   o  reconsider idea that there should be a perlnow-debug-string that's
@@ -60,19 +72,11 @@ FEATURE
      manually set the debug string (and then go into debug?  does R do a
      run or just set?)
 
-     For parallelism, might implement a perlnow-test-string, 
+     For parallelism, might implement a perlnow-test-string,
      but that would imply a new perlnow-run-test
      command: this seems redundant.  But what *should* capital T do?
 
 ===
-
-  o  Is there a way to support tramp.el?
-
-  Doesn't play nice with tramp.el or ange-ftp, not even a perl check.
-  if a remote buffer, make/find a local copy of it and run perl -cw on it?
-  (Verify this is still a problem.  --  Apr 15, 2010 )
-
----
 
 April 9th additons:
 
@@ -133,7 +137,7 @@ debugger, e.g.
 
    'cd ~/dev/h2xs-stuff/Hack-To-Excess-Module/; make test'
 
-((Q: is this feature at all needed now?    --  October 19, 2017  
+((Q: is this feature at all needed now?    --  October 19, 2017
   Automatic setting of default-directory would obviate it.
   Behavior of all that stuff is different now.
 ))
@@ -172,7 +176,7 @@ debugger use.  (least painful, no? -- Thu Apr 15 13:00:02 2010)
 FEATURE
 
 If you rename a file, there should be a way to make
-sure that the "associated buffer" is also renamed, in sync.  
+sure that the "associated buffer" is also renamed, in sync.
 
 Overide the dired rename command with one that special cases my cases...
 
@@ -197,7 +201,7 @@ If the *compilation* buffer is already displayed in some other frame,
 that can cause problems.  Possible fix: always kill *compilation*
 before a perlnow-run.  (verify still a problem -- Thu Apr 15 12:46:59 2010)
 
-(( Can you move *compilation* associated it with another frame? )) 
+(( Can you move *compilation* associated it with another frame? ))
 
 ===
 ===
@@ -247,7 +251,7 @@ you to the beginning or end of that expression (currently, it just
 errors).
 ===
 FEATURE
-tempo.el, 
+tempo.el,
 allow user edits of standard
 subs/methods/constructors/accessors...
 ===
@@ -389,7 +393,7 @@ same automatic use features that scripts get?  ((Yes))
 ===
 
                                          Dec 10, 2009
-                                   Rev:  Oct 19, 2017  
+                                   Rev:  Oct 19, 2017
 
 
 Starting from a notes-* file, try to create or edit a test file.
@@ -399,7 +403,7 @@ but you get a warning:  Perlnow: Not a perl buffer.
 
 
 
-                                         Thu  October 19, 2017  16:07  
+                                         Thu  October 19, 2017  16:07
 
 buffer-local
 perlnow-associated-project-root
@@ -512,7 +516,7 @@ FEATURE
 If a C-c / r fails because of a file-not-found,
 why not try to re-initialize the run-string and try again before
 giving up?
-                       
+
                   Thu  October 19, 2017  15:21  tango
 
    Maybe: generated runstrings should have the file to be run
@@ -560,7 +564,7 @@ Does it work?)  Why would you do a make test rather than a prove?
 ===
 
 BUG
-                                       October 10, 2017  
+                                       October 10, 2017
 
   After creating a perl test, you get a little bit of code inserted in
   commented out form: it doesn't *really* make sense, the "use" is never
@@ -570,3 +574,65 @@ BUG
   some hints about Test::More-isms wouldn't be out of line...
 
 ===
+
+FEATURE
+
+align-regexp is pretty useful, e.g. when given a "=>" to align a hash
+definition by the fat commas.  It's be better if you didn't need to
+entere the "=>", if you had a perl aware wrapper that guessed what you'd
+probably like to align on, and ideally that also guessed at the region
+you want to do it on.   Another issue is that some things need to be
+aligned into multiple columns, and it'd be better not to have to invoke
+it multiple times.
+
+===
+
+TODO
+
+Look over the org-mode features for specifying things like author when
+generating html... perlnow should have a way to use the values that were
+set-up for org-mode.  (Many use standard emacs vars anyway)
+
+And note org macro expansions, yet-another-template-syntax:
+
+  `{{{title}}}'
+  `{{{author}}}'
+  `{{{email}}}'
+
+
+===
+
+Tue  November 13, 2018  20:17  tango
+
+Nothing seems to be working very well in perlnow:
+
+Doing a C-c / t from the top of a file like Skullplot.pm tries to
+create an inane test file focused on the first sub it can find,
+an inane builder sub.
+
+   Myself, I'm more likely to want a direct test of the "new" method.
+   Or an overall test file for the *.pm file as a whole.
+
+Then, after renaming the test file, I tried associating the *.pm
+with the new *.t via the C-u C-/ t menu.
+
+The menu comes up okay, but trying to select one of the two *.t
+files gives you a stringp error.
+
+Used C-c / R to manually set the runstring for the *.pm file:
+It doesn't matter, when I do a C-c / r inside the *.pm it keeps
+trying to run the stale test file name.
+
+  Arrrgh.
+
+
+===
+
+Note, I don't have copies of all of these in my ~/.templates:
+
+/home/doom/End/Cave/Perlnow/lib/perlnow/templates/standard/
+
+Why?
+
+===
+

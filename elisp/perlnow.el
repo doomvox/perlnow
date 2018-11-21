@@ -2597,8 +2597,7 @@ e.g. run all tests rather than just one."
                   (setq run-string
                         (perlnow-test-run-string-harder harder-setting)))))
           (t ;; harder not set, so do a standard run
-
-   (cond
+           (cond
             ;; if this is a test, just run the filename
             ((perlnow-test-p filename)
              (setq run-string (perlnow-generate-run-string filename)))
@@ -3141,7 +3140,7 @@ found in LIST2."
       )
     (if perlnow-trace (perlnow-close-func))
     difference))
-;;; end  efficient set subtraction (using a hash table)
+
 
 ;; ========
 ;; manipulate associated code files together
@@ -3155,9 +3154,8 @@ Sets either \\[perlnow-run-string] or \\[perlnow-run-string-harder]
 depending on the value of the given HARDER-SETTING."
   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-sync-save-run-string"))
   (perlnow-save-run-string-hard-aware run-string harder-setting)
-
   ;; TODO don't munge the asscode run string unless it makes sense
-  ;;      Experimental hack: skip it if both buffers are scripts.
+  ;;      EXPERIMENTAL: skip it if both buffers are scripts.
   (let* ((this-file (buffer-file-name))
          (assoc-file perlnow-associated-code))
     (cond ((not (and
@@ -3195,9 +3193,7 @@ depending on the value of the given HARDER-SETTING."
           )
         (t
          (setq perlnow-run-string run-string)
-         ))
-  ;; (if perlnow-trace (perlnow-close-func))
-  )
+         )))
 
 (defun perlnow-follow-associations-to-non-test-code (&optional filename)
   "Follow the chain of associations to a code file that is not a test.
@@ -6208,7 +6204,7 @@ work on again."
 (defun perlnow-file-mtime (filename)
   "Return the mtime for the given FILENAME.  
 If FILENAME is nil, returns 0."
-  (if perlnow-trace (perlnow-open-func "Calling " "perlnow-file-mtime"))
+  ;; (if perlnow-trace (perlnow-open-func "Calling " "perlnow-file-mtime"))
   (let ((mtime 0))
     (cond ((perlnow-file-exists-p filename)
            (let* ((attribs    (file-attributes filename) )
@@ -6220,23 +6216,23 @@ If FILENAME is nil, returns 0."
                    (t
                     (setq mtime 0)) ) )
            ))
-    (if perlnow-trace (perlnow-close-func))
+    ;; (if perlnow-trace (perlnow-close-func))
     mtime))
 
 (defun perlnow-file-mtime-p (a b)
   "A \"predicate\" to sort files in order of decreasing age."
-  (if perlnow-trace (perlnow-open-func "Calling " "perlnow-file-mtime-p"))
+  ;; (if perlnow-trace (perlnow-open-func "Calling " "perlnow-file-mtime-p"))
   (let ((ret
          (> (perlnow-file-mtime a) (perlnow-file-mtime b)))
         )
-    (if perlnow-trace (perlnow-close-func))
+    ;; (if perlnow-trace (perlnow-close-func))
     ret))
 
 (defun perlnow-sort-file-list-by-mtime (list)
   "Given the LIST of file names, sorts it by mtime."
-  (if perlnow-trace (perlnow-open-func "Calling " "perlnow-sort-file-list-by-mtime"))
+  ;; (if perlnow-trace (perlnow-open-func "Calling " "perlnow-sort-file-list-by-mtime"))
   (let* ((sorted-list (sort list 'perlnow-file-mtime-p)) )
-    (if perlnow-trace (perlnow-close-func))
+    ;; (if perlnow-trace (perlnow-close-func))
     sorted-list))
 
 (defun perlnow-latest (list)
@@ -7994,15 +7990,23 @@ JSON-FILE defaults to: ~/.emacs.d/perlnow/incspot_from_t.json"
   (save-excursion
     (unless plist-symbol (setq plist-symbol 'perlnow-incspot-from-t-plist))
     (unless stash-file   (setq stash-file perlnow-incspot-from-t-stash-file))
-    (let* ((data
-            (json-encode (eval plist-symbol)))
-            ;; better, maybe: json-encode-plist?
-
+    (let* (
+;;            (data
+;;             (json-encode (eval plist-symbol)))
+;;             ;; better, maybe: json-encode-plist?
+           data-string
+           data-plist
            )
+      (setq data-plist (eval plist-symbol))
+      ;; TODO uniquify the data-plist
+      (setq data-string (json-encode data-plist)) ;; TODO maybe: json-encode-plist?
+
       (find-file stash-file)
       (widen)
       (delete-region (point-min) (point-max))
-      (insert data)
+;;      (insert data)
+      (insert data-string)
+      (insert "\nBLLOORGGG\n")
       (save-buffer)
       ;; TODO close buffer, or just bury it?
       (if perlnow-trace (perlnow-close-func))

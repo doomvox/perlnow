@@ -37,11 +37,7 @@ enough to leave the stub unedited.
 Copyright (C) (>>>YEAR<<<) by (>>>USER_NAME<<<)
 
 This program is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself, either Perl version 5.8.2 or,
+it under the same terms as Perl itself, either Perl version (>>>MINIMUM_PERL_VERSION<<<) or,
 at your option, any later version of Perl 5 you may have available.
-
-=head1 BUGS
-
-None reported... yet.
 
 =cut

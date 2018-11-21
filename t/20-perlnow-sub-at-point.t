@@ -151,7 +151,8 @@ sub terranean {
      (previous-line 1)
      (setq returned-sub (perlnow-sub-at-point))
      (assert-t
-      (string= returned-sub  "terranean")
+;;      (string= returned-sub  "terranean")
+      (string= returned-sub  "")  ;; New behavior, Tue  November 20, 2018  22:51 
       (concat test-name ": between first sub and pod of second") ) ;; 11
 
      (search-forward "=item terranean" nil t)

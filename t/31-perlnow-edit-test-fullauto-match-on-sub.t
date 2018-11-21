@@ -67,6 +67,7 @@
           second-t-file   second-t-buffer   expected-second-t-file
           again-first-t-file
           again-second-t-file
+          expected-blank-sub-t-file
           )
 
        ;; clear the decks
@@ -128,6 +129,10 @@
 
        ;; Back to the module buffer, navigate down to the bottom, away from all subs.
        ;; Do an edit-test, Should open the most recent test file that matches on module name.
+       ;; Tue  November 20, 2018  22:55  tango
+       ;;   That's the old behavior-- current thinking that case would be a blank sub.
+       (setq expected-blank-sub-t-file 
+             (concat expected-t-loc "03-Rabid-Foosball.t"))
        (set-buffer pm-buffer)
        (goto-char (point-max))
        (forward-line -12)
@@ -135,8 +140,11 @@
               (perlnow-open-test-file
                (perlnow-get-test-file-name))
        (setq again-second-t-file (buffer-file-name))
-       (assert-equal expected-second-t-file again-second-t-file
-          (concat test-name ": re-opened existing test file, going for most recent match on module."))
+;;       (assert-equal expected-second-t-file again-second-t-file
+       (assert-equal expected-blank-sub-t-file again-second-t-file
+;;          (concat test-name ": re-opened existing test file, going for most recent match on module."))
+          (concat test-name ": opening a test file away from subs."))
+
        ))
    (end-tests)))
 

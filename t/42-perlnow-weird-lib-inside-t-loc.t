@@ -60,7 +60,6 @@
 
           t-result
          )
-    (message "SaaaLEEEze me...") ;; DEBUG
 
     ;; o  Create a cpan project: Dank::Rank
     (perlnow-milla perlnow-dev-location package-name)
@@ -77,8 +76,6 @@
 
     (setq rs-from-pm
           (perlnow-guess-run-string)) ;; acts on current perl buffer
-
-    (message "Survived!") ;; DEBUG
 
     (setq t-result
           (catch 'OUT 
