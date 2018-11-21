@@ -1243,6 +1243,19 @@ says something.
   (setq perlnow-debug nil)
   (setq debug-on-error nil))
 
+(defun perlnow-cycle-trace ()
+  "Cycles tron and troff, leaving tron on."
+  (interactive)
+  (cond (perlnow-trace
+         (perlnow-troff)
+         (perlnow-tron))
+        (t
+         (perlnow-tron)
+         (perlnow-troff)
+         (perlnow-tron)
+         ))
+  (setq perlnow-counter 0))
+  
 (defun perlnow-tron-if-envar ()
   "Runs \\[perlnow-tron] if envar PERLNOW_TRON is non-nil."
   (if (getenv "PERLNOW_TRON")
@@ -3199,28 +3212,38 @@ the file FILENAME, if specified."
          (count 0)
          target
          )
+    ;; TODO intermittant stringp from test file menu: trying to narrow it down.
+    (if perlnow-debug (message "A"))
     (unless here
       (error "Current buffer must be a file buffer, or you need to specify a filename."))
     (save-excursion
       (if here
+          (if perlnow-debug (message "B"))
           (find-file here))
       (cond (perlnow-associated-code
+             (if perlnow-debug (message "C"))
              (let ((next perlnow-associated-code))
                (find-file next)
                (catch 'UP
+                 (if perlnow-debug (message "D"))
                  (while (not (perlnow-code-but-not-test-p))
                    (progn
+                     (if perlnow-debug (message "E"))
                      (if (> (setq count (1+ count)) limit)
                          (throw 'UP nil))
                      (setq next perlnow-associated-code)
+                     (if perlnow-debug (message "F"))
                      (find-file next)
                      )))
                (setq target next)))
             (t
+             (if perlnow-debug (message "G"))
              (setq target here)
              )
             ))
+    (if perlnow-debug (message "H"))
     (switch-to-buffer initial) ;; save-excursion doesn't always work
+    (if perlnow-debug (message "I"))
     (if perlnow-trace (perlnow-close-func))
     target))
 
@@ -4386,7 +4409,9 @@ Returns nil on failure, sub name on success."
 
 (defun perlnow-range-current-sub ()
   "Gets perl sub metadata.
-Returns a list of subname, begin point and end point."
+Returns three values in a list: subname, begin and end.
+Subname should be empty if we're above the first sub in the file.
+Blocks of pod and comments above a sub count as part of it."
   (interactive) ;; DEBUG
   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-range-current-sub"))
   (let* ((initial-point (point)) ;; 0
@@ -4398,14 +4423,14 @@ Returns a list of subname, begin point and end point."
       (save-excursion
         (setq ret-list
               (catch 'IT
-                ;; get info for the previous sub
+                ;; get info from the previous start-of-sub onwardsx
                 (cond ((perlnow-move-back-to-sub-keyword)  ;; puts you before "sub "
                        (setq sub-meta-list-prev (perlnow-sub-after-point))
                        (cond (sub-meta-list-prev
                               (let* ((subname  (nth 0 sub-meta-list-prev))
                                      (beg      (nth 1 sub-meta-list-prev))
                                      (end      (nth 2 sub-meta-list-prev)))
-                                ;; if pt in range for the "prev" sub, this is it
+                                ;; if pt in range, we're inside that sub
                                 (cond ((and (>= initial-point beg)
                                             (<= initial-point end))
                                        (throw 'IT sub-meta-list-prev)))
@@ -4416,8 +4441,16 @@ Returns a list of subname, begin point and end point."
                               )))
                       (t ;; there is no prev sub, so back to where we started
                        (goto-char initial-point)))
+                ;; Tue  November 20, 2018  19:31  implementing a no-subs-land above first sub
                 (setq sub-meta-list-next (perlnow-sub-after-point))
                 (cond (sub-meta-list-next
+                       (let* ((subname  (nth 0 sub-meta-list-next))
+                              (beg      (nth 1 sub-meta-list-next))
+                              (end      (nth 2 sub-meta-list-next)))
+                         ;; if initial-point is up above range of first sub, then there's no current sub.
+                         (if (< initial-point beg)  
+                             (throw 'IT (list "" 0 (point))))
+                         )
                        (throw 'IT sub-meta-list-next)
                        ))
                 ))
@@ -5449,17 +5482,14 @@ If called on a acript, looks for names with suffix \"-script.t\".
   (perlnow-sub-name-to-var)
   (cond ((not perlnow-perl-sub-name)
          (setq perlnow-perl-sub-name ""))) ;; nil causes problems
-
   (let* ( test-file ;; return value
           test-name-pat
           test-files
           hyphenized-package-name
           file-location
           )
-
     (setq file-location
           (file-name-directory (buffer-file-name)))
-
     (setq hyphenized-package-name
           (cond
             (;; if module
@@ -5470,7 +5500,6 @@ If called on a acript, looks for names with suffix \"-script.t\".
             (setq staging-area (perlnow-find-cpan-style-staging-area))
             (setq hyphenized-package-name (file-name-nondirectory
                                            (perlnow-remove-trailing-slash staging-area))))))
-
     (cond ((perlnow-script-p)
            (setq test-name-pat "-script\\.t$"))
           (t  ;; better than an explicit (perlnow-module-code-p)
@@ -5488,7 +5517,21 @@ If called on a acript, looks for names with suffix \"-script.t\".
                    (perlnow-grep-list test-files-module perlnow-perl-sub-name ))
                   test-files-basename
                   )
-             (cond (test-files-both ;; matches found on module *and* sub: pick latest
+             (cond ((and test-files-module (string= perlnow-perl-sub-name "")) 
+                    ;; look through "module" list for one with a blank subname.
+                    (let* ((blank-subname-any-prefix-pat
+                            (concat "-" hyphenized-package-name ".t$"))
+                           )
+                      (setq test-file
+                            (perlnow-latest ;; TODO a silly tie-breaker.  Is biggest better?
+                             (perlnow-grep-list test-files-module blank-subname-any-prefix-pat)))
+                      )
+                    (unless test-file
+                      (setq test-file
+                            ;; just create a new one (gets sub name from var)
+                            (perlnow-new-test-file-name testloc-absolute hyphenized-package-name))
+                      ))
+                   (test-files-both ;; matches found on module *and* sub: pick latest
                     (setq test-file
                           (perlnow-latest test-files-both))
                     )
@@ -5524,6 +5567,8 @@ If called on a acript, looks for names with suffix \"-script.t\".
     (setq perlnow-recent-pick test-file)
     (setq perlnow-recent-pick-global test-file)  ;; TODO is this at all useful?
     (if perlnow-trace (perlnow-close-func))
+    (if perlnow-debug
+        (message "Returning from perlnow-get-test-file-name with test-file: %s" test-file))
     test-file))
 
 (defun perlnow-new-test-file-name (testloc-absolute hyphenized-package-name)
@@ -6165,17 +6210,18 @@ work on again."
 If FILENAME is nil, returns 0."
   (if perlnow-trace (perlnow-open-func "Calling " "perlnow-file-mtime"))
   (let ((mtime 0))
-    (if (perlnow-file-exists-p filename)
-        (let* ((attribs    (file-attributes filename) )
-               (mtime-pair (nth 5 attribs) )
-               (mtime-high (nth 0 mtime-pair))
-               (mtime-low  (nth 1 mtime-pair)) )
-          (cond ((and (numberp mtime-high) (numberp mtime-low))
-                 (setq mtime (+ (* 65536 mtime-high) mtime-low)) )
-                (t
-                 (setq mtime 0)) ) )
-      (if perlnow-trace (perlnow-close-func))
-      mtime)))
+    (cond ((perlnow-file-exists-p filename)
+           (let* ((attribs    (file-attributes filename) )
+                  (mtime-pair (nth 5 attribs) )
+                  (mtime-high (nth 0 mtime-pair))
+                  (mtime-low  (nth 1 mtime-pair)) )
+             (cond ((and (numberp mtime-high) (numberp mtime-low))
+                    (setq mtime (+ (* 65536 mtime-high) mtime-low)) )
+                   (t
+                    (setq mtime 0)) ) )
+           ))
+    (if perlnow-trace (perlnow-close-func))
+    mtime))
 
 (defun perlnow-file-mtime-p (a b)
   "A \"predicate\" to sort files in order of decreasing age."
@@ -6664,7 +6710,7 @@ If a test location does not exist, this will create one."
     (setq t-loc
           (perlnow-find-or-create-project-subdir perlnow-t-location-names
                                                  project-root))
-    (if perlnow-debug (message "perlnow-scan-tree-for-t-loc now returning t-loc %s" t-loc))
+    ;; (if perlnow-debug (message "perlnow-scan-tree-for-t-loc now returning t-loc %s" t-loc))
     (if perlnow-trace (perlnow-close-func))
     t-loc))
 
@@ -7820,7 +7866,6 @@ If BEFORE not found in list, second list is nil."
   (if perlnow-debug
       (message "  perlnow-grep-list: string-list: %s match-regexp: %s"
                (pp-to-string string-list) match-regexp))
-
   (let (new-list)
     (cond (match-regexp
            (dolist (string string-list)
