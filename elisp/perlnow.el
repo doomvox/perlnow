@@ -728,6 +728,16 @@ the tag \(>>>BUGS<<<\)." )
 Defaults to '=item', and should probably stay that way, but I've known
 people who wanted to use '=head3'.")
 
+(defcustom perlnow-new-object-module-t-hint-fmt
+  "# my $obj = %s->new();\n# $obj->%s();\n"
+  "A code hint to insert into newly created tests for oop modules.
+A printf format with two placeholders: module \(colonized\) and subname.")
+
+(defcustom perlnow-new-exporter-module-t-hint-fmt
+  "# use %s;\n# %s();\n"
+  "A code hint to insert into newly created tests for exporter-based.
+A printf format with two placeholders: module \(colonized\) and subname.")
+
 (defcustom perlnow-quiet t
   "Makes file creation operations just work.
 Silently creates directories if needed, and overwrites if it
@@ -2343,8 +2353,10 @@ to be associated with the given TESTFILE." ;; TODO expand docstring
                (if perlnow-debug
                    (message "perlnow-open-test-file: You're already inside of a test file."))
                ;; TODO here I try to get package-name from t-file name: what if it's not there?
+               ;;      (a) warn/error (b) try harder than this
                (let ( hyphenized  package-name )
                  (setq hyphenized   (nth 1 (perlnow-parse-standard-t-name testfile)))
+
                  (setq package-name (replace-regexp-in-string "-" "::" hyphenized))
                  (setq incspot (perlnow-scan-tree-for-lib-loc))
                  (setq original-code
@@ -2352,12 +2364,11 @@ to be associated with the given TESTFILE." ;; TODO expand docstring
                         (perlnow-follow-associations-to-non-test-code (buffer-file-name))
                         (perlnow-full-path-to-module incspot package-name)))
                  (perlnow-open-test-file-for-module testfile package-name incspot))
+
                )
               (t ;; context is not a perl buffer
-               ;; TODO but why do I care?  I have a fullpath for a new *.t, right?
-               ;;      (Oh: but not module name to insert into my standard template...)
-               (message "Perlnow: Not a perl buffer.")
-               )
+                 ;; so there'd be no module name for template
+               (message "Perlnow: perlnow-open-test-file: Not a perl buffer."))
               ))))
     (cond ((and (file-exists-p testfile)
                 original-code)
@@ -2367,28 +2378,66 @@ to be associated with the given TESTFILE." ;; TODO expand docstring
     (if perlnow-trace (perlnow-close-func))
     ))
 
-;; Redundant block of code moved to a function (not too much logical org here).
 (defun perlnow-open-test-file-for-module (testfile package-name incspot)
   "Internal routine to open a test file for a module.
 Uses the \"module-t\" template to open the given testfile, does a
 git check-in if appropriate, goes into cperl-mode, munges the new
 test code to find the module easily."
-  (let* ((new-file-p (not (file-exists-p testfile))) )
-      ;; global to pass value to template
-      (setq perlnow-perl-package-name package-name)
-      (perlnow-open-file-other-window testfile 30 (perlnow-choose-module-t-template))
-      (perlnow-git-add-commit-safe testfile)
-      (funcall (perlnow-lookup-preferred-perl-mode))
-      (if new-file-p
-          (save-excursion
-            (let* ((import-string
-                    (perlnow-import-string-from package-name incspot))
-                   (whitespace
-                    (perlnow-jump-to-use package-name import-string) ))
-              (perlnow-endow-script-with-access-to incspot whitespace)
-              )))
-      (save-buffer)
-      ))
+  (if perlnow-trace (perlnow-open-func "Calling " "perlnow-open-test-file-for-module"))
+  (let* ((new-file-p (not (file-exists-p testfile)))
+         (module-p   (perlnow-module-file-p))
+         (exporter-p (and module-p (perlnow-exporter-code-p)))
+         (sub-name   perlnow-perl-sub-name) )
+    ;; global to pass value to template
+    (setq perlnow-perl-package-name package-name)
+    (perlnow-open-file-other-window testfile 30 (perlnow-choose-module-t-template))
+    (perlnow-git-add-commit-safe testfile)
+    (funcall (perlnow-lookup-preferred-perl-mode))
+    (cond (new-file-p
+           (save-excursion
+             (let* ((import-string
+                     (perlnow-import-string-from package-name incspot))
+                    (whitespace
+                     (perlnow-jump-to-use package-name import-string) ))
+               (perlnow-endow-script-with-access-to incspot whitespace)
+               ))
+           (let* ((perlnow-new-object-module-t-hint
+                   (format perlnow-new-object-module-t-hint-fmt package-name sub-name))
+                  (perlnow-new-exporter-module-t-hint
+                   (format perlnow-new-exporter-module-t-hint-fmt package-name sub-name)))
+             (cond (exporter-p
+                    (perlnow-insert-and-indent-t-fragment perlnow-new-exporter-module-t-hint))
+                   (module-p  ;; oop module
+                    (perlnow-insert-and-indent-t-fragment perlnow-new-object-module-t-hint))
+                   (t         ;; not a module: warn for the hell of it
+                    (message
+                     "perlnow-open-test-file-for-module: not run with module buffer active"))))
+           )) ;; end cond new file
+    (save-buffer)
+    (if perlnow-trace (perlnow-close-func))
+    ))
+
+;; Don't ask me what's going on in here, I just hack here
+(defun perlnow-insert-and-indent-t-fragment (text)
+  "Inserts TEXT at point, runs indent-region on it."
+  (if perlnow-trace (perlnow-open-func "Calling " "perlnow-insert-and-indent"))
+  (let (initial beg end beg2 end2)
+
+    (setq initial (point))    
+    (search-backward "{")
+    (setq beg (point))
+    (search-forward "}")
+    (setq end (point))
+    (goto-char initial)
+
+    (setq beg2 (point))
+    (insert text)
+    (cperl-indent-region beg end)
+    (setq end2 (point))
+    (cperl-indent-region beg2 end2)    
+
+    (if perlnow-trace (perlnow-close-func))
+    ))
 
 (defun perlnow-test-create (&optional testfile)
   "Create test file using automated guess."
@@ -7990,23 +8039,14 @@ JSON-FILE defaults to: ~/.emacs.d/perlnow/incspot_from_t.json"
   (save-excursion
     (unless plist-symbol (setq plist-symbol 'perlnow-incspot-from-t-plist))
     (unless stash-file   (setq stash-file perlnow-incspot-from-t-stash-file))
-    (let* (
-;;            (data
-;;             (json-encode (eval plist-symbol)))
-;;             ;; better, maybe: json-encode-plist?
-           data-string
-           data-plist
-           )
+    (let* ( data-string data-plist )
       (setq data-plist (eval plist-symbol))
       ;; TODO uniquify the data-plist
       (setq data-string (json-encode data-plist)) ;; TODO maybe: json-encode-plist?
-
       (find-file stash-file)
       (widen)
       (delete-region (point-min) (point-max))
-;;      (insert data)
       (insert data-string)
-      (insert "\nBLLOORGGG\n")
       (save-buffer)
       ;; TODO close buffer, or just bury it?
       (if perlnow-trace (perlnow-close-func))

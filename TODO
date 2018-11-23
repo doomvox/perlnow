@@ -579,7 +579,7 @@ FEATURE
 
 align-regexp is pretty useful, e.g. when given a "=>" to align a hash
 definition by the fat commas.  It's be better if you didn't need to
-entere the "=>", if you had a perl aware wrapper that guessed what you'd
+enter the "=>", if you had a perl aware wrapper that guessed what you'd
 probably like to align on, and ideally that also guessed at the region
 you want to do it on.   Another issue is that some things need to be
 aligned into multiple columns, and it'd be better not to have to invoke
@@ -599,40 +599,6 @@ And note org macro expansions, yet-another-template-syntax:
   `{{{author}}}'
   `{{{email}}}'
 
-
-===
-
-Tue  November 13, 2018  20:17  tango
-
-Nothing seems to be working very well in perlnow:
-
-Doing a C-c / t from the top of a file like Skullplot.pm tries to
-create an inane test file focused on the first sub it can find,
-an inane builder sub.
-
-   Myself, I'm more likely to want a direct test of the "new" method.
-   Or an overall test file for the *.pm file as a whole.
-
-Then, after renaming the test file, I tried associating the *.pm
-with the new *.t via the C-u C-/ t menu.
-
-The menu comes up okay, but trying to select one of the two *.t
-files gives you a stringp error.
-
-Used C-c / R to manually set the runstring for the *.pm file:
-It doesn't matter, when I do a C-c / r inside the *.pm it keeps
-trying to run the stale test file name.
-
-  Arrrgh.
-
-
-===
-
-Note, I don't have copies of all of these in my ~/.templates:
-
-/home/doom/End/Cave/Perlnow/lib/perlnow/templates/standard/
-
-Why?
 
 ===
 
