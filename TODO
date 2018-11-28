@@ -1,7 +1,9 @@
-                                                        February 8, 2006
-                                                 Rev:   April   16, 2010
-                                                 Rev:   January 29, 2017
-                                                 Rev:   October 03, 2017
+                                                        February  8, 2006
+                                                 Rev:   April    16, 2010
+                                                 Rev:   January  29, 2017
+                                                 Rev:   October  03, 2017
+                                                 Rev:   November 25, 2018  
+
 
 Master list of known bugs and feature requests
 
@@ -25,7 +27,7 @@ Moving to the top of the list entries planned for 1.1
      or remotely run commands on the server side, via ssh?
 
 
-  o  Jump to right after the last sub,          FEATURE
+  o  Jump to just after the last sub,          FEATURE
      the natural place to add a new one.
 
   o  A new perlnow command, bound to "o". to run prove
@@ -50,12 +52,13 @@ Moving to the top of the list entries planned for 1.1
      Giving it "1.0" should give you the UI that was shipped with
      perlnow 1.0, no exceptions.
 
-  o  reconsider the idea that a user's manual input should
-     lock a setting so that automatic features will never
-     overwrite: user-input is sacrosanct, don't blow it away.
-     Q: what releases the lock?  A manual reset command?
-     The harder prefix?
-
+  o  review idea: once a setting (e.g a run-string) has been 
+     manually set by the user ('R'), that input should be locked, 
+     and never over-ridden by some automatic guess:   
+       user-input is sacrosanct, don't blow it away.
+     Q: what releases the lock?  Yet-another-command to do a reset?
+     I think: the harder prefix on the set command ('R', etc).
+   
   o  be rigorous about have "default" and "override" settings.
      there should be one each for everything, for some definition
      of everything.
@@ -78,7 +81,7 @@ Moving to the top of the list entries planned for 1.1
 
 ===
 
-April 9th additons:
+April 9th additions:
 
   o  Do web searches on emacs and "tags".
      Has someone else gotten around to using PPI?
@@ -100,6 +103,14 @@ BUG
   Something like this improves things:
   (modify-syntax-entry ?: "w" man-mode-syntax-table)
   Further: might like to exclude "-" (so that '->' doesn't get sucked in).
+
+  These means that there are perl-specific settings that should be used
+  for man/woman displays of perl code-- 
+
+  Some sort of minor mode/or new major mode that inherits from man/woman?   
+
+  Easiest: an optional part of perlnow set-up.
+
 
 ===
 BUG
@@ -206,15 +217,6 @@ before a perlnow-run.  (verify still a problem -- Thu Apr 15 12:46:59 2010)
 ===
 ===
 
-BUG
-Doesn't work with
-  xemacs
-  windows
-
-Should do some minimal testing on other platforms?
-(Or request it from others.)
-
-===
 FEATURE
 Want to run ispell on pod only.
 Alternately: run ispell on pod and comments only.
@@ -242,7 +244,7 @@ Maybe use B:* modules to report on all subs: definitions *and* where called
 Note: look into glimpse and "glimpse-mode" (Tom Lane likes glimpse).
 
   (( There are multiple solutions to this kind of thing now.
-     Could spend your live investigating them. -- Thu  October 19, 2017  ))
+     Could spend your life investigating them. -- Thu  October 19, 2017  ))
 
 ===
 FEATURE
@@ -272,16 +274,7 @@ How about Mason code?   Any special template.el templates
 for that?  Any peculiarities with "multimode"?
 
 ===
-
-Write code that goes backwards from
-   testfile + policy => code under test
-on general principle that it'll be useful someday:
-
-The test file name, and the test policy could be
-intepreted backwards to determine what's being tested.
-
-===
-                                       Thu Feb 26 11:59:19 2004
+                                        Feb 26  2004
 
 When a script run-string ends in a re-direct "> blah.txt",
 perlnow should assume that the user will want to see that

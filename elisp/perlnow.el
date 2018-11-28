@@ -32,7 +32,7 @@
 (require 'json)
 ;; (require 'seq)  ;; seq-util (using perlnow-uniq-list for now)
 
-(defconst perlnow-version "1.0"
+(defconst perlnow-version "1.01"
   "The version number of the installed perlnow.el package.
 Check <http://obsidianrook.com/perlnow/> for the latest.")
 
