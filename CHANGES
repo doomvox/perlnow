@@ -1,10 +1,9 @@
-Sun Jun 13 15:07:25 2010
+Version 0.43, Jun 13 2010: 
 
-Bug fixes with script creation from different contexts (e.g. man page,
-woman page, etc).  Pushing out as version 0.43.
+Bug fixes with script creation from different contexts 
+(e.g. man page, woman page, etc).  
 
-===
-Thu Apr 15 16:07:10 2010
+Apr 15 2010:
 
 Added a user feature to display the current default @INC in an emacs buffer:
 
@@ -12,9 +11,7 @@ Added a user feature to display the current default @INC in an emacs buffer:
 
 Examining @INC in a readable format is something I often want, so why not?
 
-===
-
-Sun Aug 23 23:04:05 2009
+Aug 23 2009: 
 
  o  Added features that use module-starter to create Module::Build
     based projects.
@@ -40,8 +37,8 @@ Smaller changes:
     find a string in the generated test file which no longer exists:
     now just moves point to bottom of test file.
 
-===
-Sun Sep  6 16:09:35 2009
+
+Sep  6 2009:
 
 The function perlnow-define-standard-keymappings now allows
 you to override the "C-c/" prefix with a different choice, for
@@ -49,38 +46,32 @@ example:
 
   (perlnow-define-standard-keymappings "\C-'")
 
-===
-===
-Smaller changes:
-
-Fri Mar  7 02:40:20 2008
+Mar  7 2008:
 
 Modified perlnow-perlversion-old-to-new to pass
 through newer style versions such as "5.8.0" unchanged.
 
-===
-Sat Sep  5 15:04:15 2009
+
+Sep  5 2009: 
 
 Removed dependancy of perlnow-edit-test-file on the marker
 (>>>9<<<) in the test file template: now it searches for the "use"
 (or "use_ok") line for the module, via the new perlnow-jump-to-use
 function.
 
-===
 
-Tue Sep  7 22:49:26 2010
 
-Fixed bug in perlnow-get-package-name-from-man
-that could yeild false positives on scripts, leading
-to perlnow-script from a script context having
-a very bad, misleading runstring refering to the context
-script instead of the new one.
+Sep  7 2010: 
 
-===
+Fixed bug in perlnow-get-package-name-from-man that could yield
+false positives on scripts, leading to perlnow-script from a
+script context having a very bad, misleading runstring refering to
+the context script instead of the new one.
 
-Fri Jan 20 00:05:55 2017 -0800
 
-Version 0.45 is essentially a bugfix release:
+Version 0.45, Jan 20 2017:
+ 
+A bugfix release:
 
  o  Fixed generated runstrings when using "prove".
 
@@ -95,10 +86,10 @@ Version 0.45 is essentially a bugfix release:
     perlnow-test-policy-test-location   was: "./t",             now: "../t"
     perlnow-test-policy-dot-definition  was: "fileloc",         now: "incspot"
 
-    My ideas about good locations to place test files (and my
-    experience about where they're likely to be found) has changed
-    over the years.
-
+    (My ideas about good locations to place test files-- and my
+    experience about where they're likely to be found-- has
+    changed over the years.)
+          
  o  Fixed bug where perlnow-run could get confused by a blank
     setting of existing-run-string
 
@@ -122,17 +113,47 @@ Version 0.45 is essentially a bugfix release:
   o Removed all code for deprecated "alt" run strings, and
     moved to a new package perlnow-deprecated.el.
 
-Plus many other miscellanious small fixes.
+  o plus many other miscellanious small fixes.
 
-I apologize for the continual minor drift in the UI with each release.
-In the near future I hope to stabilize things to avoid this going
-forward.
+(I apologize for the continual minor drift in the UI with
+each release.  In the near future I hope to stabilize
+things to avoid this going forward.)
 
-===
 
-Mon  July 31, 2017  20:19  tango
+Version 0.8, July 31, 2017:
 
-Version 0.8
+With this release, I'm stripping out the now obsolete
+"test-policy" features.
 
-With this release, I'm stripping out the now obsolete test-policy features.
+Version 1.0, Oct 10, 2017: 
+
+   Added a suite of tests (written in elisp, using test-simple.el). 
+
+   A major revision in default locations used for file creation.    
+                                                                    
+   Added Support for milla (a variant of dzil) cpans-style projects.
+
+   Programmatic template lookup that gradually relaxes constraints until an appropriate template is found.
+
+   In addition to 'perlnow-edit-test-file' there's a 'perlnow-test-create' that won't search for existing 
+   tests first, and a 'perlnow-test-create-manually' that prompts you to choose a name for the new test.
+   The standard keymap has these bound to "a" and "A" respectively.                                     
+
+   New navigation features to skip to next/prev sub ("n" and "p"),
+   or the next/prev TODO comment ("N" and "P").
+
+   Added variants of 'narrow-to-defun': 'perlnow-narrow-to-defun',
+   'perlnow-narrow-to-defun-other-buffer'.  These include a block 
+   of pod before a sub as part of the sub.
+
+   Changed default naming conventions for *.t files, e.g. 
+   *.t for scripts have a "-script" suffix, *.t files for 
+   modules include the current subname.
+
+Version 1.01, November 27, 2018:
+       
+   Test creation from a module now regards the top of the file as
+   a zone without an associated sub (previously it used the first
+   sub)-- this facilitates creating general *.t files for an 
+   entire module.
 
